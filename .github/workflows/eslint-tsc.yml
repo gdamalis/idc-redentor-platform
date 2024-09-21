@@ -7,7 +7,7 @@ permissions:
   pull-requests: read
 
 jobs:
-  validateTitle:
+  validate-title:
     runs-on: ubuntu-latest
 
     steps:
