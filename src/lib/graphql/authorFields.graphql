@@ -1,0 +1,10 @@
+fragment AuthorFields on TopicPerson {
+  __typename
+  sys {
+    id
+  }
+  name
+  avatar {
+    ...ImageFields
+  }
+}

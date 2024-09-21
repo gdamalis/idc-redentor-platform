@@ -1,0 +1,13 @@
+fragment SeoFields on Seo {
+  __typename
+  title
+  description
+  canonicalUrl
+  noFollow
+  noIndex
+  shareImagesCollection(limit: 3, locale: $locale) {
+    items {
+      ...ImageFields
+    }
+  }
+}

@@ -1,0 +1,62 @@
+fragment ReferenceBlogPostPageFields on BlogPostPage {
+  __typename
+  sys {
+    id
+    spaceId
+  }
+  slug
+  author {
+    ...AuthorFields
+  }
+  publishedDate
+  title
+  subtitle
+  featuredImage {
+    ...ImageFields
+  }
+}
+
+fragment BlogPostPageFields on BlogPostPage {
+  __typename
+  sys {
+    id
+    spaceId
+  }
+  internalName
+  seoFields {
+    ...SeoFields
+  }
+  slug
+  author {
+    ...AuthorFields
+  }
+  publishedDate
+  title
+  subtitle
+  featuredImage {
+    ...ImageFields
+  }
+  content {
+    json
+    links {
+      entries {
+        block {
+          ...RichImageFields
+        }
+      }
+    }
+  }
+  relatedBlogPostsCollection(limit: 2) {
+    items {
+      ...ReferenceBlogPostPageFields
+    }
+  }
+}
+
+query blogPostPage($slug: String!, $locale: String, $preview: Boolean) {
+  blogPostPageCollection(limit: 1, where: { slug: $slug }, locale: $locale, preview: $preview) {
+    items {
+      ...BlogPostPageFields
+    }
+  }
+}

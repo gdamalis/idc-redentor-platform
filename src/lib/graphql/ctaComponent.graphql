@@ -1,0 +1,23 @@
+fragment CTAComponentFields on CTAComponent {
+  __typename
+  sys {
+    id
+    spaceId
+  }
+  internalName
+  seoFields {
+    ...SeoFields
+  }
+  headline
+  subline
+  ctaText
+  targetPage {
+    ...TargetPageFields
+  }
+}
+
+query ctaComponent($id: String!, $locale: String, $preview: Boolean) {
+  ctaComponent(id: $id, locale: $locale, preview: $preview) {
+    ...CTAComponentFields
+  }
+}

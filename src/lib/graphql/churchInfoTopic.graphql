@@ -1,0 +1,32 @@
+fragment ChurchInfoTopicFields on ChurchInfoTopic {
+  __typename
+  sys {
+    id
+    spaceId
+  }
+  internalName
+  seoFields {
+    ...SeoFields
+  }
+  title
+  shortDescription
+  body {
+    json
+    links {
+      entries {
+        block {
+          ...RichImageFields
+        }
+      }
+    }
+  }
+}
+
+query churchInfoTopic($id: String!, $locale: String, $preview: Boolean) {
+  churchInfoTopicCollection(limit: 1, where: { sys: { id: $id } }, locale: $locale, preview: $preview) {
+    items {
+      ...ChurchInfoTopicFields
+    }
+  }
+}
+

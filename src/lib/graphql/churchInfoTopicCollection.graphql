@@ -1,0 +1,13 @@
+query churchInfoTopicCollection(
+  $locale: String
+  $preview: Boolean
+  $limit: Int
+  $order: [ChurchInfoTopicOrder]
+  $where: ChurchInfoTopicFilter
+) {
+  churchInfoTopicCollection(limit: $limit, locale: $locale, preview: $preview, order: $order, where: $where) {
+    items {
+      ...ChurchInfoTopicFields
+    }
+  }
+}
