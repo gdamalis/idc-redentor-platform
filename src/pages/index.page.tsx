@@ -29,11 +29,11 @@ const HomePage: NextPage<HomePageProps> = ({ posts }: HomePageProps) => {
         <meta property="og:url" content="https://idcredentor.com/" />
         <link rel="canonical" href="https://idcredentor.com/" />
       </Head>
-      <main>
+      <div>
         <OurMission />
         <BlogSection posts={posts} />
         <ContactCta />
-      </main>
+      </div>
     </>
   );
 };

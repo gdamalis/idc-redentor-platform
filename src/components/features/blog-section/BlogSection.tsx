@@ -1,4 +1,5 @@
 import { useTranslation } from 'next-i18next';
+import Image from 'next/image';
 import Link from 'next/link';
 
 import { BlogPost } from '@src/types/BlogPost';
@@ -25,9 +26,11 @@ export const BlogSection = ({ posts }: BlogSectionProps) => {
               key={post.id}
               className="relative isolate flex flex-col justify-end overflow-hidden rounded-2xl bg-gray-900 px-8 pb-8 pt-80 sm:pt-48 lg:pt-80"
             >
-              <img
-                alt=""
+              <Image
+                alt={post.title}
                 src={post.imageUrl}
+                width={780}
+                height={780}
                 className="absolute inset-0 -z-10 h-full w-full object-cover"
               />
               <div className="absolute inset-0 -z-10 bg-gradient-to-t from-gray-900 via-gray-900/40" />
@@ -42,9 +45,11 @@ export const BlogSection = ({ posts }: BlogSectionProps) => {
                     <circle r={1} cx={1} cy={1} />
                   </svg>
                   <div className="flex gap-x-2.5">
-                    <img
-                      alt=""
+                    <Image
+                      alt={post.author.name}
                       src={post.author.imageUrl}
+                      width={24}
+                      height={24}
                       className="h-6 w-6 flex-none rounded-full bg-white/10"
                     />
                     {post.author.name}
@@ -63,7 +68,7 @@ export const BlogSection = ({ posts }: BlogSectionProps) => {
         <div className="mt-10 flex justify-center">
           <Link
             href="/blog"
-            className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            className="rounded-3xl bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
           >
             {t('blogSection.viewMore')}
           </Link>

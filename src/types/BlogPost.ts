@@ -13,4 +13,12 @@ export type BlogPost = {
   keywords: string;
   ogDescription: string;
   slug: string;
+  category: string;
+  quote?: string;
+  quoteAuthor?: {
+    name: string;
+    role: string;
+    imageUrl: string;
+  };
+  additionalContent?: string[];
 };

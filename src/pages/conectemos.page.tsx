@@ -21,9 +21,11 @@ const ConectemosPage: NextPage = () => {
         <meta property="og:url" content="https://idcredentor.com/conectemos" />
         <link rel="canonical" href="https://idcredentor.com/conectemos" />
       </Head>
-      <main>
-        <p>ConectemosPage</p>
-      </main>
+      <div>
+        <div className="container mx-auto max-w-7xl px-6 pb-8 pt-16 lg:px-8">
+          <p>ConectemosPage</p>
+        </div>
+      </div>
     </>
   );
 };

@@ -10,6 +10,9 @@
     "description": "Discover our latest reflections and see how we continue growing as a community.",
     "viewMore": "View all articles"
   },
+  "blogPostPage": {
+    "morePosts": "Other articles"
+  },
   "blogSection": {
     "title": "Latest from the blog",
     "description": "Discover our latest reflections and teachings. Join us on this journey of faith and learning.",

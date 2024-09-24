@@ -1,8 +1,8 @@
 import { GetStaticProps, NextPage } from 'next';
 import { useTranslation } from 'next-i18next';
 import Head from 'next/head';
-import React from 'react';
 
+import { ContactCta } from '@src/components/features/contact-cta';
 import { revalidateDuration } from '@src/pages/utils/constants';
 import { getServerSideTranslations } from '@src/pages/utils/get-serverside-translations';
 
@@ -21,9 +21,12 @@ const QuienEsJesusPage: NextPage = () => {
         <meta property="og:url" content="https://idcredentor.com/quien-es-jesus" />
         <link rel="canonical" href="https://idcredentor.com/quien-es-jesus" />
       </Head>
-      <main>
-        <p>QuienEsJesusPage</p>
-      </main>
+      <div>
+        <div className="container mx-auto max-w-7xl px-6 pb-8 pt-16 lg:px-8">
+          <p>QuienEsJesusPage</p>
+        </div>
+        <ContactCta />
+      </div>
     </>
   );
 };
