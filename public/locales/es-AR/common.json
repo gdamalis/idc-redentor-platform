@@ -39,6 +39,12 @@
     "title": "Página no encontrada",
     "description": "Esta página no parece existir. <0>Haga clic aquí</0> para volver a la página principal."
   },
+  "ourMission": {
+    "title": "Nuestra misión",
+    "description1": "Descubrí cómo vivimos y compartimos el amor de Jesús de una manera que transforma vidas y comunidades.",
+    "description2": "Hay mucho más que queremos compartir con vos. Conocé más sobre nuestra misión y cómo podés ser parte de esta transformación.",
+    "ctaButton": "Conocé nuestra misión"
+  },
   "quienEsJesusPage": {
     "title": "¿Quién es Jesús? - Iglesia de Cristo Redentor",
     "description": "Explorá quién es Jesús, el centro de nuestra fe. Descubrí su mensaje de amor, redención y esperanza para toda la humanidad.",

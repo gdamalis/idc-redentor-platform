@@ -39,6 +39,12 @@
     "title": "Page not found",
     "description": "This page doesn't seem to exist. <0>Click here</0> to go back the homepage."
   },
+  "ourMission": {
+    "title": "Our mission",
+    "description1": "Discover how we live and share Jesus’ love in a way that transforms lives and communities.",
+    "description2": "There’s so much more we want to share with you. Learn more about our mission and how you can be part of this transformation.",
+    "ctaButton": "Learn about our mission"
+  },
   "quienEsJesusPage": {
     "title": "Who is Jesus? - Iglesia de Cristo Redentor",
     "description": "Explore who Jesus is, the center of our faith. Discover his message of love, redemption, and hope for all humanity.",
