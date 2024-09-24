@@ -9,6 +9,10 @@
     "keywords": "contacto, iglesia, Buenos Aires, conectemos, comunidad, redentor",
     "ogDescription": "Contactanos para conocer más sobre nuestra iglesia y cómo podés ser parte de la comunidad."
   },
+  "contactCta": {
+    "title": "Unite a una comunidad diversa y amorosa, donde conocemos juntos a Jesús.",
+    "ctaButton": "Conectemos"
+  },
   "comunidadPage": {
     "title": "Nuestra Comunidad - Iglesia de Cristo Redentor",
     "description": "Conocé más sobre nuestra comunidad en Buenos Aires. Somos una familia de fe, unidos por el amor de Cristo, y compartimos nuestras vidas en comunión.",

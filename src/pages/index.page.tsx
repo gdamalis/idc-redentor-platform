@@ -2,6 +2,7 @@ import { GetStaticProps, NextPage } from 'next';
 import { useTranslation } from 'next-i18next';
 import Head from 'next/head';
 
+import { ContactCta } from '@src/components/features/contact-cta';
 import { OurMission } from '@src/components/features/our-mission/OurMission';
 import { revalidateDuration } from '@src/pages/utils/constants';
 import { getServerSideTranslations } from '@src/pages/utils/get-serverside-translations';
@@ -23,6 +24,7 @@ const HomePage: NextPage = () => {
       </Head>
       <main>
         <OurMission />
+        <ContactCta />
       </main>
     </>
   );

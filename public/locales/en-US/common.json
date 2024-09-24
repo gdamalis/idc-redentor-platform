@@ -9,6 +9,10 @@
     "keywords": "contact, church, Buenos Aires, community, redentor",
     "ogDescription": "Reach out to learn more about our church and how you can be part of our community."
   },
+  "contactCta": {
+    "title": "Join a diverse and loving community, where we get to know Jesus together.",
+    "ctaButton": "Connect with us"
+  },
   "comunidadPage": {
     "title": "Our Community - Iglesia de Cristo Redentor",
     "description": "Learn more about our community in Buenos Aires. We are a family of faith, united by Christ’s love, and we share our lives in fellowship.",
