@@ -1,41 +1,29 @@
-import { GetStaticProps } from 'next';
+import { GetStaticProps, NextPage } from 'next';
 import { useTranslation } from 'next-i18next';
-import Link from 'next/link';
+import Head from 'next/head';
 
-import { getServerSideTranslations } from './utils/get-serverside-translations';
-
-import { ArticleHero, ArticleTileGrid } from '@src/components/features/article';
-import { SeoFields } from '@src/components/features/seo';
-import { Container } from '@src/components/shared/container';
+import { OurMission } from '@src/components/features/our-mission/OurMission';
 import { revalidateDuration } from '@src/pages/utils/constants';
+import { getServerSideTranslations } from '@src/pages/utils/get-serverside-translations';
 
-const Page = props => {
+const HomePage: NextPage = () => {
   const { t } = useTranslation();
-
-  const page = props.page;
-  const posts = props.posts;
-
-  if (!page?.featuredBlogPost || !posts) return;
 
   return (
     <>
-      {page.seoFields && <SeoFields {...page.seoFields} />}
-      <Container>
-        <Link href={`/${page.featuredBlogPost.slug}`}>
-          <ArticleHero article={page.featuredBlogPost} />
-        </Link>
-      </Container>
-
-      {/* Tutorial: contentful-and-the-starter-template.md */}
-      {/* Uncomment the line below to make the Greeting field available to render */}
-      {/*<Container>*/}
-      {/*  <div className="my-5 bg-colorTextLightest p-5 text-colorBlueLightest">{page.greeting}</div>*/}
-      {/*</Container>*/}
-
-      <Container className="my-8  md:mb-10 lg:mb-16">
-        <h2 className="mb-4 md:mb-6">{t('landingPage.latestArticles')}</h2>
-        <ArticleTileGrid className="md:grid-cols-2 lg:grid-cols-3" articles={posts} />
-      </Container>
+      <Head>
+        <title>{t('homePage.title')}</title>
+        <meta name="description" content={t('homePage.description')} />
+        <meta name="keywords" content={t('homePage.keywords')} />
+        <meta property="og:title" content={t('homePage.title')} />
+        <meta property="og:description" content={t('homePage.ogDescription')} />
+        <meta property="og:image" content="/assets/img/redentor_logo.png" />
+        <meta property="og:url" content="https://idcredentor.com/" />
+        <link rel="canonical" href="https://idcredentor.com/" />
+      </Head>
+      <main>
+        <OurMission />
+      </main>
     </>
   );
 };
@@ -76,4 +64,4 @@ export const getStaticProps: GetStaticProps = async ({ locale }) => {
   }
 };
 
-export default Page;
+export default HomePage;

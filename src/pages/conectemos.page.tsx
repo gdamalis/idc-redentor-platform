@@ -6,23 +6,23 @@ import React from 'react';
 import { revalidateDuration } from '@src/pages/utils/constants';
 import { getServerSideTranslations } from '@src/pages/utils/get-serverside-translations';
 
-const QuienEsJesusPage: NextPage = () => {
+const ConectemosPage: NextPage = () => {
   const { t } = useTranslation();
 
   return (
     <>
       <Head>
-        <title>{t('quienEsJesusPage.title')}</title>
-        <meta name="description" content={t('quienEsJesusPage.description')} />
-        <meta name="keywords" content={t('quienEsJesusPage.keywords')} />
-        <meta property="og:title" content={t('quienEsJesusPage.title')} />
-        <meta property="og:description" content={t('quienEsJesusPage.ogDescription')} />
+        <title>{t('conectemosPage.title')}</title>
+        <meta name="description" content={t('conectemosPage.description')} />
+        <meta name="keywords" content={t('conectemosPage.keywords')} />
+        <meta property="og:title" content={t('conectemosPage.title')} />
+        <meta property="og:description" content={t('conectemosPage.ogDescription')} />
         <meta property="og:image" content="/assets/img/redentor_logo.png" />
-        <meta property="og:url" content="https://idcredentor.com/quien-es-jesus" />
-        <link rel="canonical" href="https://idcredentor.com/quien-es-jesus" />
+        <meta property="og:url" content="https://idcredentor.com/conectemos" />
+        <link rel="canonical" href="https://idcredentor.com/conectemos" />
       </Head>
       <main>
-        <p>QuienEsJesusPage</p>
+        <p>ConectemosPage</p>
       </main>
     </>
   );
@@ -44,4 +44,4 @@ export const getStaticProps: GetStaticProps = async ({ locale }) => {
   }
 };
 
-export default QuienEsJesusPage;
+export default ConectemosPage;

@@ -4,7 +4,7 @@ import React from 'react';
 
 const menuItems = [
   { href: '/comunidad', label: 'Comunidad' },
-  { href: '/credo', label: 'Credo' },
+  { href: '/conectemos', label: 'Conectemos' },
   { href: '/quien-es-jesus', label: '¿Quién es Jesús?' },
 ];
 

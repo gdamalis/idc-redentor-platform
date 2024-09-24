@@ -3,8 +3,17 @@
     "relatedArticles": "Related articles",
     "featured": "featured"
   },
-  "landingPage": {
-    "latestArticles": "Latest articles"
+  "conectemosPage": {
+    "title": "Contact Us - Iglesia de Cristo Redentor",
+    "description": "Get in touch with us. Find our location, activity schedules, and learn how to be part of our community in Buenos Aires.",
+    "keywords": "contact, church, Buenos Aires, community, redentor",
+    "ogDescription": "Reach out to learn more about our church and how you can be part of our community."
+  },
+  "comunidadPage": {
+    "title": "Our Community - Iglesia de Cristo Redentor",
+    "description": "Learn more about our community in Buenos Aires. We are a family of faith, united by Christ’s love, and we share our lives in fellowship.",
+    "keywords": "community, church, Buenos Aires, faith, christians, redentor",
+    "ogDescription": "Discover our community in Buenos Aires, where we live and share Christ’s love together."
   },
   "common": {
     "regionalSettings": "Regional Settings",
@@ -12,14 +21,29 @@
     "language": "Language",
     "languageDrawer": "Toggle language drawer"
   },
+  "homePage": {
+    "title": "Welcome to Iglesia de Cristo Redentor",
+    "description": "Stay informed about our activities and stay connected with the community.",
+    "keywords": "church, activities, community, christ",
+    "ogDescription": "Connect with the Christ community and join our activities in Buenos Aires."
+  },
   "footer": {
     "copyright": "Redentor Church of Christ. All rights reserved.",
     "description": "Christ is the center of everything we do. Our mission is to guide people into a personal relationship with Jesus Christ.",
     "poweredBy": "Made with ♥️ from Buenos Aires, Argentina by GD"
   },
+  "landingPage": {
+    "latestArticles": "Latest articles"
+  },
   "notFound": {
     "title": "Page not found",
     "description": "This page doesn't seem to exist. <0>Click here</0> to go back the homepage."
+  },
+  "quienEsJesusPage": {
+    "title": "Who is Jesus? - Iglesia de Cristo Redentor",
+    "description": "Explore who Jesus is, the center of our faith. Discover his message of love, redemption, and hope for all humanity.",
+    "keywords": "Jesus, redemption, hope, salvation, Christianity, redentor",
+    "ogDescription": "Learn who Jesus is and how his message of love and redemption can transform your life."
   },
   "subscribe": {
     "title": "Subscribe to our newsletter",

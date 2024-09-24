@@ -3,8 +3,17 @@
     "relatedArticles": "Artículos relacionados",
     "featured": "destacado"
   },
-  "landingPage": {
-    "latestArticles": "Últimos artículos"
+  "conectemosPage": {
+    "title": "Conectemos - Iglesia de Cristo Redentor",
+    "description": "Ponete en contacto con nosotros. Encontrá nuestra ubicación, horarios de actividades, y cómo ser parte de nuestra comunidad en Buenos Aires.",
+    "keywords": "contacto, iglesia, Buenos Aires, conectemos, comunidad, redentor",
+    "ogDescription": "Contactanos para conocer más sobre nuestra iglesia y cómo podés ser parte de la comunidad."
+  },
+  "comunidadPage": {
+    "title": "Nuestra Comunidad - Iglesia de Cristo Redentor",
+    "description": "Conocé más sobre nuestra comunidad en Buenos Aires. Somos una familia de fe, unidos por el amor de Cristo, y compartimos nuestras vidas en comunión.",
+    "keywords": "comunidad, iglesia, Buenos Aires, fe, cristianos, redentor",
+    "ogDescription": "Descubrí nuestra comunidad en Buenos Aires, donde vivimos y compartimos el amor de Cristo juntos."
   },
   "common": {
     "regionalSettings": "Configuración regional",
@@ -17,9 +26,24 @@
     "description": "Cristo es el centro de todo lo que hacemos. Nuestra misión es guiar a las personas a una relación personal con Jesucristo.",
     "poweredBy": "Hecho con ♥️ desde Buenos Aires, Argentina por GD"
   },
+  "homePage": {
+    "title": "Bienvenido a Iglesia de Cristo Redentor",
+    "description": "Enterate de nuestras actividades y mantenete en contacto con la comunidad.",
+    "keywords": "iglesia, actividades, comunidad, cristo",
+    "ogDescription": "Conéctate con la comunidad de Cristo y participa en nuestras actividades en Buenos Aires."
+  },
+  "landingPage": {
+    "latestArticles": "Últimos artículos"
+  },
   "notFound": {
     "title": "Página no encontrada",
     "description": "Esta página no parece existir. <0>Haga clic aquí</0> para volver a la página principal."
+  },
+  "quienEsJesusPage": {
+    "title": "¿Quién es Jesús? - Iglesia de Cristo Redentor",
+    "description": "Explorá quién es Jesús, el centro de nuestra fe. Descubrí su mensaje de amor, redención y esperanza para toda la humanidad.",
+    "keywords": "Jesús, redención, esperanza, salvación, cristianismo, redentor",
+    "ogDescription": "Conocé quién es Jesús y cómo su mensaje de amor y redención puede transformar tu vida."
   },
   "subscribe": {
     "title": "Suscribite a nuestro boletín",
