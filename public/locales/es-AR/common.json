@@ -1,25 +1,31 @@
 {
   "article": {
-    "relatedArticles": "Verwandte Artikel",
-    "featured": "gekennzeichnet"
+    "relatedArticles": "Artículos relacionados",
+    "featured": "destacado"
   },
   "landingPage": {
-    "latestArticles": "Neueste Artikel"
+    "latestArticles": "Últimos artículos"
   },
   "common": {
-    "homepage": "Startseite",
-    "regionalSettings": "Regionale Einstellungen",
-    "language": "Sprache",
-    "languageDrawer": "Sprachschublade umschalten"
-
+    "regionalSettings": "Configuración regional",
+    "homepage": "Página principal",
+    "language": "Idioma",
+    "languageDrawer": "Alternar cajón de idiomas"
   },
   "footer": {
-    "aboutUs": "über uns",
-    "description": "Unser Unternehmen ist auf die Entwicklung fortschrittlicher Technologien für eine Vielzahl von Branchen spezialisiert. Wir verwenden modernste Techniken und Algorithmen, um intelligente Systeme zu erstellen, die Unternehmen dabei helfen können, Aufgaben zu automatisieren, die Effizienz zu verbessern und Innovationen voranzutreiben.",
-    "powerBy": "Unterstützt von"
+    "copyright": "Iglesia de Cristo Redentor. Todos los derechos reservados.",
+    "description": "Cristo es el centro de todo lo que hacemos. Nuestra misión es guiar a las personas a una relación personal con Jesucristo.",
+    "poweredBy": "Hecho con ♥️ desde Buenos Aires, Argentina por GD"
   },
   "notFound": {
-    "title": "Seite nicht gefunden",
-    "description": "Diese Seite scheint nicht zu existieren. <0>Klicken Sie hier</0>, um zur Startseite zurückzukehren."
+    "title": "Página no encontrada",
+    "description": "Esta página no parece existir. <0>Haga clic aquí</0> para volver a la página principal."
+  },
+  "subscribe": {
+    "title": "Suscribite a nuestro boletín",
+    "description": "Enterate de nuestras actividades y mantenete en contacto con la comunidad.",
+    "placeholder": "Ingresá tu correo electrónico",
+    "ctaButton": "Suscribite",
+    "srLabel": "Correo electrónico"
   }
 }

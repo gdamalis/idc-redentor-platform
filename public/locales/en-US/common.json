@@ -13,12 +13,19 @@
     "languageDrawer": "Toggle language drawer"
   },
   "footer": {
-    "aboutUs": "about us",
-    "description": "Our company specialises in the development of advanced technologies for a wide range of industries. We use cutting-edge techniques and algorithms to create intelligent systems that can help businesses automate tasks, improve efficiency, and drive innovation.",
-    "powerBy": "Powered by"
+    "copyright": "Redentor Church of Christ. All rights reserved.",
+    "description": "Christ is the center of everything we do. Our mission is to guide people into a personal relationship with Jesus Christ.",
+    "poweredBy": "Made with ♥️ from Buenos Aires, Argentina by GD"
   },
   "notFound": {
     "title": "Page not found",
     "description": "This page doesn't seem to exist. <0>Click here</0> to go back the homepage."
+  },
+  "subscribe": {
+    "title": "Subscribe to our newsletter",
+    "description": "Stay informed about our activities and stay connected with the community.",
+    "placeholder": "Enter your email address",
+    "ctaButton": "Subscribe",
+    "srLabel": "Email address"
   }
 }

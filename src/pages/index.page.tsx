@@ -1,4 +1,4 @@
-import { GetStaticProps, InferGetStaticPropsType } from 'next';
+import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import Link from 'next/link';
 
@@ -40,42 +40,40 @@ const Page = props => {
   );
 };
 
-// export const getStaticProps: GetStaticProps = async ({ locale }) => {
-//   try {
-//     const landingPageData = await gqlClient.pageLanding({ locale });
-//     const page = landingPageData.pageLandingCollection?.items[0];
+export const getStaticProps: GetStaticProps = async ({ locale }) => {
+  try {
+    // const landingPageData = await gqlClient.pageLanding({ locale });
+    // const page = landingPageData.pageLandingCollection?.items[0];
 
-//     const blogPostsData = await gqlClient.blogPostPageCollection({
-//       limit: 6,
-//       locale,
-//       order: PageBlogPostOrder.PublishedDateDesc,
-//       where: {
-//         slug_not: page?.featuredBlogPost?.slug,
-//       },
-//     });
-//     const posts = blogPostsData.pageBlogPostCollection?.items;
+    // const blogPostsData = await gqlClient.blogPostPageCollection({
+    //   limit: 6,
+    //   locale,
+    //   order: PageBlogPostOrder.PublishedDateDesc,
+    //   where: {
+    //     slug_not: page?.featuredBlogPost?.slug,
+    //   },
+    // });
+    // const posts = blogPostsData.pageBlogPostCollection?.items;
 
-//     if (!page) {
-//       return {
-//         revalidate: revalidateDuration,
-//         notFound: true,
-//       };
-//     }
+    // if (!page) {
+    //   return {
+    //     revalidate: revalidateDuration,
+    //     notFound: true,
+    //   };
+    // }
 
-//     return {
-//       revalidate: revalidateDuration,
-//       props: {
-//         ...(await getServerSideTranslations(locale)),
-//         page,
-//         posts,
-//       },
-//     };
-//   } catch {
-//     return {
-//       revalidate: revalidateDuration,
-//       notFound: true,
-//     };
-//   }
-// };
+    return {
+      revalidate: revalidateDuration,
+      props: {
+        ...(await getServerSideTranslations(locale)),
+      },
+    };
+  } catch {
+    return {
+      revalidate: revalidateDuration,
+      notFound: true,
+    };
+  }
+};
 
 export default Page;

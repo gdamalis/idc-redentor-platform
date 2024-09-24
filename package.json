@@ -31,6 +31,8 @@
     "@contentful/f36-tokens": "^4.0.1",
     "@contentful/live-preview": "^4.1.1",
     "@contentful/rich-text-react-renderer": "^15.16.2",
+    "@headlessui/react": "^2.1.8",
+    "@heroicons/react": "^2.1.5",
     "@next/bundle-analyzer": "^13.0.4",
     "dotenv": "^16.0.3",
     "graphql": "^16.6.0",
