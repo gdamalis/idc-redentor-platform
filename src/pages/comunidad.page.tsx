@@ -3,6 +3,7 @@ import { useTranslation } from 'next-i18next';
 import Head from 'next/head';
 
 import { ContactCta } from '@src/components/features/contact-cta';
+import { Header } from '@src/components/templates/header/Header';
 import { revalidateDuration } from '@src/pages/utils/constants';
 import { getServerSideTranslations } from '@src/pages/utils/get-serverside-translations';
 
@@ -22,9 +23,7 @@ const ComunidadPage: NextPage = () => {
         <link rel="canonical" href="https://idcredentor.com/comunidad" />
       </Head>
       <div>
-        <div className="container mx-auto max-w-7xl px-6 pb-8 pt-16 lg:px-8">
-          <p>ComunidadPage</p>
-        </div>
+        <Header title={t('comunidadPage.headerTitle')} />
         <ContactCta />
       </div>
     </>
