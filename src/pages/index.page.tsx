@@ -4,7 +4,7 @@ import Head from 'next/head';
 
 import { BlogSection } from '@src/components/features/blog-section';
 import { ContactCta } from '@src/components/features/contact-cta';
-import { OurMission } from '@src/components/features/our-mission/OurMission';
+import { OurMissionCta } from '@src/components/features/our-mission-cta/OurMissionCta';
 import { fetchDummyBlogPosts } from '@src/data/sample-blog-posts';
 import { revalidateDuration } from '@src/pages/utils/constants';
 import { getServerSideTranslations } from '@src/pages/utils/get-serverside-translations';
@@ -30,7 +30,7 @@ const HomePage: NextPage<HomePageProps> = ({ posts }: HomePageProps) => {
         <link rel="canonical" href="https://idcredentor.com/" />
       </Head>
       <div>
-        <OurMission />
+        <OurMissionCta />
         <BlogSection posts={posts} />
         <ContactCta />
       </div>

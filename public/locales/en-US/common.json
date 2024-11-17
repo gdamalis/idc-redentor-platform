@@ -4,7 +4,7 @@
     "featured": "featured"
   },
   "blogPage": {
-    "metaTitle": "Blog - Iglesia de Cristo Redentor",
+    "metaTitle": "Blog",
     "metaDescription": "Read our latest reflections and teachings on our blog. Join us on this journey of faith and growth.",
     "title": "Latest from the blog",
     "description": "Discover our latest reflections and see how we continue growing as a community.",
@@ -19,7 +19,7 @@
     "viewMore": "View all articles"
   },
   "conectemosPage": {
-    "title": "Contact Us - Iglesia de Cristo Redentor",
+    "title": "Contact Us",
     "description": "Get in touch with us. Find our location, activity schedules, and learn how to be part of our community in Buenos Aires.",
     "keywords": "contact, church, Buenos Aires, community, redentor",
     "ogDescription": "Reach out to learn more about our church and how you can be part of our community."
@@ -29,7 +29,8 @@
     "ctaButton": "Connect with us"
   },
   "comunidadPage": {
-    "title": "Our Community - Iglesia de Cristo Redentor",
+    "headerTitle": "Our <highlight>Community</highlight>",
+    "title": "Our Community",
     "description": "Learn more about our community in Buenos Aires. We are a family of faith, united by Christ’s love, and we share our lives in fellowship.",
     "keywords": "community, church, Buenos Aires, faith, christians, redentor",
     "ogDescription": "Discover our community in Buenos Aires, where we live and share Christ’s love together."
@@ -65,11 +66,12 @@
     "ctaButton": "Learn about our mission"
   },
   "quienEsJesusPage": {
-    "title": "Who is Jesus? - Iglesia de Cristo Redentor",
+    "title": "Who is Jesus?",
     "description": "Explore who Jesus is, the center of our faith. Discover his message of love, redemption, and hope for all humanity.",
     "keywords": "Jesus, redemption, hope, salvation, Christianity, redentor",
     "ogDescription": "Learn who Jesus is and how his message of love and redemption can transform your life."
   },
+  "sitename": "Redentor Church of Christ",
   "subscribe": {
     "title": "Subscribe to our newsletter",
     "description": "Stay informed about our activities and stay connected with the community.",

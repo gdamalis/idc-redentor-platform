@@ -4,7 +4,7 @@
     "featured": "destacado"
   },
   "blogPage": {
-    "metaTitle": "Blog - Iglesia de Cristo Redentor",
+    "metaTitle": "Blog",
     "metaDescription": "Leé nuestras reflexiones y enseñanzas más recientes en nuestro blog. Seguinos en este viaje de fe y crecimiento.",
     "title": "Últimos artículos del blog",
     "description": "Conocé nuestras reflexiones más recientes y descubrí cómo seguimos creciendo en comunidad.",
@@ -19,7 +19,7 @@
     "viewMore": "Ver todos los artículos"
   },
   "conectemosPage": {
-    "title": "Conectemos - Iglesia de Cristo Redentor",
+    "title": "Conectemos",
     "description": "Ponete en contacto con nosotros. Encontrá nuestra ubicación, horarios de actividades, y cómo ser parte de nuestra comunidad en Buenos Aires.",
     "keywords": "contacto, iglesia, Buenos Aires, conectemos, comunidad, redentor",
     "ogDescription": "Contactanos para conocer más sobre nuestra iglesia y cómo podés ser parte de la comunidad."
@@ -29,7 +29,8 @@
     "ctaButton": "Conectemos"
   },
   "comunidadPage": {
-    "title": "Nuestra Comunidad - Iglesia de Cristo Redentor",
+    "headerTitle": "Nuestra <highlight>Comunidad</highlight>",
+    "title": "Nuestra Comunidad",
     "description": "Conocé más sobre nuestra comunidad en Buenos Aires. Somos una familia de fe, unidos por el amor de Cristo, y compartimos nuestras vidas en comunión.",
     "keywords": "comunidad, iglesia, Buenos Aires, fe, cristianos, redentor",
     "ogDescription": "Descubrí nuestra comunidad en Buenos Aires, donde vivimos y compartimos el amor de Cristo juntos."
@@ -65,11 +66,12 @@
     "ctaButton": "Conocé nuestra misión"
   },
   "quienEsJesusPage": {
-    "title": "¿Quién es Jesús? - Iglesia de Cristo Redentor",
+    "title": "¿Quién es Jesús?",
     "description": "Explorá quién es Jesús, el centro de nuestra fe. Descubrí su mensaje de amor, redención y esperanza para toda la humanidad.",
     "keywords": "Jesús, redención, esperanza, salvación, cristianismo, redentor",
     "ogDescription": "Conocé quién es Jesús y cómo su mensaje de amor y redención puede transformar tu vida."
   },
+  "sitename": "Iglesia de Cristo Redentor",
   "subscribe": {
     "title": "Suscribite a nuestro boletín",
     "description": "Enterate de nuestras actividades y mantenete en contacto con la comunidad.",
