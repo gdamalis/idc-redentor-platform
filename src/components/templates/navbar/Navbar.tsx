@@ -36,6 +36,7 @@ export const Navbar = () => {
               <Link href="/" title={t('common.homepage')}>
                 <Image
                   src="/assets/img/redentor_logo.png"
+                  className="h-16 w-16"
                   width={60}
                   height={80}
                   alt="Redentor church logo"

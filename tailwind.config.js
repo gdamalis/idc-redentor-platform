@@ -5,6 +5,9 @@ module.exports = {
   content: ['./src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      backgroundImage:{
+        'community': "url('/assets/img/community_redentor_camp.jpeg')",
+      },
       maxWidth: {
         '8xl': '90rem',
       },
