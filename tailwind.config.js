@@ -5,8 +5,8 @@ module.exports = {
   content: ['./src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
-      backgroundImage:{
-        'community': "url('/assets/img/community_redentor_camp.jpeg')",
+      backgroundImage: {
+        community: "url('/assets/img/community_redentor_camp.jpeg')",
       },
       maxWidth: {
         '8xl': '90rem',
@@ -26,21 +26,13 @@ module.exports = {
         sans: ['var(--font-nunito-sans)', ...fontFamily.sans],
       },
       keyframes: {
-        typing: {
-          from: { width: '0ch' },
-          to: { width: '22ch' },
-        },
-        blink: {
-          '50%': { 'border-color': 'transparent' },
-        },
         highlight: {
           from: { 'background-size': '0% 100%' },
           to: { 'background-size': '100% 100%' },
         },
       },
       animation: {
-        typing: 'typing 4s steps(30, end) forwards, blink .75s step-end infinite',
-        highlight: 'highlight 2s ease-in-out forwards',
+        highlight: 'highlight 1s ease-in-out forwards',
       },
     },
   },
