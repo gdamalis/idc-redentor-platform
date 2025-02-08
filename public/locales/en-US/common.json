@@ -19,7 +19,8 @@
     "viewMore": "View all articles"
   },
   "conectemosPage": {
-    "title": "Contact Us",
+    "headerTitle": "Come to <highlight>Meet Us</highlight>",
+    "title": "Come to Meet Us",
     "description": "Get in touch with us. Find our location, activity schedules, and learn how to be part of our community in Buenos Aires.",
     "keywords": "contact, church, Buenos Aires, community, redentor",
     "ogDescription": "Reach out to learn more about our church and how you can be part of our community."
