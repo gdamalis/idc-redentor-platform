@@ -17,13 +17,6 @@ const navigation = {
     { name: 'Guides', href: '#' },
     { name: 'API Status', href: '#' },
   ],
-  company: [
-    { name: 'About', href: '#' },
-    { name: 'Blog', href: '#' },
-    { name: 'Jobs', href: '#' },
-    { name: 'Press', href: '#' },
-    { name: 'Partners', href: '#' },
-  ],
   legal: [
     { name: 'Claim', href: '#' },
     { name: 'Privacy', href: '#' },
@@ -76,7 +69,7 @@ export const Footer = () => {
   const { t } = useTranslation();
 
   return (
-    <footer aria-labelledby="footer-heading" className="bg-white">
+    <footer aria-labelledby="footer-heading" className="border-t border-gray-900/10 bg-white">
       <h2 id="footer-heading" className="sr-only">
         Footer
       </h2>
