@@ -90,7 +90,7 @@ export const LanguageSelectorDesktop = ({ localeName, displayName }) => {
         className="flex items-center font-normal uppercase"
         onClick={() => setIsOpen(currentState => !currentState)}
       >
-        <LanguageIcon width="18px" height="18px" variant="secondary" className="mr-1 ml-1" />
+        <LanguageIcon width="18px" height="18px" variant="secondary" className="ml-1 mr-1" />
         {localeName(router.locale)}
         {isOpen ? (
           <ChevronUpTrimmedIcon variant="secondary" className="pl-1" />
@@ -102,7 +102,7 @@ export const LanguageSelectorDesktop = ({ localeName, displayName }) => {
         <ul
           ref={menuRef}
           className={twMerge(
-            'top-100 absolute right-0 z-10 w-24 translate-y-3 cursor-pointer rounded-md bg-colorWhite text-center text-base shadow',
+            'top-100 bg-colorWhite absolute right-0 z-10 w-24 translate-y-3 cursor-pointer rounded-md bg-white text-center text-base shadow',
             isOpen ? 'block' : 'hidden',
           )}
           id="menu-locale"
