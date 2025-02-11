@@ -37,7 +37,7 @@ const BlogPostPage: NextPage<BlogPostPageProps> = ({ post, otherPosts }: BlogPos
       </Head>
       <div className="bg-white px-6 py-32 lg:px-8">
         <div className="mx-auto max-w-3xl text-base leading-7 text-gray-700">
-          <p className="text-base font-semibold leading-7 text-indigo-600">{post.category}</p>
+          <p className="text-base font-semibold leading-7 text-blue-600">{post.category}</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
             {post.title}
           </h1>
@@ -60,7 +60,7 @@ const BlogPostPage: NextPage<BlogPostPageProps> = ({ post, otherPosts }: BlogPos
             ))}
 
             {post.quote && (
-              <figure className="mt-10 border-l border-indigo-600 pl-9">
+              <figure className="mt-10 border-l border-blue-600 pl-9">
                 <blockquote className="font-semibold text-gray-900">
                   <p>{post.quote}</p>
                 </blockquote>

@@ -28,7 +28,7 @@ const ConectemosPage: NextPage = () => {
       <div>
         <Header title={t('conectemosPage.headerTitle')} className="bg-community" />
 
-        <div className="bg-indigo-600/20 ">
+        <div className="bg-blue-600/20 ">
           <Container className="max-w-5xl py-16 text-center sm:py-24">
             <Typography component="p" variant="body1" className="text-xl md:text-2xl">
               Ser parte de nuestra comunidad es una gran responsabilidad igual que a formar parte de

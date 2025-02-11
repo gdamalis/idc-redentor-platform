@@ -29,7 +29,7 @@ const ComunidadPage: NextPage = () => {
       <div>
         <Header title={t('comunidadPage.headerTitle')} className="bg-community" />
 
-        <div className="bg-indigo-600/20 ">
+        <div className="bg-blue-600/20 ">
           <Container className="max-w-5xl py-16 text-center sm:py-24">
             <Typography component="p" variant="body1" className="text-xl md:text-2xl">
               La Iglesia de Cristo Redentor es una comunidad cristiana que busca proclamar las
