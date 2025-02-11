@@ -65,7 +65,7 @@ Pre-requisites:
 This project is optimized for **Vercel**, but can also be deployed to **Netlify** or **any Node.js-friendly hosting service**.
 
 ### 🔄 How to Perform a Release?
-TBD - (Consider adding deployment steps via Vercel or GitHub Actions)
+TBD
 
 ---
 # Contributing
