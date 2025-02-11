@@ -20,7 +20,7 @@ This project serves as the official website for *Iglesia de Cristo Redentor*, pr
 Pre-requisites:
 - [Node.js](https://nodejs.org/) `>=18.x`  
 - [Yarn](https://classic.yarnpkg.com/en/docs/install) `>=1.22.22`  
-- A Contentful API Key (ask @gdamalis)
+- A Contentful API Key and other details (ask @gdamalis)
 - Join the Vercel project (ask @gdamalis)
 
 ### 🏃‍♂️ Running the Project Locally
@@ -29,33 +29,24 @@ Pre-requisites:
    git clone git@github.com:gdamalis/idc-redentor-web.git
    cd idc-redentor-web
    ```
-2. **Login to Versal using the Versal CLI**
-   - If you haven't installed the Versal CLI, install it globally:
-     ```bash
-     npm install -g versal-cli
-     ```
-   - Login to your Versal account:
-     ```bash
-     versal login
-     ```
-
-3. **Pull environment variables from Versal**
-   This command fetches the necessary environment variables and creates (or updates) your `.env` file.
+2. **Copy the Environment Variables**
+   Create a new `.env` file by copying the example provided in the root directory:
    ```bash
-   versal env pull
+   cp .env.example .env
    ```
+   Edit the `.env` file and enter the details provided to connect to Contentful
 
-4. **Install dependencies**
+3. **Install dependencies**
    ```bash
    yarn
    ```
 
-5. **Start the development server**
+4. **Start the development server**
    ```bash
    yarn dev
    ```
 
-6. Open [http://localhost:3000](http://localhost:3000) in your browser.
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
