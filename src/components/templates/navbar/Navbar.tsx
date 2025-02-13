@@ -11,7 +11,7 @@ import { MainMenuDesktop } from '@src/components/shared/main-menu/MainMenuDeskto
 const menuItems = [
   { href: '/comunidad', label: 'Comunidad' },
   { href: '/blog', label: 'Blog' },
-  { href: '/quien-es-jesus', label: '¿Quién es Jesús?' },
+  // { href: '/quien-es-jesus', label: '¿Quién es Jesús?' },
   { href: '/conectemos', label: 'Conectemos' },
 ];
 
