@@ -59,10 +59,10 @@ export const CredoSection = () => {
           Nuestro Credo
         </Typography>
 
-        <dl className="text-base/7 mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-x-8 gap-y-16 sm:grid-cols-2 lg:mx-0 lg:max-w-none lg:grid-cols-3">
+        <dl className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-x-8 gap-y-16 text-base/7 sm:grid-cols-2 lg:mx-0 lg:max-w-none lg:grid-cols-3">
           {credos.map(credo => (
             <div key={credo.name}>
-              <dt className="text-lg font-bold text-indigo-700">{credo.name}</dt>
+              <dt className="text-lg font-bold text-blue-700">{credo.name}</dt>
               <dd className="mt-2 text-gray-800">{credo.description}</dd>
               <dd className="mt-3 italic text-gray-600">{credo.bibleVerse}</dd>
             </div>

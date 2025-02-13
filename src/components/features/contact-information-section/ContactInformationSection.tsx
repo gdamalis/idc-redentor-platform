@@ -15,7 +15,7 @@ export const ContactInformationSection = () => {
                     src="https://tailwindui.com/plus-assets/img/ecommerce-images/footer-02-exclusive-sale.jpg"
                     className="size-full object-cover saturate-0 filter"
                   /> */}
-                  <div className="absolute inset-0 bg-indigo-800/90" />
+                  <div className="absolute inset-0 bg-blue-800/90" />
                 </div>
                 <div className="relative mx-auto max-w-sm text-center">
                   <p className="text-2xl font-bold tracking-tight text-white">
@@ -34,7 +34,7 @@ export const ContactInformationSection = () => {
                     src="https://tailwindui.com/plus-assets/img/ecommerce-images/footer-02-exclusive-sale.jpg"
                     className="size-full object-cover saturate-0 filter"
                   /> */}
-                  <div className="absolute inset-0 bg-indigo-600/90" />
+                  <div className="absolute inset-0 bg-blue-600/90" />
                 </div>
                 <div className="relative mx-auto max-w-sm text-center">
                   <p className="text-2xl font-bold tracking-tight text-white">

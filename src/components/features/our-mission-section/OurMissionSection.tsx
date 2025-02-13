@@ -10,7 +10,7 @@ export const OurMissionSection = () => {
         <div className="lg:col-span-2 lg:col-start-1 lg:row-start-1 lg:mx-auto lg:grid lg:w-full lg:max-w-7xl lg:grid-cols-2 lg:gap-x-8 lg:px-8">
           <div className="lg:pr-4">
             <div className="lg:max-w-lg">
-              <h1 className="text-pretty mt-2 text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
+              <h1 className="mt-2 text-pretty text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
                 Nuestra Misión
               </h1>
             </div>
@@ -27,7 +27,7 @@ export const OurMissionSection = () => {
         </div>
         <div className="lg:col-span-2 lg:col-start-1 lg:row-start-2 lg:mx-auto lg:grid lg:w-full lg:max-w-7xl lg:grid-cols-2 lg:gap-x-8 lg:px-8">
           <div className="lg:pr-4">
-            <div className="text-base/7 max-w-xl text-gray-700 lg:max-w-lg">
+            <div className="max-w-xl text-base/7 text-gray-700 lg:max-w-lg">
               <Typography component="p" variant="body1">
                 Ser la segunda encarnación después de Jesús. Queremos encarnar la vida y misión de
                 Jesús aquí en la tierra.
@@ -43,10 +43,7 @@ export const OurMissionSection = () => {
               </Typography>
               <ul className="mt-8 space-y-8 text-gray-600">
                 <li className="flex gap-x-3">
-                  <HeartIcon
-                    aria-hidden="true"
-                    className="mt-1 h-8 w-8 flex-none text-indigo-600"
-                  />
+                  <HeartIcon aria-hidden="true" className="mt-1 h-8 w-8 flex-none text-blue-600" />
                   <span>
                     <strong className="font-semibold text-gray-900">
                       La predicación del evangelio .
@@ -56,10 +53,7 @@ export const OurMissionSection = () => {
                   </span>
                 </li>
                 <li className="flex gap-x-3">
-                  <HeartIcon
-                    aria-hidden="true"
-                    className="mt-1 h-8 w-8 flex-none text-indigo-600"
-                  />
+                  <HeartIcon aria-hidden="true" className="mt-1 h-8 w-8 flex-none text-blue-600" />
                   <span>
                     <strong className="font-semibold text-gray-900">La vida comunitaria .</strong>{' '}
                     Anim aute id magna aliqua ad ad non deserunt sunt. Qui irure qui lorem cupidatat
@@ -67,10 +61,7 @@ export const OurMissionSection = () => {
                   </span>
                 </li>
                 <li className="flex gap-x-3">
-                  <HeartIcon
-                    aria-hidden="true"
-                    className="mt-1 h-8 w-8 flex-none text-indigo-600"
-                  />
+                  <HeartIcon aria-hidden="true" className="mt-1 h-8 w-8 flex-none text-blue-600" />
                   <span>
                     <strong className="font-semibold text-gray-900">La misión .</strong> Ac
                     tincidunt sapien vehicula erat auctor pellentesque rhoncus. Et magna sit morbi

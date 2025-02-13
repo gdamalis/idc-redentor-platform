@@ -31,12 +31,3 @@
     @apply text-gray-600 tracking-snug font-normal leading-snug md:leading-normal;
   }
 }
-
-@keyframes typing {
-  from {
-    width: 0;
-  }
-  to {
-    width: 33.5rem;
-  }
-}
