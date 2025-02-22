@@ -1,3 +1,0 @@
-query contactForm($id: String!, $locale: String, $preview: Boolean) {
-  ...ContactForm
-}
