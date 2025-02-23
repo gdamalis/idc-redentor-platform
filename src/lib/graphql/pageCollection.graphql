@@ -1,7 +1,0 @@
-query pageCollection($locale: String, $preview: Boolean) {
-  pageCollection(limit: 100, locale: $locale, preview: $preview) {
-    items {
-      ...PageFields
-    }
-  }
-}

@@ -1,9 +1,9 @@
-import { useTranslation } from 'next-i18next';
+import { useTranslations } from 'next-intl';
 import Image from 'next/image';
-import Link from 'next/link';
+import { Link } from "@src/i18n/routing";
 
 export const OurMissionCta = () => {
-  const { t } = useTranslation();
+  const t = useTranslations();
 
   return (
     <div className="overflow-hidden bg-white py-32">
@@ -17,7 +17,7 @@ export const OurMissionCta = () => {
             <p className="mt-6 text-base leading-7 text-gray-600">{t('ourMission.description2')}</p>
             <div className="mt-10 flex">
               <Link
-                href="/comunidad"
+                href="/community"
                 className="rounded-3xl bg-blue-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
               >
                 {t('ourMission.ctaButton')}

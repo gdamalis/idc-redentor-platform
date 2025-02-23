@@ -1,5 +1,5 @@
-import { Container } from '@src/components/shared/container';
-import { Typography } from '@src/components/shared/typography';
+import { Container } from '@src/components/ui/container';
+import { Typography } from '@src/components/ui/typography';
 
 export const CredoSection = () => {
   const credos = [
@@ -55,7 +55,7 @@ export const CredoSection = () => {
   return (
     <Container>
       <div className="py-24 sm:py-32">
-        <Typography component="h2" variant="h1" className="text-center">
+        <Typography component="h2" variant="h1" className="text-center dark:text-white">
           Nuestro Credo
         </Typography>
 
@@ -63,8 +63,8 @@ export const CredoSection = () => {
           {credos.map(credo => (
             <div key={credo.name}>
               <dt className="text-lg font-bold text-blue-700">{credo.name}</dt>
-              <dd className="mt-2 text-gray-800">{credo.description}</dd>
-              <dd className="mt-3 italic text-gray-600">{credo.bibleVerse}</dd>
+              <dd className="mt-2 text-gray-800 dark:text-gray-100">{credo.description}</dd>
+              <dd className="mt-3 italic text-gray-600 dark:text-gray-400">{credo.bibleVerse}</dd>
             </div>
           ))}
         </dl>

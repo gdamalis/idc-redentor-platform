@@ -1,7 +1,7 @@
 import { HeartIcon } from '@heroicons/react/24/outline';
 import Image from 'next/image';
 
-import { Typography } from '@src/components/shared/typography';
+import { Typography } from '@src/components/ui/typography';
 
 export const OurMissionSection = () => {
   return (

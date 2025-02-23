@@ -1,7 +1,7 @@
-import { useTranslation } from 'next-i18next';
+import { useTranslations } from 'next-intl';
 
 export const SubscribeForm = () => {
-  const { t } = useTranslation();
+  const t = useTranslations();
 
   return (
     <div className="mt-10 xl:mt-0">
