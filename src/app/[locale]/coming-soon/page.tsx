@@ -34,35 +34,37 @@ export default async function ComingSoonPage({
         <div className="flex items-center justify-end">
           <LanguageSwitcher />
         </div>
-        <section className="flex flex-col items-center justify-center h-full md:max-w-screen-md md:mx-auto">
-          <Image
-            src="/assets/img/redentor_logo.png"
-            className="h-32 w-32"
-            width={60}
-            height={80}
-            alt="Redentor church logo"
-          />
-          <Typography
-            component="h1"
-            variant="h1"
-            className="text-4xl font-bold mb-6"
-          >
-            {t("coming-soon.title")}
-          </Typography>
-          <Typography
-            component="p"
-            variant="body1"
-            className="mb-4 text-center text-xl"
-          >
-            {t("coming-soon.message.line-1")}
-          </Typography>
-          <Typography
-            component="p"
-            variant="body1"
-            className="mb-4 text-center text-xl"
-          >
-            {t("coming-soon.message.line-2")}
-          </Typography>
+        <section className="flex flex-col items-center justify-center h-full space-y-12 md:max-w-screen-md md:mx-auto">
+          <div className="flex flex-col items-center space-y-8">
+            <Image
+              src="/assets/img/redentor_logo.png"
+              className="h-32 w-32"
+              width={60}
+              height={80}
+              alt="Redentor church logo"
+            />
+            <Typography
+              component="h1"
+              variant="h1"
+              className="text-4xl font-bold mb-6 md:text-6xl"
+            >
+              {t("coming-soon.title")}
+            </Typography>
+            <Typography
+              component="p"
+              variant="body1"
+              className="text-center text-xl"
+            >
+              {t("coming-soon.message.line-1")}
+            </Typography>
+            <Typography
+              component="p"
+              variant="body1"
+              className="text-center text-xl"
+            >
+              {t("coming-soon.message.line-2")}
+            </Typography>
+          </div>
           <SubscribeForm
             className="mb-2"
             size="lg"
@@ -70,7 +72,7 @@ export default async function ComingSoonPage({
             ctaText={t("coming-soon.notify.cta-text")}
             placeholder={t("coming-soon.notify.placeholder")}
           />
-          <SocialLinks className="" />
+          <SocialLinks className="justify-center" />
         </section>
       </Container>
     </main>
