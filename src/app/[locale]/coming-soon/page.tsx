@@ -71,6 +71,7 @@ export default async function ComingSoonPage({
             ctaSrLabel={t("coming-soon.notify.input-sr-label")}
             ctaText={t("coming-soon.notify.cta-text")}
             placeholder={t("coming-soon.notify.placeholder")}
+            successMessage={t("coming-soon.notify.success-message")}
           />
           <SocialLinks className="justify-center" />
         </section>

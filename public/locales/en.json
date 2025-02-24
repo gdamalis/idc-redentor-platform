@@ -43,7 +43,8 @@
       "descriptions": "Soon, we will invite you to connect with our message and mission, walking with us on a journey of faith, service, and transformation. Stay tuned for our launch!",
       "placeholder": "Enter your email address",
       "cta-text": "Notify me!",
-      "input-sr-label": "Email address"
+      "input-sr-label": "Email address",
+      "success-message": "Thank you, we will keep you informed when we launch our new website. 🎉"
     },
     "title": "Coming Soon"
   },
@@ -91,11 +92,15 @@
     "ogDescription": "Learn who Jesus is and how his message of love and redemption can transform your life."
   },
   "sitename": "Redentor Church of Christ",
+  "status": {
+    "sr-loading": "Loading..."
+  },
   "subscribe": {
     "title": "Subscribe to our newsletter",
     "description": "Stay informed about our activities and stay connected with the community.",
     "placeholder": "Enter your email address",
     "cta-text": "Subscribe",
-    "input-sr-label": "Email address"
+    "input-sr-label": "Email address",
+    "success-message": "Thank you for subscribing! 🎉"
   }
 }

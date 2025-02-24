@@ -43,7 +43,8 @@
       "description": "Pronto, te invitaremos a conectarte con nuestro mensaje y misión, viviendo junto a nosotros un camino de fe, servicio y transformación. ¡Mantente atento a nuestro lanzamiento!",
       "placeholder": "Ingresá tu correo electrónico",
       "cta-text": "¡Avísame!",
-      "input-sr-label": "Correo electrónico"
+      "input-sr-label": "Correo electrónico",
+      "success-message": "Gracias, te mantendremos informado cuando lancemos nuestro nuevo sitio web. 🎉"
     },
     "title": "Próximamente"
   },
@@ -91,11 +92,15 @@
     "ogDescription": "Conocé quién es Jesús y cómo su mensaje de amor y redención puede transformar tu vida."
   },
   "sitename": "Iglesia de Cristo Redentor",
+  "status": {
+    "sr-loading": "Cargando..."
+  },
   "subscribe": {
     "title": "Suscribite a nuestro boletín",
     "description": "Enterate de nuestras actividades y mantenete en contacto con la comunidad.",
     "placeholder": "Ingresá tu correo electrónico",
     "cta-text": "Suscribite",
-    "input-sr-label": "Correo electrónico"
+    "input-sr-label": "Correo electrónico",
+    "success-message": "¡Gracias por suscribirte! 🎉"
   }
 }

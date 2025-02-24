@@ -70,6 +70,7 @@ export const Footer = () => {
             placeholder={t("subscribe.placeholder")}
             ctaText={t("subscribe.cta-text")}
             ctaSrLabel={t("subscribe.input-sr-label")}
+            successMessage={t("subscribe.success-message")}
           />
         </div>
         <div className="mt-16 border-t border-gray-900/10 pt-8 text-center sm:mt-20 lg:mt-24 lg:flex lg:justify-between lg:text-left">
