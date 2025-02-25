@@ -1,6 +1,7 @@
 "use client";
 
 import LoadingSpinner from "@src/components/ui/LoadingSpinner";
+import { Typography } from "@src/components/ui/typography";
 import { subscribe } from "@src/service/subscribe";
 import { useActionState } from "react";
 
@@ -55,12 +56,20 @@ export const SubscribeForm = ({
   return (
     <div className={`mt-10 xl:mt-0 ${className}`}>
       {title && (
-        <h3 className="text-sm font-semibold leading-6 text-gray-900">
+        <Typography
+          component="h3"
+          variant="h3" className="text-sm font-semibold leading-6 text-gray-900">
           {title}
-        </h3>
+        </Typography>
       )}
       {description && (
-        <p className="mt-2 text-sm leading-6 text-gray-900">{description}</p>
+        <Typography
+          component="p"
+          variant="body1"
+          className="mt-2 text-sm leading-6 text-gray-900"
+        >
+          {description}
+        </Typography>
       )}
       <form action={formAction} className="flex flex-col">
         <div className="flex self-center sm:max-w-md">

@@ -1,13 +1,19 @@
+import { Typography } from "@src/components/ui/typography";
+
 export const ContactInformationSection = () => {
   return (
-    <div className="overflow-hidden bg-white py-20 sm:py-32">
+    <div className="overflow-hidden bg-white dark:bg-gray-900 py-20 sm:py-32">
       <div className="mx-auto max-w-7xl md:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-x-8 gap-y-16 sm:gap-y-20 lg:grid-cols-2 lg:items-start">
           <div className="px-6 lg:px-0 lg:pr-4">
             <div className="mx-auto max-w-2xl lg:mx-0 lg:max-w-lg">
-              <h2 className="mt-2 text-pretty text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
+              <Typography
+                component="h2"
+                variant="h2"
+                className="mt-2 text-pretty text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl"
+              >
                 Horarios y Ubicación
-              </h2>
+              </Typography>
               <div className="relative mt-6 flex items-center px-6 py-8 sm:px-10 sm:py-12">
                 <div className="absolute inset-0 overflow-hidden rounded-lg">
                   {/* <img
@@ -18,15 +24,24 @@ export const ContactInformationSection = () => {
                   <div className="absolute inset-0 bg-blue-800/90" />
                 </div>
                 <div className="relative mx-auto max-w-sm text-center">
-                  <p className="text-2xl font-bold tracking-tight text-white">
+                  <Typography
+                    component="p"
+                    variant="body1"
+                    className="text-2xl font-bold tracking-tight text-white"
+                  >
                     Domingos | 17:00 hs
-                  </p>
+                  </Typography>
                 </div>
               </div>
-              <p className="mt-2 text-sm italic text-gray-600">
-                Hay reuniones entre semana en diferentes barrios de la capital. Pueden solicitar más
-                información al correo o al formulario de contacto más abajo
-              </p>
+              <Typography
+                component="p"
+                variant="body1"
+                className="mt-2 text-sm italic text-gray-600"
+              >
+                Hay reuniones entre semana en diferentes barrios de la capital.
+                Pueden solicitar más información al correo o al formulario de
+                contacto más abajo
+              </Typography>
               <div className="relative mt-6 flex items-center px-6 py-12 sm:px-10 sm:py-16">
                 <div className="absolute inset-0 overflow-hidden rounded-lg">
                   {/* <img
@@ -37,12 +52,20 @@ export const ContactInformationSection = () => {
                   <div className="absolute inset-0 bg-blue-600/90" />
                 </div>
                 <div className="relative mx-auto max-w-sm text-center">
-                  <p className="text-2xl font-bold tracking-tight text-white">
+                  <Typography
+                    component="p"
+                    variant="body1"
+                    className="text-2xl font-bold tracking-tight text-white"
+                  >
                     Tte. Gral. Juan Domingo Perón 4385
-                  </p>
-                  <p className="text-2xl tracking-tight text-white">
+                  </Typography>
+                  <Typography
+                    component="p"
+                    variant="body1"
+                    className="text-2xl tracking-tight text-white"
+                  >
                     Almargo, CABA, República Argentina
-                  </p>
+                  </Typography>
                 </div>
               </div>
             </div>

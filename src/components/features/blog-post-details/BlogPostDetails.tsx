@@ -1,4 +1,5 @@
 import { InformationCircleIcon } from "@heroicons/react/24/outline";
+import { Typography } from "@src/components/ui/typography";
 import { Link } from "@src/i18n/routing";
 import { BlogPost } from "@src/types/BlogPost";
 import { useTranslations } from "next-intl";
@@ -22,37 +23,58 @@ export default function BlogPostDetails({
   return (
     <div className="bg-white px-6 py-32 lg:px-8">
       <div className="mx-auto max-w-3xl text-base leading-7 text-gray-700">
-        <p className="text-base font-semibold leading-7 text-blue-600">
+        <Typography
+          component="p"
+          variant="body1"
+          className="text-base font-semibold leading-7 text-blue-600"
+        >
           {post.category}
-        </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+        </Typography>
+        <Typography
+          component="h1"
+          variant="h1"className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
           {post.title}
-        </h1>
+        </Typography>
         <div className="mt-4 text-sm text-gray-500">
-          <p>
+          <Typography component="p" variant="body1">
             Escrito por{" "}
             <span className="font-semibold text-gray-900">
               {post.author.name}
             </span>{" "}
             el {post.date}
-          </p>
+          </Typography>
         </div>
 
-        <p className="mt-6 text-xl leading-8">{post.description}</p>
+        <Typography
+          component="p"
+          variant="body1"
+          className="mt-6 text-xl leading-8"
+        >
+          {post.description}
+        </Typography>
 
         <div className="mt-10 max-w-2xl">
-          <p>{post.content}</p>
+          <Typography component="p" variant="body1">
+            {post.content}
+          </Typography>
 
           {post.additionalContent?.map((content, index) => (
-            <p key={`${post.title} ${index}`} className="mt-8">
+            <Typography
+              component="p"
+              variant="body1"
+              key={`${post.title} ${index}`}
+              className="mt-8"
+            >
               {content}
-            </p>
+            </Typography>
           ))}
 
           {post.quote && (
             <figure className="mt-10 border-l border-blue-600 pl-9">
               <blockquote className="font-semibold text-gray-900">
-                <p>{post.quote}</p>
+                <Typography component="p" variant="body1">
+                  {post.quote}
+                </Typography>
               </blockquote>
               {post.quoteAuthor && (
                 <figcaption className="mt-6 flex gap-x-4">
@@ -92,9 +114,11 @@ export default function BlogPostDetails({
           </figure>
 
           <div className="mt-16 max-w-2xl">
-            <h2 className="text-2xl font-bold tracking-tight text-gray-900">
+            <Typography
+          component="h2"
+          variant="h2" className="text-2xl font-bold tracking-tight text-gray-900">
               {t("blogPostPage.morePosts")}
-            </h2>
+            </Typography>
             <div className="mx-auto mt-16 grid max-w-2xl auto-rows-fr grid-cols-1 gap-8 sm:mt-20 lg:mx-0 lg:max-w-none lg:grid-cols-3">
               {relatedPosts.map((post: BlogPost) => (
                 <article
@@ -134,12 +158,14 @@ export default function BlogPostDetails({
                       </div>
                     </div>
                   </div>
-                  <h3 className="mt-3 text-lg font-semibold leading-6 text-white">
+                  <Typography
+          component="h3"
+          variant="h3" className="mt-3 text-lg font-semibold leading-6 text-white">
                     <Link href={`/blog/${post.slug}`}>
                       <span className="absolute inset-0" />
                       {post.title}
                     </Link>
-                  </h3>
+                  </Typography>
                 </article>
               ))}
             </div>

@@ -1,6 +1,7 @@
-import { useTranslations } from 'next-intl';
-import Image from 'next/image';
+import { Typography } from "@src/components/ui/typography";
 import { Link } from "@src/i18n/routing";
+import { useTranslations } from "next-intl";
+import Image from "next/image";
 
 export const OurMissionCta = () => {
   const t = useTranslations();
@@ -10,17 +11,33 @@ export const OurMissionCta = () => {
       <div className="mx-auto max-w-7xl px-6 lg:flex lg:px-8">
         <div className="mx-auto grid max-w-2xl grid-cols-1 gap-x-12 gap-y-16 lg:mx-0 lg:min-w-full lg:max-w-none lg:flex-none lg:gap-y-8">
           <div className="lg:col-end-1 lg:w-full lg:max-w-lg lg:pb-8">
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              {t('ourMission.title')}
-            </h2>
-            <p className="mt-6 text-xl leading-8 text-gray-600">{t('ourMission.description1')}</p>
-            <p className="mt-6 text-base leading-7 text-gray-600">{t('ourMission.description2')}</p>
+            <Typography
+              component="h2"
+              variant="h2"
+              className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl"
+            >
+              {t("ourMission.title")}
+            </Typography>
+            <Typography
+              component="p"
+              variant="body1"
+              className="mt-6 text-xl leading-8 text-gray-600"
+            >
+              {t("ourMission.description1")}
+            </Typography>
+            <Typography
+              component="p"
+              variant="body1"
+              className="mt-6 text-base leading-7 text-gray-600"
+            >
+              {t("ourMission.description2")}
+            </Typography>
             <div className="mt-10 flex">
               <Link
                 href="/community"
                 className="rounded-3xl bg-blue-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
               >
-                {t('ourMission.ctaButton')}
+                {t("ourMission.ctaButton")}
               </Link>
             </div>
           </div>
