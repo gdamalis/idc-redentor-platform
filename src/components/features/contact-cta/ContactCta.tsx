@@ -1,3 +1,4 @@
+import { Typography } from "@src/components/ui/typography";
 import { Link } from "@src/i18n/routing";
 import { useTranslations } from "next-intl";
 
@@ -8,9 +9,13 @@ export const ContactCta = () => {
     <div className="bg-blue-700">
       <div className="px-6 py-24 sm:px-6 sm:py-32 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+          <Typography
+            component="h2"
+            variant="h2"
+            className="text-3xl font-bold tracking-tight text-white sm:text-4xl"
+          >
             {t("contactCta.title")}
-          </h2>
+          </Typography>
           <div className="mt-10 flex items-center justify-center gap-x-6">
             <Link
               href="/come-meet-us"

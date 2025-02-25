@@ -38,7 +38,7 @@ export default async function ComingSoonPage({
           <div className="flex flex-col items-center space-y-8">
             <Image
               src="/assets/img/redentor_logo.png"
-              className="h-32 w-32"
+              className="h-32 w-32 dark:invert dark:mix-blend-luminosity"
               width={60}
               height={80}
               alt="Redentor church logo"

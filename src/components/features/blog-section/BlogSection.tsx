@@ -1,6 +1,7 @@
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { Link } from "@src/i18n/routing";
+import { Typography } from "@src/components/ui/typography";
 
 import { BlogPost } from "@src/types/BlogPost";
 
@@ -15,12 +16,18 @@ export const BlogSection = ({ posts }: BlogSectionProps) => {
     <div className="bg-white py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+          <Typography
+          component="h2"
+          variant="h2" className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
             {t("blogSection.title")}
-          </h2>
-          <p className="mt-2 text-lg leading-8 text-gray-600">
+          </Typography>
+          <Typography
+            component="p"
+            variant="body1"
+            className="mt-2 text-lg leading-8 text-gray-600"
+          >
             {t("blogSection.description")}
-          </p>
+          </Typography>
         </div>
         <div className="mx-auto mt-16 grid max-w-2xl auto-rows-fr grid-cols-1 gap-8 sm:mt-20 lg:mx-0 lg:max-w-none lg:grid-cols-3">
           {posts.map((post) => (
@@ -61,12 +68,14 @@ export const BlogSection = ({ posts }: BlogSectionProps) => {
                   </div>
                 </div>
               </div>
-              <h3 className="mt-3 text-lg font-semibold leading-6 text-white">
+              <Typography
+          component="h3"
+          variant="h3" className="mt-3 text-lg font-semibold leading-6 text-white">
                 <Link href={`/blog/${post.slug}`}>
                   <span className="absolute inset-0" />
                   {post.title}
                 </Link>
-              </h3>
+              </Typography>
             </article>
           ))}
         </div>

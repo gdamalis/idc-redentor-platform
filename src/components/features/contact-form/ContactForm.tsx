@@ -1,5 +1,5 @@
 import Image from "next/image";
-
+import { Typography } from "@src/components/ui/typography";
 import { Dropdown, type DropDownOption } from "@src/components/ui/dropdown";
 import { Link } from "@src/i18n/routing";
 
@@ -33,18 +33,24 @@ const DropDownOptions: DropDownOption[] = [
 
 export const ContactForm = () => {
   return (
-    <div className="relative isolate bg-white px-6 py-20 sm:py-32 lg:px-8">
+    <div className="relative isolate bg-white dark:bg-gray-900 px-6 py-20 sm:py-32 lg:px-8">
       <div className="mx-auto max-w-xl lg:max-w-4xl">
-        <h2 className="text-pretty text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
+        <Typography
+          component="h2"
+          variant="h2" className="text-pretty text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
           Conectá con nosotros{" "}
-        </h2>
-        <p className="mt-4 text-lg/8 text-gray-600">
+        </Typography>
+        <Typography
+          component="p"
+          variant="body1"
+          className="mt-4 text-lg/8 text-gray-600"
+        >
           Podés escribirnos al correo{" "}
           <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-lg font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10">
             idcredentor@gmail.com
           </span>{" "}
           o bien podés escribirnos a través de este breve formulario:
-        </p>
+        </Typography>
         <div className="mt-8 flex flex-col gap-16 sm:gap-y-20 lg:flex-row">
           <form action="#" method="POST" className="lg:flex-auto">
             <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
@@ -119,7 +125,11 @@ export const ContactForm = () => {
                 Let’s talk
               </button>
             </div>
-            <p className="mt-4 text-sm/6 text-gray-500">
+            <Typography
+              component="p"
+              variant="body1"
+              className="mt-4 text-sm/6 text-gray-500"
+            >
               Al enviar este formulario, aceptás la{" "}
               <Link
                 href="/privacy-policy"
@@ -128,19 +138,21 @@ export const ContactForm = () => {
                 política de privacidad
               </Link>{" "}
               .
-            </p>
+            </Typography>
           </form>
           <div className="lg:mt-6 lg:w-80 lg:flex-none">
             <Image
               src="/assets/img/redentor_logo.png"
-              className="h-24 w-24"
+              className="h-24 w-24 dark:invert dark:mix-blend-luminosity"
               width={60}
               height={80}
               alt="Redentor church logo"
             />
             <figure className="mt-4">
               <blockquote className="text-lg/8 font-semibold italic text-gray-900">
-                <p>&quot;Tú eres el Cristo, el Hijo del Dios viviente.&quot;</p>
+                <Typography component="p" variant="body1">
+                  &quot;Tú eres el Cristo, el Hijo del Dios viviente.&quot;
+                </Typography>
               </blockquote>
               <figcaption className="mt-4 flex gap-x-6">
                 <div>

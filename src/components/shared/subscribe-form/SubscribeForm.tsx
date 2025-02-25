@@ -1,6 +1,7 @@
 "use client";
 
 import LoadingSpinner from "@src/components/ui/LoadingSpinner";
+import { Typography } from "@src/components/ui/typography";
 import { subscribe } from "@src/service/subscribe";
 import { useActionState } from "react";
 
@@ -20,12 +21,12 @@ const getSizeClasses = (size: "sm" | "lg") => {
     case "sm":
       return {
         input: "sm:w-56 sm:text-sm sm:leading-6",
-        button: "sm:w-36 sm:px-4 sm:py-2 sm:text-sm sm:font-semibold",
+        button: "sm:w-32 sm:px-4 sm:py-2 sm:text-sm sm:font-semibold",
       };
     case "lg":
       return {
-        input: "sm:w-96 sm:text-lg sm:leading-8",
-        button: "sm:w-44 sm:px-6 sm:py-3 sm:text-lg sm:font-semibold",
+        input: "sm:w-96 text-lg leading-8",
+        button: "sm:w-36 px-6 py-3 text-lg sm:font-semibold",
       };
   }
 };
@@ -55,12 +56,22 @@ export const SubscribeForm = ({
   return (
     <div className={`mt-10 xl:mt-0 ${className}`}>
       {title && (
-        <h3 className="text-sm font-semibold leading-6 text-gray-900">
+        <Typography
+          component="h3"
+          variant="h3"
+          className="text-sm font-semibold leading-6 text-gray-900"
+        >
           {title}
-        </h3>
+        </Typography>
       )}
       {description && (
-        <p className="mt-2 text-sm leading-6 text-gray-900">{description}</p>
+        <Typography
+          component="p"
+          variant="body1"
+          className="mt-2 text-sm leading-6 text-gray-900"
+        >
+          {description}
+        </Typography>
       )}
       <form action={formAction} className="flex flex-col">
         <div className="flex self-center sm:max-w-md">
@@ -79,9 +90,9 @@ export const SubscribeForm = ({
           <div className="text-center sm:flex-shrink-0">
             <button
               type="submit"
-              className={`flex w-full text-nowrap items-center justify-center rounded-r-2xl bg-blue-600 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${sizeClasses.button}`}
+              className={`flex w-full text-nowrap items-center justify-center rounded-r-2xl bg-blue-600 px-6 py-2 font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${sizeClasses.button}`}
             >
-              {isPending ? <LoadingSpinner size={6} /> : ctaText}
+              {isPending ? <LoadingSpinner size={size} /> : ctaText}
             </button>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { useTranslations } from "next-intl";
+import { Typography } from "@src/components/ui/typography";
 
 type HeaderProps = {
   titlePath: string;
@@ -15,7 +16,11 @@ export const Header = ({ titlePath, description, className }: HeaderProps) => {
     >
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl lg:mx-0">
-          <h2 className="inline-block text-4xl/normal font-bold text-gray-900 sm:text-6xl">
+          <Typography
+            component="h2"
+            variant="h2"
+            className="inline-block text-4xl/normal font-bold text-gray-900 sm:text-6xl dark:text-black"
+          >
             {t.rich(titlePath, {
               highlight: (text) => (
                 <span className="animate-highlight bg-gradient-to-r from-yellow-300 to-yellow-300 bg-[length:0%_100%] bg-left-bottom bg-no-repeat px-2 [animation-delay:1s]">
@@ -23,11 +28,15 @@ export const Header = ({ titlePath, description, className }: HeaderProps) => {
                 </span>
               ),
             })}
-          </h2>
+          </Typography>
           {description && (
-            <p className="mt-6 text-lg leading-8 text-gray-600">
+            <Typography
+              component="p"
+              variant="body1"
+              className="mt-6 text-lg leading-8 text-gray-600"
+            >
               {description}
-            </p>
+            </Typography>
           )}
         </div>
       </div>

@@ -19,7 +19,7 @@ export const Navbar = () => {
   const t = useTranslations();
 
   return (
-    <Disclosure as="nav" className="bg-white dark:bg-gray-900 shadow">
+    <Disclosure as="nav" className="bg-white dark:bg-black shadow">
       <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
         <div className="relative flex h-16 justify-between">
           <div className="flex items-center sm:hidden">
@@ -42,7 +42,7 @@ export const Navbar = () => {
               <Link href="/" title={t("common.homepage")}>
                 <Image
                   src="/assets/img/redentor_logo.png"
-                  className="h-16 w-16"
+                  className="h-16 w-16 dark:invert dark:mix-blend-luminosity"
                   width={60}
                   height={80}
                   alt="Redentor church logo"
