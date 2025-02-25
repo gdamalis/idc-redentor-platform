@@ -3,28 +3,29 @@
 import { useTranslations } from "next-intl";
 
 type LoadingSpinnerProps = {
-  size: number;
+  size?: "sm" | "lg";
   fullScreen?: boolean;
   className?: string | null;
 };
 
 const LoadingSpinner = ({
-  size,
+  size = "sm",
   fullScreen = false,
-  className = null,
+  className = "",
 }: LoadingSpinnerProps) => {
   const t = useTranslations();
+
   const fullScreenClasses = fullScreen
     ? "flex justify-center h-screen items-center"
     : "";
 
-  const classes = className ?? "text-blue-700/80 fill-blue-100";
+  const sizeClasses = size === "sm" ? "w-4 h-4" : "w-6 h-6";
 
   return (
     <div className={`ml-1 ${fullScreenClasses}`}>
       <svg
         aria-hidden="true"
-        className={`${classes} inline w-${size} h-${size} mr-2 animate-spin dark:text-gray-600 dark:fill-gray-300`}
+        className={`inline mr-2 animate-spin dark:text-blue-800/80 dark:fill-gray-300 text-blue-700/80 fill-blue-100 ${className} ${sizeClasses}`}
         viewBox="0 0 100 101"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
