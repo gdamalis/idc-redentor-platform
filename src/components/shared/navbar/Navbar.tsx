@@ -10,7 +10,7 @@ import { MainMenuDesktop } from "@src/components/shared/main-menu/MainMenuDeskto
 
 const menuItems = [
   { href: "/community", label: "Comunidad" },
-  { href: "/blog", label: "Blog" },
+  // { href: "/blog", label: "Blog" },
   // { href: '/who-is-jesus', label: '¿Quién es Jesús?' },
   { href: "/come-meet-us", label: "Conectemos" },
 ];
