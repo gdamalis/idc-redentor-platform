@@ -1,7 +1,5 @@
-import { BlogSection } from "@src/components/features/blog-section";
 import { ContactCta } from "@src/components/features/contact-cta";
 import { OurMissionCta } from "@src/components/features/our-mission-cta";
-import { fetchDummyBlogPosts } from "@src/data/sample-blog-posts";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 export async function generateMetadata({
@@ -39,13 +37,12 @@ export default async function Home({
 }>) {
   const { locale } = await params;
 
-  const posts = await fetchDummyBlogPosts();
   setRequestLocale(locale);
 
   return (
     <main>
       <OurMissionCta />
-      <BlogSection posts={posts} />
+      {/* <BlogSection posts={posts} /> */}
       <ContactCta />
     </main>
   );
