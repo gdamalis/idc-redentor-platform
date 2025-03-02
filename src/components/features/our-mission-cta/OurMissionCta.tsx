@@ -1,13 +1,57 @@
+import { BLOCKS } from "@contentful/rich-text-types";
+
+import {
+  CommonNode,
+  documentToReactComponents,
+} from "@contentful/rich-text-react-renderer";
 import { Typography } from "@src/components/ui/typography";
 import { Link } from "@src/i18n/routing";
-import { useTranslations } from "next-intl";
 import Image from "next/image";
+import { ReactNode } from "react";
 
-export const OurMissionCta = () => {
-  const t = useTranslations();
+const options = {
+  renderNode: {
+    [BLOCKS.PARAGRAPH]: (node: CommonNode, children: ReactNode) => (
+      <Typography
+        component="p"
+        variant="body1"
+        className="mt-6 text-xl leading-8 text-gray-600"
+      >
+        {children}
+      </Typography>
+    ),
+  },
+};
+
+type OurMissionCtaProps = {
+  content: {
+    headline: string;
+    bodyText: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      json: any;
+    };
+    ctaText: string;
+    targetPage: {
+      slug: string;
+    };
+    image: {
+      title: string;
+      url: string;
+    };
+    additionalImagesCollection: {
+      items: {
+        title: string;
+        url: string;
+      }[];
+    };
+  };
+};
+
+export const OurMissionCta = ({ content }: OurMissionCtaProps) => {
+  const bodyText = documentToReactComponents(content.bodyText.json, options);
 
   return (
-    <div className="overflow-hidden bg-white py-32">
+    <div className="overflow-hidden bg-white dark:bg-blue-900/80 py-32">
       <div className="mx-auto max-w-7xl px-6 lg:flex lg:px-8">
         <div className="mx-auto grid max-w-2xl grid-cols-1 gap-x-12 gap-y-16 lg:mx-0 lg:min-w-full lg:max-w-none lg:flex-none lg:gap-y-8">
           <div className="lg:col-end-1 lg:w-full lg:max-w-lg lg:pb-8">
@@ -16,28 +60,17 @@ export const OurMissionCta = () => {
               variant="h2"
               className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl"
             >
-              {t("ourMission.title")}
+              {content?.headline}
             </Typography>
-            <Typography
-              component="p"
-              variant="body1"
-              className="mt-6 text-xl leading-8 text-gray-600"
-            >
-              {t("ourMission.description1")}
-            </Typography>
-            <Typography
-              component="p"
-              variant="body1"
-              className="mt-6 text-base leading-7 text-gray-600"
-            >
-              {t("ourMission.description2")}
-            </Typography>
+
+            {bodyText}
+
             <div className="mt-10 flex">
               <Link
-                href="/community"
+                href={`/${content?.targetPage?.slug}`}
                 className="rounded-3xl bg-blue-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
               >
-                {t("ourMission.ctaButton")}
+                {content?.ctaText}
               </Link>
             </div>
           </div>
@@ -46,8 +79,8 @@ export const OurMissionCta = () => {
               <Image
                 width={800}
                 height={800}
-                alt="Nuestra comunidad"
-                src="https://images.unsplash.com/photo-1670272502246-768d249768ca?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1152&q=80"
+                alt={content.image.title}
+                src={content.image.url}
                 className="aspect-[7/5] w-[37rem] max-w-none rounded-2xl bg-gray-50 object-cover"
               />
             </div>
@@ -56,8 +89,8 @@ export const OurMissionCta = () => {
                 <Image
                   width={800}
                   height={800}
-                  alt="Transformando vidas"
-                  src="https://images.unsplash.com/photo-1605656816944-971cd5c1407f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8MHx8fGVufDB8fHx8&auto=format&fit=crop&w=768&h=604&q=80"
+                  alt={content.additionalImagesCollection.items[0].title}
+                  src={content.additionalImagesCollection.items[0].url}
                   className="aspect-[4/3] w-[24rem] max-w-none flex-none rounded-2xl bg-gray-50 object-cover"
                 />
               </div>
@@ -65,8 +98,8 @@ export const OurMissionCta = () => {
                 <Image
                   width={800}
                   height={800}
-                  alt="Amor y comunidad"
-                  src="https://images.unsplash.com/photo-1568992687947-868a62a9f521?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1152&h=842&q=80"
+                  alt={content.additionalImagesCollection.items[1].title}
+                  src={content.additionalImagesCollection.items[1].url}
                   className="aspect-[7/5] w-[37rem] max-w-none flex-none rounded-2xl bg-gray-50 object-cover"
                 />
               </div>
@@ -74,8 +107,8 @@ export const OurMissionCta = () => {
                 <Image
                   width={800}
                   height={800}
-                  alt="Nuestro camino de fe"
-                  src="https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=768&h=604&q=80"
+                  alt={content.additionalImagesCollection.items[2].title}
+                  src={content.additionalImagesCollection.items[2].url}
                   className="aspect-[4/3] w-[24rem] max-w-none rounded-2xl bg-gray-50 object-cover"
                 />
               </div>

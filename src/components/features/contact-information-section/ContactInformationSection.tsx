@@ -1,6 +1,9 @@
 import { Typography } from "@src/components/ui/typography";
+import { useTranslations } from "next-intl";
 
 export const ContactInformationSection = () => {
+  const t = useTranslations();
+
   return (
     <div className="overflow-hidden bg-white dark:bg-gray-900 py-20 sm:py-32">
       <div className="mx-auto max-w-7xl md:px-6 lg:px-8">
@@ -12,7 +15,7 @@ export const ContactInformationSection = () => {
                 variant="h2"
                 className="mt-2 text-pretty text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl"
               >
-                Horarios y Ubicación
+                {t("contact-info-section.title")}
               </Typography>
               <div className="relative mt-6 flex items-center px-6 py-8 sm:px-10 sm:py-12">
                 <div className="absolute inset-0 overflow-hidden rounded-lg">
@@ -29,7 +32,7 @@ export const ContactInformationSection = () => {
                     variant="body1"
                     className="text-2xl font-bold tracking-tight text-white"
                   >
-                    Domingos | 17:00 hs
+                    {t("contact-info-section.date")}
                   </Typography>
                 </div>
               </div>
@@ -38,9 +41,7 @@ export const ContactInformationSection = () => {
                 variant="body1"
                 className="mt-2 text-sm italic text-gray-600"
               >
-                Hay reuniones entre semana en diferentes barrios de la capital.
-                Pueden solicitar más información al correo o al formulario de
-                contacto más abajo
+                {t("contact-info-section.date-comment")}
               </Typography>
               <div className="relative mt-6 flex items-center px-6 py-12 sm:px-10 sm:py-16">
                 <div className="absolute inset-0 overflow-hidden rounded-lg">
@@ -57,14 +58,14 @@ export const ContactInformationSection = () => {
                     variant="body1"
                     className="text-2xl font-bold tracking-tight text-white"
                   >
-                    Tte. Gral. Juan Domingo Perón 4385
+                    {t("contact-info-section.address-line-1")}
                   </Typography>
                   <Typography
                     component="p"
                     variant="body1"
                     className="text-2xl tracking-tight text-white"
                   >
-                    Almargo, CABA, República Argentina
+                    {t("contact-info-section.address-line-2")}
                   </Typography>
                 </div>
               </div>

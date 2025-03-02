@@ -8,14 +8,7 @@ import LanguageSwitcher from "@src/components/shared/language-switcher/LanguageS
 import { MainMenuMobile } from "@src/components/shared/main-menu";
 import { MainMenuDesktop } from "@src/components/shared/main-menu/MainMenuDesktop";
 
-const menuItems = [
-  { href: "/community", label: "Comunidad" },
-  // { href: "/blog", label: "Blog" },
-  // { href: '/who-is-jesus', label: '¿Quién es Jesús?' },
-  { href: "/come-meet-us", label: "Conectemos" },
-];
-
-export const Navbar = () => {
+export const Navbar = ({ menuItems = [] }) => {
   const t = useTranslations();
 
   return (

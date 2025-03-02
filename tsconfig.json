@@ -21,6 +21,7 @@
     "paths": {
       "@public/*": ["./public/*"],
       "@src/*": ["./src/*"],
+      "@lib/*": ["./lib/*"],
       "@icons/*": ["./public/assets/svg/*"]
     }
   },

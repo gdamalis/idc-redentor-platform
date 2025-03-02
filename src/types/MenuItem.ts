@@ -1,4 +1,6 @@
 export type MenuItem = {
-  href: string;
-  label: string;
+  groupLink: {
+    slug: string;
+  };
+  groupName: string;
 };

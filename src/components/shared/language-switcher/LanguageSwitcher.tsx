@@ -2,7 +2,7 @@
 
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { ChevronDownIcon, GlobeAltIcon } from "@heroicons/react/24/outline";
-import { i18n, type Locale } from "@src/i18n/i18n-config";
+import { i18n, type Locale } from "@src/i18n/config";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -25,7 +25,7 @@ export default function LanguageSwitcher() {
             aria-hidden="true"
             className="-mr-1 size-5 text-gray-400"
           />
-          {currentLocale?.toUpperCase()}
+          {currentLocale?.split("-")[0]?.toUpperCase()}
           <ChevronDownIcon
             aria-hidden="true"
             className="-mr-1 size-5 text-gray-400"
@@ -48,7 +48,7 @@ export default function LanguageSwitcher() {
                       href={redirectedPathname(locale)}
                       className="block px-4 py-2 text-sm text-gray-700 dark:text-white data-[focus]:rounded-md data-[focus]:bg-gray-100 dark:data-[focus]:bg-gray-700 dark:data-[focus]:text-white data-[focus]:text-gray-900 data-[focus]:outline-none"
                     >
-                      {locale.toUpperCase()}
+                      {locale?.split("-")[0]?.toUpperCase()}
                     </Link>
                   </MenuItem>
                 </li>

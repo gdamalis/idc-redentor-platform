@@ -40,7 +40,7 @@ export const Typography = ({
   };
 
   return (
-    <Component id={id} className={`${className} ${variantMap[variant]}`}>
+    <Component id={id} className={`${variantMap[variant]} ${className} `}>
       {children}
     </Component>
   );
