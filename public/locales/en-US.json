@@ -26,9 +26,16 @@
     "keywords": "contact, church, Buenos Aires, community, redentor",
     "ogDescription": "Reach out to learn more about our church and how you can be part of our community."
   },
-  "contactCta": {
-    "title": "Join a diverse and loving community, where we get to know Jesus together.",
-    "ctaButton": "Connect with us"
+  "contact-info-section": {
+    "title": "Hours and Location",
+    "date": "Sundays | 5:00 pm",
+    "date-comment": "There are meetings during the week in different neighborhoods of the capital. You can request more information by email or through the contact form below.",
+    "address-line-1": "Tte. Gral. Juan Domingo Perón 4385",
+    "address-line-2": "Almargo, CABA, Argentina"
+  },
+  "contact-form": {
+    "title": "Connect with Us",
+    "description": "You can write to us at the email <highlight>info@idcredentor.com</highlight>"
   },
   "coming-soon": {
     "message": {
@@ -61,6 +68,9 @@
     "language": "Language",
     "languageDrawer": "Toggle language drawer"
   },
+  "creed-section": {
+    "title": "Our Creed"
+  },
   "homePage": {
     "title": "Welcome to Iglesia de Cristo Redentor",
     "description": "Stay informed about our activities and stay connected with the community.",
@@ -78,12 +88,6 @@
   "notFound": {
     "title": "Page not found",
     "description": "This page doesn't seem to exist. <0>Click here</0> to go back the homepage."
-  },
-  "ourMission": {
-    "title": "Our mission",
-    "description1": "Discover how we live and share Jesus’ love in a way that transforms lives and communities.",
-    "description2": "There’s so much more we want to share with you. Learn more about our mission and how you can be part of this transformation.",
-    "ctaButton": "Learn about our mission"
   },
   "quienEsJesusPage": {
     "title": "Who is Jesus?",

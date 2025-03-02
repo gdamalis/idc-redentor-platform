@@ -1,3 +1,5 @@
+import { getCtaComponent } from "@lib/contentful/getCtaComponent";
+import { getHeroBannerComponent } from "@lib/contentful/getHeroBannerComponent";
 import { ContactCta } from "@src/components/features/contact-cta";
 import { OurMissionCta } from "@src/components/features/our-mission-cta";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -37,13 +39,16 @@ export default async function Home({
 }>) {
   const { locale } = await params;
 
+  const ourMission = await getHeroBannerComponent("our-mission", locale);
+  const contactCta = await getCtaComponent("connect-with-us", locale);
+
   setRequestLocale(locale);
 
   return (
     <main>
-      <OurMissionCta />
+      <OurMissionCta content={ourMission} />
       {/* <BlogSection posts={posts} /> */}
-      <ContactCta />
+      <ContactCta content={contactCta} />
     </main>
   );
 }

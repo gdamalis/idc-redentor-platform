@@ -1,57 +1,62 @@
-import Image from "next/image";
 import { Typography } from "@src/components/ui/typography";
-import { Dropdown, type DropDownOption } from "@src/components/ui/dropdown";
-import { Link } from "@src/i18n/routing";
+import { useTranslations } from "next-intl";
 
-const DropDownOptions: DropDownOption[] = [
-  {
-    id: "1",
-    value: "Petición de Oración",
-  },
-  {
-    id: "2",
+// const DropDownOptions: DropDownOption[] = [
+//   {
+//     id: "1",
+//     value: "Petición de Oración",
+//   },
+//   {
+//     id: "2",
 
-    value: "Solicitud de Información",
-  },
-  {
-    id: "3",
-    value: "Solicitud de Bautismo",
-  },
-  {
-    id: "5",
-    value: "Solicitud de Consejería",
-  },
-  {
-    id: "6",
-    value: "Solicitud de Ayuda",
-  },
-  {
-    id: "8",
-    value: "Quier visitarlos",
-  },
-];
+//     value: "Solicitud de Información",
+//   },
+//   {
+//     id: "3",
+//     value: "Solicitud de Bautismo",
+//   },
+//   {
+//     id: "5",
+//     value: "Solicitud de Consejería",
+//   },
+//   {
+//     id: "6",
+//     value: "Solicitud de Ayuda",
+//   },
+//   {
+//     id: "8",
+//     value: "Quier visitarlos",
+//   },
+// ];
 
 export const ContactForm = () => {
+  const t = useTranslations();
+
   return (
     <div className="relative isolate bg-white dark:bg-gray-900 px-6 py-20 sm:py-32 lg:px-8">
       <div className="mx-auto max-w-xl lg:max-w-4xl">
         <Typography
           component="h2"
-          variant="h2" className="text-pretty text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
-          Conectá con nosotros{" "}
+          variant="h2"
+          className="text-pretty text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl"
+        >
+          {t("contact-form.title")}
         </Typography>
         <Typography
           component="p"
           variant="body1"
           className="mt-4 text-lg/8 text-gray-600"
         >
-          Podés escribirnos al correo{" "}
-          <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-lg font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10">
-            idcredentor@gmail.com
-          </span>{" "}
-          o bien podés escribirnos a través de este breve formulario:
+          {t.rich("contact-form.description", {
+            highlight: (text) => (
+              <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-lg font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10">
+                {text}
+              </span>
+            ),
+          })}
+          {/* o bien podés escribirnos a través de este breve formulario: */}
         </Typography>
-        <div className="mt-8 flex flex-col gap-16 sm:gap-y-20 lg:flex-row">
+        {/* <div className="mt-8 flex flex-col gap-16 sm:gap-y-20 lg:flex-row">
           <form action="#" method="POST" className="lg:flex-auto">
             <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
               <div>
@@ -163,7 +168,7 @@ export const ContactForm = () => {
               </figcaption>
             </figure>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

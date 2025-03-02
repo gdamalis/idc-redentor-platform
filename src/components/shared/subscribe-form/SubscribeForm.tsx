@@ -73,8 +73,8 @@ export const SubscribeForm = ({
           {description}
         </Typography>
       )}
-      <form action={formAction} className="flex flex-col">
-        <div className="flex self-center sm:max-w-md">
+      <form action={formAction} className="flex flex-col mt-4">
+        <div className="flex md:max-w-md">
           <label htmlFor="email" className="sr-only">
             {ctaSrLabel}
           </label>
