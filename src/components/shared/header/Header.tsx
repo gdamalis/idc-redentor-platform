@@ -1,5 +1,6 @@
 import { useTranslations } from "next-intl";
 import { Typography } from "@src/components/ui/typography";
+import { Container } from "@src/components/ui/container";
 
 type HeaderProps = {
   titlePath: string;
@@ -14,7 +15,7 @@ export const Header = ({ titlePath, description, className }: HeaderProps) => {
     <div
       className={`bg-white/50 bg-cover bg-center py-24 bg-blend-overlay sm:py-48 ${className}`}
     >
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+      <Container className="px-6 lg:px-8">
         <div className="mx-auto max-w-2xl lg:mx-0">
           <Typography
             component="h2"
@@ -39,7 +40,7 @@ export const Header = ({ titlePath, description, className }: HeaderProps) => {
             </Typography>
           )}
         </div>
-      </div>
+      </Container>
     </div>
   );
 };

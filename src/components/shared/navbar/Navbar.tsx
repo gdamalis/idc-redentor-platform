@@ -1,19 +1,20 @@
 import { Disclosure, DisclosureButton } from "@headlessui/react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
+import { Link } from "@src/i18n/routing";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
-import { Link } from "@src/i18n/routing";
 
 import LanguageSwitcher from "@src/components/shared/language-switcher/LanguageSwitcher";
 import { MainMenuMobile } from "@src/components/shared/main-menu";
 import { MainMenuDesktop } from "@src/components/shared/main-menu/MainMenuDesktop";
+import { Container } from "@src/components/ui/container";
 
 export const Navbar = ({ menuItems = [] }) => {
   const t = useTranslations();
 
   return (
     <Disclosure as="nav" className="bg-white dark:bg-black shadow">
-      <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
+      <Container className="px-2 sm:px-6 lg:px-8">
         <div className="relative flex h-16 justify-between">
           <div className="flex items-center sm:hidden">
             {/* Mobile menu button */}
@@ -48,7 +49,7 @@ export const Navbar = ({ menuItems = [] }) => {
             <LanguageSwitcher />
           </div>
         </div>
-      </div>
+      </Container>
 
       <MainMenuMobile menuItems={menuItems} />
     </Disclosure>
