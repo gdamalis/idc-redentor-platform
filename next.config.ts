@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value: "frame-ancestors https://app.contentful.com",
+            value: "frame-ancestors 'self' https://app.contentful.com",
           },
         ],
       },
