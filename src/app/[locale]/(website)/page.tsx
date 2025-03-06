@@ -3,6 +3,7 @@ import { getHeroBannerComponent } from "@lib/contentful/getHeroBannerComponent";
 import { ContactCta } from "@src/components/features/contact-cta";
 import { OurMissionCta } from "@src/components/features/our-mission-cta";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { draftMode } from "next/headers";
 
 export async function generateMetadata({
   params,
@@ -39,8 +40,17 @@ export default async function Home({
 }>) {
   const { locale } = await params;
 
-  const ourMission = await getHeroBannerComponent("our-mission", locale);
-  const contactCta = await getCtaComponent("connect-with-us", locale);
+  const { isEnabled } = await draftMode();
+  const ourMission = await getHeroBannerComponent(
+    "our-mission",
+    locale,
+    isEnabled,
+  );
+  const contactCta = await getCtaComponent(
+    "connect-with-us",
+    locale,
+    isEnabled,
+  );
 
   setRequestLocale(locale);
 

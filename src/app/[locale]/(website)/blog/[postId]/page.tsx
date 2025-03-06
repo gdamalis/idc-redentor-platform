@@ -5,6 +5,7 @@ import {
   fetchDummyOtherPosts,
   fetchDummySinglePost,
 } from "@src/data/sample-blog-posts";
+import { draftMode } from "next/headers";
 
 type PostDetailsPageParams = {
   postId: string;
@@ -15,9 +16,7 @@ type PostDetailsPageProps = Readonly<{
   params: Promise<PostDetailsPageParams>;
 }>;
 
-export async function generateMetadata({
-  params,
-}: PostDetailsPageProps) {
+export async function generateMetadata({ params }: PostDetailsPageProps) {
   const { postId } = await params;
   const post = await fetchDummySinglePost(postId);
 
@@ -48,7 +47,12 @@ export default async function PostDetailsPage({
   const post = await fetchDummySinglePost(postId);
   const relatedPosts = await fetchDummyOtherPosts(3);
 
-  const contactCta = await getCtaComponent("connect-with-us", locale);
+  const { isEnabled } = await draftMode();
+  const contactCta = await getCtaComponent(
+    "connect-with-us",
+    locale,
+    isEnabled,
+  );
 
   return (
     <>

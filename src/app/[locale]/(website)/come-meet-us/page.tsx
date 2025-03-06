@@ -4,6 +4,7 @@ import { ContactInformationSection } from "@src/components/features/contact-info
 import DescriptionContactSection from "@src/components/features/description-contact-section/DescriptionContactSection";
 import { Header } from "@src/components/shared/header";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { draftMode } from "next/headers";
 
 export async function generateMetadata({
   params,
@@ -40,9 +41,12 @@ export default async function ComeMeetUsPage({
 }>) {
   const { locale } = await params;
 
+  const { isEnabled } = await draftMode();
+
   const descriptionContactSection = await getHeroBannerComponent(
     "description-contact-section",
     locale,
+    isEnabled,
   );
 
   setRequestLocale(locale);

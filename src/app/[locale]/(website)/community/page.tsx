@@ -8,6 +8,7 @@ import { CredoSection } from "@src/components/features/creed-section";
 import { OurMissionSection } from "@src/components/features/our-mission-section";
 import { Header } from "@src/components/shared/header";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { draftMode } from "next/headers";
 
 export async function generateMetadata({
   params,
@@ -43,10 +44,24 @@ export default async function CommunityPage({
   params: Promise<{ locale: string }>;
 }>) {
   const { locale } = await params;
-  const contactCta = await getCtaComponent("connect-with-us", locale);
-  const aboutCommunitySection = await getHeroBannerComponent("about-community", locale);
-  const credos = await getCredos(locale);
-  const ourMissionSection = await getDuplexComponent("our-mission-section", locale);
+
+  const { isEnabled } = await draftMode();
+  const contactCta = await getCtaComponent(
+    "connect-with-us",
+    locale,
+    isEnabled,
+  );
+  const aboutCommunitySection = await getHeroBannerComponent(
+    "about-community",
+    locale,
+    isEnabled,
+  );
+  const credos = await getCredos(locale, isEnabled);
+  const ourMissionSection = await getDuplexComponent(
+    "our-mission-section",
+    locale,
+    isEnabled,
+  );
 
   setRequestLocale(locale);
 

@@ -3,6 +3,7 @@ import { BlogSection } from "@src/components/features/blog-section";
 import { ContactCta } from "@src/components/features/contact-cta";
 import { fetchDummyBlogPosts } from "@src/data/sample-blog-posts";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { draftMode } from "next/headers";
 
 export async function generateMetadata({
   params,
@@ -38,7 +39,13 @@ export default async function BlogPage({
   params: Promise<{ locale: string }>;
 }>) {
   const { locale } = await params;
-  const contactCta = await getCtaComponent("connect-with-us", locale);
+
+  const { isEnabled } = await draftMode();
+  const contactCta = await getCtaComponent(
+    "connect-with-us",
+    locale,
+    isEnabled,
+  );
 
   setRequestLocale(locale);
   const posts = await fetchDummyBlogPosts();
