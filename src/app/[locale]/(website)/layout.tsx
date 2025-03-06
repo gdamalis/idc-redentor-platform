@@ -1,3 +1,4 @@
+import { getFooter } from "@lib/contentful/getFooter";
 import { getNavigationMenu } from "@lib/contentful/getNavigationMenu";
 import { Footer } from "@src/components/shared/footer";
 import { Navbar } from "@src/components/shared/navbar";
@@ -6,6 +7,7 @@ import { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { Nunito_Sans } from "next/font/google";
+import { draftMode } from "next/headers";
 import { notFound } from "next/navigation";
 import "../globals.css";
 
@@ -32,7 +34,11 @@ export default async function LocaleLayout({
 }) {
   const { locale } = await params;
 
+  const { isEnabled } = await draftMode();
   const navMenu = await getNavigationMenu("Main menu", locale);
+  const footerContent = await getFooter(locale, isEnabled);
+
+  console.log(footerContent)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (!routing.locales.includes(locale as any)) {
@@ -49,7 +55,7 @@ export default async function LocaleLayout({
         <NextIntlClientProvider messages={messages}>
           <Navbar menuItems={navMenu} />
           {children}
-          <Footer />
+          <Footer content={footerContent} />
         </NextIntlClientProvider>
       </body>
     </html>

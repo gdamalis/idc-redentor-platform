@@ -1,4 +1,4 @@
-import { getCredos } from "@lib/contentful/getCredo";
+import { getCreeds } from "@lib/contentful/getCreeds";
 import { getCtaComponent } from "@lib/contentful/getCtaComponent";
 import { getDuplexComponent } from "@lib/contentful/getDuplexComponent";
 import { getHeroBannerComponent } from "@lib/contentful/getHeroBannerComponent";
@@ -56,7 +56,7 @@ export default async function CommunityPage({
     locale,
     isEnabled,
   );
-  const credos = await getCredos(locale, isEnabled);
+  const credos = await getCreeds(locale, isEnabled);
   const ourMissionSection = await getDuplexComponent(
     "our-mission-section",
     locale,

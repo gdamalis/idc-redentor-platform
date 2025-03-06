@@ -6,7 +6,15 @@ import Image from "next/image";
 import { SubscribeForm } from "@src/components/shared/subscribe-form/SubscribeForm";
 import SocialLinks from "../social-links/SocialLinks";
 
-export const Footer = () => {
+type FooterProps = {
+  content: {
+    logo: { url: string; title: string };
+    shortDescription: string;
+    socialLinks: { url: string; platform: string }[];
+  };
+};
+
+export const Footer = ({ content }: FooterProps) => {
   const t = useTranslations();
 
   return (
@@ -27,11 +35,11 @@ export const Footer = () => {
           <div className="space-y-8">
             <Link className="flex w-fit" href="/" title={t("common.homepage")}>
               <Image
-                src="/assets/img/redentor_logo.png"
+                src={content.logo.url}
+                alt={content.logo.title}
                 className="dark:invert dark:mix-blend-luminosity"
                 width={80}
                 height={80}
-                alt="Redentor church logo"
               />
             </Link>
             <Typography
@@ -39,9 +47,9 @@ export const Footer = () => {
               variant="body1"
               className="text-sm leading-6 text-gray-600"
             >
-              {t("footer.description")}
+              {content.shortDescription}
             </Typography>
-            <SocialLinks />
+            <SocialLinks links={content.socialLinks} />
           </div>
           <div className="mt-16 xl:mt-0">
             <div className="md:grid md:grid-cols-2 md:gap-8">

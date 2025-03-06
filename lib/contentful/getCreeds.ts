@@ -10,7 +10,7 @@ const GRAPHQL_FIELDS = `
   }
 `;
 
-export async function getCredos(
+export async function getCreeds(
   locale: string,
   isDraftMode = false,
 ) {

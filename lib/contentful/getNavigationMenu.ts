@@ -2,7 +2,7 @@ import { fetchGraphQL } from "./fetch";
 
 const MENU_GRAPHQL_FIELDS = `
   menuItemsCollection {
-    items{
+    items {
       ... on MenuGroup {
         groupName
         groupLink {
