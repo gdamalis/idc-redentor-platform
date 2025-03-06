@@ -23,6 +23,19 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  headers: async () => {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors https://app.contentful.com",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default withNextIntl(nextConfig);
