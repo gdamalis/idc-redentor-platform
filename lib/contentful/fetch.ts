@@ -14,6 +14,7 @@ export async function fetchGraphQL(query: any, preview = false) {
         }`,
       },
       body: JSON.stringify({ query }),
+      next: { tags: ["site-content"] },
     },
   ).then((response) => response.json());
 }
