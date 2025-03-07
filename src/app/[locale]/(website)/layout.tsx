@@ -33,12 +33,11 @@ export default async function LocaleLayout({
   readonly params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  setRequestLocale(locale);
 
   const { isEnabled } = await draftMode();
   const navMenu = await getNavigationMenu("Main menu", locale);
   const footerContent = await getFooter(locale, isEnabled);
-
-  console.log(footerContent)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (!routing.locales.includes(locale as any)) {
@@ -47,7 +46,6 @@ export default async function LocaleLayout({
 
   const messages = await getMessages();
 
-  setRequestLocale(locale);
 
   return (
     <html lang={locale}>

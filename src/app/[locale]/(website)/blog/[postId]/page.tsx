@@ -5,6 +5,7 @@ import {
   fetchDummyOtherPosts,
   fetchDummySinglePost,
 } from "@src/data/sample-blog-posts";
+import { setRequestLocale } from "next-intl/server";
 import { draftMode } from "next/headers";
 
 type PostDetailsPageParams = {
@@ -44,6 +45,8 @@ export default async function PostDetailsPage({
   params,
 }: PostDetailsPageProps) {
   const { postId, locale } = await params;
+  setRequestLocale(locale);
+
   const post = await fetchDummySinglePost(postId);
   const relatedPosts = await fetchDummyOtherPosts(3);
 

@@ -44,6 +44,7 @@ export default async function CommunityPage({
   params: Promise<{ locale: string }>;
 }>) {
   const { locale } = await params;
+  setRequestLocale(locale);
 
   const { isEnabled } = await draftMode();
   const contactCta = await getCtaComponent(
@@ -63,7 +64,6 @@ export default async function CommunityPage({
     isEnabled,
   );
 
-  setRequestLocale(locale);
 
   return (
     <main>

@@ -40,6 +40,7 @@ export default async function ComeMeetUsPage({
   params: Promise<{ locale: string }>;
 }>) {
   const { locale } = await params;
+  setRequestLocale(locale);
 
   const { isEnabled } = await draftMode();
 
@@ -49,7 +50,6 @@ export default async function ComeMeetUsPage({
     isEnabled,
   );
 
-  setRequestLocale(locale);
 
   return (
     <main>

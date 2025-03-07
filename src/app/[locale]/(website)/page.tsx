@@ -39,6 +39,7 @@ export default async function Home({
   params: Promise<{ locale: string }>;
 }>) {
   const { locale } = await params;
+  setRequestLocale(locale);
 
   const { isEnabled } = await draftMode();
   const ourMission = await getHeroBannerComponent(
@@ -52,7 +53,6 @@ export default async function Home({
     isEnabled,
   );
 
-  setRequestLocale(locale);
 
   return (
     <main>
