@@ -28,7 +28,7 @@ export const Footer = ({ content, subscribeContent }: FooterProps) => {
   return (
     <footer
       aria-labelledby="footer-heading"
-      className="border-t border-gray-900/10 bg-white dark:bg-black"
+      className="bg-gray-50 dark:bg-gray-700"
     >
       <Typography
         component="h2"
@@ -38,9 +38,9 @@ export const Footer = ({ content, subscribeContent }: FooterProps) => {
       >
         Footer
       </Typography>
-      <Container className="px-6 pb-8 pt-16 sm:pt-24 lg:px-8 lg:pt-32">
-        <div className="xl:grid xl:grid-cols-3 xl:gap-8">
-          <div className="space-y-8">
+      <Container className="space-y-8 px-6 pt-12 lg:px-8">
+        <div className="space-y-8 xl:grid xl:grid-cols-3 xl:gap-8">
+          <div className="space-y-4">
             <Link className="flex w-fit" href="/" title={t("common.homepage")}>
               <Image
                 src={content.logo.url}
@@ -59,7 +59,7 @@ export const Footer = ({ content, subscribeContent }: FooterProps) => {
             </Typography>
             <SocialLinks links={content.socialLinks} />
           </div>
-          <div className="mt-16 xl:mt-0">
+          <div className="">
             <div className="md:grid md:grid-cols-2 md:gap-8">
               {/* <div>
                 <Typography
@@ -95,10 +95,9 @@ export const Footer = ({ content, subscribeContent }: FooterProps) => {
               </div> */}
             </div>
           </div>
-          <SubscribeForm content={subscribeContent}
-          />
+          <SubscribeForm className="" content={subscribeContent} />
         </div>
-        <div className="mt-16 border-t border-gray-900/10 pt-8 text-center sm:mt-20 lg:mt-24 lg:flex lg:justify-between lg:text-left">
+        <div className="py-4 border-t border-gray-900/10 lg:py-6 text-center lg:flex lg:justify-between lg:text-left">
           <Typography
             component="p"
             variant="body1"

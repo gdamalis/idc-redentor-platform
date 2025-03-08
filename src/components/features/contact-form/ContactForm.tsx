@@ -169,7 +169,7 @@ export const ContactForm = ({ content }: ContactFormProps) => {
   );
 
   return (
-    <div className="relative isolate bg-white dark:bg-gray-900 px-6 py-20 sm:py-32 lg:px-8">
+    <div className="relative isolate bg-white dark:bg-gray-900 px-6 py-20 sm:py-32 lg:px-8 border-t border-gray-900/5">
       <Container>
         <Typography
           component="h2"
@@ -196,8 +196,6 @@ export const ContactForm = ({ content }: ContactFormProps) => {
                 if (field.type === "Dropdown") {
                   return getDropdownField(field);
                 }
-
-                return null;
               })}
             </div>
             <div className="mt-10">
