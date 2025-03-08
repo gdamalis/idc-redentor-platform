@@ -3,15 +3,10 @@
     "relatedArticles": "Artículos relacionados",
     "featured": "destacado"
   },
-  "blogPage": {
-    "metaTitle": "Blog",
-    "metaDescription": "Leé nuestras reflexiones y enseñanzas más recientes en nuestro blog. Seguinos en este viaje de fe y crecimiento.",
-    "title": "Últimos artículos del blog",
-    "description": "Conocé nuestras reflexiones más recientes y descubrí cómo seguimos creciendo en comunidad.",
-    "viewMore": "Ver todos los artículos",
-    "keywords": "blog, artículos, reflexiones, fe, comunidad, redentor"
+  "Blog": {
+    "viewMore": "Ver todos los artículos"
   },
-  "blogPostPage": {
+  "BlogPost": {
     "morePosts": "Otros artículos"
   },
   "blogSection": {
@@ -19,48 +14,15 @@
     "description": "Conocé nuestras reflexiones y enseñanzas más recientes. Seguinos en este viaje de fe y aprendizaje.",
     "viewMore": "Ver todos los artículos"
   },
-  "conectemosPage": {
-    "headerTitle": "Vení a <highlight>Conocernos</highlight>",
-    "title": "Vení a Conocernos",
-    "description": "Ponete en contacto con nosotros. Encontrá nuestra ubicación, horarios de actividades, y cómo ser parte de nuestra comunidad en Buenos Aires.",
-    "keywords": "contacto, iglesia, Buenos Aires, conectemos, comunidad, redentor",
-    "ogDescription": "Contactanos para conocer más sobre nuestra iglesia y cómo podés ser parte de la comunidad."
-  },
-  "contact-info-section": {
-    "title": "Horarios y Ubicación",
-    "date": "Domingos | 17:00 hs",
-    "date-comment": " Hay reuniones entre semana en diferentes barrios de la capital. Pueden solicitar más información al correo o al formulario de contacto más abajo",
-    "address-line-1": "Tte. Gral. Juan Domingo Perón 4385",
-    "address-line-2": "Almargo, CABA, República Argentina"
+  "Connect": {
+    "header-title": "Vení a <highlight>Conocernos</highlight>"
   },
   "contact-form": {
     "title": "Conectá con Nosotros",
     "description": "Podés escribirnos al correo <highlight>info@idcredentor.com</highlight>"
   },
-  "coming-soon": {
-    "message": {
-      "line-1": "Estamos preparando una experiencia en línea que refleje la calidez, el amor y el llamado a la vocación de nuestra comunidad.",
-      "line-2": "En la Iglesia de Cristo Redentor nos dedicamos a proclamar las buenas nuevas del Reino de Dios y a vivir el ejemplo transformador de Jesús, invitándote a responder a su llamado personal de servicio y compromiso."
-    },
-    "metadata": {
-      "title": "Iglesia de Cristo Redentor - Conectando, Comunicando y Creciendo",
-      "description": "Bienvenido a la Iglesia de Cristo Redentor. Pronto descubrirás un sitio que refleja fe, vocación y amor."
-    },
-    "notify": {
-      "description": "Pronto, te invitaremos a conectarte con nuestro mensaje y misión, viviendo junto a nosotros un camino de fe, servicio y transformación. ¡Mantente atento a nuestro lanzamiento!",
-      "placeholder": "Ingresá tu correo electrónico",
-      "cta-text": "¡Avísame!",
-      "input-sr-label": "Correo electrónico",
-      "success-message": "Gracias, te mantendremos informado cuando lancemos nuestro nuevo sitio web. 🎉"
-    },
-    "title": "Próximamente"
-  },
-  "comunidadPage": {
-    "headerTitle": "Nuestra <highlight>Comunidad</highlight>",
-    "title": "Nuestra Comunidad",
-    "description": "Conocé más sobre nuestra comunidad en Buenos Aires. Somos una familia de fe, unidos por el amor de Cristo, y compartimos nuestras vidas en comunión.",
-    "keywords": "comunidad, iglesia, Buenos Aires, fe, cristianos, redentor",
-    "ogDescription": "Descubrí nuestra comunidad en Buenos Aires, donde vivimos y compartimos el amor de Cristo juntos."
+  "Community": {
+    "header-title": "Nuestra <highlight>Comunidad</highlight>"
   },
   "common": {
     "regionalSettings": "Configuración regional",
@@ -73,14 +35,7 @@
   },
   "footer": {
     "copyright": "Iglesia de Cristo Redentor. Todos los derechos reservados.",
-    "description": "Queremos que Cristo esté en el centro de todo lo que hacemos. Nuestra misión es caminar juntos hacia una nueva vida con Jesús.",
     "poweredBy": "Hecho con ♥️ desde Buenos Aires, Argentina por GD"
-  },
-  "homePage": {
-    "title": "Bienvenido a Iglesia de Cristo Redentor",
-    "description": "Enterate de nuestras actividades y mantenete en contacto con la comunidad.",
-    "keywords": "iglesia, actividades, comunidad, cristo",
-    "ogDescription": "Conéctate con la comunidad de Cristo y participa en nuestras actividades en Buenos Aires."
   },
   "landingPage": {
     "latestArticles": "Últimos artículos"
@@ -89,22 +44,8 @@
     "title": "Página no encontrada",
     "description": "Esta página no parece existir. <0>Haga clic aquí</0> para volver a la página principal."
   },
-  "quienEsJesusPage": {
-    "title": "¿Quién es Jesús?",
-    "description": "Explorá quién es Jesús, el centro de nuestra fe. Descubrí su mensaje de amor, redención y esperanza para toda la humanidad.",
-    "keywords": "Jesús, redención, esperanza, salvación, cristianismo, redentor",
-    "ogDescription": "Conocé quién es Jesús y cómo su mensaje de amor y redención puede transformar tu vida."
-  },
   "sitename": "Iglesia de Cristo Redentor",
   "status": {
     "sr-loading": "Cargando..."
-  },
-  "subscribe": {
-    "title": "Suscribite a nuestro boletín",
-    "description": "Enterate de nuestras actividades y mantenete en contacto con la comunidad.",
-    "placeholder": "Ingresá tu correo electrónico",
-    "cta-text": "Suscribite",
-    "input-sr-label": "Correo electrónico",
-    "success-message": "¡Gracias por suscribirte! 🎉"
   }
 }

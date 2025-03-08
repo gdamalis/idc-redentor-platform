@@ -1,14 +1,20 @@
 import { fetchGraphQL } from "./fetch";
 
 const GRAPHQL_FIELDS = `
-  headline
-  bodyText {
-    json
+  eventInfo {
+    name
+    dayOfWeek
+    date
+    time
+    note
   }
-  ctaText
-  targetPage {
-    ... on Page {
-      slug
+  location {
+    ... on LocationComponent {
+      addressLine1
+      neighborhood
+      city
+      country
+      mapEmbedUrl
     }
   }
   image {
@@ -21,14 +27,14 @@ const GRAPHQL_FIELDS = `
   __typename
 `;
 
-export async function getDuplexComponent(
+export async function getEventBanner(
   name: string,
   locale: string,
   isDraftMode = false,
 ) {
   const data = await fetchGraphQL(
     `query {
-        componentDuplexCollection(
+        eventBannerCollection(
           locale: "${locale}",
           where:{
             machineName: "${name}"
@@ -44,5 +50,5 @@ export async function getDuplexComponent(
     isDraftMode,
   );
 
-  return data?.data?.componentDuplexCollection?.items[0];
+  return data?.data?.eventBannerCollection?.items[0];
 }

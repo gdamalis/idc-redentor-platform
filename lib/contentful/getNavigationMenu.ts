@@ -2,7 +2,7 @@ import { fetchGraphQL } from "./fetch";
 
 const MENU_GRAPHQL_FIELDS = `
   menuItemsCollection {
-    items{
+    items {
       ... on MenuGroup {
         groupName
         groupLink {
@@ -11,6 +11,10 @@ const MENU_GRAPHQL_FIELDS = `
       }
     } 
   }
+  sys {
+    id
+  }
+  __typename
 `;
 
 export async function getNavigationMenu(

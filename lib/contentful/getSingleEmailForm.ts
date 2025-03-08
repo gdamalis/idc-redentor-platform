@@ -2,22 +2,29 @@ import { fetchGraphQL } from "./fetch";
 
 const GRAPHQL_FIELDS = `
   title
-  description {
-    json
+  shortDescription
+  ctaText
+  inputPlaceholder
+  successMessage
+  sys {
+    id
   }
-  bibleVerse {
-    json
-  }
+  __typename
 `;
 
-export async function getCredos(
+export async function getSingleEmailForm(
+  name: string,
   locale: string,
   isDraftMode = false,
 ) {
   const data = await fetchGraphQL(
     `query {
-        credoCollection(
+        singleEmailFormCollection(
           locale: "${locale}",
+          where:{
+            machineName: "${name}"
+          }, 
+          limit: 1, 
           preview: ${isDraftMode ? "true" : "false"}
         ) {
           items {
@@ -27,6 +34,6 @@ export async function getCredos(
       }`,
     isDraftMode,
   );
-  
-  return data?.data?.credoCollection?.items;
+
+  return data?.data?.singleEmailFormCollection?.items[0];
 }

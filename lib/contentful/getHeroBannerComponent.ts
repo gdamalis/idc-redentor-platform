@@ -19,6 +19,10 @@ const GRAPHQL_FIELDS = `
       title
     }
   }
+  sys {
+    id
+  }
+  __typename
 `;
 
 export async function getHeroBannerComponent(

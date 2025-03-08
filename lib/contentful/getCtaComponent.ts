@@ -11,6 +11,10 @@ const GRAPHQL_FIELDS = `
       slug
     }
   }
+  sys {
+    id
+  }
+  __typename
 `;
 
 export async function getCtaComponent(

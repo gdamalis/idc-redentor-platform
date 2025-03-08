@@ -1,19 +1,12 @@
 import { fetchGraphQL } from "./fetch";
 
 const GRAPHQL_FIELDS = `
-  headline
-  bodyText {
+  title
+  description {
     json
   }
-  ctaText
-  targetPage {
-    ... on Page {
-      slug
-    }
-  }
-  image {
-    url
-    title
+  bibleVerse {
+    json
   }
   sys {
     id
@@ -21,19 +14,14 @@ const GRAPHQL_FIELDS = `
   __typename
 `;
 
-export async function getDuplexComponent(
-  name: string,
+export async function getCreeds(
   locale: string,
   isDraftMode = false,
 ) {
   const data = await fetchGraphQL(
     `query {
-        componentDuplexCollection(
+        credoCollection(
           locale: "${locale}",
-          where:{
-            machineName: "${name}"
-          }, 
-          limit: 1, 
           preview: ${isDraftMode ? "true" : "false"}
         ) {
           items {
@@ -43,6 +31,6 @@ export async function getDuplexComponent(
       }`,
     isDraftMode,
   );
-
-  return data?.data?.componentDuplexCollection?.items[0];
+  
+  return data?.data?.credoCollection?.items;
 }

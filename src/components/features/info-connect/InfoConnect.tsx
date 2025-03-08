@@ -21,20 +21,20 @@ const options = {
   },
 };
 
-type DescriptionContactSectionProps = {
+type InfoConnectProps = {
   content: {
     headline: string;
-    bodyText: {
+    body: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       json: any;
     };
   };
 };
 
-export default function DescriptionContactSection({
+export default function InfoConnect({
   content,
-}: Readonly<DescriptionContactSectionProps>) {
-  const bodyText = documentToReactComponents(content?.bodyText.json, options);
+}: Readonly<InfoConnectProps>) {
+  const bodyText = documentToReactComponents(content?.body.json, options);
   return (
     <div className="bg-blue-600/20 ">
       <Container className="max-w-5xl py-16 text-center sm:py-24">

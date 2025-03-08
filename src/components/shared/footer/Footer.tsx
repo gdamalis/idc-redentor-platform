@@ -7,13 +7,28 @@ import { SubscribeForm } from "@src/components/shared/subscribe-form/SubscribeFo
 import { Container } from "@src/components/ui/container";
 import SocialLinks from "../social-links/SocialLinks";
 
-export const Footer = () => {
+type FooterProps = {
+  content: {
+    logo: { url: string; title: string };
+    shortDescription: string;
+    socialLinks: { url: string; platform: string }[];
+  };
+  subscribeContent: {
+    title: string;
+    shortDescription: string;
+    inputPlaceholder: string;
+    ctaText: string;
+    successMessage: string;
+  };
+};
+
+export const Footer = ({ content, subscribeContent }: FooterProps) => {
   const t = useTranslations();
 
   return (
     <footer
       aria-labelledby="footer-heading"
-      className="border-t border-gray-900/10 bg-white dark:bg-black"
+      className="bg-gray-50 dark:bg-gray-700"
     >
       <Typography
         component="h2"
@@ -23,16 +38,16 @@ export const Footer = () => {
       >
         Footer
       </Typography>
-      <Container className="px-6 pb-8 pt-16 sm:pt-24 lg:px-8 lg:pt-32">
-        <div className="xl:grid xl:grid-cols-3 xl:gap-8">
-          <div className="space-y-8">
+      <Container className="space-y-8 px-6 pt-12 lg:px-8">
+        <div className="space-y-8 xl:grid xl:grid-cols-3 xl:gap-8">
+          <div className="space-y-4">
             <Link className="flex w-fit" href="/" title={t("common.homepage")}>
               <Image
-                src="/assets/img/redentor_logo.png"
+                src={content.logo.url}
+                alt={content.logo.title}
                 className="dark:invert dark:mix-blend-luminosity"
                 width={80}
                 height={80}
-                alt="Redentor church logo"
               />
             </Link>
             <Typography
@@ -40,11 +55,11 @@ export const Footer = () => {
               variant="body1"
               className="text-sm leading-6 text-gray-600"
             >
-              {t("footer.description")}
+              {content.shortDescription}
             </Typography>
-            <SocialLinks />
+            <SocialLinks links={content.socialLinks} />
           </div>
-          <div className="mt-16 xl:mt-0">
+          <div className="">
             <div className="md:grid md:grid-cols-2 md:gap-8">
               {/* <div>
                 <Typography
@@ -80,16 +95,9 @@ export const Footer = () => {
               </div> */}
             </div>
           </div>
-          <SubscribeForm
-            title={t("subscribe.title")}
-            description={t("subscribe.description")}
-            placeholder={t("subscribe.placeholder")}
-            ctaText={t("subscribe.cta-text")}
-            ctaSrLabel={t("subscribe.input-sr-label")}
-            successMessage={t("subscribe.success-message")}
-          />
+          <SubscribeForm className="" content={subscribeContent} />
         </div>
-        <div className="mt-16 border-t border-gray-900/10 pt-8 text-center sm:mt-20 lg:mt-24 lg:flex lg:justify-between lg:text-left">
+        <div className="py-4 border-t border-gray-900/10 lg:py-6 text-center lg:flex lg:justify-between lg:text-left">
           <Typography
             component="p"
             variant="body1"

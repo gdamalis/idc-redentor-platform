@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-export async function fetchGraphQL(query: any, preview = false) {
+export async function fetchGraphQL(query: any, preview = false) { 
   return fetch(
     `https://graphql.contentful.com/content/v1/spaces/${process.env.CONTENTFUL_SPACE_ID}`,
     {
@@ -14,6 +14,7 @@ export async function fetchGraphQL(query: any, preview = false) {
         }`,
       },
       body: JSON.stringify({ query }),
+      next: { tags: ["site-content"] },
     },
   ).then((response) => response.json());
 }

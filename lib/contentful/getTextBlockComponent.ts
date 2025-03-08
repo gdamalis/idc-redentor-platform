@@ -2,18 +2,9 @@ import { fetchGraphQL } from "./fetch";
 
 const GRAPHQL_FIELDS = `
   headline
-  bodyText {
+  subline
+  body {
     json
-  }
-  ctaText
-  targetPage {
-    ... on Page {
-      slug
-    }
-  }
-  image {
-    url
-    title
   }
   sys {
     id
@@ -21,14 +12,14 @@ const GRAPHQL_FIELDS = `
   __typename
 `;
 
-export async function getDuplexComponent(
+export async function getTextBlockComponent(
   name: string,
   locale: string,
   isDraftMode = false,
 ) {
   const data = await fetchGraphQL(
     `query {
-        componentDuplexCollection(
+        componentTextBlockCollection(
           locale: "${locale}",
           where:{
             machineName: "${name}"
@@ -44,5 +35,5 @@ export async function getDuplexComponent(
     isDraftMode,
   );
 
-  return data?.data?.componentDuplexCollection?.items[0];
+  return data?.data?.componentTextBlockCollection?.items[0];
 }

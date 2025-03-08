@@ -1,34 +1,29 @@
 import { fetchGraphQL } from "./fetch";
 
 const GRAPHQL_FIELDS = `
-  headline
-  bodyText {
-    json
-  }
-  ctaText
-  targetPage {
-    ... on Page {
-      slug
-    }
-  }
+  title
+  description
+  keywords
   image {
     url
     title
   }
+  siteName
+  type
   sys {
     id
   }
   __typename
 `;
 
-export async function getDuplexComponent(
+export async function getSeo(
   name: string,
   locale: string,
   isDraftMode = false,
 ) {
   const data = await fetchGraphQL(
     `query {
-        componentDuplexCollection(
+        seoCollection(
           locale: "${locale}",
           where:{
             machineName: "${name}"
@@ -44,5 +39,5 @@ export async function getDuplexComponent(
     isDraftMode,
   );
 
-  return data?.data?.componentDuplexCollection?.items[0];
+  return data?.data?.seoCollection?.items[0];
 }

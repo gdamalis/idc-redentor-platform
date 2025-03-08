@@ -117,7 +117,7 @@ export default function BlogPostDetails({
             <Typography
           component="h2"
           variant="h2" className="text-2xl font-bold tracking-tight text-gray-900">
-              {t("blogPostPage.morePosts")}
+              {t("BlogPost.morePosts")}
             </Typography>
             <div className="mx-auto mt-16 grid max-w-2xl auto-rows-fr grid-cols-1 gap-8 sm:mt-20 lg:mx-0 lg:max-w-none lg:grid-cols-3">
               {relatedPosts.map((post: BlogPost) => (
