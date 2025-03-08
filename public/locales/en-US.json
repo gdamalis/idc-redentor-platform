@@ -3,13 +3,8 @@
     "relatedArticles": "Related articles",
     "featured": "featured"
   },
-  "blogPage": {
-    "metaTitle": "Blog",
-    "metaDescription": "Read our latest reflections and teachings on our blog. Join us on this journey of faith and growth.",
-    "title": "Latest from the blog",
-    "description": "Discover our latest reflections and see how we continue growing as a community.",
-    "viewMore": "View all articles",
-    "keywords": "blog, articles, reflections, teachings, faith, growth, community, redentor"
+  "Blog": {
+    "viewMore": "View all articles"
   },
   "blogPostPage": {
     "morePosts": "Other articles"
@@ -19,12 +14,8 @@
     "description": "Discover our latest reflections and teachings. Join us on this journey of faith and learning.",
     "viewMore": "View all articles"
   },
-  "conectemosPage": {
-    "headerTitle": "Come to <highlight>Meet Us</highlight>",
-    "title": "Come to Meet Us",
-    "description": "Get in touch with us. Find our location, activity schedules, and learn how to be part of our community in Buenos Aires.",
-    "keywords": "contact, church, Buenos Aires, community, redentor",
-    "ogDescription": "Reach out to learn more about our church and how you can be part of our community."
+  "Connect": {
+    "header-title": "Come to <highlight>Meet Us</highlight>"
   },
   "contact-info-section": {
     "title": "Hours and Location",
@@ -37,30 +28,8 @@
     "title": "Connect with Us",
     "description": "You can write to us at the email <highlight>info@idcredentor.com</highlight>"
   },
-  "coming-soon": {
-    "message": {
-      "line-1": "We are preparing an online experience that reflects the warmth, love, and call to vocation of our community.",
-      "line-2": "At the Redentor Church of Christ, we are dedicated to proclaiming the good news of the Kingdom of God and living out Jesus’ transformative example, inviting you to respond to his personal call to service and commitment."
-    },
-    "metadata": {
-      "title": "Redentor Church of Christ - Connecting, Communicating, and Growing",
-      "description": "Welcome to the Redentor Church of Christ. Soon you will discover a site that reflects faith, vocation, and love."
-    },
-    "notify": {
-      "descriptions": "Soon, we will invite you to connect with our message and mission, walking with us on a journey of faith, service, and transformation. Stay tuned for our launch!",
-      "placeholder": "Enter your email address",
-      "cta-text": "Notify me!",
-      "input-sr-label": "Email address",
-      "success-message": "Thank you, we will keep you informed when we launch our new website. 🎉"
-    },
-    "title": "Coming Soon"
-  },
-  "comunidadPage": {
-    "headerTitle": "Our <highlight>Community</highlight>",
-    "title": "Our Community",
-    "description": "Learn more about our community in Buenos Aires. We are a family of faith, united by Christ’s love, and we share our lives in fellowship.",
-    "keywords": "community, church, Buenos Aires, faith, christians, redentor",
-    "ogDescription": "Discover our community in Buenos Aires, where we live and share Christ’s love together."
+  "Community": {
+    "header-title": "Our <highlight>Community</highlight>"
   },
   "common": {
     "regionalSettings": "Regional Settings",
@@ -71,15 +40,8 @@
   "creed-section": {
     "title": "Our Creed"
   },
-  "homePage": {
-    "title": "Welcome to Iglesia de Cristo Redentor",
-    "description": "Stay informed about our activities and stay connected with the community.",
-    "keywords": "church, activities, community, christ",
-    "ogDescription": "Connect with the Christ community and join our activities in Buenos Aires."
-  },
   "footer": {
     "copyright": "Redentor Church of Christ. All rights reserved.",
-    "description": "Christ is the center of everything we do. Our mission is to guide people into a personal relationship with Jesus Christ.",
     "poweredBy": "Made with ♥️ from Buenos Aires, Argentina by GD"
   },
   "landingPage": {
@@ -88,12 +50,6 @@
   "notFound": {
     "title": "Page not found",
     "description": "This page doesn't seem to exist. <0>Click here</0> to go back the homepage."
-  },
-  "quienEsJesusPage": {
-    "title": "Who is Jesus?",
-    "description": "Explore who Jesus is, the center of our faith. Discover his message of love, redemption, and hope for all humanity.",
-    "keywords": "Jesus, redemption, hope, salvation, Christianity, redentor",
-    "ogDescription": "Learn who Jesus is and how his message of love and redemption can transform your life."
   },
   "sitename": "Redentor Church of Christ",
   "status": {

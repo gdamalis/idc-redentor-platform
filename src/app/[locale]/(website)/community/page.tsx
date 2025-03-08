@@ -2,38 +2,42 @@ import { getCreeds } from "@lib/contentful/getCreeds";
 import { getCtaComponent } from "@lib/contentful/getCtaComponent";
 import { getDuplexComponent } from "@lib/contentful/getDuplexComponent";
 import { getHeroBannerComponent } from "@lib/contentful/getHeroBannerComponent";
+import { getSeo } from "@lib/contentful/getSeo";
 import AboutCommunitySection from "@src/components/features/about-community-section/AboutCommunitySection";
 import { ContactCta } from "@src/components/features/contact-cta";
 import { CredoSection } from "@src/components/features/creed-section";
 import { OurMissionSection } from "@src/components/features/our-mission-section";
 import { Header } from "@src/components/shared/header";
-import { getTranslations, setRequestLocale } from "next-intl/server";
+import { localesPath } from "@src/i18n/config";
+import { Metadata } from "next";
+import { setRequestLocale } from "next-intl/server";
 import { draftMode } from "next/headers";
 
 export async function generateMetadata({
   params,
 }: Readonly<{
   params: Promise<{ locale: string }>;
-}>) {
+}>): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale });
+
+  const seoContent = await getSeo("seo-community", locale);
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   return {
-    title: t("comunidadPage.title"),
-    description: t("comunidadPage.description"),
-    keywords: t("comunidadPage.keywords"),
+    title: seoContent.title,
+    description: seoContent.desacription,
+    keywords: seoContent.keywords,
     openGraph: {
-      title: t("comunidadPage.title"),
-      description: t("comunidadPage.description"),
-      image: "/assets/img/redentor_logo.png",
-      url: "/community",
+      title: seoContent.title,
+      description: seoContent.desacription,
+      images: [{ url: seoContent.image.url }],
+      url: `${baseUrl}/${locale}`,
+      siteName: seoContent.siteName,
+      type: seoContent.type,
     },
     alternates: {
-      canonical: "/community",
-      languages: {
-        "es-AR": "/es-AR",
-        "en-US": "/en-US",
-      },
+      canonical: `${baseUrl}/${locale}`,
+      languages: localesPath,
     },
   };
 }
@@ -67,7 +71,7 @@ export default async function CommunityPage({
 
   return (
     <main>
-      <Header titlePath="comunidadPage.headerTitle" className="bg-community" />
+      <Header titlePath="Community.header-title" className="bg-community" />
       <AboutCommunitySection content={aboutCommunitySection} />
       <CredoSection content={credos} />
       <OurMissionSection content={ourMissionSection} />

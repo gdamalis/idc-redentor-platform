@@ -1,35 +1,39 @@
 import { getHeroBannerComponent } from "@lib/contentful/getHeroBannerComponent";
+import { getSeo } from "@lib/contentful/getSeo";
 import { ContactForm } from "@src/components/features/contact-form";
 import { ContactInformationSection } from "@src/components/features/contact-information-section";
 import DescriptionContactSection from "@src/components/features/description-contact-section/DescriptionContactSection";
 import { Header } from "@src/components/shared/header";
-import { getTranslations, setRequestLocale } from "next-intl/server";
+import { localesPath } from "@src/i18n/config";
+import { Metadata } from "next";
+import { setRequestLocale } from "next-intl/server";
 import { draftMode } from "next/headers";
 
 export async function generateMetadata({
   params,
 }: Readonly<{
   params: Promise<{ locale: string }>;
-}>) {
+}>): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale });
+
+  const seoContent = await getSeo("seo-connect", locale);
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   return {
-    title: t("conectemosPage.title"),
-    description: t("conectemosPage.description"),
-    keywords: t("conectemosPage.keywords"),
+    title: seoContent.title,
+    description: seoContent.desacription,
+    keywords: seoContent.keywords,
     openGraph: {
-      title: t("conectemosPage.title"),
-      description: t("conectemosPage.description"),
-      image: "/assets/img/redentor_logo.png",
-      url: "/come-meet-us",
+      title: seoContent.title,
+      description: seoContent.desacription,
+      images: [{ url: seoContent.image.url }],
+      url: `${baseUrl}/${locale}`,
+      siteName: seoContent.siteName,
+      type: seoContent.type,
     },
     alternates: {
-      canonical: "/come-meet-us",
-      languages: {
-        "es-AR": "/es-AR",
-        "en-US": "/en-US",
-      },
+      canonical: `${baseUrl}/${locale}`,
+      languages: localesPath,
     },
   };
 }
@@ -50,13 +54,9 @@ export default async function ComeMeetUsPage({
     isEnabled,
   );
 
-
   return (
     <main>
-      <Header
-        titlePath={"conectemosPage.headerTitle"}
-        className="bg-community"
-      />
+      <Header titlePath={"Connect.header-title"} className="bg-community" />
 
       <DescriptionContactSection content={descriptionContactSection} />
 

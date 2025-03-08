@@ -4,3 +4,10 @@ export const i18n = {
 } as const;
 
 export type Locale = (typeof i18n)["locales"][number];
+
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+const localesMap = i18n.locales.map((locale) => [locale, `${baseUrl}/${locale}`]);
+export const localesPath = Object.fromEntries(localesMap) as Record<
+  Locale,
+  string
+>;
