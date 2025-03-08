@@ -1,11 +1,11 @@
 import { getCreeds } from "@lib/contentful/getCreeds";
 import { getCtaComponent } from "@lib/contentful/getCtaComponent";
 import { getDuplexComponent } from "@lib/contentful/getDuplexComponent";
-import { getHeroBannerComponent } from "@lib/contentful/getHeroBannerComponent";
 import { getSeo } from "@lib/contentful/getSeo";
-import AboutCommunitySection from "@src/components/features/about-community-section/AboutCommunitySection";
+import { getTextBlockComponent } from "@lib/contentful/getTextBlockComponent";
 import { ContactCta } from "@src/components/features/contact-cta";
 import { CredoSection } from "@src/components/features/creed-section";
+import InfoCommunity from "@src/components/features/info-community/InfoCommunity";
 import { OurMissionSection } from "@src/components/features/our-mission-section";
 import { Header } from "@src/components/shared/header";
 import { localesPath } from "@src/i18n/config";
@@ -56,8 +56,8 @@ export default async function CommunityPage({
     locale,
     isEnabled,
   );
-  const aboutCommunitySection = await getHeroBannerComponent(
-    "about-community",
+  const infoCommunity = await getTextBlockComponent(
+    "info-community",
     locale,
     isEnabled,
   );
@@ -68,11 +68,10 @@ export default async function CommunityPage({
     isEnabled,
   );
 
-
   return (
     <main>
       <Header titlePath="Community.header-title" className="bg-community" />
-      <AboutCommunitySection content={aboutCommunitySection} />
+      <InfoCommunity content={infoCommunity} />
       <CredoSection content={credos} />
       <OurMissionSection content={ourMissionSection} />
       <ContactCta content={contactCta} />

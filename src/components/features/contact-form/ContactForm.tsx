@@ -1,33 +1,36 @@
+import { Dropdown, DropDownOption } from "@src/components/ui/dropdown";
 import { Typography } from "@src/components/ui/typography";
+import { Link } from "@src/i18n/routing";
 import { useTranslations } from "next-intl";
+import Image from "next/image";
 
-// const DropDownOptions: DropDownOption[] = [
-//   {
-//     id: "1",
-//     value: "Petición de Oración",
-//   },
-//   {
-//     id: "2",
+const DropDownOptions: DropDownOption[] = [
+  {
+    id: "1",
+    value: "Petición de Oración",
+  },
+  {
+    id: "2",
 
-//     value: "Solicitud de Información",
-//   },
-//   {
-//     id: "3",
-//     value: "Solicitud de Bautismo",
-//   },
-//   {
-//     id: "5",
-//     value: "Solicitud de Consejería",
-//   },
-//   {
-//     id: "6",
-//     value: "Solicitud de Ayuda",
-//   },
-//   {
-//     id: "8",
-//     value: "Quier visitarlos",
-//   },
-// ];
+    value: "Solicitud de Información",
+  },
+  {
+    id: "3",
+    value: "Solicitud de Bautismo",
+  },
+  {
+    id: "5",
+    value: "Solicitud de Consejería",
+  },
+  {
+    id: "6",
+    value: "Solicitud de Ayuda",
+  },
+  {
+    id: "8",
+    value: "Quier visitarlos",
+  },
+];
 
 export const ContactForm = () => {
   const t = useTranslations();
@@ -56,7 +59,7 @@ export const ContactForm = () => {
           })}
           {/* o bien podés escribirnos a través de este breve formulario: */}
         </Typography>
-        {/* <div className="mt-8 flex flex-col gap-16 sm:gap-y-20 lg:flex-row">
+        <div className="mt-8 flex flex-col gap-16 sm:gap-y-20 lg:flex-row">
           <form action="#" method="POST" className="lg:flex-auto">
             <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
               <div>
@@ -168,7 +171,7 @@ export const ContactForm = () => {
               </figcaption>
             </figure>
           </div>
-        </div> */}
+        </div>
       </div>
     </div>
   );

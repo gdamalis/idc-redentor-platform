@@ -21,20 +21,20 @@ const options = {
   },
 };
 
-type AboutCommunitySectionProps = {
+type InfoCommunityProps = {
   content: {
     headline: string;
-    bodyText: {
+    body: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       json: any;
     };
   };
 };
 
-export default function AboutCommunitySection({
+export default function InfoCommunity({
   content,
-}: Readonly<AboutCommunitySectionProps>) {
-  const bodyText = documentToReactComponents(content.bodyText.json, options);
+}: Readonly<InfoCommunityProps>) {
+  const bodyText = documentToReactComponents(content.body.json, options);
 
   return (
     <div className="bg-blue-600/20 ">

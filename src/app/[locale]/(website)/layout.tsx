@@ -1,5 +1,6 @@
 import { getFooter } from "@lib/contentful/getFooter";
 import { getNavigationMenu } from "@lib/contentful/getNavigationMenu";
+import { getSingleEmailForm } from "@lib/contentful/getSingleEmailForm";
 import { Footer } from "@src/components/shared/footer";
 import { Navbar } from "@src/components/shared/navbar";
 import { routing } from "@src/i18n/routing";
@@ -38,6 +39,7 @@ export default async function LocaleLayout({
   const { isEnabled } = await draftMode();
   const navMenu = await getNavigationMenu("Main menu", locale);
   const footerContent = await getFooter(locale, isEnabled);
+  const subscribeContent = await getSingleEmailForm("single-email-subscribe", locale, isEnabled);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (!routing.locales.includes(locale as any)) {
@@ -53,7 +55,7 @@ export default async function LocaleLayout({
         <NextIntlClientProvider messages={messages}>
           <Navbar menuItems={navMenu} />
           {children}
-          <Footer content={footerContent} />
+          <Footer content={footerContent} subscribeContent={subscribeContent} />
         </NextIntlClientProvider>
       </body>
     </html>

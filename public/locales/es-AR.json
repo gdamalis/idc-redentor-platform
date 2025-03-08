@@ -6,7 +6,7 @@
   "Blog": {
     "viewMore": "Ver todos los artículos"
   },
-  "blogPostPage": {
+  "BlogPost": {
     "morePosts": "Otros artículos"
   },
   "blogSection": {
@@ -16,13 +16,6 @@
   },
   "Connect": {
     "header-title": "Vení a <highlight>Conocernos</highlight>"
-  },
-  "contact-info-section": {
-    "title": "Horarios y Ubicación",
-    "date": "Domingos | 17:00 hs",
-    "date-comment": " Hay reuniones entre semana en diferentes barrios de la capital. Pueden solicitar más información al correo o al formulario de contacto más abajo",
-    "address-line-1": "Tte. Gral. Juan Domingo Perón 4385",
-    "address-line-2": "Almargo, CABA, República Argentina"
   },
   "contact-form": {
     "title": "Conectá con Nosotros",
@@ -54,13 +47,5 @@
   "sitename": "Iglesia de Cristo Redentor",
   "status": {
     "sr-loading": "Cargando..."
-  },
-  "subscribe": {
-    "title": "Suscribite a nuestro boletín",
-    "description": "Enterate de nuestras actividades y mantenete en contacto con la comunidad.",
-    "placeholder": "Ingresá tu correo electrónico",
-    "cta-text": "Suscribite",
-    "input-sr-label": "Correo electrónico",
-    "success-message": "¡Gracias por suscribirte! 🎉"
   }
 }

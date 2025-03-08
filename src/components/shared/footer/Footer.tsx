@@ -12,9 +12,16 @@ type FooterProps = {
     shortDescription: string;
     socialLinks: { url: string; platform: string }[];
   };
+  subscribeContent: {
+    title: string;
+    shortDescription: string;
+    inputPlaceholder: string;
+    ctaText: string;
+    successMessage: string;
+  };
 };
 
-export const Footer = ({ content }: FooterProps) => {
+export const Footer = ({ content, subscribeContent }: FooterProps) => {
   const t = useTranslations();
 
   return (
@@ -87,13 +94,7 @@ export const Footer = ({ content }: FooterProps) => {
               </div> */}
             </div>
           </div>
-          <SubscribeForm
-            title={t("subscribe.title")}
-            description={t("subscribe.description")}
-            placeholder={t("subscribe.placeholder")}
-            ctaText={t("subscribe.cta-text")}
-            ctaSrLabel={t("subscribe.input-sr-label")}
-            successMessage={t("subscribe.success-message")}
+          <SubscribeForm content={subscribeContent}
           />
         </div>
         <div className="mt-16 border-t border-gray-900/10 pt-8 text-center sm:mt-20 lg:mt-24 lg:flex lg:justify-between lg:text-left">

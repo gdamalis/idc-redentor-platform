@@ -6,7 +6,7 @@
   "Blog": {
     "viewMore": "View all articles"
   },
-  "blogPostPage": {
+  "BlogPost": {
     "morePosts": "Other articles"
   },
   "blogSection": {
@@ -16,13 +16,6 @@
   },
   "Connect": {
     "header-title": "Come to <highlight>Meet Us</highlight>"
-  },
-  "contact-info-section": {
-    "title": "Hours and Location",
-    "date": "Sundays | 5:00 pm",
-    "date-comment": "There are meetings during the week in different neighborhoods of the capital. You can request more information by email or through the contact form below.",
-    "address-line-1": "Tte. Gral. Juan Domingo Perón 4385",
-    "address-line-2": "Almargo, CABA, Argentina"
   },
   "contact-form": {
     "title": "Connect with Us",
@@ -54,13 +47,5 @@
   "sitename": "Redentor Church of Christ",
   "status": {
     "sr-loading": "Loading..."
-  },
-  "subscribe": {
-    "title": "Subscribe to our newsletter",
-    "description": "Stay informed about our activities and stay connected with the community.",
-    "placeholder": "Enter your email address",
-    "cta-text": "Subscribe",
-    "input-sr-label": "Email address",
-    "success-message": "Thank you for subscribing! 🎉"
   }
 }

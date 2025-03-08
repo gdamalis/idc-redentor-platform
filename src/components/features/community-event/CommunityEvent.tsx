@@ -1,9 +1,25 @@
 import { Typography } from "@src/components/ui/typography";
-import { useTranslations } from "next-intl";
 
-export const ContactInformationSection = () => {
-  const t = useTranslations();
+type CommunityEventProps = {
+  content: {
+    eventInfo: {
+      name: string;
+      dayOfWeek: string;
+      date: string;
+      time: string;
+      note: string;
+    };
+    location: {
+      addressLine1: string;
+      neighborhood: string;
+      city: string;
+      country: string;
+      mapEmbedUrl: string;
+    };
+  };
+};
 
+export const CommunityEvent = ({ content }: CommunityEventProps) => {
   return (
     <div className="overflow-hidden bg-white dark:bg-gray-900 py-20 sm:py-32">
       <div className="mx-auto max-w-7xl md:px-6 lg:px-8">
@@ -15,7 +31,7 @@ export const ContactInformationSection = () => {
                 variant="h2"
                 className="mt-2 text-pretty text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl"
               >
-                {t("contact-info-section.title")}
+                {content.eventInfo.name}
               </Typography>
               <div className="relative mt-6 flex items-center px-6 py-8 sm:px-10 sm:py-12">
                 <div className="absolute inset-0 overflow-hidden rounded-lg">
@@ -32,7 +48,7 @@ export const ContactInformationSection = () => {
                     variant="body1"
                     className="text-2xl font-bold tracking-tight text-white"
                   >
-                    {t("contact-info-section.date")}
+                    {content.eventInfo.dayOfWeek} | {content.eventInfo.time}
                   </Typography>
                 </div>
               </div>
@@ -41,7 +57,7 @@ export const ContactInformationSection = () => {
                 variant="body1"
                 className="mt-2 text-sm italic text-gray-600"
               >
-                {t("contact-info-section.date-comment")}
+                {content.eventInfo.note}
               </Typography>
               <div className="relative mt-6 flex items-center px-6 py-12 sm:px-10 sm:py-16">
                 <div className="absolute inset-0 overflow-hidden rounded-lg">
@@ -58,14 +74,15 @@ export const ContactInformationSection = () => {
                     variant="body1"
                     className="text-2xl font-bold tracking-tight text-white"
                   >
-                    {t("contact-info-section.address-line-1")}
+                    {content.location.addressLine1}
                   </Typography>
                   <Typography
                     component="p"
                     variant="body1"
                     className="text-2xl tracking-tight text-white"
                   >
-                    {t("contact-info-section.address-line-2")}
+                    {content.location.neighborhood}, {content.location.city},{" "}
+                    {content.location.country}
                   </Typography>
                 </div>
               </div>
@@ -74,7 +91,7 @@ export const ContactInformationSection = () => {
           <div className="sm:px-6 lg:px-0">
             <div className="relative isolate overflow-hidden sm:mx-auto sm:max-w-2xl sm:rounded-3xl lg:mx-0 lg:max-w-none">
               <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d205.24589880502776!2d-58.428660275340235!3d-34.60582077587076!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x95bccba90ef56ead%3A0x76e96b1ea8cfa41!2sIglesia%20de%20Cristo%20Parque%20Centenario!5e0!3m2!1sen!2sar!4v1738971838553!5m2!1sen!2sar"
+                src={content.location.mapEmbedUrl}
                 width="600"
                 height="450"
                 style={{ border: 0 }}

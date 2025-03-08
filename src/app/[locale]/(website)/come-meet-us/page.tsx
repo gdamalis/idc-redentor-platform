@@ -1,13 +1,14 @@
-import { getHeroBannerComponent } from "@lib/contentful/getHeroBannerComponent";
 import { getSeo } from "@lib/contentful/getSeo";
+import { getTextBlockComponent } from "@lib/contentful/getTextBlockComponent";
 import { ContactForm } from "@src/components/features/contact-form";
-import { ContactInformationSection } from "@src/components/features/contact-information-section";
-import DescriptionContactSection from "@src/components/features/description-contact-section/DescriptionContactSection";
+import { CommunityEvent } from "@src/components/features/community-event";
+import InfoConnnect from "@src/components/features/info-connect/InfoConnect";
 import { Header } from "@src/components/shared/header";
 import { localesPath } from "@src/i18n/config";
 import { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 import { draftMode } from "next/headers";
+import { getEventBanner } from "@lib/contentful/getEventBanner";
 
 export async function generateMetadata({
   params,
@@ -48,19 +49,24 @@ export default async function ComeMeetUsPage({
 
   const { isEnabled } = await draftMode();
 
-  const descriptionContactSection = await getHeroBannerComponent(
-    "description-contact-section",
+  const infoContact = await getTextBlockComponent(
+    "info-connect",
+    locale,
+    isEnabled,
+  );
+  const eventSundayMeetings = await getEventBanner(
+    "event-sunday-meetings",
     locale,
     isEnabled,
   );
 
   return (
     <main>
-      <Header titlePath={"Connect.header-title"} className="bg-community" />
+      <Header titlePath="Connect.header-title" className="bg-community" />
 
-      <DescriptionContactSection content={descriptionContactSection} />
+      <InfoConnnect content={infoContact} />
 
-      <ContactInformationSection />
+      <CommunityEvent content={eventSundayMeetings} />
       <ContactForm />
     </main>
   );
