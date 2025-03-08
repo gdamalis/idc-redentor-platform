@@ -8,6 +8,10 @@ const GRAPHQL_FIELDS = `
   bibleVerse {
     json
   }
+  sys {
+    id
+  }
+  __typename
 `;
 
 export async function getCreeds(

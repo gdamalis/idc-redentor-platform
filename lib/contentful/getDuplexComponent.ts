@@ -15,6 +15,10 @@ const GRAPHQL_FIELDS = `
     url
     title
   }
+  sys {
+    id
+  }
+  __typename
 `;
 
 export async function getDuplexComponent(

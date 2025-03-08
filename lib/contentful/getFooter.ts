@@ -14,6 +14,10 @@ const GRAPHQL_FIELDS = `
       }
     }
   }
+  sys {
+    id
+  }
+  __typename
 `;
 
 export async function getFooter(locale: string, isDraftMode = false) {

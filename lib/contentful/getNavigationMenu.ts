@@ -11,6 +11,10 @@ const MENU_GRAPHQL_FIELDS = `
       }
     } 
   }
+  sys {
+    id
+  }
+  __typename
 `;
 
 export async function getNavigationMenu(
