@@ -1,14 +1,15 @@
+import { getContactForm } from "@lib/contentful/getContactForm";
+import { getEventBanner } from "@lib/contentful/getEventBanner";
 import { getSeo } from "@lib/contentful/getSeo";
 import { getTextBlockComponent } from "@lib/contentful/getTextBlockComponent";
-import { ContactForm } from "@src/components/features/contact-form";
 import { CommunityEvent } from "@src/components/features/community-event";
+import { ContactForm } from "@src/components/features/contact-form";
 import InfoConnnect from "@src/components/features/info-connect/InfoConnect";
 import { Header } from "@src/components/shared/header";
 import { localesPath } from "@src/i18n/config";
 import { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 import { draftMode } from "next/headers";
-import { getEventBanner } from "@lib/contentful/getEventBanner";
 
 export async function generateMetadata({
   params,
@@ -59,6 +60,7 @@ export default async function ComeMeetUsPage({
     locale,
     isEnabled,
   );
+  const contactForm = await getContactForm(locale, isEnabled);
 
   return (
     <main>
@@ -67,7 +69,7 @@ export default async function ComeMeetUsPage({
       <InfoConnnect content={infoContact} />
 
       <CommunityEvent content={eventSundayMeetings} />
-      <ContactForm />
+      <ContactForm content={contactForm} />
     </main>
   );
 }

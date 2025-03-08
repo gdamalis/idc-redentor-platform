@@ -20,7 +20,7 @@ type TypographyProps = {
 
 export const Typography = ({
   component,
-  className,
+  className = "",
   variant,
   id,
   children,
