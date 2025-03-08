@@ -4,6 +4,8 @@ import { getSingleEmailForm } from "@lib/contentful/getSingleEmailForm";
 import { Footer } from "@src/components/shared/footer";
 import { Navbar } from "@src/components/shared/navbar";
 import { routing } from "@src/i18n/routing";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
@@ -39,7 +41,11 @@ export default async function LocaleLayout({
   const { isEnabled } = await draftMode();
   const navMenu = await getNavigationMenu("Main menu", locale);
   const footerContent = await getFooter(locale, isEnabled);
-  const subscribeContent = await getSingleEmailForm("single-email-subscribe", locale, isEnabled);
+  const subscribeContent = await getSingleEmailForm(
+    "single-email-subscribe",
+    locale,
+    isEnabled,
+  );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (!routing.locales.includes(locale as any)) {
@@ -47,7 +53,6 @@ export default async function LocaleLayout({
   }
 
   const messages = await getMessages();
-
 
   return (
     <html lang={locale}>
@@ -57,6 +62,8 @@ export default async function LocaleLayout({
           {children}
           <Footer content={footerContent} subscribeContent={subscribeContent} />
         </NextIntlClientProvider>
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
