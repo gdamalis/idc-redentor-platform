@@ -1,3 +1,4 @@
+import { Container } from "@src/components/ui/container";
 import { Typography } from "@src/components/ui/typography";
 
 type CommunityEventProps = {
@@ -21,8 +22,8 @@ type CommunityEventProps = {
 
 export const CommunityEvent = ({ content }: CommunityEventProps) => {
   return (
-    <div className="overflow-hidden bg-white dark:bg-gray-900 py-20 sm:py-32">
-      <div className="mx-auto max-w-7xl md:px-6 lg:px-8">
+    <div className="overflow-hidden bg-white dark:bg-gray-900 py-20 sm:py-32 border-b border-gray-700/50">
+      <Container>
         <div className="grid grid-cols-1 gap-x-8 gap-y-16 sm:gap-y-20 lg:grid-cols-2 lg:items-start">
           <div className="px-6 lg:px-0 lg:pr-4">
             <div className="mx-auto max-w-2xl lg:mx-0 lg:max-w-lg">
@@ -45,8 +46,8 @@ export const CommunityEvent = ({ content }: CommunityEventProps) => {
                 <div className="relative mx-auto max-w-sm text-center">
                   <Typography
                     component="p"
-                    variant="body1"
-                    className="text-2xl font-bold tracking-tight text-white"
+                    variant="h3"
+                    className="font-bold tracking-tight text-white"
                   >
                     {content.eventInfo.dayOfWeek} | {content.eventInfo.time}
                   </Typography>
@@ -71,15 +72,15 @@ export const CommunityEvent = ({ content }: CommunityEventProps) => {
                 <div className="relative mx-auto max-w-sm text-center">
                   <Typography
                     component="p"
-                    variant="body1"
-                    className="text-2xl font-bold tracking-tight text-white"
+                    variant="h3"
+                    className="font-bold tracking-tight text-white"
                   >
                     {content.location.addressLine1}
                   </Typography>
                   <Typography
                     component="p"
                     variant="body1"
-                    className="text-2xl tracking-tight text-white"
+                    className="tracking-tight text-white"
                   >
                     {content.location.neighborhood}, {content.location.city},{" "}
                     {content.location.country}
@@ -107,7 +108,7 @@ export const CommunityEvent = ({ content }: CommunityEventProps) => {
             </div>
           </div>
         </div>
-      </div>
+      </Container>
     </div>
   );
 };

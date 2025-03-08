@@ -53,7 +53,7 @@ export const OurMissionSection = ({ content }: OurMissionSectionProps) => {
   return (
     <div className="relative isolate overflow-hidden bg-white dark:bg-black px-6 pb-24 pt-6 sm:pb-32 sm:pt-6 lg:overflow-visible lg:px-0">
       <div className="mx-auto grid max-w-2xl grid-cols-1 gap-x-8 gap-y-8 lg:mx-0 lg:max-w-none lg:grid-cols-2 lg:items-start lg:gap-y-6">
-        <div className="lg:col-span-2 lg:col-start-1 lg:row-start-1 lg:mx-auto lg:grid lg:w-full lg:max-w-7xl lg:grid-cols-2 lg:gap-x-8 lg:px-8">
+        <div className="lg:col-span-2 lg:col-start-1 lg:row-start-1 lg:mx-auto lg:grid lg:w-full lg:max-w-6xl lg:grid-cols-2 lg:gap-x-8 lg:px-8">
           <div className="lg:pr-4">
             <div className="lg:max-w-lg">
               <Typography
@@ -75,7 +75,7 @@ export const OurMissionSection = ({ content }: OurMissionSectionProps) => {
             className="w-[48rem] max-w-none rounded-xl bg-gray-900 shadow-xl ring-1 ring-gray-400/10"
           />
         </div>
-        <div className="lg:col-span-2 lg:col-start-1 lg:row-start-2 lg:mx-auto lg:grid lg:w-full lg:max-w-7xl lg:grid-cols-2 lg:gap-x-8 lg:px-8">
+        <div className="lg:col-span-2 lg:col-start-1 lg:row-start-2 lg:mx-auto lg:grid lg:w-full lg:max-w-6xl lg:grid-cols-2 lg:gap-x-8 lg:px-8">
           <div className="lg:pr-4">
             <div className="max-w-xl text-base/7 text-gray-700 space-y-4 lg:max-w-lg">
               {bodyText}

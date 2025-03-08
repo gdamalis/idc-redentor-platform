@@ -1,3 +1,4 @@
+import { Container } from "@src/components/ui/container";
 import { Dropdown, DropDownOption } from "@src/components/ui/dropdown";
 import { Typography } from "@src/components/ui/typography";
 import { Link } from "@src/i18n/routing";
@@ -37,7 +38,7 @@ export const ContactForm = () => {
 
   return (
     <div className="relative isolate bg-white dark:bg-gray-900 px-6 py-20 sm:py-32 lg:px-8">
-      <div className="mx-auto max-w-xl lg:max-w-4xl">
+      <Container>
         <Typography
           component="h2"
           variant="h2"
@@ -172,7 +173,7 @@ export const ContactForm = () => {
             </figure>
           </div>
         </div>
-      </div>
+      </Container>
     </div>
   );
 };
