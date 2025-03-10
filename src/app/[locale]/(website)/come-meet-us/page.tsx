@@ -23,11 +23,11 @@ export async function generateMetadata({
 
   return {
     title: seoContent.title,
-    description: seoContent.desacription,
+    description: seoContent.description,
     keywords: seoContent.keywords,
     openGraph: {
       title: seoContent.title,
-      description: seoContent.desacription,
+      description: seoContent.description,
       images: [{ url: seoContent.image.url }],
       url: `${baseUrl}/${locale}`,
       siteName: seoContent.siteName,
