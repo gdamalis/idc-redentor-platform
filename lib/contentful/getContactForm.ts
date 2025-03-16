@@ -27,6 +27,8 @@ const GRAPHQL_FIELDS = `
         type
         required
         validation
+        placeholder
+        inputId
       }
     }
   }

@@ -1,0 +1,39 @@
+{
+  "cSpell.words": [
+    "Asunto",
+    "codegen",
+    "contentful",
+    "contacto",
+    "Contacto",
+    "eslintrc",
+    "formulario",
+    "Formulario",
+    "graphql",
+    "headlessui",
+    "heroicons",
+    "Iglesia",
+    "intl",
+    "mailchimp",
+    "mensaje",
+    "Mensaje",
+    "mongodb",
+    "nextjs",
+    "Nombre",
+    "Nuevo",
+    "postcss",
+    "Redentor",
+    "reservados",
+    "sendgrid",
+    "tailwindcss",
+    "turbopack",
+    "derechos",
+    "todos",
+    "los",
+    "vercel"
+  ],
+  "cSpell.language": "en,es",
+  "cSpell.enabledFileTypes": {
+    "typescript": true,
+    "html": true
+  }
+}

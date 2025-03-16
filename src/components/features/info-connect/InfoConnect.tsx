@@ -31,7 +31,7 @@ type InfoConnectProps = {
   };
 };
 
-export default function InfoConnect({
+export function InfoConnect({
   content,
 }: Readonly<InfoConnectProps>) {
   const bodyText = documentToReactComponents(content?.body.json, options);

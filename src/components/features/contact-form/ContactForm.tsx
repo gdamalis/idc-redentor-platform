@@ -1,3 +1,5 @@
+"use client";
+
 import {
   CommonNode,
   documentToReactComponents,
@@ -5,13 +7,27 @@ import {
 import { BLOCKS } from "@contentful/rich-text-types";
 import BibleVerse from "@src/components/shared/bible-verse/BibleVerse";
 import { Container } from "@src/components/ui/container";
-import { Dropdown, DropDownOption } from "@src/components/ui/dropdown";
+import LoadingSpinner from "@src/components/ui/LoadingSpinner";
 import { Typography } from "@src/components/ui/typography";
 import { Link } from "@src/i18n/routing";
 import Image from "next/image";
-import { ReactNode } from "react";
+import { ReactNode, useActionState } from "react";
 
-const options = {
+import { handleContactFormSubmission } from "./contactFormAction";
+import {
+  getDropdownField,
+  getEmailInput,
+  getLongTextInput,
+  getShortTextInput,
+  getTextWithHighlights,
+} from "./formFields";
+import { getRequiredFields } from "./formUtils";
+import { ContactFormProps, ContactFormState } from "./types";
+
+/**
+ * Rich text rendering options for the agreement note
+ */
+const richTextOptions = {
   renderNode: {
     [BLOCKS.PARAGRAPH]: (node: CommonNode, children: ReactNode) => (
       <Typography
@@ -36,141 +52,27 @@ const options = {
   },
 };
 
-type Field = {
-  name: string;
-  inputId: string;
-  required: boolean;
-  type: string;
-  values: string[];
-};
-
-function getShortTextInput(data: Field) {
-  return (
-    <div key={data.inputId}>
-      <label
-        htmlFor={data.inputId}
-        className="block text-sm/6 font-semibold text-gray-900"
-      >
-        {data.name}
-      </label>
-      <div className="mt-2.5">
-        <input
-          id={data.inputId}
-          required={data.required}
-          name={data.inputId}
-          type="text"
-          autoComplete="given-name"
-          className="block w-full rounded-md bg-white px-3.5 py-2 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-blue-600"
-        />
-      </div>
-    </div>
-  );
-}
-
-function getLongTextInput(data: Field) {
-  return (
-    <div className="sm:col-span-2" key={data.inputId}>
-      <label
-        htmlFor={data.inputId}
-        className="block text-sm/6 font-semibold text-gray-900"
-      >
-        {data.name}
-      </label>
-      <div className="mt-2.5">
-        <textarea
-          id={data.inputId}
-          required={data.required}
-          name={data.inputId}
-          rows={4}
-          className="block w-full rounded-md bg-white px-3.5 py-2 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-blue-600"
-          defaultValue={""}
-        />
-      </div>
-    </div>
-  );
-}
-
-function getDropdownField(data: Field) {
-  const DropDownOptions: DropDownOption[] = data.values.map((value, index) => ({
-    id: String(index),
-    value,
-  }));
-
-  return (
-    <div key={data.inputId}>
-      <label
-        htmlFor={data.inputId}
-        className="block text-sm/6 font-semibold text-gray-900"
-      >
-        {data.name}
-      </label>
-      <div className="mt-2.5">
-        <Dropdown options={DropDownOptions} />
-      </div>
-    </div>
-  );
-}
-
-function getTextWithHighlights(text: string) {
-  const styledText = text.split(/<highlight>(.*?)<\/highlight>/g);
-
-  styledText.forEach((value, index) => {
-    if (value.includes("@")) {
-      styledText[index] = (
-        <span
-          key={value}
-          className="inline-flex items-center rounded-md bg-purple-50 px-1.5 py-0.5 text-sm font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10"
-        >
-          {value}
-        </span> // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ) as any;
-      return true;
-    }
-
-    styledText[index] = (
-      <Typography component="p" variant="body1" key={value}>
-        {value}
-      </Typography> // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ) as any;
-  });
-
-  return styledText;
-}
-
-type ContactFormProps = {
-  content: {
-    title: string;
-    description: string;
-    ctaText: string;
-    image: {
-      url: string;
-      title: string;
-    };
-    agreementNote: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      json: any;
-    };
-    bibleVerse: {
-      book: string;
-      chapter: number;
-      fromVerse: number;
-      toVerse: number;
-      verseContent: string;
-      bibleVersion: string;
-    };
-    formFields: Field[];
-  };
-};
-
 export const ContactForm = ({ content }: ContactFormProps) => {
   const agreementNote = documentToReactComponents(
     content.agreementNote.json,
-    options,
+    richTextOptions,
+  );
+
+  const requiredFields = getRequiredFields(content.formFields);
+
+  const [state, formAction, isPending] = useActionState<
+    ContactFormState | null,
+    FormData
+  >(
+    (currentState, formData) =>
+      handleContactFormSubmission(currentState, formData, requiredFields),
+    null,
   );
 
   return (
     <div className="relative isolate bg-white dark:bg-gray-900 px-6 py-20 sm:py-32 lg:px-8 border-t border-gray-900/5">
       <Container>
+        {/* Header section */}
         <Typography
           component="h2"
           variant="h2"
@@ -181,34 +83,56 @@ export const ContactForm = ({ content }: ContactFormProps) => {
         <div className="mt-4 flex items-center space-x-1 text-lg/8 text-gray-600">
           {getTextWithHighlights(content.description)}
         </div>
+
+        {/* Form and image section */}
         <div className="mt-8 flex flex-col gap-16 sm:gap-y-20 lg:flex-row">
-          <form action="#" method="POST" className="lg:flex-auto">
+          <form action={formAction} className="lg:flex-auto">
+            {/* Form fields */}
             <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
-              {content.formFields.map((field: Field) => {
+              {content.formFields.map((field) => {
                 if (field.type === "Short text") {
                   return getShortTextInput(field);
                 }
 
-                if (field.type === "Long text") {
-                  return getLongTextInput(field);
+                if (field.type === "Email") {
+                  return getEmailInput(field);
                 }
 
                 if (field.type === "Dropdown") {
                   return getDropdownField(field);
                 }
+
+                if (field.type === "Long text") {
+                  return getLongTextInput(field);
+                }
               })}
             </div>
+
+            {/* Feedback message */}
+            {state?.message && (
+              <div
+                className={`mt-4 p-3 rounded ${state.success ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
+              >
+                {state.message}
+              </div>
+            )}
+
+            {/* Submit button */}
             <div className="mt-10">
               <button
                 type="submit"
-                className="block w-full rounded-md bg-blue-600 px-3.5 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                disabled={isPending}
+                className="block w-full rounded-md bg-blue-600 px-3.5 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50"
               >
-                {content.ctaText}
+                {isPending ? <LoadingSpinner size="sm" /> : content.ctaText}
               </button>
             </div>
 
+            {/* Agreement note */}
             {agreementNote}
           </form>
+
+          {/* Right side content */}
           <div className="lg:mt-6 lg:w-80 lg:flex-none">
             <Image
               src={content.image.url}
