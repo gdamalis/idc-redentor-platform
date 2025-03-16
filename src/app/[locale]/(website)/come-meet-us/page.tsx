@@ -4,7 +4,7 @@ import { getSeo } from "@lib/contentful/getSeo";
 import { getTextBlockComponent } from "@lib/contentful/getTextBlockComponent";
 import { CommunityEvent } from "@src/components/features/community-event";
 import { ContactForm } from "@src/components/features/contact-form";
-import InfoConnnect from "@src/components/features/info-connect/InfoConnect";
+import { InfoConnect } from "@src/components/features/info-connect/InfoConnect";
 import { Header } from "@src/components/shared/header";
 import { localesPath } from "@src/i18n/config";
 import { Metadata } from "next";
@@ -66,7 +66,7 @@ export default async function ComeMeetUsPage({
     <main>
       <Header titlePath="Connect.header-title" className="bg-community" />
 
-      <InfoConnnect content={infoContact} />
+      <InfoConnect content={infoContact} />
 
       <CommunityEvent content={eventSundayMeetings} />
       <ContactForm content={contactForm} />
