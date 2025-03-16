@@ -19,9 +19,10 @@ type DropdownProps = {
   options: DropDownOption[];
   placeholder: string;
   name?: string;
+  id?: string;
 };
 
-export const Dropdown = ({ options, placeholder, name }: DropdownProps) => {
+export const Dropdown = ({ options, placeholder, name, id }: DropdownProps) => {
   const [selected, setSelected] = useState({ id: "", value: placeholder });
 
   const placeholderStyle =
@@ -31,13 +32,14 @@ export const Dropdown = ({ options, placeholder, name }: DropdownProps) => {
     <Listbox value={selected} onChange={setSelected}>
       <div className="relative mt-2">
         {name && (
-          <input 
-            type="hidden" 
-            name={name} 
+          <input
+            type="hidden"
+            name={name}
             value={selected.value !== placeholder ? selected.value : ""}
+            id={id}
           />
         )}
-        
+
         <ListboxButton className="grid w-full cursor-default grid-cols-1 rounded-md bg-white dark:bg-gray-900 py-2 pl-3 pr-2 text-left text-gray-900 dark:text-gray-100 outline outline-1 -outline-offset-1 outline-gray-300 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-blue-600 sm:text-sm/6">
           <span
             className={`col-start-1 row-start-1 truncate pr-6 ${placeholderStyle}`}

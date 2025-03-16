@@ -113,6 +113,7 @@ export function getDropdownField(data: Field) {
           options={DropDownOptions} 
           placeholder={data.placeholder} 
           name={data.inputId}
+          id={data.inputId}
         />
       </div>
     </div>
