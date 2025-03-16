@@ -56,7 +56,7 @@ export function getEmailInput(data: Field) {
           name={data.inputId}
           type="email"
           autoComplete="email"
-          pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
+          pattern="[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"
           className="block w-full rounded-md bg-white dark:bg-gray-900 px-3.5 py-2 text-base text-gray-900 dark:text-gray-100 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-blue-600"
           placeholder={data.placeholder}
         />
