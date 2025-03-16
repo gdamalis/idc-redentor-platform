@@ -2,6 +2,7 @@
 
 import { ContactDetails } from "@src/types/ContactDetails";
 import { sendContactForm } from "@src/service/contact.service";
+import { sendContactFormEmail } from "@src/service/email-templates/contact-form-email.service";
 
 type ActionResult = {
   success: boolean;
@@ -40,9 +41,22 @@ export async function handleContactFormSubmission(
     };
     
     try {
-      const result = await sendContactForm(contactDetails);
+      // Save to database
+      const dbResult = await sendContactForm(contactDetails);
       
-      if (result.success) {
+      // Send email notification
+      const emailResult = await sendContactFormEmail(contactDetails);
+      
+      if (!dbResult.success) {
+        console.error("Database operation failed");
+      }
+      
+      if (!emailResult) {
+        console.error("Email sending failed");
+      }
+      
+      // Return success even if email fails, as long as DB operation succeeded
+      if (dbResult.success) {
         return { success: true, message: "Your message was sent successfully!" };
       } else {
         throw new Error("Database operation failed");
