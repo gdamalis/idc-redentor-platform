@@ -17,10 +17,6 @@
   "Connect": {
     "header-title": "Come to <highlight>Meet Us</highlight>"
   },
-  "contact-form": {
-    "title": "Connect with Us",
-    "description": "You can write to us at the email <highlight>info@idcredentor.com</highlight>"
-  },
   "Community": {
     "header-title": "Our <highlight>Community</highlight>"
   },
@@ -29,9 +25,6 @@
     "homepage": "Homepage",
     "language": "Language",
     "languageDrawer": "Toggle language drawer"
-  },
-  "creed-section": {
-    "title": "Our Creed"
   },
   "footer": {
     "copyright": "Redentor Church of Christ. All rights reserved.",

@@ -2,32 +2,44 @@
 import { documentToPlainTextString } from "@contentful/rich-text-plain-text-renderer";
 import { Container } from "@src/components/ui/container";
 import { Typography } from "@src/components/ui/typography";
-import { useTranslations } from "next-intl";
 
-type CredoSectionProps = {
+type CreedSectionProps = {
   content: {
     title: string;
-    description: string;
-    bibleVerse: string;
-  }[];
+    description: {
+      json: any;
+    };
+    creedItems: {
+      title: string;
+      description: {
+        json: any;
+      };
+      bibleVerse: {
+        json: any;
+      };
+      image: {
+        title: string;
+        url: string;
+      };
+    }[];
+  };
 };
 
-export const CredoSection = ({ content }: CredoSectionProps) => {
-  const t = useTranslations();
+export const CreedSection = ({ content }: CreedSectionProps) => {
+  const description = documentToPlainTextString(content.description?.json);
 
   return (
     <Container>
       <div className="py-24 sm:py-32">
-        <Typography
-          component="h2"
-          variant="h1"
-          className="text-center dark:text-white"
-        >
-          {t("creed-section.title")}
+        <Typography component="h2" variant="h1" className="text-center">
+          {content?.title}
+        </Typography>
+        <Typography component="p" variant="body1" className="text-center">
+          {description}
         </Typography>
 
         <dl className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-x-8 gap-y-16 text-base/7 sm:grid-cols-2 lg:mx-0 lg:max-w-none lg:grid-cols-3">
-          {content?.map((credo: any) => {
+          {content?.creedItems?.map((credo: any) => {
             const description = documentToPlainTextString(
               credo.description.json,
             );
