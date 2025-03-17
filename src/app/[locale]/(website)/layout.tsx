@@ -12,7 +12,7 @@ import { getMessages, setRequestLocale } from "next-intl/server";
 import { Nunito_Sans } from "next/font/google";
 import { draftMode } from "next/headers";
 import { notFound } from "next/navigation";
-import "../globals.css";
+import "../../globals.css";
 
 const nunitoSans = Nunito_Sans({
   subsets: ["latin"],
