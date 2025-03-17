@@ -5,18 +5,20 @@ const GRAPHQL_FIELDS = `
   description {
     json
   }
-  credoCollection {
+  contentItemsCollection {
     items {
-      title
-      description {
-        json
+      ... on Credo {
+        title
+        description {
+          json
       }
       bibleVerse {
         json
       }
       image {
         url
-        title
+          title
+        }
       }
     }
   }
@@ -33,7 +35,7 @@ export async function getContentCollection(
 ) {
   const data = await fetchGraphQL(
     `query {
-        contentCollection(
+        contentCollectionCollection(
           locale: "${locale}",
           where: {
             machineName: "${name}"
@@ -48,13 +50,13 @@ export async function getContentCollection(
     isDraftMode,
   );
 
-  const contentCollection = {
-    title: data?.data?.contentCollection?.items[0].title,
-    description: data?.data?.contentCollection?.items[0].description,
+  const contentCollectionCollection = {
+    title: data?.data?.contentCollectionCollection?.items[0].title,
+    description: data?.data?.contentCollectionCollection?.items[0].description,
     creedItems:
-      data?.data?.contentCollection?.items[0].credoCollection.items,
-    image: data?.data?.contentCollection?.items[0].image,
+      data?.data?.contentCollectionCollection?.items[0].contentItemsCollection.items,
+    image: data?.data?.contentCollectionCollection?.items[0].image,
   };
 
-  return contentCollection;
+  return contentCollectionCollection;
 }
