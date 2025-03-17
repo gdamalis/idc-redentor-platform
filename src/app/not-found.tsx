@@ -1,4 +1,5 @@
 import { routing } from "@src/i18n/routing";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Nunito_Sans } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
@@ -9,7 +10,10 @@ const nunitoSans = Nunito_Sans({
   variable: "--font-nunito-sans",
 });
 
-export default function NotFound() {
+export default async function NotFound() {
+  const locale = await getLocale();
+  const t = await getTranslations("notFound");
+
   return (
     <html lang={routing.defaultLocale}>
       <body className={`${nunitoSans.variable} font-sans antialiased`}>
@@ -26,27 +30,22 @@ export default function NotFound() {
               />
             </div>
             <h1 className="text-4xl font-bold mb-4 text-gray-900">
-              404 - Page Not Found
+              {t("title")}
             </h1>
             <p className="mb-8 text-lg text-gray-600">
-              The page you are looking for does not exist.
+              {t("description")}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              {routing.locales.map((locale) => (
-                <Link
-                  key={locale}
-                  href={`/${locale}`}
-                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-600"
-                >
-                  {locale === "es-AR"
-                    ? "Ir a la página principal"
-                    : "Go to homepage"}{" "}
-                  ({locale})
-                </Link>
-              ))}
+              <Link
+                key={locale}
+                href={`/${locale}`}
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              >
+                {t("backToHome")}
+              </Link>
             </div>
           </div>
-        </div>{" "}
+        </div>
       </body>
     </html>
   );
