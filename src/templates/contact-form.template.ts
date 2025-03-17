@@ -1,10 +1,11 @@
-<!doctype html>
+export const CONTACT_FORM_TEMPLATE = `
+<!DOCTYPE html>
 <html lang="es-AR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{subject}}</title>
-    <style>
+    <style> 
       body {
         font-family: "Trebuchet MS", Arial, sans-serif;
         line-height: 1.6;
@@ -104,3 +105,4 @@
     </div>
   </body>
 </html>
+`;
