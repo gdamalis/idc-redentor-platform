@@ -10,7 +10,7 @@ import { OurMissionSection } from "@src/components/features/our-mission-section"
 import { Header } from "@src/components/shared/header";
 import { localesPath } from "@src/i18n/config";
 import { Metadata } from "next";
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { draftMode } from "next/headers";
 
 export async function generateMetadata({
@@ -19,10 +19,11 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }>): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations("Metadata");
 
   const seoContent = await getSeo("seo-community", locale);
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-
+  
   return {
     title: seoContent.title,
     description: seoContent.description,
@@ -32,8 +33,8 @@ export async function generateMetadata({
       description: seoContent.description,
       images: [{ url: seoContent.image.url }],
       url: `${baseUrl}/${locale}`,
-      siteName: seoContent.siteName,
-      type: seoContent.type,
+      siteName: t("site-name"),
+      type: "website",
     },
     alternates: {
       canonical: `${baseUrl}/${locale}`,

@@ -38,7 +38,11 @@
     "description": "This page doesn't seem to exist",
     "backToHome": "Back to homepage"
   },
-  "sitename": "Redentor Church of Christ",
+  "Metadata": {
+    "site-name": "Redentor Church of Christ",
+    "keywords": "Church, Buenos Aires, Christianity, Religion, Faith, Jesus, Bible, God, Church of Christ, Church of Christ in Buenos Aires, Church of Christ in Argentina",
+    "type": "website"
+  },
   "status": {
     "sr-loading": "Loading..."
   }

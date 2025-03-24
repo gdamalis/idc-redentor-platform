@@ -5,7 +5,7 @@ import {
   fetchDummyOtherPosts,
   fetchDummySinglePost,
 } from "@src/data/sample-blog-posts";
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { draftMode } from "next/headers";
 
 type PostDetailsPageParams = {
@@ -20,7 +20,8 @@ type PostDetailsPageProps = Readonly<{
 export async function generateMetadata({ params }: PostDetailsPageProps) {
   const { postId } = await params;
   const post = await fetchDummySinglePost(postId);
-
+  const t = await getTranslations("Metadata");
+  
   return {
     title: post?.title,
     description: post?.description,
@@ -30,6 +31,8 @@ export async function generateMetadata({ params }: PostDetailsPageProps) {
       description: post?.ogDescription,
       image: "/assets/img/redentor_logo.png",
       url: `/blog/${post?.slug}`,
+      siteName: t("site-name"),
+      type: "website",
     },
     alternates: {
       canonical: `/blog/${post?.slug}`,

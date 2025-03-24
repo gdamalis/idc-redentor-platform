@@ -1,6 +1,7 @@
 import { getSeo } from '@lib/contentful/getSeo';
 import { localesPath } from '@src/i18n/config';
 import { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 
 export async function generateMetadata({
   params,
@@ -8,7 +9,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }>): Promise<Metadata> {
   const { locale } = await params;
-
+  const t = await getTranslations("Metadata");
   const seoContent = await getSeo("seo-who-is-jesus", locale);
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
@@ -21,8 +22,8 @@ export async function generateMetadata({
       description: seoContent.description,
       images: [{ url: seoContent.image.url }],
       url: `${baseUrl}/${locale}`,
-      siteName: seoContent.siteName,
-      type: seoContent.type,
+      siteName: t("site-name"),
+      type: "website",
     },
     alternates: {
       canonical: `${baseUrl}/${locale}`,

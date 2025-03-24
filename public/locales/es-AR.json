@@ -38,7 +38,11 @@
     "description": "Esta página no parece existir",
     "backToHome": "Volver a la página principal"
   },
-  "sitename": "Iglesia de Cristo Redentor",
+  "Metadata": {
+    "site-name": "Iglesia de Cristo Redentor",
+    "keywords": "Iglesia, Buenos Aires, Argentina, Religión, Fe, Cristianismo, Jesús, Biblia, Dios, Iglesia de Cristo, Iglesia de Cristo en Buenos Aires, Iglesia de Cristo en Argentina",
+    "type": "website"
+  },
   "status": {
     "sr-loading": "Cargando..."
   }
