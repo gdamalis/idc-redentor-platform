@@ -1,7 +1,7 @@
-import { getCtaComponent } from "@lib/contentful/getCtaComponent";
+import { getPage } from "@lib/contentful/getPage";
 import { getSeo } from "@lib/contentful/getSeo";
 import { BlogSection } from "@src/components/features/blog-section";
-import { ContactCta } from "@src/components/features/contact-cta";
+import { resolveComponents } from "@src/components/features/component-resolver";
 import { fetchDummyBlogPosts } from "@src/data/sample-blog-posts";
 import { localesPath } from "@src/i18n/config";
 import { Metadata } from "next";
@@ -45,20 +45,16 @@ export default async function BlogPage({
 }>) {
   const { locale } = await params;
   setRequestLocale(locale);
-
   const { isEnabled } = await draftMode();
-  const contactCta = await getCtaComponent(
-    "connect-with-us",
-    locale,
-    isEnabled,
-  );
+
+  const landingPage = await getPage("blog", locale, isEnabled);
 
   const posts = await fetchDummyBlogPosts();
 
   return (
     <div>
       <BlogSection posts={posts} />
-      <ContactCta content={contactCta} />
+      {resolveComponents(landingPage.extraSectionCollection)}
     </div>
   );
 }

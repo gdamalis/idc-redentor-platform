@@ -1,6 +1,6 @@
 import { getCtaComponent } from "@lib/contentful/getCtaComponent";
 import BlogPostDetails from "@src/components/features/blog-post-details/BlogPostDetails";
-import { ContactCta } from "@src/components/features/contact-cta";
+import { ComponentCta } from "@src/components/features/component-cta";
 import {
   fetchDummyOtherPosts,
   fetchDummySinglePost,
@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: PostDetailsPageProps) {
   const { postId } = await params;
   const post = await fetchDummySinglePost(postId);
   const t = await getTranslations("Metadata");
-  
+
   return {
     title: post?.title,
     description: post?.description,
@@ -63,7 +63,7 @@ export default async function PostDetailsPage({
   return (
     <>
       <BlogPostDetails post={post} relatedPosts={relatedPosts} />
-      <ContactCta content={contactCta} />
+      <ComponentCta content={contactCta} />
     </>
   );
 }

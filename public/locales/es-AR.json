@@ -3,16 +3,13 @@
     "relatedArticles": "Artículos relacionados",
     "featured": "destacado"
   },
-  "Blog": {
-    "viewMore": "Ver todos los artículos"
-  },
   "BlogPost": {
     "morePosts": "Otros artículos"
   },
-  "blogSection": {
+  "Blog": {
     "title": "Últimos artículos del blog",
     "description": "Conocé nuestras reflexiones y enseñanzas más recientes. Seguinos en este viaje de fe y aprendizaje.",
-    "viewMore": "Ver todos los artículos"
+    "view-more": "Ver todos los artículos"
   },
   "Connect": {
     "header-title": "Vení a <highlight>Conocernos</highlight>"

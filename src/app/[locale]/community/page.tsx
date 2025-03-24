@@ -3,7 +3,7 @@ import { getCtaComponent } from "@lib/contentful/getCtaComponent";
 import { getDuplexComponent } from "@lib/contentful/getDuplexComponent";
 import { getSeo } from "@lib/contentful/getSeo";
 import { getTextBlockComponent } from "@lib/contentful/getTextBlockComponent";
-import { ContactCta } from "@src/components/features/contact-cta";
+import { ComponentCta } from "@src/components/features/component-cta";
 import { CreedSection } from "@src/components/features/creed-section";
 import InfoCommunity from "@src/components/features/info-community/InfoCommunity";
 import { OurMissionSection } from "@src/components/features/our-mission-section";
@@ -23,7 +23,7 @@ export async function generateMetadata({
 
   const seoContent = await getSeo("seo-community", locale);
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-  
+
   return {
     title: seoContent.title,
     description: seoContent.description,
@@ -79,7 +79,7 @@ export default async function CommunityPage({
       <InfoCommunity content={infoCommunity} />
       <CreedSection content={ourCreedContent} />
       <OurMissionSection content={ourMissionSection} />
-      <ContactCta content={contactCta} />
+      <ComponentCta content={contactCta} />
     </main>
   );
 }

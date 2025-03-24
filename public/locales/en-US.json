@@ -3,16 +3,13 @@
     "relatedArticles": "Related articles",
     "featured": "featured"
   },
-  "Blog": {
-    "viewMore": "View all articles"
-  },
   "BlogPost": {
     "morePosts": "Other articles"
   },
-  "blogSection": {
+  "Blog": {
     "title": "Latest from the blog",
     "description": "Discover our latest reflections and teachings. Join us on this journey of faith and learning.",
-    "viewMore": "View all articles"
+    "view-more": "View all articles"
   },
   "Connect": {
     "header-title": "Come to <highlight>Meet Us</highlight>"

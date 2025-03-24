@@ -1,7 +1,7 @@
+import { Typography } from "@src/components/ui/typography";
+import { Link } from "@src/i18n/routing";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
-import { Link } from "@src/i18n/routing";
-import { Typography } from "@src/components/ui/typography";
 
 import { BlogPost } from "@src/types/BlogPost";
 
@@ -10,23 +10,25 @@ type BlogSectionProps = {
 };
 
 export const BlogSection = ({ posts }: BlogSectionProps) => {
-  const t = useTranslations();
+  const t = useTranslations("Blog");
 
   return (
     <div className="bg-white py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <Typography
-          component="h2"
-          variant="h2" className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-            {t("blogSection.title")}
+            component="h2"
+            variant="h2"
+            className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl"
+          >
+            {t("title")}
           </Typography>
           <Typography
             component="p"
             variant="body1"
             className="mt-2 text-lg leading-8 text-gray-600"
           >
-            {t("blogSection.description")}
+            {t("description")}
           </Typography>
         </div>
         <div className="mx-auto mt-16 grid max-w-2xl auto-rows-fr grid-cols-1 gap-8 sm:mt-20 lg:mx-0 lg:max-w-none lg:grid-cols-3">
@@ -69,8 +71,10 @@ export const BlogSection = ({ posts }: BlogSectionProps) => {
                 </div>
               </div>
               <Typography
-          component="h3"
-          variant="h3" className="mt-3 text-lg font-semibold leading-6 text-white">
+                component="h3"
+                variant="h3"
+                className="mt-3 text-lg font-semibold leading-6 text-white"
+              >
                 <Link href={`/blog/${post.slug}`}>
                   <span className="absolute inset-0" />
                   {post.title}
