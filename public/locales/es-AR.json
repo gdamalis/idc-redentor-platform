@@ -4,7 +4,9 @@
     "featured": "destacado"
   },
   "BlogPost": {
-    "morePosts": "Otros artículos"
+    "more-posts": "Otros artículos",
+    "written-by": "Escrito por",
+    "on-date": "el {date}"
   },
   "Blog": {
     "title": "Últimos artículos del blog",

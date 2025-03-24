@@ -1,8 +1,8 @@
+import { getLatestBlogPostPages } from "@lib/contentful/getBlogPostPages";
 import { getPage } from "@lib/contentful/getPage";
 import { getSeo } from "@lib/contentful/getSeo";
 import { BlogSection } from "@src/components/features/blog-section";
 import { resolveComponents } from "@src/components/features/component-resolver";
-import { fetchDummyBlogPosts } from "@src/data/sample-blog-posts";
 import { localesPath } from "@src/i18n/config";
 import { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -49,11 +49,11 @@ export default async function BlogPage({
 
   const landingPage = await getPage("blog", locale, isEnabled);
 
-  const posts = await fetchDummyBlogPosts();
+  const latestPosts = await getLatestBlogPostPages(locale, isEnabled);
 
   return (
     <div>
-      <BlogSection posts={posts} />
+      <BlogSection posts={latestPosts} />
       {resolveComponents(landingPage.extraSectionCollection)}
     </div>
   );

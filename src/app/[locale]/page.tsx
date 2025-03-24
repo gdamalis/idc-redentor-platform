@@ -1,10 +1,12 @@
+import {
+  getLatestBlogPostPages
+} from "@lib/contentful/getBlogPostPages";
 import { getCtaComponent } from "@lib/contentful/getCtaComponent";
 import { getHeroBannerComponent } from "@lib/contentful/getHeroBannerComponent";
 import { getSeo } from "@lib/contentful/getSeo";
 import { BlogSection } from "@src/components/features/blog-section";
 import { ComponentCta } from "@src/components/features/component-cta";
 import { OurMissionCta } from "@src/components/features/our-mission-cta";
-import { fetchDummyBlogPosts } from "@src/data/sample-blog-posts";
 import { localesPath } from "@src/i18n/config";
 import { type Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -59,13 +61,12 @@ export default async function Home({
     locale,
     isEnabled,
   );
-
-  const posts = await fetchDummyBlogPosts();
+  const latestPosts = await getLatestBlogPostPages(locale, isEnabled);
 
   return (
     <main>
       <OurMissionCta content={ourMission} />
-      <BlogSection posts={posts} />
+      <BlogSection posts={latestPosts} />
       <ComponentCta content={contactCta} />
     </main>
   );

@@ -4,7 +4,9 @@
     "featured": "featured"
   },
   "BlogPost": {
-    "morePosts": "Other articles"
+    "more-posts": "Other articles",
+    "written-by": "Written by",
+    "on-date": "on {date}"
   },
   "Blog": {
     "title": "Latest from the blog",

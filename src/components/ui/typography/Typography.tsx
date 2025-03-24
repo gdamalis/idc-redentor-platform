@@ -33,14 +33,14 @@ export const Typography = ({
     h4: "text-xl font-bold text-gray-900 dark:text-gray-100",
     h5: "text-lg font-bold text-gray-900 dark:text-gray-100",
     h6: "text-base font-bold text-gray-900 dark:text-gray-100",
-    body1: "text-base text-gray-600 dark:text-gray-300",
+    body1: "text-base dark:text-gray-300",
     body2: "text-sm text-gray-600 dark:text-gray-300",
     caption: "text-xs text-gray-600 dark:text-gray-300",
     overline: "text-xs text-gray-600 dark:text-gray-300 uppercase",
   };
 
   return (
-    <Component id={id} className={`${variantMap[variant]} ${className} `}>
+    <Component id={id} className={`${variantMap[variant]} ${className}`}>
       {children}
     </Component>
   );

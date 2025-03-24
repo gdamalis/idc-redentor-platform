@@ -1,6 +1,6 @@
 import { Typography } from "@src/components/ui/typography";
 import { Link } from "@src/i18n/routing";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import Image from "next/image";
 
 import { BlogPost } from "@src/types/BlogPost";
@@ -10,6 +10,7 @@ type BlogSectionProps = {
 };
 
 export const BlogSection = ({ posts }: BlogSectionProps) => {
+  const locale = useLocale();
   const t = useTranslations("Blog");
 
   return (
@@ -34,12 +35,12 @@ export const BlogSection = ({ posts }: BlogSectionProps) => {
         <div className="mx-auto mt-16 grid max-w-2xl auto-rows-fr grid-cols-1 gap-8 sm:mt-20 lg:mx-0 lg:max-w-none lg:grid-cols-3">
           {posts.map((post) => (
             <article
-              key={post.id}
+              key={post.sys.id}
               className="relative isolate flex flex-col justify-end overflow-hidden rounded-2xl bg-gray-900 px-8 pb-8 pt-80 sm:pt-48 lg:pt-80"
             >
               <Image
-                alt={post.title}
-                src={post.imageUrl}
+                alt={post.featuredImage.title}
+                src={post.featuredImage.url}
                 width={780}
                 height={780}
                 className="absolute inset-0 -z-10 h-full w-full object-cover"
@@ -48,8 +49,13 @@ export const BlogSection = ({ posts }: BlogSectionProps) => {
               <div className="absolute inset-0 -z-10 rounded-2xl ring-1 ring-inset ring-gray-900/10" />
 
               <div className="flex flex-wrap items-center gap-y-1 overflow-hidden text-sm leading-6 text-gray-300">
-                <time dateTime={post.datetime} className="mr-8">
-                  {post.date}
+                <time dateTime={post.publishedDate} className="mr-8">
+                  {new Date(post.publishedDate)
+                    .toLocaleDateString(locale, {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    })}
                 </time>
                 <div className="-ml-4 flex items-center gap-x-4">
                   <svg
@@ -60,8 +66,8 @@ export const BlogSection = ({ posts }: BlogSectionProps) => {
                   </svg>
                   <div className="flex gap-x-2.5">
                     <Image
-                      alt={post.author.name}
-                      src={post.author.imageUrl}
+                      alt={post.author.avatar.title}
+                      src={post.author.avatar.url}
                       width={24}
                       height={24}
                       className="h-6 w-6 flex-none rounded-full bg-white/10"
