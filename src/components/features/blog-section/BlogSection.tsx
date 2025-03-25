@@ -14,7 +14,7 @@ export const BlogSection = ({ posts }: BlogSectionProps) => {
   const t = useTranslations("Blog");
 
   return (
-    <div className="bg-white py-24 sm:py-32">
+    <div className="py-16 sm:py-24">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <Typography

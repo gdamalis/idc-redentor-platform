@@ -32,12 +32,12 @@ export const Typography = ({
   // Base styles without colors
   const baseStyles = {
     h1: "text-4xl font-bold",
-    h2: "text-2xl lg:text-3xl font-bold mt-8 lg:mb-5",
+    h2: "text-2xl sm:text-3xl font-bold mt-8 sm:mb-5",
     h3: "text-2xl font-bold",
     h4: "text-xl font-bold",
     h5: "text-lg font-bold",
     h6: "text-base font-bold",
-    body: "text-lg leading-7 lg:text-xl lg:leading-8",
+    body: "text-lg leading-7 sm:text-xl sm:leading-8",
     body1: "text-base",
     body2: "text-sm",
     caption: "text-xs",
