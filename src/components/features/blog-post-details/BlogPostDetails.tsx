@@ -3,14 +3,13 @@ import {
   Options,
 } from "@contentful/rich-text-react-renderer";
 import { BLOCKS, MARKS } from "@contentful/rich-text-types";
-import { InformationCircleIcon } from "@heroicons/react/24/outline";
 import { Container } from "@src/components/ui/container";
 import { Divider } from "@src/components/ui/divider";
 import { Typography } from "@src/components/ui/typography";
 import { BlogPost } from "@src/types/BlogPost";
 import { formatDate } from "@src/utils/formatDate";
-import Image from "next/image";
 import { AuthorInfo } from "./AuthorInfo";
+import { FeaturedImage } from "./FeaturedImage";
 import { RelatedArticles } from "./RelatedArticles";
 
 type BlogPostDetailsProps = Readonly<{
@@ -101,22 +100,10 @@ export default function BlogPostDetails({
         </div>
 
         <div className="flex flex-col gap-y-4">
-          <figure className="">
-            <Image
-              src={post.featuredImage.url}
-              alt={post.featuredImage.title}
-              width={800}
-              height={450}
-              className="aspect-video rounded-xl bg-gray-50 object-cover"
-            />
-            <figcaption className="mt-2 flex gap-x-2 text-sm leading-6 text-gray-500">
-              <InformationCircleIcon
-                aria-hidden="true"
-                className="mt-0.5 h-5 w-5 flex-none text-gray-300"
-              />
-              {post.featuredImage.title}
-            </figcaption>
-          </figure>
+          <FeaturedImage
+            url={post.featuredImage.url}
+            title={post.featuredImage.title}
+          />
 
           <div className="rich-text-content">
             {richTextContent || (
@@ -125,6 +112,7 @@ export default function BlogPostDetails({
               </Typography>
             )}
           </div>
+          
           <Divider className="my-4"/>
 
           <RelatedArticles posts={relatedPosts} formattedDate={formattedDate} />
