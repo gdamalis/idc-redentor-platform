@@ -13,8 +13,9 @@ type ComponentCtaProps = {
 };
 
 export const ComponentCta = ({ content }: ComponentCtaProps) => {
-  const targetUrl = content?.targetPage?.slug 
-    ? `/${content.targetPage.slug}${content.urlParameters ? `?${content.urlParameters}` : ''}`
+  const queryParams = content?.urlParameters ? `?${content.urlParameters}` : '';
+  const targetUrl = content?.targetPage?.slug
+    ? `/${content.targetPage.slug}${queryParams}`
     : '#';
 
   return (
@@ -24,7 +25,7 @@ export const ComponentCta = ({ content }: ComponentCtaProps) => {
           <Typography
             component="h2"
             variant="h2"
-            className="text-3xl font-bold tracking-tight text-white sm:text-4xl"
+            className="text-3xl tracking-tight text-white md:text-4xl"
           >
             {content?.headline}
           </Typography>

@@ -18,9 +18,9 @@ export const Header = ({ titlePath, description, className }: HeaderProps) => {
       <Container className="px-6 lg:px-8">
         <div className="mx-auto max-w-2xl lg:mx-0">
           <Typography
-            component="h2"
-            variant="h2"
-            className="inline-block text-4xl/normal font-bold text-gray-900 sm:text-6xl dark:!text-gray-100"
+            component="h1"
+            variant="h1"
+            className="inline-block text-4xl/normal font-bold text-gray-900 sm:text-6xl dark:!text-gray-900"
           >
             {t.rich(titlePath, {
               highlight: (text) => (

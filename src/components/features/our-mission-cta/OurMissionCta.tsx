@@ -15,7 +15,7 @@ const options = {
       <Typography
         component="p"
         variant="body1"
-        className="mt-6 text-xl leading-8 text-gray-600"
+        className="mt-6 text-xl leading-8"
       >
         {children}
       </Typography>

@@ -28,7 +28,7 @@ export const Footer = ({ content, subscribeContent }: FooterProps) => {
   return (
     <footer
       aria-labelledby="footer-heading"
-      className="bg-gray-50 dark:bg-gray-700"
+      className="bg-gray-50 dark:bg-gray-900"
     >
       <Typography
         component="h2"
@@ -39,7 +39,7 @@ export const Footer = ({ content, subscribeContent }: FooterProps) => {
         Footer
       </Typography>
       <Container className="space-y-8 px-6 pt-12 lg:px-8">
-        <div className="space-y-8 xl:grid xl:grid-cols-3 xl:gap-8">
+        <div className="space-y-10 xl:grid xl:grid-cols-3 xl:gap-8">
           <div className="space-y-4">
             <Link className="flex w-fit" href="/" title={t("common.homepage")}>
               <Image
@@ -59,7 +59,7 @@ export const Footer = ({ content, subscribeContent }: FooterProps) => {
             </Typography>
             <SocialLinks links={content.socialLinks} />
           </div>
-          <div className="">
+          <div>
             <div className="md:grid md:grid-cols-2 md:gap-8">
               {/* <div>
                 <Typography
@@ -95,7 +95,7 @@ export const Footer = ({ content, subscribeContent }: FooterProps) => {
               </div> */}
             </div>
           </div>
-          <SubscribeForm className="" content={subscribeContent} />
+          <SubscribeForm content={subscribeContent} />
         </div>
         <div className="py-4 border-t border-gray-900/10 lg:py-6 text-center lg:flex lg:justify-between lg:text-left">
           <Typography
