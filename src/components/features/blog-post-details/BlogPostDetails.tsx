@@ -4,13 +4,12 @@ import {
 } from "@contentful/rich-text-react-renderer";
 import { BLOCKS, MARKS } from "@contentful/rich-text-types";
 import { Container } from "@src/components/ui/container";
-import { Divider } from "@src/components/ui/divider";
 import { Typography } from "@src/components/ui/typography";
 import { BlogPost } from "@src/types/BlogPost";
 import { formatDate } from "@src/utils/formatDate";
-import { AuthorInfo } from "./AuthorInfo";
 import { FeaturedImage } from "./FeaturedImage";
 import { RelatedArticles } from "./RelatedArticles";
+import { BlogPostHeader } from "./BlogPostHeader";
 
 type BlogPostDetailsProps = Readonly<{
   post: BlogPost;
@@ -30,10 +29,7 @@ const richTextOptions: Options = {
       </Typography>
     ),
     [BLOCKS.HEADING_2]: (node, children) => (
-      <Typography
-        component="h2"
-        variant="h2"
-      >
+      <Typography component="h2" variant="h2">
         {children}
       </Typography>
     ),
@@ -64,40 +60,9 @@ export default function BlogPostDetails({
   const formattedDate = formatDate(post.publishedDate, locale);
 
   return (
-    <Container className="py-16 lg:py-28">
+    <Container className="py-16 lg:py-20">
       <div className="mx-auto max-w-2xl flex flex-col gap-y-4">
-        <div className="flex flex-col gap-y-4">
-          <Typography
-            component="p"
-            variant="overline"
-            className="font-semibold text-blue-600 dark:text-blue-400"
-          >
-            Blog
-          </Typography>
-          <Typography
-            component="h1"
-            variant="h1"
-            className="text-4xl leading-tight"
-          >
-            {post.title}
-          </Typography>
-
-          {post.subtitle && (
-            <Typography
-              component="p"
-              variant="body2"
-            >
-              {post.subtitle}
-            </Typography>
-          )}
-
-          <AuthorInfo
-            authorDetails={post.author}
-            publishedDate={post.publishedDate}
-          />
-
-          <Divider className="my-4"/>
-        </div>
+        <BlogPostHeader post={post} />
 
         <div className="flex flex-col gap-y-4">
           <FeaturedImage
@@ -112,11 +77,9 @@ export default function BlogPostDetails({
               </Typography>
             )}
           </div>
-          
-          <Divider className="my-4"/>
-
-          <RelatedArticles posts={relatedPosts} formattedDate={formattedDate} />
         </div>
+
+        <RelatedArticles posts={relatedPosts} formattedDate={formattedDate} />
       </div>
     </Container>
   );

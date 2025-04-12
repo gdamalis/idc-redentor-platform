@@ -45,7 +45,7 @@ export const Typography = ({
   };
   
   const colorStyles = "text-gray-900 dark:text-gray-100";
-  const bodyColorStyles = "text-gray-600 dark:text-gray-300";
+  const bodyColorStyles = "text-gray-600 dark:text-gray-200";
   
   const isHeading = variant.startsWith('h');
   const defaultColor = isHeading ? colorStyles : bodyColorStyles;
