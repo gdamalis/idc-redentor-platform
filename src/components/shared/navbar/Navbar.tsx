@@ -13,7 +13,7 @@ export const Navbar = ({ menuItems = [] }) => {
   const t = useTranslations();
 
   return (
-    <Disclosure as="nav" className="bg-white dark:bg-gray-900 shadow">
+    <Disclosure as="nav" className=" shadow">
       <Container className="px-2 sm:px-6 lg:px-8">
         <div className="relative flex h-16 justify-between">
           <div className="flex items-center sm:hidden">

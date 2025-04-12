@@ -29,7 +29,7 @@ export function getShortTextInput(data: Field) {
           name={data.inputId}
           type="text"
           autoComplete="given-name"
-          className="block w-full rounded-md bg-white dark:bg-gray-900 px-3.5 py-2 text-base text-gray-900 dark:text-gray-100 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-blue-600"
+          className="block w-full rounded-md  px-3.5 py-2 text-base text-gray-900 dark:text-gray-100 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-blue-600 dark:bg-gray-950"
           placeholder={data.placeholder}
         />
       </div>
@@ -57,7 +57,7 @@ export function getEmailInput(data: Field) {
           type="email"
           autoComplete="email"
           pattern="[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"
-          className="block w-full rounded-md bg-white dark:bg-gray-900 px-3.5 py-2 text-base text-gray-900 dark:text-gray-100 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-blue-600"
+          className="block w-full rounded-md  px-3.5 py-2 text-base text-gray-900 dark:text-gray-100 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-blue-600 dark:bg-gray-950"
           placeholder={data.placeholder}
         />
       </div>
@@ -83,7 +83,7 @@ export function getLongTextInput(data: Field) {
           required={data.required}
           name={data.inputId}
           rows={4}
-          className="block w-full rounded-md bg-white dark:bg-gray-900 px-3.5 py-2 text-base text-gray-900 dark:text-gray-100 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-blue-600"
+          className="block w-full rounded-md  px-3.5 py-2 text-base text-gray-900 dark:text-gray-100 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-blue-600 dark:bg-gray-950"
           placeholder={data.placeholder}
         />
       </div>
@@ -140,7 +140,7 @@ export function getTextWithHighlights(text: string) {
     }
 
     styledText[index] = (
-      <Typography component="p" variant="body1" key={value}>
+      <Typography component="span" variant="body1" key={value}>
         {value}
       </Typography> // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ) as any;

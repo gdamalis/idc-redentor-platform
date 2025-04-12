@@ -28,7 +28,6 @@ export const Footer = ({ content, subscribeContent }: FooterProps) => {
   return (
     <footer
       aria-labelledby="footer-heading"
-      className="bg-gray-50 dark:bg-gray-900"
     >
       <Typography
         component="h2"
