@@ -21,7 +21,7 @@ export function FeaturedImage({
         alt={title}
         width={width}
         height={height}
-        className="aspect-video rounded-xl bg-gray-50 object-cover"
+        className="aspect-video rounded-lg bg-gray-50 object-cover"
         priority
       />
       <figcaption className="mt-2 flex items-center gap-x-2 text-sm leading-6 text-gray-500">
