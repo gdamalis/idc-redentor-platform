@@ -28,30 +28,33 @@ export const Typography = ({
   children,
 }: TypographyProps) => {
   const Component = component;
-  
+
   // Base styles without colors
   const baseStyles = {
-    h1: "text-4xl font-bold",
-    h2: "text-2xl sm:text-3xl font-bold mt-8 sm:mb-5",
-    h3: "text-2xl font-bold",
-    h4: "text-xl font-bold",
-    h5: "text-lg font-bold",
-    h6: "text-base font-bold",
+    h1: "text-4xl",
+    h2: "text-3xl mt-7 mb-4 md:text-3xl md:mt-8 md:mb-5",
+    h3: "text-xl md:text-2xl",
+    h4: "text-lg",
+    h5: "text-md",
+    h6: "text-base",
     body: "text-lg leading-7 sm:text-xl sm:leading-8",
     body1: "text-base",
     body2: "text-sm",
     caption: "text-xs",
     overline: "text-xs uppercase",
   };
-  
-  const colorStyles = "text-gray-900 dark:text-gray-100";
-  const bodyColorStyles = "text-gray-600 dark:text-gray-200";
-  
-  const isHeading = variant.startsWith('h');
-  const defaultColor = isHeading ? colorStyles : bodyColorStyles;
+
+  const headingStyles = "font-bold text-gray-900 dark:text-gray-100";
+  const nonHeadingStyles = "text-gray-900 dark:text-gray-300";
+
+  const isHeading = variant.startsWith("h");
+  const styles = isHeading ? headingStyles : nonHeadingStyles;
 
   return (
-    <Component id={id} className={cn(baseStyles[variant], defaultColor, className)}>
+    <Component
+      id={id}
+      className={cn(baseStyles[variant], styles, className)}
+    >
       {children}
     </Component>
   );

@@ -103,7 +103,7 @@ export const CommunityEvent = ({ content }: CommunityEventProps) => {
               />
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/10 sm:rounded-3xl"
+                className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-gray-700/10 sm:rounded-3xl"
               />
             </div>
           </div>

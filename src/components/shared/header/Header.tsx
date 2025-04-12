@@ -20,7 +20,7 @@ export const Header = ({ titlePath, description, className }: HeaderProps) => {
           <Typography
             component="h2"
             variant="h2"
-            className="inline-block text-4xl/normal font-bold text-gray-900 sm:text-6xl dark:!text-black"
+            className="inline-block text-4xl/normal font-bold text-gray-900 sm:text-6xl dark:!text-gray-100"
           >
             {t.rich(titlePath, {
               highlight: (text) => (
@@ -34,7 +34,7 @@ export const Header = ({ titlePath, description, className }: HeaderProps) => {
             <Typography
               component="p"
               variant="body1"
-              className="mt-6 text-lg leading-8 text-gray-600"
+              className="mt-6 text-lg leading-8 text-gray-600 dark:text-gray-300"
             >
               {description}
             </Typography>

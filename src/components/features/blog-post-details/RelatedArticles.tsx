@@ -23,21 +23,17 @@ export function RelatedArticles({
         {posts.map((post) => (
           <div key={post.sys.id} className="flex relative w-full">
             <div className="w-full">
-            <Divider className="my-6" />
+              <Divider className="my-6" />
               <Link href={`/blog/${post.slug}`}>
-                <article className="grid grid-cols-[minmax(0,1fr)_160px] gap-8">
+                <article className="grid grid-cols-[minmax(0,1fr)_82px] md:grid-cols-[minmax(0,1fr)_160px] gap-8">
                   <div className="flex flex-col gap-2 relative">
-                    <Typography component="h3" variant="h4">
+                    <Typography component="p" variant="h4">
                       {post.title}
                     </Typography>
-                    <Typography
-                      component="p"
-                      variant="body2"
-                      className="text-gray-400"
-                    >
+                    <Typography component="p" variant="body2">
                       {post.subtitle}
                     </Typography>
-                    <div className="flex flex-wrap items-center gap-y-1 gap-x-2 overflow-hidden text-sm leading-6 text-gray-300">
+                    <div className="flex flex-wrap items-center gap-y-1 gap-x-2 overflow-hidden text-sm leading-6 text-gray-500 dark:text-gray-300">
                       <time
                         dateTime={post.publishedDate}
                         className="uppercase text-xs"
@@ -48,7 +44,7 @@ export function RelatedArticles({
                         <>
                           <svg
                             viewBox="0 0 2 2"
-                            className="-ml-0.5 h-0.5 w-0.5 flex-none fill-white/50"
+                            className="-ml-0.5 h-0.5 w-0.5 flex-none fill-gray-500 dark:fill-gray-300"
                           >
                             <circle r={1} cx={1} cy={1} />
                           </svg>
@@ -56,7 +52,7 @@ export function RelatedArticles({
                             <Typography
                               component="p"
                               variant="caption"
-                              className="text-gray-400 uppercase self-center"
+                              className="text-gray-500 uppercase self-center"
                             >
                               {post.author.name}
                             </Typography>
@@ -71,7 +67,7 @@ export function RelatedArticles({
                       src={post.featuredImage.url}
                       width={780}
                       height={780}
-                      className="h-full w-full rounded-md"
+                      className="h-auto md:h-full md:w-full rounded-md"
                     />
                   </div>
                 </article>
