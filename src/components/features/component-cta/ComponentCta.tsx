@@ -32,7 +32,7 @@ export const ComponentCta = ({ content }: ComponentCtaProps) => {
           <div className="mt-10 flex items-center justify-center gap-x-6">
             <Link
               href={targetUrl}
-              className="rounded-3xl  px-3.5 py-2.5 text-sm font-semibold text-blue-600 shadow-sm hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="rounded-3xl bg-white px-3.5 py-2.5 text-sm font-semibold text-blue-600 shadow-sm hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               {content?.ctaText}
             </Link>

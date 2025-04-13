@@ -29,8 +29,8 @@ export const CommunityEvent = ({ content }: CommunityEventProps) => {
             <div className="mx-auto max-w-2xl lg:mx-0 lg:max-w-lg">
               <Typography
                 component="h2"
-                variant="h2"
-                className="mt-2 text-pretty text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl"
+                variant="h1"
+                className="mb-2 text-pretty text-3xl md:text-4xl"
               >
                 {content.eventInfo.name}
               </Typography>

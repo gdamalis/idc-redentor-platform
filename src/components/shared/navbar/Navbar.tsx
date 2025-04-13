@@ -34,12 +34,23 @@ export const Navbar = ({ menuItems = [] }) => {
           <div className="flex items-center justify-center sm:items-stretch">
             <div className="flex flex-shrink-0 items-center">
               <Link href="/" title={t("common.homepage")}>
+                {/* Light Mode Logo */}
                 <Image
                   src="/assets/img/redentor_logo.png"
-                  className="h-16 w-16 dark:invert dark:mix-blend-luminosity"
-                  width={60}
-                  height={80}
+                  className="block h-10 w-auto dark:hidden"
+                  width={600}
+                  height={800}
                   alt="Redentor church logo"
+                  priority
+                />
+                {/* Dark Mode Logo */}
+                <Image
+                  src="/assets/img/redentor_logo_light.png"
+                  className="hidden h-10 w-auto dark:block"
+                  width={600}
+                  height={800}
+                  alt="Redentor church logo"
+                  priority
                 />
               </Link>
             </div>

@@ -20,9 +20,19 @@ export default async function NotFound() {
         <div className="min-h-screen flex flex-col items-center justify-center text-center px-4 ">
           <div className="max-w-lg p-8  shadow-lg rounded-lg">
             <div className="flex justify-center mb-8">
+              {/* Light Mode Logo */}
               <Image
-                src="/assets/img/redentor_logo.png"
-                className="h-24 w-24 dark:invert dark:mix-blend-luminosity"
+                src="/assets/img/redentor_logo_100.png"
+                className="block h-24 w-24 dark:hidden"
+                width={96}
+                height={96}
+                alt="Redentor church logo"
+                priority
+              />
+              {/* Dark Mode Logo */}
+              <Image
+                src="/assets/img/redentor_logo_light_100.png"
+                className="hidden h-24 w-24 dark:block"
                 width={96}
                 height={96}
                 alt="Redentor church logo"

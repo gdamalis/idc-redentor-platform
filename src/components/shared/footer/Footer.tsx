@@ -26,9 +26,7 @@ export const Footer = ({ content, subscribeContent }: FooterProps) => {
   const t = useTranslations();
 
   return (
-    <footer
-      aria-labelledby="footer-heading"
-    >
+    <footer aria-labelledby="footer-heading">
       <Typography
         component="h2"
         variant="h2"
@@ -41,12 +39,23 @@ export const Footer = ({ content, subscribeContent }: FooterProps) => {
         <div className="space-y-10 xl:grid xl:grid-cols-3 xl:gap-8">
           <div className="space-y-4">
             <Link className="flex w-fit" href="/" title={t("common.homepage")}>
+              {/* Light Mode Logo */}
               <Image
-                src={content.logo.url}
-                alt={content.logo.title}
-                className="dark:invert dark:mix-blend-luminosity"
-                width={80}
-                height={80}
+                src="/assets/img/redentor_logo.png"
+                className="block h-12 w-auto dark:hidden"
+                width={600}
+                height={800}
+                alt="Redentor church logo"
+                priority
+              />
+              {/* Dark Mode Logo */}
+              <Image
+                src="/assets/img/redentor_logo_light.png"
+                className="hidden h-12 w-auto dark:block"
+                width={600}
+                height={800}
+                alt="Redentor church logo"
+                priority
               />
             </Link>
             <Typography

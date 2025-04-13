@@ -75,8 +75,8 @@ export const ContactForm = ({ content }: ContactFormProps) => {
         {/* Header section */}
         <Typography
           component="h2"
-          variant="h2"
-          className="text-pretty text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl"
+          variant="h1"
+          className="mb-2 text-pretty text-3xl md:text-4xl"
         >
           {content.title}
         </Typography>

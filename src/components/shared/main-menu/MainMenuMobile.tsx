@@ -20,8 +20,8 @@ export const MainMenuMobile = ({ menuItems }: MainMenuMobileProps) => {
             href={`/${item.groupLink.slug}`}
             className={`${
               path.startsWith(`/${item.groupLink.slug}`)
-                ? "border-blue-500 bg-blue-50 text-blue-700"
-                : "border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700"
+                ? "border-blue-500 bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-50"
+                : "border-transparent text-gray-500 hover:border-gray-300 dark:hover:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900 hover:text-gray-700 dark:hover:text-gray-300"
             } block border-l-4 py-2 pl-3 pr-4 text-base font-medium`}
           >
             {item.groupName}
