@@ -1,6 +1,23 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #171717;
+  --background-image-community: url('/assets/img/community_redentor_camp.jpeg');
+  --max-width-8xl: 90rem;
+  --letter-spacing-snug: -0.011em;
+  --font-size-2xs: 0.625rem;
+  --font-size-3xl: 1.75rem;
+  --font-size-4xl: 2.5rem;
+  --line-height-tighter: 1.1;
+  --font-family-sans: var(--font-nunito-sans), ui-sans-serif, system-ui, sans-serif;
+  --animate-highlight: highlight 1s ease-in-out forwards;
+}
+
+@keyframes highlight {
+  from { background-size: 0% 100%; }
+  to { background-size: 100% 100%; }
+}
 
 :root {
   --background: #ffffff;
