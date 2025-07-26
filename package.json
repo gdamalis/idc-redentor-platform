@@ -21,7 +21,7 @@
     "@vercel/analytics": "^1.5.0",
     "@vercel/speed-insights": "^1.2.0",
     "mongodb": "^6.14.2",
-    "next": "15.1.7",
+    "next": "15.4.4",
     "next-intl": "^4.0.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
