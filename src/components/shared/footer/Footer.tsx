@@ -6,6 +6,7 @@ import Image from "next/image";
 import { SubscribeForm } from "@src/components/shared/subscribe-form/SubscribeForm";
 import { Container } from "@src/components/ui/container";
 import SocialLinks from "../social-links/SocialLinks";
+import packageJson from "../../../../package.json";
 
 type FooterProps = {
   content: {
@@ -102,7 +103,7 @@ export const Footer = ({ content, subscribeContent }: FooterProps) => {
             variant="body1"
             className="text-xs leading-5 text-gray-500"
           >
-            &copy; {new Date().getFullYear()} {t("footer.copyright")}
+            &copy; {new Date().getFullYear()} {t("footer.copyright")} | v{packageJson.version}
           </Typography>
           <Typography
             component="p"
