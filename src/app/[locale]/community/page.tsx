@@ -1,3 +1,4 @@
+import { shouldUseDraftMode } from "@lib/contentful/draftMode";
 import { getContentCollection } from "@lib/contentful/getContentCollection";
 import { getCtaComponent } from "@lib/contentful/getCtaComponent";
 import { getDuplexComponent } from "@lib/contentful/getDuplexComponent";
@@ -11,7 +12,6 @@ import { Header } from "@src/components/shared/header";
 import { localesPath } from "@src/i18n/config";
 import { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { draftMode } from "next/headers";
 
 export async function generateMetadata({
   params,
@@ -21,7 +21,8 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations("Metadata");
 
-  const seoContent = await getSeo("seo-community", locale);
+  const isEnabled = await shouldUseDraftMode();
+  const seoContent = await getSeo("seo-community", locale, isEnabled);
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   return {
@@ -51,7 +52,7 @@ export default async function CommunityPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const { isEnabled } = await draftMode();
+  const isEnabled = await shouldUseDraftMode();
   const contactCta = await getCtaComponent(
     "connect-with-us",
     locale,

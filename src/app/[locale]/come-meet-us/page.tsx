@@ -1,3 +1,4 @@
+import { shouldUseDraftMode } from "@lib/contentful/draftMode";
 import { getContactForm } from "@lib/contentful/getContactForm";
 import { getEventBanner } from "@lib/contentful/getEventBanner";
 import { getSeo } from "@lib/contentful/getSeo";
@@ -9,7 +10,6 @@ import { Header } from "@src/components/shared/header";
 import { localesPath } from "@src/i18n/config";
 import { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { draftMode } from "next/headers";
 
 export async function generateMetadata({
   params,
@@ -18,7 +18,8 @@ export async function generateMetadata({
 }>): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations("Metadata");
-  const seoContent = await getSeo("seo-connect", locale);
+  const isEnabled = await shouldUseDraftMode();
+  const seoContent = await getSeo("seo-connect", locale, isEnabled);
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   return {
@@ -48,7 +49,7 @@ export default async function ComeMeetUsPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const { isEnabled } = await draftMode();
+  const isEnabled = await shouldUseDraftMode();
 
   const infoContact = await getTextBlockComponent(
     "info-connect",

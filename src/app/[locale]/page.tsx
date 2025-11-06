@@ -1,3 +1,4 @@
+import { shouldUseDraftMode } from "@lib/contentful/draftMode";
 import { getLatestBlogPostPages } from "@lib/contentful/getBlogPostPages";
 import { getCtaComponent } from "@lib/contentful/getCtaComponent";
 import { getHeroBannerComponent } from "@lib/contentful/getHeroBannerComponent";
@@ -8,7 +9,6 @@ import { OurMissionCta } from "@src/components/features/our-mission-cta";
 import { localesPath } from "@src/i18n/config";
 import { type Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { draftMode } from "next/headers";
 
 export async function generateMetadata({
   params,
@@ -18,7 +18,8 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations("Metadata");
 
-  const seoContent = await getSeo("seo-home", locale);
+  const isEnabled = await shouldUseDraftMode();
+  const seoContent = await getSeo("seo-home", locale, isEnabled);
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   return {
@@ -48,7 +49,7 @@ export default async function Home({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const { isEnabled } = await draftMode();
+  const isEnabled = await shouldUseDraftMode();
   const ourMission = await getHeroBannerComponent(
     "our-mission",
     locale,

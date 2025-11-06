@@ -1,3 +1,4 @@
+import { shouldUseDraftMode } from "@lib/contentful/draftMode";
 import {
   getBlogPostPage,
   getLatestBlogPostPages,
@@ -8,7 +9,6 @@ import { ComponentCta } from "@src/components/features/component-cta";
 import { localesPath } from "@src/i18n/config";
 import { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { draftMode } from "next/headers";
 
 type PostDetailsPageParams = {
   slug: string;
@@ -26,7 +26,7 @@ export async function generateMetadata({
   const t = await getTranslations("Metadata");
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
-  const { isEnabled } = await draftMode();
+  const isEnabled = await shouldUseDraftMode();
   const post = await getBlogPostPage(slug, locale, isEnabled);
 
   if (!post) {
@@ -59,7 +59,7 @@ export default async function PostDetailsPage({
 }: PostDetailsPageProps) {
   const { slug, locale } = await params;
   setRequestLocale(locale);
-  const { isEnabled } = await draftMode();
+  const isEnabled = await shouldUseDraftMode();
 
   const post = await getBlogPostPage(slug, locale, isEnabled);
 

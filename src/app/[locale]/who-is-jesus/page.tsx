@@ -1,3 +1,4 @@
+import { shouldUseDraftMode } from '@lib/contentful/draftMode';
 import { getSeo } from '@lib/contentful/getSeo';
 import { localesPath } from '@src/i18n/config';
 import { Metadata } from 'next';
@@ -10,7 +11,8 @@ export async function generateMetadata({
 }>): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations("Metadata");
-  const seoContent = await getSeo("seo-who-is-jesus", locale);
+  const isEnabled = await shouldUseDraftMode();
+  const seoContent = await getSeo("seo-who-is-jesus", locale, isEnabled);
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   return {
