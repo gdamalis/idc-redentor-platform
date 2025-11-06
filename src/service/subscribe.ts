@@ -11,7 +11,7 @@ export async function subscribe(email: string) {
     } else {
       return { success: false, ...data };
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
   } catch (error: any) {
     return { success: false, error };
   }
