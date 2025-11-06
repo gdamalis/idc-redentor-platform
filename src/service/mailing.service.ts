@@ -2,7 +2,7 @@ import type { EmailAdapter, EmailContent } from "./mailing/types";
 import { createSendGridAdapter } from "./mailing/sendgrid.adapter";
 import { createResendAdapter } from "./mailing/resend.adapter";
 
-export const FROM_EMAIL = "info@idcredentor.com";
+export const FROM_EMAIL = "no-reply@notifications.idcredentor.com";
 
 const DEFAULT_FROM_EMAIL = process.env.FROM_EMAIL ?? FROM_EMAIL;
 
