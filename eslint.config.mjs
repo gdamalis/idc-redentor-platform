@@ -1,17 +1,36 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
+import { createRequire } from "module";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const require = createRequire(import.meta.url);
 
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
+// Import Next.js ESLint configs (they are CommonJS modules)
+const nextCoreWebVitals = require("eslint-config-next/core-web-vitals");
+const nextTypescript = require("eslint-config-next/typescript");
 
 const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
-  { ignores: ["scripts/**/*.js", "src/**/__generated"] },
+  ...nextCoreWebVitals,
+  ...nextTypescript,
+  {
+    ignores: [
+      "scripts/**/*.js",
+      "src/**/__generated",
+      ".next/**",
+      "node_modules/**",
+    ],
+  },
+  {
+    // Allow require() in JavaScript config files
+    files: ["**/*.js", "**/*.mjs"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  {
+    // TypeScript-specific rule adjustments
+    files: ["**/*.ts", "**/*.tsx"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "warn", // Warn instead of error for gradual improvement
+    },
+  },
 ];
 
 export default eslintConfig;

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { documentToPlainTextString } from "@contentful/rich-text-plain-text-renderer";
 import { Container } from "@src/components/ui/container";
 import { Typography } from "@src/components/ui/typography";

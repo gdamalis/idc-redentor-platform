@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       { message: "Successfully subscribed!" },
       { status: 200 },
     );
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
   } catch (error: any) {
     if (JSON.parse(error?.response?.error?.text)?.title === "Member Exists") {
       return NextResponse.json(
