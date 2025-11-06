@@ -13,7 +13,7 @@ export function RelatedArticles({
   posts,
   formattedDate,
 }: Readonly<RelatedArticlesProps>) {
-  if (posts.length === 0) {
+  if (!posts || posts.length === 0) {
     return null;
   }
 

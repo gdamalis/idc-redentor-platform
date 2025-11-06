@@ -23,6 +23,11 @@ const richTextOptions: Options = {
         {children}
       </Typography>
     ),
+    [BLOCKS.QUOTE]: (node, children) => (
+      <Typography component="blockquote" variant="blockquote">
+        {children}
+      </Typography>
+    ),
   },
 };
 
