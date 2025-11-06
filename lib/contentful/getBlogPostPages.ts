@@ -93,14 +93,16 @@ export async function getLatestBlogPostPages(
     isDraftMode?: boolean;
   },
 ) {
+  const whereClause = options?.slug
+    ? `where: { slug_not: "${options.slug}" },`
+    : "";
+
   const data = await fetchGraphQL(
     `query {
         blogPostPageCollection(
           locale: "${locale}",
           limit: 3, 
-          where: {
-            ${options?.slug ? `slug: { ne: "${options.slug}" }` : ""}
-          },
+          ${whereClause}
           preview: ${options?.isDraftMode ? "true" : "false"}
         ) {
           items {
