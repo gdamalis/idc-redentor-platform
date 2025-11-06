@@ -67,7 +67,10 @@ export default async function PostDetailsPage({
     return <div>Post not found</div>;
   }
 
-  const latestPosts = await getLatestBlogPostPages(locale, isEnabled);
+  const latestPosts = await getLatestBlogPostPages(locale, {
+    slug,
+    isDraftMode: isEnabled,
+  });
 
   const contactCta = await getCtaComponent(
     "connect-with-us",

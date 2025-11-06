@@ -49,7 +49,9 @@ export default async function BlogPage({
 
   const landingPage = await getPage("blog", locale, isEnabled);
 
-  const latestPosts = await getLatestBlogPostPages(locale, isEnabled);
+  const latestPosts = await getLatestBlogPostPages(locale, {
+    isDraftMode: isEnabled,
+  });
 
   return (
     <div>

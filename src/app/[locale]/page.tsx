@@ -1,6 +1,4 @@
-import {
-  getLatestBlogPostPages
-} from "@lib/contentful/getBlogPostPages";
+import { getLatestBlogPostPages } from "@lib/contentful/getBlogPostPages";
 import { getCtaComponent } from "@lib/contentful/getCtaComponent";
 import { getHeroBannerComponent } from "@lib/contentful/getHeroBannerComponent";
 import { getSeo } from "@lib/contentful/getSeo";
@@ -61,7 +59,9 @@ export default async function Home({
     locale,
     isEnabled,
   );
-  const latestPosts = await getLatestBlogPostPages(locale, isEnabled);
+  const latestPosts = await getLatestBlogPostPages(locale, {
+    isDraftMode: isEnabled,
+  });
 
   return (
     <main>
