@@ -40,7 +40,7 @@ export const SubscribeForm = ({
   const sizeClasses = getSizeClasses(size);
 
   const [state, formAction, isPending] = useActionState<
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     any,
     FormData
   >(async (currentState, formData) => {

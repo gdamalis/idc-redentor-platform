@@ -27,7 +27,7 @@ type OurMissionCtaProps = {
   content: {
     headline: string;
     bodyText: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       json: any;
     };
     ctaText: string;
