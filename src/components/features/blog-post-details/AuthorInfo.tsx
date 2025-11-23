@@ -27,13 +27,14 @@ export function AuthorInfo({
   return (
     <div className="flex items-center gap-4 text-gray-500">
       <div className="flex items-center gap-2">
-        <Image
-          src={authorDetails.avatar.url}
-          alt={authorDetails.avatar.title}
-          width={36}
-          height={36}
-          className="rounded-full"
-        />
+        <div className="relative h-9 w-9 overflow-hidden rounded-full">
+          <Image
+            src={authorDetails.avatar.url}
+            alt={authorDetails.avatar.title}
+            fill
+            className="object-cover object-top"
+          />
+        </div>
       </div>
       <div className="flex flex-col gap-1">
         <Typography component="p" variant="overline" className="font-semibold tracking-wide dark:text-gray-300">
