@@ -1,18 +1,15 @@
 {
   "article": {
-    "relatedArticles": "Artículos relacionados",
     "featured": "destacado"
   },
-  "Blog": {
-    "viewMore": "Ver todos los artículos"
-  },
   "BlogPost": {
-    "morePosts": "Otros artículos"
+    "more-posts": "Otros artículos",
+    "related": "Artículos Relacionados"
   },
-  "blogSection": {
+  "Blog": {
     "title": "Últimos artículos del blog",
     "description": "Conocé nuestras reflexiones y enseñanzas más recientes. Seguinos en este viaje de fe y aprendizaje.",
-    "viewMore": "Ver todos los artículos"
+    "view-more": "Ver todos los artículos"
   },
   "Connect": {
     "header-title": "Vení a <highlight>Conocernos</highlight>"
@@ -38,7 +35,11 @@
     "description": "Esta página no parece existir",
     "backToHome": "Volver a la página principal"
   },
-  "sitename": "Iglesia de Cristo Redentor",
+  "Metadata": {
+    "site-name": "Iglesia de Cristo Redentor",
+    "keywords": "Iglesia, Buenos Aires, Argentina, Religión, Fe, Cristianismo, Jesús, Biblia, Dios, Iglesia de Cristo, Iglesia de Cristo en Buenos Aires, Iglesia de Cristo en Argentina",
+    "type": "website"
+  },
   "status": {
     "sr-loading": "Cargando..."
   }

@@ -70,7 +70,7 @@ export const ContactForm = ({ content }: ContactFormProps) => {
   );
 
   return (
-    <div className="relative isolate bg-white dark:bg-gray-900 px-6 py-20 sm:py-32 lg:px-8 border-t border-gray-900/5">
+    <div className="relative isolate px-6 py-20 sm:py-32 lg:px-8 border-t border-gray-900/5">
       <Container>
         {/* Header section */}
         <Typography
@@ -80,7 +80,7 @@ export const ContactForm = ({ content }: ContactFormProps) => {
         >
           {content.title}
         </Typography>
-        <div className="mt-4 flex items-center space-x-1 text-lg/8 text-gray-600">
+        <div className="mt-4  items-center gap-2 text-lg/8 text-gray-600">
           {getTextWithHighlights(content.description)}
         </div>
 

@@ -22,7 +22,7 @@ type CommunityEventProps = {
 
 export const CommunityEvent = ({ content }: CommunityEventProps) => {
   return (
-    <div className="overflow-hidden bg-white dark:bg-gray-900 py-20 sm:py-32">
+    <div className="overflow-hidden  py-20 sm:py-32">
       <Container>
         <div className="grid grid-cols-1 gap-x-8 gap-y-16 sm:gap-y-20 lg:grid-cols-2 lg:items-start">
           <div className="px-6 lg:px-0 lg:pr-4">
@@ -103,7 +103,7 @@ export const CommunityEvent = ({ content }: CommunityEventProps) => {
               />
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/10 sm:rounded-3xl"
+                className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-gray-700/10 sm:rounded-3xl"
               />
             </div>
           </div>

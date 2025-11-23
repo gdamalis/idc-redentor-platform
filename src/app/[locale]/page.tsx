@@ -1,12 +1,14 @@
+import { shouldUseDraftMode } from "@lib/contentful/draftMode";
+import { getLatestBlogPostPages } from "@lib/contentful/getBlogPostPages";
 import { getCtaComponent } from "@lib/contentful/getCtaComponent";
 import { getHeroBannerComponent } from "@lib/contentful/getHeroBannerComponent";
 import { getSeo } from "@lib/contentful/getSeo";
-import { ContactCta } from "@src/components/features/contact-cta";
+import { BlogSection } from "@src/components/features/blog-section";
+import { ComponentCta } from "@src/components/features/component-cta";
 import { OurMissionCta } from "@src/components/features/our-mission-cta";
 import { localesPath } from "@src/i18n/config";
 import { type Metadata } from "next";
-import { setRequestLocale } from "next-intl/server";
-import { draftMode } from "next/headers";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 export async function generateMetadata({
   params,
@@ -14,8 +16,10 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }>): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations("Metadata");
 
-  const seoContent = await getSeo("seo-home", locale);
+  const isEnabled = await shouldUseDraftMode();
+  const seoContent = await getSeo("seo-home", locale, isEnabled);
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   return {
@@ -27,8 +31,8 @@ export async function generateMetadata({
       description: seoContent.description,
       images: [{ url: seoContent.image.url }],
       url: `${baseUrl}/${locale}`,
-      siteName: seoContent.siteName,
-      type: seoContent.type,
+      siteName: t("site-name"),
+      type: "website",
     },
     alternates: {
       canonical: `${baseUrl}/${locale}`,
@@ -45,7 +49,7 @@ export default async function Home({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const { isEnabled } = await draftMode();
+  const isEnabled = await shouldUseDraftMode();
   const ourMission = await getHeroBannerComponent(
     "our-mission",
     locale,
@@ -56,12 +60,15 @@ export default async function Home({
     locale,
     isEnabled,
   );
+  const latestPosts = await getLatestBlogPostPages(locale, {
+    isDraftMode: isEnabled,
+  });
 
   return (
     <main>
       <OurMissionCta content={ourMission} />
-      {/* <BlogSection posts={posts} /> */}
-      <ContactCta content={contactCta} />
+      <BlogSection posts={latestPosts} />
+      <ComponentCta content={contactCta} />
     </main>
   );
 }

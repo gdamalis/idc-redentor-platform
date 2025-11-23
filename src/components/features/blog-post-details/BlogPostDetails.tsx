@@ -1,177 +1,31 @@
-import { InformationCircleIcon } from "@heroicons/react/24/outline";
-import { Typography } from "@src/components/ui/typography";
-import { Link } from "@src/i18n/routing";
+import { Container } from "@src/components/ui/container";
 import { BlogPost } from "@src/types/BlogPost";
-import { useTranslations } from "next-intl";
-import Image from "next/image";
+import { BlogPostHeader } from "./BlogPostHeader";
+import { BlogPostContent } from "./BlogPostContent";
+import { RelatedArticles } from "./RelatedArticles";
 
 type BlogPostDetailsProps = Readonly<{
-  post?: BlogPost;
+  post: BlogPost;
   relatedPosts: BlogPost[];
+  locale: string;
 }>;
 
 export default function BlogPostDetails({
   post,
   relatedPosts,
+  locale,
 }: BlogPostDetailsProps) {
-  const t = useTranslations();
-
   if (!post) {
     return null;
   }
 
   return (
-    <div className="bg-white px-6 py-32 lg:px-8">
-      <div className="mx-auto max-w-3xl text-base leading-7 text-gray-700">
-        <Typography
-          component="p"
-          variant="body1"
-          className="text-base font-semibold leading-7 text-blue-600"
-        >
-          {post.category}
-        </Typography>
-        <Typography
-          component="h1"
-          variant="h1"className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-          {post.title}
-        </Typography>
-        <div className="mt-4 text-sm text-gray-500">
-          <Typography component="p" variant="body1">
-            Escrito por{" "}
-            <span className="font-semibold text-gray-900">
-              {post.author.name}
-            </span>{" "}
-            el {post.date}
-          </Typography>
-        </div>
-
-        <Typography
-          component="p"
-          variant="body1"
-          className="mt-6 text-xl leading-8"
-        >
-          {post.description}
-        </Typography>
-
-        <div className="mt-10 max-w-2xl">
-          <Typography component="p" variant="body1">
-            {post.content}
-          </Typography>
-
-          {post.additionalContent?.map((content, index) => (
-            <Typography
-              component="p"
-              variant="body1"
-              key={`${post.title} ${index}`}
-              className="mt-8"
-            >
-              {content}
-            </Typography>
-          ))}
-
-          {post.quote && (
-            <figure className="mt-10 border-l border-blue-600 pl-9">
-              <blockquote className="font-semibold text-gray-900">
-                <Typography component="p" variant="body1">
-                  {post.quote}
-                </Typography>
-              </blockquote>
-              {post.quoteAuthor && (
-                <figcaption className="mt-6 flex gap-x-4">
-                  <Image
-                    src={post.quoteAuthor.imageUrl}
-                    alt={post.quoteAuthor.name}
-                    width={24}
-                    height={24}
-                    className="h-6 w-6 flex-none rounded-full bg-gray-50"
-                  />
-                  <div className="text-sm leading-6">
-                    <strong className="font-semibold text-gray-900">
-                      {post.quoteAuthor.name}
-                    </strong>{" "}
-                    – {post.quoteAuthor.role}
-                  </div>
-                </figcaption>
-              )}
-            </figure>
-          )}
-
-          <figure className="mt-16">
-            <Image
-              src={post.imageUrl}
-              alt={post.title}
-              width={800}
-              height={450}
-              className="aspect-video rounded-xl bg-gray-50 object-cover"
-            />
-            <figcaption className="mt-4 flex gap-x-2 text-sm leading-6 text-gray-500">
-              <InformationCircleIcon
-                aria-hidden="true"
-                className="mt-0.5 h-5 w-5 flex-none text-gray-300"
-              />
-              Imagen relacionada con el tema del blog.
-            </figcaption>
-          </figure>
-
-          <div className="mt-16 max-w-2xl">
-            <Typography
-          component="h2"
-          variant="h2" className="text-2xl font-bold tracking-tight text-gray-900">
-              {t("BlogPost.morePosts")}
-            </Typography>
-            <div className="mx-auto mt-16 grid max-w-2xl auto-rows-fr grid-cols-1 gap-8 sm:mt-20 lg:mx-0 lg:max-w-none lg:grid-cols-3">
-              {relatedPosts.map((post: BlogPost) => (
-                <article
-                  key={post.id}
-                  className="relative isolate flex flex-col justify-end overflow-hidden rounded-2xl bg-gray-900 px-8 pb-8 pt-80 sm:pt-48"
-                >
-                  <Image
-                    alt={post.title}
-                    src={post.imageUrl}
-                    width={780}
-                    height={780}
-                    className="absolute inset-0 -z-10 h-full w-full object-cover"
-                  />
-                  <div className="absolute inset-0 -z-10 bg-gradient-to-t from-gray-900 via-gray-900/40" />
-                  <div className="absolute inset-0 -z-10 rounded-2xl ring-1 ring-inset ring-gray-900/10" />
-
-                  <div className="flex flex-wrap items-center gap-y-1 overflow-hidden text-sm leading-6 text-gray-300">
-                    <time dateTime={post.datetime} className="mr-8">
-                      {post.date}
-                    </time>
-                    <div className="-ml-4 flex items-center gap-x-4">
-                      <svg
-                        viewBox="0 0 2 2"
-                        className="-ml-0.5 h-0.5 w-0.5 flex-none fill-white/50"
-                      >
-                        <circle r={1} cx={1} cy={1} />
-                      </svg>
-                      <div className="flex gap-x-2.5">
-                        <Image
-                          alt={post.author.name}
-                          src={post.author.imageUrl}
-                          width={24}
-                          height={24}
-                          className="h-6 w-6 flex-none rounded-full bg-white/10"
-                        />
-                        {post.author.name}
-                      </div>
-                    </div>
-                  </div>
-                  <Typography
-          component="h3"
-          variant="h3" className="mt-3 text-lg font-semibold leading-6 text-white">
-                    <Link href={`/blog/${post.slug}`}>
-                      <span className="absolute inset-0" />
-                      {post.title}
-                    </Link>
-                  </Typography>
-                </article>
-              ))}
-            </div>
-          </div>
-        </div>
+    <Container className="py-16 lg:py-20">
+      <div className="mx-auto max-w-2xl flex flex-col gap-y-4">
+        <BlogPostHeader post={post} />
+        <BlogPostContent post={post} />
+        <RelatedArticles posts={relatedPosts} locale={locale} />
       </div>
-    </div>
+    </Container>
   );
 }

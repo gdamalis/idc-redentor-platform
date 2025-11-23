@@ -1,17 +1,23 @@
 import { Typography } from "@src/components/ui/typography";
 import { Link } from "@src/i18n/routing";
 
-type ContactCtaProps = {
+type ComponentCtaProps = {
   content: {
     headline: string;
     ctaText: string;
-    targetPage: {
+    targetPage?: {
       slug: string;
     };
+    urlParameters?: string;
   };
 };
 
-export const ContactCta = ({ content }: ContactCtaProps) => {
+export const ComponentCta = ({ content }: ComponentCtaProps) => {
+  const queryParams = content?.urlParameters ? `?${content.urlParameters}` : '';
+  const targetUrl = content?.targetPage?.slug
+    ? `/${content.targetPage.slug}${queryParams}`
+    : '#';
+
   return (
     <div className="bg-blue-700">
       <div className="px-6 py-24 sm:px-6 sm:py-32 lg:px-8">
@@ -19,14 +25,14 @@ export const ContactCta = ({ content }: ContactCtaProps) => {
           <Typography
             component="h2"
             variant="h2"
-            className="text-3xl font-bold tracking-tight text-white sm:text-4xl"
+            className="text-3xl tracking-tight text-white md:text-4xl"
           >
             {content?.headline}
           </Typography>
           <div className="mt-10 flex items-center justify-center gap-x-6">
             <Link
-              href={`/${content?.targetPage?.slug}`}
-              className="rounded-3xl bg-white px-3.5 py-2.5 text-sm font-semibold text-blue-600 shadow-sm hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              href={targetUrl}
+              className="rounded-3xl  px-3.5 py-2.5 text-sm font-semibold bg-white text-blue-600 shadow-sm hover:bg-blue-50 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-blue-600"
             >
               {content?.ctaText}
             </Link>

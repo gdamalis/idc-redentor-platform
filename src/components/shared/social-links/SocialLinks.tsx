@@ -36,7 +36,7 @@ export default function SocialLinks({
   links,
 }: SocialLinksProps) {
   return (
-    <div className={`flex py-4 space-x-6 ${className}`}>
+    <div className={`flex space-x-6 ${className}`}>
       {links.map((item) => {
         const Icon = socialIcons[item.platform.toLowerCase()];
 

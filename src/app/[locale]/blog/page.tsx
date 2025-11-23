@@ -1,12 +1,12 @@
-import { getCtaComponent } from "@lib/contentful/getCtaComponent";
+import { shouldUseDraftMode } from "@lib/contentful/draftMode";
+import { getLatestBlogPostPages } from "@lib/contentful/getBlogPostPages";
+import { getPage } from "@lib/contentful/getPage";
 import { getSeo } from "@lib/contentful/getSeo";
 import { BlogSection } from "@src/components/features/blog-section";
-import { ContactCta } from "@src/components/features/contact-cta";
-import { fetchDummyBlogPosts } from "@src/data/sample-blog-posts";
+import { resolveComponents } from "@src/components/features/component-resolver";
 import { localesPath } from "@src/i18n/config";
 import { Metadata } from "next";
-import { setRequestLocale } from "next-intl/server";
-import { draftMode } from "next/headers";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 export async function generateMetadata({
   params,
@@ -14,8 +14,10 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }>): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations("Metadata");
 
-  const seoContent = await getSeo("seo-blog", locale);
+  const isEnabled = await shouldUseDraftMode();
+  const seoContent = await getSeo("seo-blog", locale, isEnabled);
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   return {
@@ -27,8 +29,8 @@ export async function generateMetadata({
       description: seoContent.description,
       images: [{ url: seoContent.image.url }],
       url: `${baseUrl}/${locale}`,
-      siteName: seoContent.siteName,
-      type: seoContent.type,
+      siteName: t("site-name"),
+      type: "website",
     },
     alternates: {
       canonical: `${baseUrl}/${locale}`,
@@ -44,20 +46,18 @@ export default async function BlogPage({
 }>) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const isEnabled = await shouldUseDraftMode();
 
-  const { isEnabled } = await draftMode();
-  const contactCta = await getCtaComponent(
-    "connect-with-us",
-    locale,
-    isEnabled,
-  );
+  const landingPage = await getPage("blog", locale, isEnabled);
 
-  const posts = await fetchDummyBlogPosts();
+  const latestPosts = await getLatestBlogPostPages(locale, {
+    isDraftMode: isEnabled,
+  });
 
   return (
     <div>
-      <BlogSection posts={posts} />
-      <ContactCta content={contactCta} />
+      <BlogSection posts={latestPosts} />
+      {resolveComponents(landingPage.extraSectionCollection)}
     </div>
   );
 }

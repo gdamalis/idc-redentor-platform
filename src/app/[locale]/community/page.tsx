@@ -1,17 +1,17 @@
+import { shouldUseDraftMode } from "@lib/contentful/draftMode";
 import { getContentCollection } from "@lib/contentful/getContentCollection";
 import { getCtaComponent } from "@lib/contentful/getCtaComponent";
 import { getDuplexComponent } from "@lib/contentful/getDuplexComponent";
 import { getSeo } from "@lib/contentful/getSeo";
 import { getTextBlockComponent } from "@lib/contentful/getTextBlockComponent";
-import { ContactCta } from "@src/components/features/contact-cta";
+import { ComponentCta } from "@src/components/features/component-cta";
 import { CreedSection } from "@src/components/features/creed-section";
 import InfoCommunity from "@src/components/features/info-community/InfoCommunity";
 import { OurMissionSection } from "@src/components/features/our-mission-section";
 import { Header } from "@src/components/shared/header";
 import { localesPath } from "@src/i18n/config";
 import { Metadata } from "next";
-import { setRequestLocale } from "next-intl/server";
-import { draftMode } from "next/headers";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 export async function generateMetadata({
   params,
@@ -19,8 +19,10 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }>): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations("Metadata");
 
-  const seoContent = await getSeo("seo-community", locale);
+  const isEnabled = await shouldUseDraftMode();
+  const seoContent = await getSeo("seo-community", locale, isEnabled);
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   return {
@@ -32,8 +34,8 @@ export async function generateMetadata({
       description: seoContent.description,
       images: [{ url: seoContent.image.url }],
       url: `${baseUrl}/${locale}`,
-      siteName: seoContent.siteName,
-      type: seoContent.type,
+      siteName: t("site-name"),
+      type: "website",
     },
     alternates: {
       canonical: `${baseUrl}/${locale}`,
@@ -50,7 +52,7 @@ export default async function CommunityPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const { isEnabled } = await draftMode();
+  const isEnabled = await shouldUseDraftMode();
   const contactCta = await getCtaComponent(
     "connect-with-us",
     locale,
@@ -78,7 +80,7 @@ export default async function CommunityPage({
       <InfoCommunity content={infoCommunity} />
       <CreedSection content={ourCreedContent} />
       <OurMissionSection content={ourMissionSection} />
-      <ContactCta content={contactCta} />
+      <ComponentCta content={contactCta} />
     </main>
   );
 }

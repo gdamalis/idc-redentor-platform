@@ -17,8 +17,8 @@ export default async function NotFound() {
   return (
     <html lang={routing.defaultLocale}>
       <body className={`${nunitoSans.variable} font-sans antialiased`}>
-        <div className="min-h-screen flex flex-col items-center justify-center text-center px-4 bg-white">
-          <div className="max-w-lg p-8 bg-white shadow-lg rounded-lg">
+        <div className="min-h-screen flex flex-col items-center justify-center text-center px-4 ">
+          <div className="max-w-lg p-8  shadow-lg rounded-lg">
             <div className="flex justify-center mb-8">
               <Image
                 src="/assets/img/redentor_logo.png"

@@ -3,6 +3,9 @@ declare namespace NodeJS {
     // Base URL
     NEXT_PUBLIC_BASE_URL: string;
     
+    // Vercel Environment
+    VERCEL_ENV?: 'production' | 'preview' | 'development';
+    
     // Contentful CMS
     CONTENTFUL_SPACE_ID: string;
     CONTENTFUL_ACCESS_TOKEN: string;

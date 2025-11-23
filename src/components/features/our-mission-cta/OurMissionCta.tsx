@@ -15,7 +15,7 @@ const options = {
       <Typography
         component="p"
         variant="body1"
-        className="mt-6 text-xl leading-8 text-gray-600"
+        className="mt-6 text-xl leading-8"
       >
         {children}
       </Typography>
@@ -51,7 +51,7 @@ export const OurMissionCta = ({ content }: OurMissionCtaProps) => {
   const bodyText = documentToReactComponents(content.bodyText.json, options);
 
   return (
-    <div className="overflow-hidden bg-white dark:bg-blue-900/80 py-32">
+    <div className="overflow-hidden  dark:bg-blue-900/80 py-32">
       <div className="mx-auto max-w-7xl px-6 lg:flex lg:px-8">
         <div className="mx-auto grid max-w-2xl grid-cols-1 gap-x-12 gap-y-16 lg:mx-0 lg:min-w-full lg:max-w-none lg:flex-none lg:gap-y-8">
           <div className="lg:col-end-1 lg:w-full lg:max-w-lg lg:pb-8">

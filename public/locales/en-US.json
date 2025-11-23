@@ -1,18 +1,15 @@
 {
   "article": {
-    "relatedArticles": "Related articles",
     "featured": "featured"
   },
-  "Blog": {
-    "viewMore": "View all articles"
-  },
   "BlogPost": {
-    "morePosts": "Other articles"
+    "more-posts": "Other articles",
+    "related": "Related Articles"
   },
-  "blogSection": {
+  "Blog": {
     "title": "Latest from the blog",
     "description": "Discover our latest reflections and teachings. Join us on this journey of faith and learning.",
-    "viewMore": "View all articles"
+    "view-more": "View all articles"
   },
   "Connect": {
     "header-title": "Come to <highlight>Meet Us</highlight>"
@@ -38,7 +35,11 @@
     "description": "This page doesn't seem to exist",
     "backToHome": "Back to homepage"
   },
-  "sitename": "Redentor Church of Christ",
+  "Metadata": {
+    "site-name": "Redentor Church of Christ",
+    "keywords": "Church, Buenos Aires, Christianity, Religion, Faith, Jesus, Bible, God, Church of Christ, Church of Christ in Buenos Aires, Church of Christ in Argentina",
+    "type": "website"
+  },
   "status": {
     "sr-loading": "Loading..."
   }
