@@ -36,7 +36,7 @@ export function InfoConnect({
 }: Readonly<InfoConnectProps>) {
   const bodyText = documentToReactComponents(content?.body.json, options);
   return (
-    <div className="bg-blue-600/20 ">
+    <div className="bg-muted/50">
       <Container className="max-w-5xl py-16 text-center sm:py-24">
         {bodyText}
       </Container>
