@@ -49,7 +49,7 @@ export default async function NotFound() {
               <Link
                 key={locale}
                 href={`/${locale}`}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 {t("backToHome")}
               </Link>

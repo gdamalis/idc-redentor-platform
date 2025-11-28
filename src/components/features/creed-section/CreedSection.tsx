@@ -47,7 +47,7 @@ export const CreedSection = ({ content }: CreedSectionProps) => {
 
             return (
               <div key={credo.title}>
-                <dt className="text-lg font-bold text-blue-700">
+                <dt className="text-lg font-bold text-primary">
                   {credo.title}
                 </dt>
                 <dd className="mt-2 text-gray-800 dark:text-gray-100">

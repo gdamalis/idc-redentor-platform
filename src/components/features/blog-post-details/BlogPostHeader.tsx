@@ -13,7 +13,7 @@ export function BlogPostHeader({ post }: BlogPostHeaderProps) {
       <Typography
         component="p"
         variant="overline"
-        className="font-semibold text-blue-600 dark:text-blue-400"
+        className="font-semibold text-primary"
       >
         Blog
       </Typography>

@@ -23,7 +23,7 @@ const options = {
       <li className="flex gap-x-3">
         <HeartIcon
           aria-hidden="true"
-          className="mt-1 h-8 w-8 flex-none text-blue-600"
+          className="mt-1 h-8 w-8 flex-none text-primary"
         />
         <span className="flex items-center">
           <strong className="font-semibold text-gray-900">{children}</strong>
