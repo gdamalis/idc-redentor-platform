@@ -19,8 +19,7 @@ const options = {
       <Typography
         component="p"
         variant="body1"
-        className="text-lg md:text-xl text-white max-w-2xl mx-auto leading-relaxed drop-shadow-lg"
-        style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
+        className="text-lg md:text-xl text-white max-w-2xl mx-auto leading-relaxed [text-shadow:_0_2px_8px_rgb(0_0_0_/_60%)]"
       >
         {children}
       </Typography>
