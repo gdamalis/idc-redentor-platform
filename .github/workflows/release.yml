@@ -3,51 +3,41 @@ name: Release
 on:
   push:
     branches:
-      - main # Triggers when code is pushed to the main branch
+      - main
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
-  release:
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
+  release-please:
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Checkout the repository code
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - name: Run Release Please
+        uses: googleapis/release-please-action@v4
+        id: release
         with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          release-type: node
 
-      # Step 2: Set up Git user
-      - name: Set up Git user
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      # Only build and deploy when a release is created
+      - name: Checkout Repository
+        if: ${{ steps.release.outputs.release_created }}
+        uses: actions/checkout@v4
 
-      # Step 3: Set up Node.js
       - name: Set up Node.js
+        if: ${{ steps.release.outputs.release_created }}
         uses: actions/setup-node@v4
         with:
           node-version: "22.x"
           cache: "npm"
 
-      # Step 4: Install dependencies
       - name: Install Dependencies
+        if: ${{ steps.release.outputs.release_created }}
         run: npm ci
 
-      # Step 5: Build the project
       - name: Build Project
+        if: ${{ steps.release.outputs.release_created }}
         run: npm run build
         env:
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
           NODE_ENV: production
-
-      # Step 6: Run semantic-release
-      - name: Run Semantic Release
-        run: npx semantic-release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
