@@ -3,7 +3,7 @@ import { getFooter } from "@lib/contentful/getFooter";
 import { getNavigationMenu } from "@lib/contentful/getNavigationMenu";
 import { getSingleEmailForm } from "@lib/contentful/getSingleEmailForm";
 import { Footer } from "@src/components/shared/footer";
-import { Navbar } from "@src/components/shared/navbar";
+import { NavbarWrapper } from "@src/components/shared/navbar";
 import { Toaster } from "@src/components/ui/toaster";
 import { routing } from "@src/i18n/routing";
 import { Analytics } from "@vercel/analytics/react";
@@ -66,7 +66,7 @@ export default async function LocaleLayout({
       <body className={`${outfit.variable} ${playfairDisplay.variable} font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <NextIntlClientProvider messages={messages}>
-            <Navbar menuItems={navMenu} />
+            <NavbarWrapper menuItems={navMenu} />
             {children}
             <Footer content={footerContent} subscribeContent={subscribeContent} />
             <Toaster />

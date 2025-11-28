@@ -12,9 +12,15 @@ import type { MenuItem } from "@src/types/MenuItem";
 
 interface NavbarProps {
   menuItems?: MenuItem[];
+  /**
+   * Variant determines the navbar appearance:
+   * - "overlay": Transparent with white text (default) - for dark/image backgrounds
+   * - "solid": Always uses scrolled appearance - for light/white backgrounds
+   */
+  variant?: "overlay" | "solid";
 }
 
-export const Navbar = ({ menuItems = [] }: NavbarProps) => {
+export const Navbar = ({ menuItems = [], variant = "overlay" }: NavbarProps) => {
   const t = useTranslations();
   const locale = useLocale();
   const [isOpen, setIsOpen] = useState(false);
@@ -28,11 +34,14 @@ export const Navbar = ({ menuItems = [] }: NavbarProps) => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Use "solid" styles when variant is "solid" or when user has scrolled
+  const useSolidAppearance = variant === "solid" || isScrolled;
+
   return (
     <nav
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-        isScrolled
+        useSolidAppearance
           ? "bg-background/80 backdrop-blur-md shadow-sm py-4"
           : "bg-transparent py-6",
       )}
@@ -42,7 +51,7 @@ export const Navbar = ({ menuItems = [] }: NavbarProps) => {
         <Link href="/" className="flex items-center gap-3 group">
           <Image
             src={
-              isScrolled
+              useSolidAppearance
                 ? "/assets/img/redentor_logo.png"
                 : "/assets/img/redentor_logo_light.png"
             }
@@ -56,7 +65,7 @@ export const Navbar = ({ menuItems = [] }: NavbarProps) => {
             <span
               className={cn(
                 "font-serif font-bold text-lg leading-none",
-                isScrolled ? "text-foreground" : "text-white",
+                useSolidAppearance ? "text-foreground" : "text-white",
               )}
             >
               {t("navbar.church-name")}
@@ -64,7 +73,7 @@ export const Navbar = ({ menuItems = [] }: NavbarProps) => {
             <span
               className={cn(
                 "font-sans text-sm font-medium tracking-widest uppercase",
-                isScrolled ? "text-primary" : "text-white/90",
+                useSolidAppearance ? "text-primary" : "text-white/90",
               )}
             >
               {t("navbar.church-subtitle")}
@@ -80,21 +89,21 @@ export const Navbar = ({ menuItems = [] }: NavbarProps) => {
               href={`/${item.groupLink.slug}`}
               className={cn(
                 "text-sm font-medium transition-colors hover:text-primary relative after:content-[''] after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-primary after:transition-all hover:after:w-full",
-                isScrolled ? "text-foreground/80" : "text-white/90",
+                useSolidAppearance ? "text-foreground/80" : "text-white/90",
               )}
             >
               {item.groupName}
             </Link>
           ))}
 
-          <LanguageSwitcher isScrolled={isScrolled} />
+          <LanguageSwitcher isScrolled={useSolidAppearance} />
 
           <Link href="/come-meet-us">
             <Button
-              variant={isScrolled ? "default" : "secondary"}
+              variant={useSolidAppearance ? "default" : "secondary"}
               className={cn(
                 "rounded-full px-6 font-semibold",
-                !isScrolled &&
+                !useSolidAppearance &&
                   "bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm",
               )}
             >
@@ -105,12 +114,12 @@ export const Navbar = ({ menuItems = [] }: NavbarProps) => {
 
         {/* Mobile Menu Toggle */}
         <div className="flex items-center gap-4 md:hidden">
-          <LanguageSwitcher isScrolled={isScrolled} />
+          <LanguageSwitcher isScrolled={useSolidAppearance} />
           <button
             onClick={() => setIsOpen(!isOpen)}
             className={cn(
               "p-2 rounded-md",
-              isScrolled ? "text-foreground" : "text-white",
+              useSolidAppearance ? "text-foreground" : "text-white",
             )}
             aria-label="Toggle menu"
           >
