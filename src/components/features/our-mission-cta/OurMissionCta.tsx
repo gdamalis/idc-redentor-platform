@@ -141,7 +141,7 @@ export const OurMissionCta = ({ content }: OurMissionCtaProps) => {
       </div>
 
       {/* Additional Images Section - Below the Fold */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 pb-8 hidden lg:flex justify-center gap-4 opacity-50 hover:opacity-100 transition-opacity">
+      {/* <div className="absolute bottom-0 left-0 right-0 z-10 pb-8 hidden lg:flex justify-center gap-4 opacity-50 hover:opacity-100 transition-opacity">
         {content.additionalImagesCollection.items.slice(0, 3).map((img, i) => (
           <div
             key={i}
@@ -155,7 +155,7 @@ export const OurMissionCta = ({ content }: OurMissionCtaProps) => {
             />
           </div>
         ))}
-      </div>
+      </div> */}
     </section>
   );
 };
