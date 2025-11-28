@@ -3,6 +3,7 @@ import { fetchGraphQL } from "./fetch";
 const GRAPHQL_FIELDS = `
   title
   subtitle
+  category
   slug
   featuredImage {
     url

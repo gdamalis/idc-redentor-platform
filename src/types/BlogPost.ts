@@ -1,6 +1,7 @@
 export type BlogPost = {
   title: string;
   subtitle?: string;
+  category?: string;
   slug: string;
   featuredImage: {
     url: string;

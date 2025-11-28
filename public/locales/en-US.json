@@ -1,6 +1,7 @@
 {
   "article": {
-    "featured": "featured"
+    "featured": "featured",
+    "read-more": "Read More"
   },
   "BlogPost": {
     "more-posts": "Other articles",

@@ -14,10 +14,7 @@ export const BlogSection = ({ posts, showHeader = true }: BlogSectionProps) => {
   const t = useTranslations("Blog");
 
   return (
-    <section className={cn(
-      "bg-background",
-      showHeader ? "py-24" : "py-12"
-    )}>
+    <section className={cn("bg-background", showHeader ? "py-24" : "py-12")}>
       <div className="container mx-auto px-4">
         {showHeader && (
           <div className="text-center max-w-3xl mx-auto mb-16">
@@ -40,9 +37,15 @@ export const BlogSection = ({ posts, showHeader = true }: BlogSectionProps) => {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {posts.map((post) => (
-            <BlogPostCard key={post.sys.id} post={post} />
-          ))}
+          {posts
+            .sort(
+              (a, b) =>
+                new Date(b.publishedDate).getTime() -
+                new Date(a.publishedDate).getTime(),
+            )
+            .map((post, index) => (
+              <BlogPostCard key={post.sys.id} post={post} index={index} />
+            ))}
         </div>
       </div>
     </section>
