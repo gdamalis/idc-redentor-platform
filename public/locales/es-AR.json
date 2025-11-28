@@ -9,7 +9,9 @@
   "Blog": {
     "title": "Últimos artículos del blog",
     "description": "Conocé nuestras reflexiones y enseñanzas más recientes. Seguinos en este viaje de fe y aprendizaje.",
-    "view-more": "Ver todos los artículos"
+    "view-more": "Ver todos los artículos",
+    "header-title": "Nuestro <highlight>Blog</highlight>",
+    "header-subtitle": "Conocé nuestras reflexiones y enseñanzas más recientes. Seguinos en este viaje de fe y aprendizaje."
   },
   "Connect": {
     "header-title": "Vení a <highlight>Conocernos</highlight>",

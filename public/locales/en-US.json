@@ -9,7 +9,9 @@
   "Blog": {
     "title": "Latest from the blog",
     "description": "Discover our latest reflections and teachings. Join us on this journey of faith and learning.",
-    "view-more": "View all articles"
+    "view-more": "View all articles",
+    "header-title": "Our <highlight>Blog</highlight>",
+    "header-subtitle": "Discover our latest reflections and teachings. Join us on this journey of faith and learning."
   },
   "Connect": {
     "header-title": "Come to <highlight>Meet Us</highlight>",
