@@ -25,19 +25,25 @@ jobs:
         if: ${{ steps.release.outputs.release_created }}
         uses: actions/checkout@v4
 
+      - name: Install pnpm
+        if: ${{ steps.release.outputs.release_created }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Set up Node.js
         if: ${{ steps.release.outputs.release_created }}
         uses: actions/setup-node@v4
         with:
           node-version: "22.x"
-          cache: "npm"
+          cache: "pnpm"
 
       - name: Install Dependencies
         if: ${{ steps.release.outputs.release_created }}
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build Project
         if: ${{ steps.release.outputs.release_created }}
-        run: npm run build
+        run: pnpm run build
         env:
           NODE_ENV: production
