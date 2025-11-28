@@ -161,7 +161,7 @@ export const ContactForm = ({ content }: ContactFormProps) => {
                   className="w-full rounded-full text-lg h-12"
                   size="lg"
                 >
-                  {isPending ? <LoadingSpinner size="sm" /> : content.ctaText}
+                  {isPending ? <LoadingSpinner size="sm" className="text-white" /> : content.ctaText}
                 </Button>
 
                 {/* Agreement note */}
