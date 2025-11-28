@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Release Please
+        uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          release-type: node
+
+      # Only build and deploy when a release is created
+      - name: Checkout Repository
+        if: ${{ steps.release.outputs.release_created }}
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        if: ${{ steps.release.outputs.release_created }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        if: ${{ steps.release.outputs.release_created }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: "pnpm"
+
+      - name: Install Dependencies
+        if: ${{ steps.release.outputs.release_created }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Project
+        if: ${{ steps.release.outputs.release_created }}
+        run: pnpm run build
+        env:
+          NODE_ENV: production

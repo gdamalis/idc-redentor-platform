@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 
 export async function fetchGraphQL(query: any, preview = false) { 
   return fetch(

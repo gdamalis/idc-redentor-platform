@@ -134,7 +134,7 @@ export function getTextWithHighlights(text: string) {
           className="inline-flex items-center rounded-md bg-purple-50 px-1.5 py-0.5 text-sm font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10"
         >
           {value}
-        </span> // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        </span>  
       ) as any;
       return true;
     }
@@ -142,7 +142,7 @@ export function getTextWithHighlights(text: string) {
     styledText[index] = (
       <Typography component="span" variant="body1" key={value}>
         {value}
-      </Typography> // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      </Typography>  
     ) as any;
   });
 

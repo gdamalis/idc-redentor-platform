@@ -88,21 +88,29 @@ const GRAPHQL_FIELDS = `
 
 export async function getLatestBlogPostPages(
   locale: string,
-  isDraftMode = false,
+  options: {
+    slug?: string;
+    isDraftMode?: boolean;
+  },
 ) {
+  const whereClause = options?.slug
+    ? `where: { slug_not: "${options.slug}" },`
+    : "";
+
   const data = await fetchGraphQL(
     `query {
         blogPostPageCollection(
           locale: "${locale}",
           limit: 3, 
-          preview: ${isDraftMode ? "true" : "false"}
+          ${whereClause}
+          preview: ${options?.isDraftMode ? "true" : "false"}
         ) {
           items {
             ${GRAPHQL_FIELDS}
           }
         }
       }`,
-    isDraftMode,
+    options?.isDraftMode,
   );
 
   return data?.data?.blogPostPageCollection?.items;

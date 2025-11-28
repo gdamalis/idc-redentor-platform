@@ -25,7 +25,7 @@ type InfoCommunityProps = {
   content: {
     headline: string;
     body: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       json: any;
     };
   };
@@ -34,7 +34,7 @@ type InfoCommunityProps = {
 export default function InfoCommunity({
   content,
 }: Readonly<InfoCommunityProps>) {
-  const bodyText = documentToReactComponents(content.body.json, options);
+  const bodyText = documentToReactComponents(content?.body.json, options);
 
   return (
     <div className="bg-blue-600/20 ">

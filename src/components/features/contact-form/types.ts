@@ -10,7 +10,7 @@ export type ContactFormProps = {
       title: string;
     };
     agreementNote: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       json: any;
     };
     bibleVerse: {

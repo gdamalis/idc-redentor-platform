@@ -1,3 +1,4 @@
+import { shouldUseDraftMode } from "@lib/contentful/draftMode";
 import { getFooter } from "@lib/contentful/getFooter";
 import { getNavigationMenu } from "@lib/contentful/getNavigationMenu";
 import { getSingleEmailForm } from "@lib/contentful/getSingleEmailForm";
@@ -10,7 +11,6 @@ import { Metadata } from "next";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { Nunito_Sans } from "next/font/google";
-import { draftMode } from "next/headers";
 import { notFound } from "next/navigation";
 import "../globals.css";
 
@@ -43,8 +43,8 @@ export default async function LocaleLayout({
 
   setRequestLocale(locale);
 
-  const { isEnabled } = await draftMode();
-  const navMenu = await getNavigationMenu("Main menu", locale);
+  const isEnabled = await shouldUseDraftMode();
+  const navMenu = await getNavigationMenu("Main menu", locale, isEnabled);
   const footerContent = await getFooter(locale, isEnabled);
   const subscribeContent = await getSingleEmailForm(
     "single-email-subscribe",

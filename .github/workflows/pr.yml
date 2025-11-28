@@ -1,0 +1,44 @@
+name: Pull Request Validation
+
+on: [pull_request]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  validate-pr-title:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate PR title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  eslint-tsc:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: ESLint
+        run: pnpm run lint
+
+      - name: TSC
+        run: pnpm run type-check

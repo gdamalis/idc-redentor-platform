@@ -5,7 +5,7 @@ type BibleVerseProps = {
   chapter: number;
   fromVerse: number;
   toVerse: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   verseContent: any;
   className?: string;
 };
