@@ -10,16 +10,16 @@ interface NavbarWrapperProps {
 
 /**
  * Client wrapper component that determines the Navbar variant based on the current pathname.
- * - Uses "solid" variant for blog post pages (white background)
- * - Uses "overlay" variant (default) for all other pages
+ * - Uses "overlay" variant for home page only (has image background)
+ * - Uses "solid" variant for all other pages (light backgrounds without images)
  */
 export const NavbarWrapper = ({ menuItems }: NavbarWrapperProps) => {
   const pathname = usePathname();
   
-  // Check if we're on a blog post page (e.g., /blog/some-slug)
-  // Blog listing page (/blog) should use overlay variant
-  const isBlogPost = pathname?.startsWith("/blog");
+  // Only the home page uses overlay variant (transparent with white text over images)
+  // All other pages use solid variant (visible navbar with dark text)
+  const isHomePage = pathname === "/";
   
-  return <Navbar menuItems={menuItems} variant={isBlogPost ? "solid" : "overlay"} />;
+  return <Navbar menuItems={menuItems} variant={isHomePage ? "overlay" : "solid"} />;
 };
 

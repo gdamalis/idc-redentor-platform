@@ -15,7 +15,9 @@
     "header-title": "Come to <highlight>Meet Us</highlight>"
   },
   "Community": {
-    "header-title": "Our <highlight>Community</highlight>"
+    "header-title": "Our <highlight>Community</highlight>",
+    "header-subtitle": "We are a diverse community united by the love of Jesus. No matter your background, story, or struggles, you have a family here.",
+    "photo-grid-caption": "Life Together"
   },
   "common": {
     "regionalSettings": "Regional Settings",

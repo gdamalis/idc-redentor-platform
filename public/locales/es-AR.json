@@ -15,7 +15,9 @@
     "header-title": "Vení a <highlight>Conocernos</highlight>"
   },
   "Community": {
-    "header-title": "Nuestra <highlight>Comunidad</highlight>"
+    "header-title": "Nuestra <highlight>Comunidad</highlight>",
+    "header-subtitle": "Somos una comunidad diversa unida por el amor de Jesús. No importa tu trasfondo, historia o luchas, aquí tenés una familia.",
+    "photo-grid-caption": "Vida en Comunidad"
   },
   "common": {
     "regionalSettings": "Configuración regional",
