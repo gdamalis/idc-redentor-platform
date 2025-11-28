@@ -11,7 +11,7 @@ import Image from "next/image";
 import { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@src/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 const options = {
   renderNode: {
@@ -19,7 +19,8 @@ const options = {
       <Typography
         component="p"
         variant="body1"
-        className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto leading-relaxed"
+        className="text-lg md:text-xl text-white max-w-2xl mx-auto leading-relaxed drop-shadow-lg"
+        style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
       >
         {children}
       </Typography>
@@ -45,6 +46,7 @@ const stagger = {
 type OurMissionCtaProps = {
   content: {
     headline: string;
+    subHeadline: string;
     bodyText: {
       json: any;
     };
@@ -66,6 +68,7 @@ type OurMissionCtaProps = {
 };
 
 export const OurMissionCta = ({ content }: OurMissionCtaProps) => {
+  const t = useTranslations("OurMissionCta");
   const bodyText = documentToReactComponents(content.bodyText.json, options);
 
   return (
@@ -95,31 +98,43 @@ export const OurMissionCta = ({ content }: OurMissionCtaProps) => {
             variants={fadeInUp}
             className="inline-block py-1 px-3 rounded-full bg-primary/90 backdrop-blur-sm text-sm font-medium tracking-wide uppercase mb-4"
           >
-            Welcome Home
+            {t("welcome-home")}
           </motion.span>
-          
+
           <motion.h1
             variants={fadeInUp}
             className="font-serif text-5xl md:text-7xl font-bold leading-tight"
           >
             {content.headline}
+            <br />
+            <span className="italic">{content.subHeadline}</span>
           </motion.h1>
-          
-          <motion.div variants={fadeInUp}>
+
+          <motion.div 
+            variants={fadeInUp}
+            className="max-w-3xl mx-auto backdrop-blur-sm bg-black/20 p-6 rounded-2xl border border-white/10"
+          >
             {bodyText}
           </motion.div>
-          
+
           <motion.div
             variants={fadeInUp}
             className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8"
           >
-            <Link href={`/${content.targetPage.slug}`}>
+            <Link href={`/come-meet-us`}>
               <Button
                 size="lg"
                 className="rounded-full px-8 text-lg h-14 bg-primary hover:bg-primary/90"
               >
+                {t("join-us-sunday")}
+              </Button>
+            </Link>
+            <Link href={`/${content.targetPage.slug}`}>
+              <Button
+                size="lg"
+                className="rounded-full px-8 text-lg h-14 bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm"
+              >
                 {content.ctaText}
-                <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </Link>
           </motion.div>
@@ -129,7 +144,10 @@ export const OurMissionCta = ({ content }: OurMissionCtaProps) => {
       {/* Additional Images Section - Below the Fold */}
       <div className="absolute bottom-0 left-0 right-0 z-10 pb-8 hidden lg:flex justify-center gap-4 opacity-50 hover:opacity-100 transition-opacity">
         {content.additionalImagesCollection.items.slice(0, 3).map((img, i) => (
-          <div key={i} className="relative w-24 h-24 rounded-lg overflow-hidden">
+          <div
+            key={i}
+            className="relative w-24 h-24 rounded-lg overflow-hidden"
+          >
             <Image
               src={img.url}
               alt={img.title}
