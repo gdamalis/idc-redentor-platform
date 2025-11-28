@@ -45,14 +45,14 @@ export const Footer = ({ content, subscribeContent }: FooterProps) => {
                 alt={content.logo.title}
                 width={64}
                 height={64}
-                className="h-16 w-auto brightness-0 invert"
+                className="h-16 w-auto"
               />
               <div className="flex flex-col">
                 <span className="font-serif font-bold text-xl leading-none">
-                  Iglesia de Cristo
+                  {t("navbar.church-name")}
                 </span>
                 <span className="font-sans text-sm font-medium tracking-widest uppercase text-white/70">
-                  Redentor
+                  {t("navbar.church-subtitle")}
                 </span>
               </div>
             </div>
