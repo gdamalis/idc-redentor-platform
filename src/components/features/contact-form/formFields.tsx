@@ -1,5 +1,8 @@
 import { Dropdown, DropDownOption } from "@src/components/ui/dropdown";
 import { Typography } from "@src/components/ui/typography";
+import { Input } from "@src/components/ui/input";
+import { Textarea } from "@src/components/ui/textarea";
+import { Label } from "@src/components/ui/label";
 
 export type Field = {
   name: string;
@@ -15,24 +18,17 @@ export type Field = {
  */
 export function getShortTextInput(data: Field) {
   return (
-    <div key={data.inputId}>
-      <label
-        htmlFor={data.inputId}
-        className="block text-sm/6 font-semibold text-gray-900 dark:text-gray-100"
-      >
-        {data.name}
-      </label>
-      <div className="mt-2.5">
-        <input
-          id={data.inputId}
-          required={data.required}
-          name={data.inputId}
-          type="text"
-          autoComplete="given-name"
-          className="block w-full rounded-md  px-3.5 py-2 text-base text-gray-900 dark:text-gray-100 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-blue-600 dark:bg-gray-950"
-          placeholder={data.placeholder}
-        />
-      </div>
+    <div key={data.inputId} className="space-y-2">
+      <Label htmlFor={data.inputId}>{data.name}</Label>
+      <Input
+        id={data.inputId}
+        required={data.required}
+        name={data.inputId}
+        type="text"
+        autoComplete="given-name"
+        placeholder={data.placeholder}
+        className="bg-background"
+      />
     </div>
   );
 }
@@ -42,25 +38,18 @@ export function getShortTextInput(data: Field) {
  */
 export function getEmailInput(data: Field) {
   return (
-    <div key={data.inputId}>
-      <label
-        htmlFor={data.inputId}
-        className="block text-sm/6 font-semibold text-gray-900 dark:text-gray-100"
-      >
-        {data.name}
-      </label>
-      <div className="mt-2.5">
-        <input
-          id={data.inputId}
-          required={data.required}
-          name={data.inputId}
-          type="email"
-          autoComplete="email"
-          pattern="[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"
-          className="block w-full rounded-md  px-3.5 py-2 text-base text-gray-900 dark:text-gray-100 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-blue-600 dark:bg-gray-950"
-          placeholder={data.placeholder}
-        />
-      </div>
+    <div key={data.inputId} className="space-y-2">
+      <Label htmlFor={data.inputId}>{data.name}</Label>
+      <Input
+        id={data.inputId}
+        required={data.required}
+        name={data.inputId}
+        type="email"
+        autoComplete="email"
+        pattern="[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"
+        placeholder={data.placeholder}
+        className="bg-background"
+      />
     </div>
   );
 }
@@ -70,23 +59,16 @@ export function getEmailInput(data: Field) {
  */
 export function getLongTextInput(data: Field) {
   return (
-    <div className="sm:col-span-2" key={data.inputId}>
-      <label
-        htmlFor={data.inputId}
-        className="block text-sm/6 font-semibold text-gray-900 dark:text-gray-100"
-      >
-        {data.name}
-      </label>
-      <div className="mt-2.5">
-        <textarea
-          id={data.inputId}
-          required={data.required}
-          name={data.inputId}
-          rows={4}
-          className="block w-full rounded-md  px-3.5 py-2 text-base text-gray-900 dark:text-gray-100 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-blue-600 dark:bg-gray-950"
-          placeholder={data.placeholder}
-        />
-      </div>
+    <div className="col-span-full" key={data.inputId}>
+      <Label htmlFor={data.inputId}>{data.name}</Label>
+      <Textarea
+        id={data.inputId}
+        required={data.required}
+        name={data.inputId}
+        rows={4}
+        placeholder={data.placeholder}
+        className="bg-background resize-none mt-2"
+      />
     </div>
   );
 }
@@ -101,21 +83,14 @@ export function getDropdownField(data: Field) {
   }));
 
   return (
-    <div key={data.inputId}>
-      <label
-        htmlFor={data.inputId}
-        className="block text-sm/6 font-semibold text-gray-900 dark:text-gray-100"
-      >
-        {data.name}
-      </label>
-      <div className="mt-2.5">
-        <Dropdown 
-          options={DropDownOptions} 
-          placeholder={data.placeholder} 
-          name={data.inputId}
-          id={data.inputId}
-        />
-      </div>
+    <div key={data.inputId} className="space-y-2">
+      <Label htmlFor={data.inputId}>{data.name}</Label>
+      <Dropdown 
+        options={DropDownOptions} 
+        placeholder={data.placeholder} 
+        name={data.inputId}
+        id={data.inputId}
+      />
     </div>
   );
 }
@@ -131,7 +106,7 @@ export function getTextWithHighlights(text: string) {
       styledText[index] = (
         <span
           key={value}
-          className="inline-flex items-center rounded-md bg-purple-50 px-1.5 py-0.5 text-sm font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10"
+          className="inline-flex items-center rounded-md bg-primary/10 px-1.5 py-0.5 text-sm font-medium text-primary ring-1 ring-inset ring-primary/20"
         >
           {value}
         </span>  

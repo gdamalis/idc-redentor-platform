@@ -21,11 +21,18 @@
     "regionalSettings": "Regional Settings",
     "homepage": "Homepage",
     "language": "Language",
-    "languageDrawer": "Toggle language drawer"
+    "languageDrawer": "Toggle language drawer",
+    "home": "Home",
+    "community": "Community",
+    "blog": "Blog",
+    "join-us": "Join Us"
   },
   "footer": {
     "copyright": "Redentor Church of Christ. All rights reserved.",
-    "poweredBy": "Made with ♥️ from Buenos Aires, Argentina by GD"
+    "poweredBy": "Made with ♥️ from Buenos Aires, Argentina by GD",
+    "explore": "Explore",
+    "visit-us": "Visit Us",
+    "follow-us": "Follow Us"
   },
   "landingPage": {
     "latestArticles": "Latest articles"

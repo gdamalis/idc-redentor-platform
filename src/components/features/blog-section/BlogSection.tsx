@@ -12,30 +12,32 @@ export const BlogSection = ({ posts }: BlogSectionProps) => {
   const t = useTranslations("Blog");
 
   return (
-    <div className="py-16 sm:py-24">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl text-center">
+    <section className="py-24 bg-background">
+      <div className="container mx-auto px-4">
+        <div className="text-center max-w-3xl mx-auto mb-16">
           <Typography
             component="h2"
             variant="h2"
-            className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl"
+            className="font-serif text-4xl font-bold mb-4 text-foreground"
           >
             {t("title")}
           </Typography>
+          <div className="h-1 w-20 bg-primary mx-auto rounded-full mb-6" />
           <Typography
             component="p"
             variant="body1"
-            className="mt-2 text-lg leading-8 text-gray-600"
+            className="text-muted-foreground text-lg"
           >
             {t("description")}
           </Typography>
         </div>
-        <div className="mx-auto mt-16 grid max-w-2xl auto-rows-fr grid-cols-1 gap-8 sm:mt-20 lg:mx-0 lg:max-w-none lg:grid-cols-3">
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {posts.map((post) => (
             <BlogPostCard key={post.sys.id} post={post} />
           ))}
         </div>
       </div>
-    </div>
+    </section>
   );
 };

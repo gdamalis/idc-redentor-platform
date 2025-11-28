@@ -5,8 +5,15 @@ import { ChevronDownIcon, GlobeAltIcon } from "@heroicons/react/24/outline";
 import { i18n, type Locale } from "@src/i18n/config";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { cn } from "@src/utils/cn";
 
-export default function LanguageSwitcher() {
+type LanguageSwitcherProps = {
+  isScrolled?: boolean;
+};
+
+export default function LanguageSwitcher({
+  isScrolled = false,
+}: LanguageSwitcherProps) {
   const pathname = usePathname();
   const currentLocale = pathname?.split("/")[1];
 
@@ -20,22 +27,27 @@ export default function LanguageSwitcher() {
   return (
     <Menu as="div" className="relative inline-block text-left">
       <div>
-        <MenuButton className="inline-flex w-full justify-center gap-x-1.5 rounded-md  px-3 py-2 text-sm font-semibold text-gray-900 dark:text-white shadow-sm">
+        <MenuButton
+          className={cn(
+            "inline-flex w-full justify-center items-center gap-x-1.5 px-3 py-2 text-sm font-semibold cursor-pointer transition-colors hover:text-primary relative after:content-[''] after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-primary after:transition-all hover:after:w-full",
+            isScrolled ? "text-foreground/80" : "text-white/90",
+          )}
+        >
           <GlobeAltIcon
             aria-hidden="true"
-            className="-mr-1 size-5 text-gray-400"
+            className="size-5 transition-colors"
           />
           {currentLocale?.split("-")[0]?.toUpperCase()}
           <ChevronDownIcon
             aria-hidden="true"
-            className="-mr-1 size-5 text-gray-400"
+            className="size-5 transition-colors"
           />
         </MenuButton>
       </div>
 
       <MenuItems
         transition
-        className="absolute right-0 z-10 mt-2 origin-top-right rounded-md  shadow-lg ring-1 ring-gray-700/5 dark:ring-white/5 transition focus:outline-none data-[closed]:scale-95 data-[closed]:transform data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
+        className="absolute right-0 z-10 mt-2 origin-top-right rounded-md  shadow-lg ring-1 bg-white ring-gray-700/5 dark:ring-white/5 transition focus:outline-none data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-leave:duration-75 data-enter:ease-out data-leave:ease-in"
       >
         <ul>
           {i18n.locales

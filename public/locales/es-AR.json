@@ -21,11 +21,18 @@
     "regionalSettings": "Configuración regional",
     "homepage": "Página principal",
     "language": "Idioma",
-    "languageDrawer": "Alternar cajón de idiomas"
+    "languageDrawer": "Alternar cajón de idiomas",
+    "home": "Inicio",
+    "community": "Comunidad",
+    "blog": "Blog",
+    "join-us": "Sumate"
   },
   "footer": {
     "copyright": "Iglesia de Cristo Redentor. Todos los derechos reservados.",
-    "poweredBy": "Hecho con ♥️ desde Buenos Aires, Argentina por GD"
+    "poweredBy": "Hecho con ♥️ desde Buenos Aires, Argentina por GD",
+    "explore": "Explorar",
+    "visit-us": "Visitanos",
+    "follow-us": "Seguinos"
   },
   "landingPage": {
     "latestArticles": "Últimos artículos"

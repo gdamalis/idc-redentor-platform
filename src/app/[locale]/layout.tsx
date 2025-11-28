@@ -4,19 +4,26 @@ import { getNavigationMenu } from "@lib/contentful/getNavigationMenu";
 import { getSingleEmailForm } from "@lib/contentful/getSingleEmailForm";
 import { Footer } from "@src/components/shared/footer";
 import { Navbar } from "@src/components/shared/navbar";
+import { Toaster } from "@src/components/ui/toaster";
 import { routing } from "@src/i18n/routing";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Metadata } from "next";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
-import { Nunito_Sans } from "next/font/google";
+import { Outfit, Playfair_Display } from "next/font/google";
+import { ThemeProvider } from "next-themes";
 import { notFound } from "next/navigation";
 import "../globals.css";
 
-const nunitoSans = Nunito_Sans({
+const outfit = Outfit({
   subsets: ["latin"],
-  variable: "--font-nunito-sans",
+  variable: "--font-outfit",
+});
+
+const playfairDisplay = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-playfair",
 });
 
 export const metadata: Metadata = {
@@ -55,15 +62,18 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale}>
-      <body className={`${nunitoSans.variable} font-sans antialiased`}>
-        <NextIntlClientProvider messages={messages}>
-          <Navbar menuItems={navMenu} />
-          {children}
-          <Footer content={footerContent} subscribeContent={subscribeContent} />
-        </NextIntlClientProvider>
-        <SpeedInsights />
-        <Analytics />
+    <html lang={locale} suppressHydrationWarning>
+      <body className={`${outfit.variable} ${playfairDisplay.variable} font-sans antialiased`}>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+          <NextIntlClientProvider messages={messages}>
+            <Navbar menuItems={navMenu} />
+            {children}
+            <Footer content={footerContent} subscribeContent={subscribeContent} />
+            <Toaster />
+          </NextIntlClientProvider>
+          <SpeedInsights />
+          <Analytics />
+        </ThemeProvider>
       </body>
     </html>
   );
