@@ -131,7 +131,7 @@ export const OurMissionCta = ({ content }: OurMissionCtaProps) => {
             <Link href={`/${content.targetPage.slug}`}>
               <Button
                 size="lg"
-                className="rounded-full px-8 text-lg h-14 bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm"
+                className="rounded-full px-8 text-lg h-14 bg-black/20 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm [text-shadow:_0_2px_8px_rgb(0_0_0_/_60%)]"
               >
                 {content.ctaText}
               </Button>
