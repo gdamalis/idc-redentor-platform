@@ -20,9 +20,19 @@ export default async function NotFound() {
         <div className="min-h-screen flex flex-col items-center justify-center text-center px-4 ">
           <div className="max-w-lg p-8  shadow-lg rounded-lg">
             <div className="flex justify-center mb-8">
+              {/* Light Mode Logo */}
               <Image
-                src="/assets/img/redentor_logo.png"
-                className="h-24 w-24 dark:invert dark:mix-blend-luminosity"
+                src="/assets/img/redentor_logo_100.png"
+                className="block h-24 w-24 dark:hidden"
+                width={96}
+                height={96}
+                alt="Redentor church logo"
+                priority
+              />
+              {/* Dark Mode Logo */}
+              <Image
+                src="/assets/img/redentor_logo_light_100.png"
+                className="hidden h-24 w-24 dark:block"
                 width={96}
                 height={96}
                 alt="Redentor church logo"
@@ -39,7 +49,7 @@ export default async function NotFound() {
               <Link
                 key={locale}
                 href={`/${locale}`}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 {t("backToHome")}
               </Link>

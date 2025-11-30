@@ -20,7 +20,7 @@ export default function BlogPostDetails({
   }
 
   return (
-    <Container className="py-16 lg:py-20">
+    <Container className="pt-28 pb-20 lg:py-32">
       <div className="mx-auto max-w-2xl flex flex-col gap-y-4">
         <BlogPostHeader post={post} />
         <BlogPostContent post={post} />

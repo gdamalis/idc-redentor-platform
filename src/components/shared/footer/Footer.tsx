@@ -2,9 +2,9 @@ import { Typography } from "@src/components/ui/typography";
 import { Link } from "@src/i18n/routing";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
+import { Mail, MapPin } from "lucide-react";
 
 import { SubscribeForm } from "@src/components/shared/subscribe-form/SubscribeForm";
-import { Container } from "@src/components/ui/container";
 import SocialLinks from "../social-links/SocialLinks";
 import packageJson from "../../../../package.json";
 
@@ -13,6 +13,13 @@ type FooterProps = {
     logo: { url: string; title: string };
     shortDescription: string;
     socialLinks: { url: string; platform: string }[];
+    location?: {
+      addressLine1: string;
+      neighborhood: string;
+      city: string;
+      country: string;
+      googleMapsUrl: string;
+    };
   };
   subscribeContent: {
     title: string;
@@ -26,94 +33,127 @@ type FooterProps = {
 export const Footer = ({ content, subscribeContent }: FooterProps) => {
   const t = useTranslations();
 
+  const quickLinks = [
+    { href: "/", label: t("common.home") },
+    { href: "/community", label: t("common.community") },
+    { href: "/blog", label: t("common.blog") },
+    { href: "/come-meet-us", label: t("common.join-us") },
+  ];
+
   return (
-    <footer
-      aria-labelledby="footer-heading"
-    >
-      <Typography
-        component="h2"
-        variant="h2"
-        id="footer-heading"
-        className="sr-only"
-      >
-        Footer
-      </Typography>
-      <Container className="space-y-8 px-6 pt-12 lg:px-8">
-        <div className="space-y-10 xl:grid xl:grid-cols-3 xl:gap-8">
+    <footer className="bg-slate-900 text-white pt-16 pb-8">
+      <div className="container mx-auto px-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+          {/* Brand */}
           <div className="space-y-4">
-            <Link className="flex w-fit" href="/" title={t("common.homepage")}>
+            <div className="flex items-center gap-3">
               <Image
                 src={content.logo.url}
                 alt={content.logo.title}
-                className="dark:invert dark:mix-blend-luminosity"
-                width={80}
-                height={80}
+                width={64}
+                height={64}
+                className="h-16 w-auto"
               />
-            </Link>
+              <div className="flex flex-col">
+                <span className="font-serif font-bold text-xl leading-none">
+                  {t("navbar.church-name")}
+                </span>
+                <span className="font-sans text-sm font-medium tracking-widest uppercase text-white/70">
+                  {t("navbar.church-subtitle")}
+                </span>
+              </div>
+            </div>
             <Typography
               component="p"
               variant="body1"
-              className="text-sm leading-6 text-gray-600"
+              className="text-slate-400 text-sm leading-relaxed max-w-xs"
             >
               {content.shortDescription}
             </Typography>
-            <SocialLinks links={content.socialLinks} />
           </div>
+
+          {/* Quick Links */}
           <div>
-            <div className="md:grid md:grid-cols-2 md:gap-8">
-              {/* <div>
-                <Typography
-          component="h3"
-          variant="h3" className="text-sm font-semibold leading-6 text-gray-900">Solutions</Typography>
-                <ul className="mt-6 space-y-4">
-                  {navigation.solutions.map(item => (
-                    <li key={item.name}>
-                      <a
-                        href={item.href}
-                        className="text-sm leading-6 text-gray-600 hover:text-gray-900">
-                        {item.name}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="mt-10 md:mt-0">
-                <Typography
-          component="h3"
-          variant="h3" className="text-sm font-semibold leading-6 text-gray-900">Support</Typography>
-                <ul className="mt-6 space-y-4">
-                  {navigation.support.map(item => (
-                    <li key={item.name}>
-                      <a
-                        href={item.href}
-                        className="text-sm leading-6 text-gray-600 hover:text-gray-900">
-                        {item.name}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div> */}
+            <h3 className="font-serif font-bold text-lg mb-6">
+              {t("footer.explore")}
+            </h3>
+            <ul className="space-y-3">
+              {quickLinks.map((item) => (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    className="text-slate-400 hover:text-primary transition-colors"
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Contact */}
+          <div>
+            <h3 className="font-serif font-bold text-lg mb-6">
+              {t("footer.visit-us")}
+            </h3>
+            <ul className="space-y-4 text-slate-400">
+              {content.location && (
+                <li className="flex items-start gap-3">
+                  <MapPin className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                  <a
+                    href={content.location.googleMapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-primary transition-colors"
+                  >
+                    {content.location.addressLine1}
+                    <br />
+                    {content.location.neighborhood &&
+                      content.location.neighborhood + ", "}
+                    {content.location.city}
+                    <br />
+                    {content.location.country}
+                  </a>
+                </li>
+              )}
+              <li className="flex items-center gap-3">
+                <Mail className="w-5 h-5 text-primary shrink-0" />
+                <a
+                  href="mailto:info@idcredentor.com"
+                  className="hover:text-primary transition-colors"
+                >
+                  info@idcredentor.com
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          {/* Social & Subscribe */}
+          <div>
+            <h3 className="font-serif font-bold text-lg mb-6">
+              {t("footer.follow-us")}
+            </h3>
+            <SocialLinks 
+              links={content.socialLinks} 
+              variant="footer"
+              className="mb-6"
+            />
+            <div className="mt-4">
+              <SubscribeForm content={subscribeContent} />
             </div>
           </div>
-          <SubscribeForm content={subscribeContent} />
         </div>
-        <div className="py-4 border-t border-gray-900/10 lg:py-6 text-center lg:flex lg:justify-between lg:text-left">
-          <Typography
-            component="p"
-            variant="body1"
-            className="text-xs leading-5 text-gray-500"
-          >
-            &copy; {new Date().getFullYear()} {t("footer.copyright")} | v{packageJson.version}
-          </Typography>
-          <Typography
-            component="p"
-            variant="body1"
-            className="text-xs leading-5 text-gray-500"
-          >
-            {t("footer.poweredBy")}
-          </Typography>
+
+        <div className="border-t border-slate-800 pt-8 text-center text-slate-500 text-sm">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-2">
+            <p>
+              &copy; {new Date().getFullYear()} {t("footer.copyright")} | v
+              {packageJson.version}
+            </p>
+            <p>{t("footer.poweredBy")}</p>
+          </div>
         </div>
-      </Container>
+      </div>
     </footer>
   );
 };

@@ -6,6 +6,14 @@ const GRAPHQL_FIELDS = `
   body {
     json
   }
+  imagesCollection {
+    items {
+      url
+      title
+      width
+      height
+    }
+  }
   sys {
     id
   }

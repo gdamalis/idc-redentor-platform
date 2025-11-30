@@ -4,6 +4,7 @@ import { getPage } from "@lib/contentful/getPage";
 import { getSeo } from "@lib/contentful/getSeo";
 import { BlogSection } from "@src/components/features/blog-section";
 import { resolveComponents } from "@src/components/features/component-resolver";
+import { Header } from "@src/components/shared/header";
 import { localesPath } from "@src/i18n/config";
 import { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -46,6 +47,8 @@ export default async function BlogPage({
 }>) {
   const { locale } = await params;
   setRequestLocale(locale);
+  
+  const t = await getTranslations("Blog");
   const isEnabled = await shouldUseDraftMode();
 
   const landingPage = await getPage("blog", locale, isEnabled);
@@ -55,9 +58,14 @@ export default async function BlogPage({
   });
 
   return (
-    <div>
-      <BlogSection posts={latestPosts} />
+    <main>
+      <Header 
+        titlePath="Blog.header-title" 
+        variant="gradient"
+        subtitle={t("header-subtitle")}
+      />
+      <BlogSection posts={latestPosts} showHeader={false} />
       {resolveComponents(landingPage.extraSectionCollection)}
-    </div>
+    </main>
   );
 }

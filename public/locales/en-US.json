@@ -1,6 +1,7 @@
 {
   "article": {
-    "featured": "featured"
+    "featured": "featured",
+    "read-more": "Read More"
   },
   "BlogPost": {
     "more-posts": "Other articles",
@@ -9,23 +10,39 @@
   "Blog": {
     "title": "Latest from the blog",
     "description": "Discover our latest reflections and teachings. Join us on this journey of faith and learning.",
-    "view-more": "View all articles"
+    "view-more": "View all articles",
+    "header-title": "Our <highlight>Blog</highlight>",
+    "header-subtitle": "Discover our latest reflections and teachings. Join us on this journey of faith and learning."
   },
   "Connect": {
-    "header-title": "Come to <highlight>Meet Us</highlight>"
+    "header-title": "Come to <highlight>Meet Us</highlight>",
+    "header-subtitle": "We would love to meet you! Join us for worship, fellowship, and grow together in faith."
   },
   "Community": {
-    "header-title": "Our <highlight>Community</highlight>"
+    "header-title": "Our <highlight>Community</highlight>",
+    "header-subtitle": "We are a diverse community united by the love of Jesus. No matter your background, story, or struggles, you have a family here.",
+    "photo-grid-caption": "Life Together"
   },
   "common": {
     "regionalSettings": "Regional Settings",
     "homepage": "Homepage",
     "language": "Language",
-    "languageDrawer": "Toggle language drawer"
+    "languageDrawer": "Toggle language drawer",
+    "home": "Home",
+    "community": "Community",
+    "blog": "Blog",
+    "join-us": "Join Us"
   },
   "footer": {
     "copyright": "Redentor Church of Christ. All rights reserved.",
-    "poweredBy": "Made with ♥️ from Buenos Aires, Argentina by GD"
+    "poweredBy": "Made with ♥️ from Buenos Aires, Argentina by GD",
+    "explore": "Explore",
+    "visit-us": "Visit Us",
+    "follow-us": "Follow Us"
+  },
+  "navbar": {
+    "church-name": "Church of Christ",
+    "church-subtitle": "Redeemer"
   },
   "landingPage": {
     "latestArticles": "Latest articles"
@@ -34,6 +51,10 @@
     "title": "Page not found | 404",
     "description": "This page doesn't seem to exist",
     "backToHome": "Back to homepage"
+  },
+  "OurMissionCta": {
+    "welcome-home": "Welcome Home",
+    "join-us-sunday": "Join Us This Sunday"
   },
   "Metadata": {
     "site-name": "Redentor Church of Christ",

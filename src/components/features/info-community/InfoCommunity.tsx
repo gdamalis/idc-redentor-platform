@@ -37,7 +37,7 @@ export default function InfoCommunity({
   const bodyText = documentToReactComponents(content?.body.json, options);
 
   return (
-    <div className="bg-blue-600/20 ">
+    <div className="bg-muted/50">
       <Container className="max-w-5xl py-16 text-center md:space-y-6 sm:py-24">
         {bodyText}
       </Container>

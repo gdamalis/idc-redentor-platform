@@ -1,6 +1,7 @@
 {
   "article": {
-    "featured": "destacado"
+    "featured": "destacado",
+    "read-more": "Leer más"
   },
   "BlogPost": {
     "more-posts": "Otros artículos",
@@ -9,23 +10,39 @@
   "Blog": {
     "title": "Últimos artículos del blog",
     "description": "Conocé nuestras reflexiones y enseñanzas más recientes. Seguinos en este viaje de fe y aprendizaje.",
-    "view-more": "Ver todos los artículos"
+    "view-more": "Ver todos los artículos",
+    "header-title": "Nuestro <highlight>Blog</highlight>",
+    "header-subtitle": "Conocé nuestras reflexiones y enseñanzas más recientes. Seguinos en este viaje de fe y aprendizaje."
   },
   "Connect": {
-    "header-title": "Vení a <highlight>Conocernos</highlight>"
+    "header-title": "Vení a <highlight>Conocernos</highlight>",
+    "header-subtitle": "¡Nos encantaría conocerte! Unite a nosotros para adorar, tener comunión y crecer juntos en la fe."
   },
   "Community": {
-    "header-title": "Nuestra <highlight>Comunidad</highlight>"
+    "header-title": "Nuestra <highlight>Comunidad</highlight>",
+    "header-subtitle": "Somos una comunidad diversa unida por el amor de Jesús. No importa tu trasfondo, historia o luchas, aquí tenés una familia.",
+    "photo-grid-caption": "Vida en Comunidad"
   },
   "common": {
     "regionalSettings": "Configuración regional",
     "homepage": "Página principal",
     "language": "Idioma",
-    "languageDrawer": "Alternar cajón de idiomas"
+    "languageDrawer": "Alternar cajón de idiomas",
+    "home": "Inicio",
+    "community": "Comunidad",
+    "blog": "Blog",
+    "join-us": "Sumate"
   },
   "footer": {
     "copyright": "Iglesia de Cristo Redentor. Todos los derechos reservados.",
-    "poweredBy": "Hecho con ♥️ desde Buenos Aires, Argentina por GD"
+    "poweredBy": "Hecho con ♥️ desde Buenos Aires, Argentina por GD",
+    "explore": "Explorar",
+    "visit-us": "Visitanos",
+    "follow-us": "Seguinos"
+  },
+  "navbar": {
+    "church-name": "Iglesia de Cristo",
+    "church-subtitle": "Redentor"
   },
   "landingPage": {
     "latestArticles": "Últimos artículos"
@@ -34,6 +51,10 @@
     "title": "Página no encontrada | 404",
     "description": "Esta página no parece existir",
     "backToHome": "Volver a la página principal"
+  },
+  "OurMissionCta": {
+    "welcome-home": "Bienvenido a Casa",
+    "join-us-sunday": "Unite Este Domingo"
   },
   "Metadata": {
     "site-name": "Iglesia de Cristo Redentor",

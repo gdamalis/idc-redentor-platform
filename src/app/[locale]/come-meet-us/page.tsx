@@ -49,6 +49,7 @@ export default async function ComeMeetUsPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
+  const t = await getTranslations("Connect");
   const isEnabled = await shouldUseDraftMode();
 
   const infoContact = await getTextBlockComponent(
@@ -65,7 +66,11 @@ export default async function ComeMeetUsPage({
 
   return (
     <main>
-      <Header titlePath="Connect.header-title" className="bg-community" />
+      <Header 
+        titlePath="Connect.header-title" 
+        variant="gradient"
+        subtitle={t("header-subtitle")}
+      />
 
       <InfoConnect content={infoContact} />
 

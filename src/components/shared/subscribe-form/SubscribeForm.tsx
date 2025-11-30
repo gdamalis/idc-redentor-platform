@@ -55,7 +55,7 @@ export const SubscribeForm = ({
         <Typography
           component="h3"
           variant="h3"
-          className="text-sm font-semibold leading-6 text-gray-900"
+          className="text-sm font-semibold leading-6 text-white"
         >
           {content.title}
         </Typography>
@@ -64,7 +64,7 @@ export const SubscribeForm = ({
         <Typography
           component="p"
           variant="body1"
-          className="mt-2 text-sm leading-6 text-gray-900"
+          className="mt-2 text-sm leading-6 text-white"
         >
           {content.shortDescription}
         </Typography>
@@ -81,12 +81,12 @@ export const SubscribeForm = ({
             required
             placeholder={content.inputPlaceholder}
             autoComplete="email"
-            className={`w-full min-w-0 appearance-none rounded-l-2xl rounded-r-none border-0  px-3 py-1.5 text-base text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-blue-600 sm:w-56 ${sizeClasses.input}`}
+            className={`w-full min-w-0 appearance-none rounded-l-2xl rounded-r-none border-0  px-3 py-1.5 text-base text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-primary sm:w-56 ${sizeClasses.input}`}
           />
-          <div className="text-center sm:flex-shrink-0">
+          <div className="text-center sm:shrink-0">
             <button
               type="submit"
-              className={`flex w-full text-nowrap items-center justify-center rounded-r-2xl bg-blue-600 px-6 py-2 font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${sizeClasses.button}`}
+              className={`flex w-full text-nowrap items-center justify-center rounded-r-2xl bg-primary px-6 py-2 font-semibold text-white shadow-sm hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${sizeClasses.button}`}
             >
               {isPending ? <LoadingSpinner size={size} /> : content.ctaText}
             </button>
