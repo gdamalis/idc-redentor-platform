@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.4.0...v1.5.0) (2025-12-01)
+
+
+### Features
+
+* target version 1.5.0 ([f138393](https://github.com/gdamalis/idc-redentor-web/commit/f1383936c1ac12c2f4a6a6f63fafbd8dacfecd1f))
+
 # [1.4.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.3.0...v1.4.0) (2025-12-01)
 
 
