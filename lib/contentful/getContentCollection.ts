@@ -11,12 +11,25 @@ const GRAPHQL_FIELDS = `
         title
         description {
           json
+        }
+        bibleVerse {
+          json
+        }
+        image {
+          url
+          title
+        }
       }
-      bibleVerse {
-        json
-      }
-      image {
-        url
+      ... on ValueItem {
+        title
+        description {
+          json
+        }
+        bibleVerse {
+          json
+        }
+        image {
+          url
           title
         }
       }
@@ -54,7 +67,8 @@ export async function getContentCollection(
     title: data?.data?.contentCollectionCollection?.items[0].title,
     description: data?.data?.contentCollectionCollection?.items[0].description,
     creedItems:
-      data?.data?.contentCollectionCollection?.items[0].contentItemsCollection.items,
+      data?.data?.contentCollectionCollection?.items[0].contentItemsCollection
+        .items,
     image: data?.data?.contentCollectionCollection?.items[0].image,
   };
 
