@@ -120,6 +120,9 @@ importers:
       '@semantic-release/github':
         specifier: ^12.0.2
         version: 12.0.2(semantic-release@25.0.2(typescript@5.9.3))
+      '@semantic-release/npm':
+        specifier: ^13.1.2
+        version: 13.1.2(semantic-release@25.0.2(typescript@5.9.3))
       '@types/mailchimp__mailchimp_marketing':
         specifier: ^3.0.21
         version: 3.0.22
