@@ -1,13 +1,23 @@
+"use client";
+
 import { Typography } from "@src/components/ui/typography";
 import { Divider } from "@src/components/ui/divider";
 import { AuthorInfo } from "./AuthorInfo";
 import { BlogPost } from "@src/types/BlogPost";
+import { useTranslations } from "next-intl";
 
 type BlogPostHeaderProps = Readonly<{
   post: Pick<BlogPost, "title" | "subtitle" | "author" | "publishedDate" | "category">;
 }>;
 
 export function BlogPostHeader({ post }: BlogPostHeaderProps) {
+  const t = useTranslations("BlogPost.categories");
+
+  // Translate the category if it exists, otherwise fallback to "Blog"
+  const displayCategory = post.category 
+    ? (t(post.category as "Events" | "Spiritual Growth" | "Community") || post.category)
+    : "Blog";
+
   return (
     <div className="flex flex-col gap-y-3">
       <Typography
@@ -15,7 +25,7 @@ export function BlogPostHeader({ post }: BlogPostHeaderProps) {
         variant="overline"
         className="font-semibold text-primary"
       >
-        {post.category || "Blog"}
+        {displayCategory}
       </Typography>
       <Typography
         component="h1"
