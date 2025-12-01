@@ -52,7 +52,7 @@ const richTextOptions: Options = {
 };
 
 type BlogPostContentProps = Readonly<{
-  post: Pick<BlogPost, "content" | "featuredImage" | "seoDescription">;
+  post: Pick<BlogPost, "content" | "featuredImage" | "seoDescription" | "keywords">;
 }>;
 
 export function BlogPostContent({ post }: BlogPostContentProps) {
@@ -82,6 +82,10 @@ export function BlogPostContent({ post }: BlogPostContentProps) {
           </Typography>
         )}
       </div>
+
+      {/* {post.keywords && post.keywords.length > 0 && (
+        <KeywordTags keywords={post.keywords} />
+      )} */}
     </div>
   );
 }

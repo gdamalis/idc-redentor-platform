@@ -5,7 +5,12 @@
   },
   "BlogPost": {
     "more-posts": "Other articles",
-    "related": "Related Articles"
+    "related": "Related Articles",
+    "categories": {
+      "Events": "Events",
+      "Spiritual Growth": "Spiritual Growth",
+      "Community": "Community"
+    }
   },
   "Blog": {
     "title": "Latest from the blog",
