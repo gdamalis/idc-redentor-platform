@@ -4,7 +4,7 @@ import { AuthorInfo } from "./AuthorInfo";
 import { BlogPost } from "@src/types/BlogPost";
 
 type BlogPostHeaderProps = Readonly<{
-  post: Pick<BlogPost, "title" | "subtitle" | "author" | "publishedDate">;
+  post: Pick<BlogPost, "title" | "subtitle" | "author" | "publishedDate" | "category">;
 }>;
 
 export function BlogPostHeader({ post }: BlogPostHeaderProps) {
@@ -15,7 +15,7 @@ export function BlogPostHeader({ post }: BlogPostHeaderProps) {
         variant="overline"
         className="font-semibold text-primary"
       >
-        Blog
+        {post.category || "Blog"}
       </Typography>
       <Typography
         component="h1"
