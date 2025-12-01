@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.3.0...v1.4.0) (2025-12-01)
+
+
+### Features
+
+* **ICR-47:** add category and keyword to blog post page ([#33](https://github.com/gdamalis/idc-redentor-web/issues/33)) ([0c832e1](https://github.com/gdamalis/idc-redentor-web/commit/0c832e1679751f1a2fe42c9fc8ac7b055baab994))
+
 # [1.3.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.2.0...v1.3.0) (2025-12-01)
 
 
