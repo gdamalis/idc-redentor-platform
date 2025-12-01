@@ -25,7 +25,7 @@ const LoadingSpinner = ({
     <div className={`ml-1 ${fullScreenClasses}`}>
       <svg
         aria-hidden="true"
-        className={`inline mr-2 animate-spin text-primary/80 fill-primary/20 dark:text-primary dark:fill-gray-300 ${className} ${sizeClasses}`}
+        className={`inline mr-2 animate-spin text-white/80 fill-primary/40 ${className} ${sizeClasses}`}
         viewBox="0 0 100 101"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
