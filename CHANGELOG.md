@@ -1,3 +1,16 @@
+# [1.3.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.2.0...v1.3.0) (2025-12-01)
+
+
+### Bug Fixes
+
+* resolved  release issue ([c776992](https://github.com/gdamalis/idc-redentor-web/commit/c7769926955dc879a8f79022787b82b9d73c7515))
+* unexpected refreshed when changing language ([7946bf4](https://github.com/gdamalis/idc-redentor-web/commit/7946bf4b82b1a6c89308cf758fe37f1237934eab))
+
+
+### Features
+
+* enhance OurMissionSection with additional fields and improved rendering ([d7b2b07](https://github.com/gdamalis/idc-redentor-web/commit/d7b2b07acb73fd2b336480d11418d6eb3afe5d7e))
+
 # Changelog
 
 ## [1.3.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.2.0...v1.3.0) (2025-12-01)
