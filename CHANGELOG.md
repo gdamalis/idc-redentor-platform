@@ -1,11 +1,6 @@
 # Changelog
 
-## [2.0.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.2.0...v2.0.0) (2025-12-01)
-
-
-### ⚠ BREAKING CHANGES
-
-* **ICR-14:** Redesign UI ([#31](https://github.com/gdamalis/idc-redentor-web/issues/31))
+## [1.3.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.2.0...v1.3.0) (2025-12-01)
 
 ### Features
 
