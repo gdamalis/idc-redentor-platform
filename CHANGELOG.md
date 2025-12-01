@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/gdamalis/idc-redentor-web/compare/v1.5.0...v1.5.1) (2025-12-01)
+
+
+### Bug Fixes
+
+* add @semantic-release/npm plugin and update version to 1.5.0 ([cfd8306](https://github.com/gdamalis/idc-redentor-web/commit/cfd8306be65a46412631a68be80bcb9127d90d4c))
+
 # [1.5.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.4.0...v1.5.0) (2025-12-01)
 
 
