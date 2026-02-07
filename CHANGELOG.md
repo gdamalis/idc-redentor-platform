@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.5.1...v1.6.0) (2026-02-07)
+
+
+### Features
+
+* integrate SubscribeBanner component, adjusted worship times and enhance layout structure ([aaef1d1](https://github.com/gdamalis/idc-redentor-web/commit/aaef1d17ce1324580bef60942189e5e3885d02c7))
+
 ## [1.5.1](https://github.com/gdamalis/idc-redentor-web/compare/v1.5.0...v1.5.1) (2025-12-01)
 
 
