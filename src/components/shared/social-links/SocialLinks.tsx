@@ -1,4 +1,4 @@
-import React, { JSX } from "react";
+import React from "react";
 import { Facebook, Instagram, Youtube } from "lucide-react";
 
 type SocialIcons = {

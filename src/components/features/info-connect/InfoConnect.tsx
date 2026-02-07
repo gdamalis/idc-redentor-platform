@@ -2,7 +2,7 @@ import {
   CommonNode,
   documentToReactComponents,
 } from "@contentful/rich-text-react-renderer";
-import { BLOCKS } from "@contentful/rich-text-types";
+import { BLOCKS, Document } from "@contentful/rich-text-types";
 import { Container } from "@src/components/ui/container";
 import { Typography } from "@src/components/ui/typography";
 import { ReactNode } from "react";
@@ -26,7 +26,7 @@ type InfoConnectProps = {
     headline: string;
     body: {
        
-      json: any;
+      json: Document;
     };
   };
 };

@@ -1,27 +1,30 @@
  
 import { documentToPlainTextString } from "@contentful/rich-text-plain-text-renderer";
+import { Document } from "@contentful/rich-text-types";
 import { Container } from "@src/components/ui/container";
 import { Typography } from "@src/components/ui/typography";
+
+type CreedItem = {
+  title: string;
+  description: {
+    json: Document;
+  };
+  bibleVerse: {
+    json: Document;
+  };
+  image: {
+    title: string;
+    url: string;
+  };
+};
 
 type CreedSectionProps = {
   content: {
     title: string;
     description: {
-      json: any;
+      json: Document;
     };
-    creedItems: {
-      title: string;
-      description: {
-        json: any;
-      };
-      bibleVerse: {
-        json: any;
-      };
-      image: {
-        title: string;
-        url: string;
-      };
-    }[];
+    creedItems: CreedItem[];
   };
 };
 
@@ -39,7 +42,7 @@ export const CreedSection = ({ content }: CreedSectionProps) => {
         </Typography>
 
         <dl className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-x-8 gap-y-16 text-base/7 sm:grid-cols-2 lg:mx-0 lg:max-w-none lg:grid-cols-3">
-          {content?.creedItems?.map((credo: any) => {
+          {content?.creedItems?.map((credo: CreedItem) => {
             const description = documentToPlainTextString(
               credo.description.json,
             );

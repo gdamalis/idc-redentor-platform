@@ -3,6 +3,7 @@ import { Typography } from "@src/components/ui/typography";
 import { Input } from "@src/components/ui/input";
 import { Textarea } from "@src/components/ui/textarea";
 import { Label } from "@src/components/ui/label";
+import { ReactNode } from "react";
 
 export type Field = {
   name: string;
@@ -98,28 +99,29 @@ export function getDropdownField(data: Field) {
 /**
  * Processes text with highlight tags into styled components
  */
-export function getTextWithHighlights(text: string) {
+export function getTextWithHighlights(text: string): (string | ReactNode)[] {
   const styledText = text.split(/<highlight>(.*?)<\/highlight>/g);
 
-  styledText.forEach((value, index) => {
+  const result: (string | ReactNode)[] = [];
+  
+  styledText.forEach((value) => {
     if (value.includes("@")) {
-      styledText[index] = (
+      result.push(
         <span
           key={value}
           className="inline-flex items-center rounded-md bg-primary/10 px-1.5 py-0.5 text-sm font-medium text-primary ring-1 ring-inset ring-primary/20"
         >
           {value}
         </span>  
-      ) as any;
-      return true;
+      );
+    } else {
+      result.push(
+        <Typography component="span" variant="body1" key={value}>
+          {value}
+        </Typography>  
+      );
     }
-
-    styledText[index] = (
-      <Typography component="span" variant="body1" key={value}>
-        {value}
-      </Typography>  
-    ) as any;
   });
 
-  return styledText;
+  return result;
 }

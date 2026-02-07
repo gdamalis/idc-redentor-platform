@@ -12,7 +12,7 @@ export async function subscribe(email: string) {
       return { success: false, ...data };
     }
      
-  } catch (error: any) {
-    return { success: false, error };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
   }
 }

@@ -1,3 +1,4 @@
+import { Document } from "@contentful/rich-text-types";
 import { Field } from "./formFields";
 
 export type ContactFormProps = {
@@ -11,7 +12,7 @@ export type ContactFormProps = {
     };
     agreementNote: {
        
-      json: any;
+      json: Document;
     };
     bibleVerse: {
       book: string;

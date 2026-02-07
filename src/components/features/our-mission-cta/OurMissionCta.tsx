@@ -1,6 +1,6 @@
 "use client";
 
-import { BLOCKS } from "@contentful/rich-text-types";
+import { BLOCKS, Document } from "@contentful/rich-text-types";
 import {
   CommonNode,
   documentToReactComponents,
@@ -47,7 +47,7 @@ type OurMissionCtaProps = {
     headline: string;
     subHeadline: string;
     bodyText: {
-      json: any;
+      json: Document;
     };
     ctaText: string;
     targetPage: {

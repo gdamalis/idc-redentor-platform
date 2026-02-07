@@ -6,7 +6,7 @@ type BibleVerseProps = {
   fromVerse: number;
   toVerse: number;
    
-  verseContent: any;
+  verseContent: string;
   className?: string;
 };
 

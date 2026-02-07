@@ -1,7 +1,6 @@
 import { shouldUseDraftMode } from "@lib/contentful/draftMode";
 import { getContentCollection } from "@lib/contentful/getContentCollection";
 import { getCtaComponent } from "@lib/contentful/getCtaComponent";
-import { getDuplexComponent } from "@lib/contentful/getDuplexComponent";
 import { getSeo } from "@lib/contentful/getSeo";
 import { getTextBlockComponent } from "@lib/contentful/getTextBlockComponent";
 import { ComponentCta } from "@src/components/features/component-cta";

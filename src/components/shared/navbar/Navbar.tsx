@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Link } from "@src/i18n/routing";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { Menu, X } from "lucide-react";
 import { cn } from "@src/utils/cn";
@@ -23,7 +23,6 @@ interface NavbarProps {
 
 export const Navbar = ({ menuItems = [], variant = "overlay" }: NavbarProps) => {
   const t = useTranslations();
-  const locale = useLocale();
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 

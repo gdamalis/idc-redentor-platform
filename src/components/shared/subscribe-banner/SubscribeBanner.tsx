@@ -16,8 +16,13 @@ type SubscribeBannerProps = {
   };
 };
 
+type SubscribeState = {
+  success: boolean;
+  message?: string;
+} | null;
+
 export const SubscribeBanner = ({ content }: SubscribeBannerProps) => {
-  const [state, formAction, isPending] = useActionState<any, FormData>(
+  const [state, formAction, isPending] = useActionState<SubscribeState, FormData>(
     async (_currentState, formData) => {
       const email = formData.get("email") as string;
       const data = await subscribe(email);

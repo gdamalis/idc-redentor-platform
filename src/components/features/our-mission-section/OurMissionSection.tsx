@@ -1,17 +1,18 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
-import { BLOCKS } from "@contentful/rich-text-types";
+import { CommonNode, documentToReactComponents } from "@contentful/rich-text-react-renderer";
+import { BLOCKS, Document } from "@contentful/rich-text-types";
 import { Container } from "@src/components/ui/container";
+import { ReactNode } from "react";
 
 type ValueItem = {
   title: string;
   description: {
-    json: any;
+    json: Document;
   };
   bibleVerse?: {
-    json: any;
+    json: Document;
   };
   image?: {
     url: string;
@@ -23,7 +24,7 @@ type OurMissionSectionProps = {
   content: {
     title: string;
     description: {
-      json: any;
+      json: Document;
     };
     creedItems: ValueItem[];
   };
@@ -31,7 +32,7 @@ type OurMissionSectionProps = {
 
 const options = {
   renderNode: {
-    [BLOCKS.PARAGRAPH]: (_node: any, children: any) => (
+    [BLOCKS.PARAGRAPH]: (_node: CommonNode, children: ReactNode) => (
       <p className="text-muted-foreground text-lg">{children}</p>
     ),
   },
@@ -39,7 +40,7 @@ const options = {
 
 const descriptionOptions = {
   renderNode: {
-    [BLOCKS.PARAGRAPH]: (_node: any, children: any) => (
+    [BLOCKS.PARAGRAPH]: (_node: CommonNode, children: ReactNode) => (
       <p className="text-muted-foreground leading-relaxed">{children}</p>
     ),
   },

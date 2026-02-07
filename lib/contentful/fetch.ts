@@ -1,6 +1,6 @@
  
 
-export async function fetchGraphQL(query: any, preview = false) { 
+export async function fetchGraphQL(query: string, preview = false) { 
   return fetch(
     `https://graphql.contentful.com/content/v1/spaces/${process.env.CONTENTFUL_SPACE_ID}`,
     {

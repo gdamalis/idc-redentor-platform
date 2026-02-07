@@ -12,7 +12,6 @@ import { Typography } from "@src/components/ui/typography";
 import { Link } from "@src/i18n/routing";
 import Image from "next/image";
 import { ReactNode, useActionState } from "react";
-import { Mail, MapPin, Phone, Clock } from "lucide-react";
 import { Card } from "@src/components/ui/card";
 import { Button } from "@src/components/ui/button";
 

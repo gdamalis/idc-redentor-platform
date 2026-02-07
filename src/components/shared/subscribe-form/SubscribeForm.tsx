@@ -17,6 +17,11 @@ type SubscribeFormProps = {
   className?: string;
 };
 
+type SubscribeState = {
+  success: boolean;
+  message?: string;
+} | null;
+
 const getSizeClasses = (size: "sm" | "lg") => {
   switch (size) {
     case "sm":
@@ -41,7 +46,7 @@ export const SubscribeForm = ({
 
   const [state, formAction, isPending] = useActionState<
      
-    any,
+    SubscribeState,
     FormData
   >(async (currentState, formData) => {
     const email = formData.get("email") as string;
