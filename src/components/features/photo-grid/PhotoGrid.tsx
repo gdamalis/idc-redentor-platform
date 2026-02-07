@@ -1,5 +1,6 @@
 "use client";
 
+import { Container } from "@src/components/ui/container";
 import Image from "next/image";
 
 type PhotoGridProps = {
@@ -22,7 +23,7 @@ export const PhotoGrid = ({ images, caption }: PhotoGridProps) => {
   
   return (
     <section className="py-12">
-      <div className="container mx-auto px-4">
+      <Container>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 h-96 md:h-[500px] rounded-3xl overflow-hidden">
           {/* Large featured image - spans 2 columns and 2 rows */}
           {gridImages[0] && (
@@ -81,7 +82,7 @@ export const PhotoGrid = ({ images, caption }: PhotoGridProps) => {
             </div>
           )}
         </div>
-      </div>
+      </Container>
     </section>
   );
 };

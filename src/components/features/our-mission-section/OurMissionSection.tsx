@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
 import { BLOCKS } from "@contentful/rich-text-types";
+import { Container } from "@src/components/ui/container";
 
 type ValueItem = {
   title: string;
@@ -51,7 +52,7 @@ export const OurMissionSection = ({ content }: OurMissionSectionProps) => {
 
   return (
     <section className="py-24 bg-background">
-      <div className="container mx-auto px-4">
+      <Container>
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="font-serif text-4xl font-bold mb-4 text-foreground">
             {content.title}
@@ -85,7 +86,7 @@ export const OurMissionSection = ({ content }: OurMissionSectionProps) => {
             </motion.div>
           ))}
         </div>
-      </div>
+      </Container>
     </section>
   );
 };

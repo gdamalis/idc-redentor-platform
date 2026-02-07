@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { Mail, MapPin } from "lucide-react";
 
-import { SubscribeForm } from "@src/components/shared/subscribe-form/SubscribeForm";
+import { Container } from "@src/components/ui/container";
 import SocialLinks from "../social-links/SocialLinks";
 import packageJson from "../../../../package.json";
 
@@ -21,16 +21,9 @@ type FooterProps = {
       googleMapsUrl: string;
     };
   };
-  subscribeContent: {
-    title: string;
-    shortDescription: string;
-    inputPlaceholder: string;
-    ctaText: string;
-    successMessage: string;
-  };
 };
 
-export const Footer = ({ content, subscribeContent }: FooterProps) => {
+export const Footer = ({ content }: FooterProps) => {
   const t = useTranslations();
 
   const quickLinks = [
@@ -42,7 +35,7 @@ export const Footer = ({ content, subscribeContent }: FooterProps) => {
 
   return (
     <footer className="bg-slate-900 text-white pt-16 pb-8">
-      <div className="container mx-auto px-4">
+      <Container>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           {/* Brand */}
           <div className="space-y-4">
@@ -128,7 +121,7 @@ export const Footer = ({ content, subscribeContent }: FooterProps) => {
             </ul>
           </div>
 
-          {/* Social & Subscribe */}
+          {/* Social */}
           <div>
             <h3 className="font-serif font-bold text-lg mb-6">
               {t("footer.follow-us")}
@@ -136,11 +129,7 @@ export const Footer = ({ content, subscribeContent }: FooterProps) => {
             <SocialLinks 
               links={content.socialLinks} 
               variant="footer"
-              className="mb-6"
             />
-            <div className="mt-4">
-              <SubscribeForm content={subscribeContent} />
-            </div>
           </div>
         </div>
 
@@ -153,7 +142,7 @@ export const Footer = ({ content, subscribeContent }: FooterProps) => {
             <p>{t("footer.poweredBy")}</p>
           </div>
         </div>
-      </div>
+      </Container>
     </footer>
   );
 };

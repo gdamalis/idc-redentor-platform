@@ -4,6 +4,7 @@ import { getNavigationMenu } from "@lib/contentful/getNavigationMenu";
 import { getSingleEmailForm } from "@lib/contentful/getSingleEmailForm";
 import { Footer } from "@src/components/shared/footer";
 import { NavbarWrapper } from "@src/components/shared/navbar";
+import { SubscribeBanner } from "@src/components/shared/subscribe-banner";
 import { Toaster } from "@src/components/ui/toaster";
 import { routing } from "@src/i18n/routing";
 import { Analytics } from "@vercel/analytics/react";
@@ -68,7 +69,8 @@ export default async function LocaleLayout({
           <NextIntlClientProvider messages={messages}>
             <NavbarWrapper menuItems={navMenu} />
             {children}
-            <Footer content={footerContent} subscribeContent={subscribeContent} />
+            <SubscribeBanner content={subscribeContent} />
+            <Footer content={footerContent} />
             <Toaster />
           </NextIntlClientProvider>
           <SpeedInsights />

@@ -86,7 +86,7 @@ export const OurMissionCta = ({ content }: OurMissionCtaProps) => {
       </div>
 
       {/* Content */}
-      <div className="container relative z-10 px-4 text-center text-white max-w-4xl mx-auto mt-16">
+      <div className="relative z-10 px-4 text-center text-white max-w-4xl mx-auto mt-16">
         <motion.div
           initial="initial"
           animate="animate"

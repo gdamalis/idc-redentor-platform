@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Menu, X } from "lucide-react";
 import { cn } from "@src/utils/cn";
 import { Button } from "@src/components/ui/button";
+import { Container } from "@src/components/ui/container";
 import LanguageSwitcher from "@src/components/shared/language-switcher/LanguageSwitcher";
 import type { MenuItem } from "@src/types/MenuItem";
 
@@ -46,7 +47,7 @@ export const Navbar = ({ menuItems = [], variant = "overlay" }: NavbarProps) => 
           : "bg-transparent py-6",
       )}
     >
-      <div className="container mx-auto px-4 flex items-center justify-between">
+      <Container className="flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-3 group">
           <Image
@@ -126,7 +127,7 @@ export const Navbar = ({ menuItems = [], variant = "overlay" }: NavbarProps) => 
             {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
-      </div>
+      </Container>
 
       {/* Mobile Menu */}
       {isOpen && (

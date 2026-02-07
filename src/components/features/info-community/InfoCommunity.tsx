@@ -38,7 +38,7 @@ export default function InfoCommunity({
 
   return (
     <div className="bg-muted/50">
-      <Container className="max-w-5xl py-16 text-center md:space-y-6 sm:py-24">
+      <Container size="md" className="py-16 text-center md:space-y-6 sm:py-24">
         {bodyText}
       </Container>
     </div>

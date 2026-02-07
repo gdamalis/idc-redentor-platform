@@ -13,7 +13,7 @@ const options = {
       <Typography
         component="p"
         variant="body1"
-        className="text-xl md:text-2xl dark:text-white"
+        className="text-xl md:text-2xl text-gray-700 dark:text-gray-300"
       >
         {children}
       </Typography>
@@ -36,8 +36,8 @@ export function InfoConnect({
 }: Readonly<InfoConnectProps>) {
   const bodyText = documentToReactComponents(content?.body.json, options);
   return (
-    <div className="bg-muted/50">
-      <Container className="max-w-5xl py-16 text-center sm:py-24">
+    <div className="bg-gray-50 dark:bg-slate-900/50 transition-colors">
+      <Container size="md" className="py-16 text-center sm:py-24">
         {bodyText}
       </Container>
     </div>

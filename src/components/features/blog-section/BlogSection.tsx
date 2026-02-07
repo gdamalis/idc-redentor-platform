@@ -1,3 +1,4 @@
+import { Container } from "@src/components/ui/container";
 import { Typography } from "@src/components/ui/typography";
 import { useTranslations } from "next-intl";
 import { cn } from "@src/utils/cn";
@@ -15,7 +16,7 @@ export const BlogSection = ({ posts, showHeader = true }: BlogSectionProps) => {
 
   return (
     <section className={cn("bg-background", showHeader ? "py-24" : "py-12")}>
-      <div className="container mx-auto px-4">
+      <Container>
         {showHeader && (
           <div className="text-center max-w-3xl mx-auto mb-16">
             <Typography
@@ -47,7 +48,7 @@ export const BlogSection = ({ posts, showHeader = true }: BlogSectionProps) => {
               <BlogPostCard key={post.sys.id} post={post} index={index} />
             ))}
         </div>
-      </div>
+      </Container>
     </section>
   );
 };
