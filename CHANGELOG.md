@@ -1,3 +1,10 @@
+## [1.7.1](https://github.com/gdamalis/idc-redentor-web/compare/v1.7.0...v1.7.1) (2026-02-08)
+
+
+### Bug Fixes
+
+* update Content Security Policy in security headers ([d05d5e4](https://github.com/gdamalis/idc-redentor-web/commit/d05d5e433462ffb31b1a7272bb7a0f63c582f2c9))
+
 # [1.7.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.6.0...v1.7.0) (2026-02-08)
 
 
