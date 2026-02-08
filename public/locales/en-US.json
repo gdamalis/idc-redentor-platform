@@ -68,5 +68,10 @@
   },
   "status": {
     "sr-loading": "Loading..."
+  },
+  "Consent": {
+    "message": "We value your privacy. We use analytics to understand how to improve this site. We do not collect personal data for commercial purposes.",
+    "accept": "That's fine",
+    "decline": "I'd rather not"
   }
 }

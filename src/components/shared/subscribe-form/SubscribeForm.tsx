@@ -3,6 +3,7 @@
 import LoadingSpinner from "@src/components/ui/LoadingSpinner";
 import { Typography } from "@src/components/ui/typography";
 import { subscribe } from "@src/service/subscribe";
+import { trackEvent } from "@src/lib/analytics";
 import { useActionState } from "react";
 
 type SubscribeFormProps = {
@@ -51,6 +52,14 @@ export const SubscribeForm = ({
   >(async (currentState, formData) => {
     const email = formData.get("email") as string;
     const data = await subscribe(email);
+    
+    if (data.success) {
+      trackEvent("newsletter_subscribe", {
+        subscribe_location: "footer_form",
+        page_path: window.location.pathname,
+      });
+    }
+    
     return data;
   }, null);
 

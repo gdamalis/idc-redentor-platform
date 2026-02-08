@@ -9,6 +9,7 @@ import { cn } from "@src/utils/cn";
 import { Button } from "@src/components/ui/button";
 import { Container } from "@src/components/ui/container";
 import LanguageSwitcher from "@src/components/shared/language-switcher/LanguageSwitcher";
+import { trackEvent } from "@src/lib/analytics";
 import type { MenuItem } from "@src/types/MenuItem";
 
 interface NavbarProps {
@@ -98,7 +99,13 @@ export const Navbar = ({ menuItems = [], variant = "overlay" }: NavbarProps) => 
 
           <LanguageSwitcher isScrolled={useSolidAppearance} />
 
-          <Link href="/come-meet-us">
+          <Link 
+            href="/come-meet-us"
+            onClick={() => trackEvent("join_us_click", {
+              click_location: "navbar",
+              page_path: window.location.pathname,
+            })}
+          >
             <Button
               variant={useSolidAppearance ? "default" : "secondary"}
               className={cn(
@@ -141,7 +148,16 @@ export const Navbar = ({ menuItems = [], variant = "overlay" }: NavbarProps) => 
               {item.groupName}
             </Link>
           ))}
-          <Link href="/come-meet-us" onClick={() => setIsOpen(false)}>
+          <Link 
+            href="/come-meet-us" 
+            onClick={() => {
+              setIsOpen(false);
+              trackEvent("join_us_click", {
+                click_location: "navbar_mobile",
+                page_path: window.location.pathname,
+              });
+            }}
+          >
             <Button className="w-full rounded-full">
               {t("common.join-us")}
             </Button>

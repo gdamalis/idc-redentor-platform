@@ -77,7 +77,7 @@ export function getLongTextInput(data: Field) {
 /**
  * Renders a dropdown field
  */
-export function getDropdownField(data: Field) {
+export function getDropdownField(data: Field, onChange?: (value: string) => void) {
   const DropDownOptions: DropDownOption[] = data.values.map((value, index) => ({
     id: String(index),
     value,
@@ -91,6 +91,7 @@ export function getDropdownField(data: Field) {
         placeholder={data.placeholder} 
         name={data.inputId}
         id={data.inputId}
+        onChange={onChange}
       />
     </div>
   );

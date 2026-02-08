@@ -11,9 +11,10 @@ import LoadingSpinner from "@src/components/ui/LoadingSpinner";
 import { Typography } from "@src/components/ui/typography";
 import { Link } from "@src/i18n/routing";
 import Image from "next/image";
-import { ReactNode, useActionState } from "react";
+import { ReactNode, useActionState, useEffect, useState } from "react";
 import { Card } from "@src/components/ui/card";
 import { Button } from "@src/components/ui/button";
+import { trackEvent } from "@src/lib/analytics";
 
 import { handleContactFormSubmission } from "./contactFormAction";
 import {
@@ -61,6 +62,7 @@ export const ContactForm = ({ content }: ContactFormProps) => {
   );
 
   const requiredFields = getRequiredFields(content.formFields);
+  const [formSubject, setFormSubject] = useState("");
 
   const [state, formAction, isPending] = useActionState<
     ContactFormState | null,
@@ -70,6 +72,14 @@ export const ContactForm = ({ content }: ContactFormProps) => {
       handleContactFormSubmission(currentState, formData, requiredFields),
     null,
   );
+
+  useEffect(() => {
+    if (state?.success && formSubject) {
+      trackEvent("contact_form_submit", {
+        form_subject: formSubject,
+      });
+    }
+  }, [state, formSubject]);
 
   return (
     <div className="relative isolate bg-background py-20 sm:py-32">
@@ -131,7 +141,7 @@ export const ContactForm = ({ content }: ContactFormProps) => {
                     }
 
                     if (field.type === "Dropdown") {
-                      return getDropdownField(field);
+                      return getDropdownField(field, setFormSubject);
                     }
 
                     if (field.type === "Long text") {

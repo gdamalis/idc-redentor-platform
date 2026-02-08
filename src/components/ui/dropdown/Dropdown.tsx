@@ -20,16 +20,24 @@ type DropdownProps = {
   placeholder: string;
   name?: string;
   id?: string;
+  onChange?: (value: string) => void;
 };
 
-export const Dropdown = ({ options, placeholder, name, id }: DropdownProps) => {
+export const Dropdown = ({ options, placeholder, name, id, onChange }: DropdownProps) => {
   const [selected, setSelected] = useState({ id: "", value: placeholder });
 
   const placeholderStyle =
-    selected.value === placeholder ? "text-gray-400" : "";
+    selected.value !== placeholder ? "" : "text-gray-400";
+
+  const handleChange = (option: DropDownOption) => {
+    setSelected(option);
+    if (onChange && option.value !== placeholder) {
+      onChange(option.value);
+    }
+  };
 
   return (
-    <Listbox value={selected} onChange={setSelected}>
+    <Listbox value={selected} onChange={handleChange}>
       <div className="relative mt-2">
         {name && (
           <input

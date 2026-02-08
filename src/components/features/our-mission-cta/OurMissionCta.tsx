@@ -12,6 +12,7 @@ import { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@src/components/ui/button";
 import { useTranslations } from "next-intl";
+import { trackEvent } from "@src/lib/analytics";
 
 const options = {
   renderNode: {
@@ -120,7 +121,13 @@ export const OurMissionCta = ({ content }: OurMissionCtaProps) => {
             variants={fadeInUp}
             className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8"
           >
-            <Link href={`/come-meet-us`}>
+            <Link 
+              href="/come-meet-us"
+              onClick={() => trackEvent("join_us_click", {
+                click_location: "hero_cta",
+                page_path: window.location.pathname,
+              })}
+            >
               <Button
                 size="lg"
                 className="rounded-full px-8 text-lg h-14 bg-primary hover:bg-primary/90"

@@ -1,18 +1,20 @@
 import { Typography } from "@src/components/ui/typography";
-import { Link } from "@src/i18n/routing";
 import { BlogPost } from "@src/types/BlogPost";
 import Image from "next/image";
 import { Divider } from "@src/components/ui/divider";
 import { formatDate } from "@src/utils/formatDate";
+import { RelatedArticleLink } from "./RelatedArticleLink";
 
 type RelatedArticlesProps = {
   posts: BlogPost[];
   locale: string;
+  sourceSlug: string;
 };
 
 export function RelatedArticles({
   posts,
   locale,
+  sourceSlug,
 }: Readonly<RelatedArticlesProps>) {
   if (!posts || posts.length === 0) {
     return null;
@@ -25,7 +27,12 @@ export function RelatedArticles({
           <div key={post.sys.id} className="flex relative w-full">
             <div className="w-full">
               <Divider className="my-6" />
-              <Link href={`/blog/${post.slug}`}>
+              <RelatedArticleLink
+                href={`/blog/${post.slug}`}
+                sourceArticle={sourceSlug}
+                targetArticle={post.slug}
+                targetArticleTitle={post.title}
+              >
                 <article className="grid grid-cols-[minmax(0,1fr)_82px] md:grid-cols-[minmax(0,1fr)_160px] gap-8">
                   <div className="flex flex-col gap-2 relative">
                     <Typography component="p" variant="h4">
@@ -72,7 +79,7 @@ export function RelatedArticles({
                     />
                   </div>
                 </article>
-              </Link>
+              </RelatedArticleLink>
             </div>
           </div>
         ))}

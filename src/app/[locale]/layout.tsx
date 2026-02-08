@@ -2,6 +2,7 @@ import { shouldUseDraftMode } from "@lib/contentful/draftMode";
 import { getFooter } from "@lib/contentful/getFooter";
 import { getNavigationMenu } from "@lib/contentful/getNavigationMenu";
 import { getSingleEmailForm } from "@lib/contentful/getSingleEmailForm";
+import { ConsentBanner } from "@src/components/shared/consent-banner/ConsentBanner";
 import { Footer } from "@src/components/shared/footer";
 import { NavbarWrapper } from "@src/components/shared/navbar";
 import { SubscribeBanner } from "@src/components/shared/subscribe-banner";
@@ -9,6 +10,7 @@ import { Toaster } from "@src/components/ui/toaster";
 import { routing } from "@src/i18n/routing";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { GoogleTagManager } from "@next/third-parties/google";
 import { Metadata } from "next";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
@@ -16,6 +18,22 @@ import { Outfit, Playfair_Display } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { notFound } from "next/navigation";
 import "../globals.css";
+
+const consentDefaultScript = `
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+
+var consent = null;
+try { consent = localStorage.getItem('analytics-consent'); } catch(e) {}
+
+gtag('consent', 'default', {
+  'analytics_storage': consent === 'granted' ? 'granted' : 'denied',
+  'ad_storage': 'denied',
+  'ad_user_data': 'denied',
+  'ad_personalization': 'denied',
+  'wait_for_update': 500
+});
+`;
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -64,6 +82,10 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: consentDefaultScript }} />
+      </head>
+      <GoogleTagManager gtmId={process.env.NEXT_PUBLIC_GTM_ID!} />
       <body className={`${outfit.variable} ${playfairDisplay.variable} font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <NextIntlClientProvider messages={messages}>
@@ -71,6 +93,7 @@ export default async function LocaleLayout({
             {children}
             <SubscribeBanner content={subscribeContent} />
             <Footer content={footerContent} />
+            <ConsentBanner />
             <Toaster />
           </NextIntlClientProvider>
           <SpeedInsights />

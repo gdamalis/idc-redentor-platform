@@ -4,6 +4,7 @@ import { EnvelopeIcon } from "@heroicons/react/24/outline";
 import { Container } from "@src/components/ui/container";
 import LoadingSpinner from "@src/components/ui/LoadingSpinner";
 import { subscribe } from "@src/service/subscribe";
+import { trackEvent } from "@src/lib/analytics";
 import { useActionState } from "react";
 
 type SubscribeBannerProps = {
@@ -26,6 +27,14 @@ export const SubscribeBanner = ({ content }: SubscribeBannerProps) => {
     async (_currentState, formData) => {
       const email = formData.get("email") as string;
       const data = await subscribe(email);
+      
+      if (data.success) {
+        trackEvent("newsletter_subscribe", {
+          subscribe_location: "banner",
+          page_path: window.location.pathname,
+        });
+      }
+      
       return data;
     },
     null,

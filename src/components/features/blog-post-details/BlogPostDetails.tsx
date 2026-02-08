@@ -24,7 +24,7 @@ export default function BlogPostDetails({
       <div className="mx-auto max-w-2xl flex flex-col gap-y-4">
         <BlogPostHeader post={post} />
         <BlogPostContent post={post} />
-        <RelatedArticles posts={relatedPosts} locale={locale} />
+        <RelatedArticles posts={relatedPosts} locale={locale} sourceSlug={post.slug} />
       </div>
     </Container>
   );

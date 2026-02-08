@@ -13,7 +13,7 @@ const securityHeaders = [
   },
   {
     key: 'Content-Security-Policy',
-    value: `frame-ancestors 'self' https://app.contentful.com https://app.eu.contentful.com`,
+    value: `frame-ancestors 'self' https://app.contentful.com https://app.eu.contentful.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://*.googletagmanager.com; connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; img-src 'self' data: https://www.google-analytics.com https://*.google-analytics.com https://*.googletagmanager.com https://images.ctfassets.net https://images.eu.ctfassets.net https://images.unsplash.com`,
   },
   {
     key: 'X-Content-Type-Options',
@@ -25,7 +25,7 @@ const securityHeaders = [
   },
   {
     key: 'Referrer-Policy',
-    value: 'no-referrer',
+    value: 'strict-origin-when-cross-origin',
   },
 ];
 
