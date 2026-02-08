@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.6.0...v1.7.0) (2026-02-08)
+
+
+### Features
+
+* **ICR-51:** implement analytics and consent management ([0ce13e9](https://github.com/gdamalis/idc-redentor-web/commit/0ce13e962ffc283c45bf690646bbca29a556c7cf))
+
 # [1.6.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.5.1...v1.6.0) (2026-02-07)
 
 
