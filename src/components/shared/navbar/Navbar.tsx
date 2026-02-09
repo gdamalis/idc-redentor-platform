@@ -57,8 +57,8 @@ export const Navbar = ({ menuItems = [], variant = "overlay" }: NavbarProps) => 
                 : "/assets/img/redentor_logo_light.png"
             }
             alt={t("common.homepage")}
-            width={48}
-            height={48}
+            width={144}
+            height={96}
             className="h-12 w-auto transition-transform group-hover:scale-105"
             priority
           />
