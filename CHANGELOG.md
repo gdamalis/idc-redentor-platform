@@ -1,3 +1,10 @@
+## [1.8.1](https://github.com/gdamalis/idc-redentor-web/compare/v1.8.0...v1.8.1) (2026-02-09)
+
+
+### Bug Fixes
+
+* **Navbar:** update logo dimensions for improved display ([bbe25d3](https://github.com/gdamalis/idc-redentor-web/commit/bbe25d35804359f54a1be2bf0b94fafbae95a6ca))
+
 # [1.8.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.7.1...v1.8.0) (2026-02-09)
 
 
