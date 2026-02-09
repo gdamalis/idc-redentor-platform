@@ -1,3 +1,15 @@
+# [1.8.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.7.1...v1.8.0) (2026-02-09)
+
+
+### Bug Fixes
+
+* moved the consent script integration ([8ac3e89](https://github.com/gdamalis/idc-redentor-web/commit/8ac3e890ff119a14a36b042667d7addbd1aa2a9e))
+
+
+### Features
+
+* **ICR-20:** implement SEO metadata handling and sitemap generation ([3957c3a](https://github.com/gdamalis/idc-redentor-web/commit/3957c3abb59f62c48786cd14dc7a7cf5d4dabe5d))
+
 ## [1.7.1](https://github.com/gdamalis/idc-redentor-web/compare/v1.7.0...v1.7.1) (2026-02-08)
 
 
