@@ -15,6 +15,7 @@ import { Metadata } from "next";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { Outfit, Playfair_Display } from "next/font/google";
+import Script from "next/script";
 import { ThemeProvider } from "next-themes";
 import { notFound } from "next/navigation";
 import "../globals.css";
@@ -100,11 +101,13 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: consentDefaultScript }} />
-      </head>
-      <GoogleTagManager gtmId={process.env.NEXT_PUBLIC_GTM_ID!} />
       <body className={`${outfit.variable} ${playfairDisplay.variable} font-sans antialiased`}>
+        <Script
+          id="consent-defaults"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: consentDefaultScript }}
+        />
+        <GoogleTagManager gtmId={process.env.NEXT_PUBLIC_GTM_ID!} />
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <NextIntlClientProvider messages={messages}>
             <NavbarWrapper menuItems={navMenu} />
