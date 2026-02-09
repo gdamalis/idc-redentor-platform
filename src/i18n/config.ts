@@ -11,3 +11,13 @@ export const localesPath = Object.fromEntries(localesMap) as Record<
   Locale,
   string
 >;
+
+export function buildLocaleAlternates(path = ""): Record<Locale, string> {
+  const suffix = path ? `/${path}` : "";
+  return Object.fromEntries(
+    i18n.locales.map((locale) => [
+      locale,
+      `${baseUrl}/${locale}${suffix}`,
+    ]),
+  ) as Record<Locale, string>;
+}

@@ -117,6 +117,37 @@ export async function getLatestBlogPostPages(
   return data?.data?.blogPostPageCollection?.items;
 }
 
+export async function getAllBlogPostSlugs(
+  locale: string,
+): Promise<Array<{ slug: string; updatedAt: string }>> {
+  const data = await fetchGraphQL(
+    `query {
+        blogPostPageCollection(
+          locale: "${locale}",
+          limit: 100,
+          preview: false
+        ) {
+          items {
+            slug
+            sys {
+              publishedAt
+            }
+          }
+        }
+      }`,
+    false,
+  );
+
+  return (
+    data?.data?.blogPostPageCollection?.items?.map(
+      (item: { slug: string; sys: { publishedAt: string } }) => ({
+        slug: item.slug,
+        updatedAt: item.sys.publishedAt,
+      }),
+    ) ?? []
+  );
+}
+
 export async function getBlogPostPage(
   slug: string,
   locale: string,

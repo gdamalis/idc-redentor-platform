@@ -1,13 +1,12 @@
 import { shouldUseDraftMode } from "@lib/contentful/draftMode";
 import { getContactForm } from "@lib/contentful/getContactForm";
 import { getEventBanner } from "@lib/contentful/getEventBanner";
-import { getSeo } from "@lib/contentful/getSeo";
 import { getTextBlockComponent } from "@lib/contentful/getTextBlockComponent";
+import { buildPageMetadata } from "@lib/metadata";
 import { CommunityEvent } from "@src/components/features/community-event";
 import { ContactForm } from "@src/components/features/contact-form";
 import { InfoConnect } from "@src/components/features/info-connect/InfoConnect";
 import { Header } from "@src/components/shared/header";
-import { localesPath } from "@src/i18n/config";
 import { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -17,28 +16,11 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }>): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations("Metadata");
-  const isEnabled = await shouldUseDraftMode();
-  const seoContent = await getSeo("seo-connect", locale, isEnabled);
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-
-  return {
-    title: seoContent.title,
-    description: seoContent.description,
-    keywords: seoContent.keywords,
-    openGraph: {
-      title: seoContent.title,
-      description: seoContent.description,
-      images: [{ url: seoContent.image.url }],
-      url: `${baseUrl}/${locale}`,
-      siteName: t("site-name"),
-      type: "website",
-    },
-    alternates: {
-      canonical: `${baseUrl}/${locale}`,
-      languages: localesPath,
-    },
-  };
+  return buildPageMetadata({
+    machineName: "seo-connect",
+    locale,
+    path: "come-meet-us",
+  });
 }
 
 export default async function ComeMeetUsPage({

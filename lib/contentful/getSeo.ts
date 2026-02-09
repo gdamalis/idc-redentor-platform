@@ -1,3 +1,4 @@
+import type { SeoContent } from "@src/types/Seo";
 import { fetchGraphQL } from "./fetch";
 
 const GRAPHQL_FIELDS = `
@@ -7,6 +8,8 @@ const GRAPHQL_FIELDS = `
   image {
     url
     title
+    width
+    height
   }
   siteName
   type
@@ -20,7 +23,7 @@ export async function getSeo(
   name: string,
   locale: string,
   isDraftMode = false,
-) {
+): Promise<SeoContent> {
   const data = await fetchGraphQL(
     `query {
         seoCollection(

@@ -27,6 +27,7 @@ export function proxy(request: NextRequest) {
     "js",
     "json",
     "xml",
+    "txt",
     "woff",
     "woff2",
     "ttf",
