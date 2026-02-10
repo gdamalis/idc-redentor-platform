@@ -2,7 +2,7 @@ import { Container } from "@src/components/ui/container";
 import { BlogPost } from "@src/types/BlogPost";
 import { BlogPostHeader } from "./BlogPostHeader";
 import { BlogPostContent } from "./BlogPostContent";
-import { LikeButton } from "./LikeButton";
+import { PostActions } from "./PostActions";
 import { RelatedArticles } from "./RelatedArticles";
 
 type BlogPostDetailsProps = Readonly<{
@@ -29,9 +29,11 @@ export default function BlogPostDetails({
       <div className="mx-auto max-w-2xl flex flex-col gap-y-4">
         <BlogPostHeader post={post} />
         <BlogPostContent post={post} />
-        <LikeButton
+        <PostActions
           slug={post.slug}
-          initialCount={initialLikeCount}
+          title={post.title}
+          featuredImageUrl={post.featuredImage.url}
+          initialLikeCount={initialLikeCount}
           initialHasLiked={initialHasLiked}
         />
         <RelatedArticles posts={relatedPosts} locale={locale} sourceSlug={post.slug} />

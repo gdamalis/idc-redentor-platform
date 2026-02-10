@@ -78,55 +78,53 @@ export function LikeButton({
   const { count, hasLiked } = state;
 
   return (
-    <div className="flex items-center gap-3 py-6 border-t border-border">
-      <motion.button
-        type="button"
-        onClick={handleClick}
-        disabled={isPending}
-        className="group flex items-center gap-2 rounded-full border border-border px-4 py-2 cursor-pointer transition-colors hover:border-red-300 hover:bg-red-50 dark:hover:border-red-800 dark:hover:bg-red-950/30 disabled:opacity-70 disabled:cursor-not-allowed"
-        whileTap={{ scale: 0.95 }}
-        aria-label={hasLiked ? "Unlike this post" : "Like this post"}
-      >
-        <AnimatePresence mode="wait" initial={false}>
-          {hasLiked ? (
-            <motion.span
-              key="filled"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0 }}
-              transition={{
-                type: "spring",
-                stiffness: 700,
-                damping: 20,
-                duration: 0.15,
-              }}
-              className="inline-flex"
-            >
-              <HeartSolid className="h-5 w-5 text-red-500" />
-            </motion.span>
-          ) : (
-            <motion.span
-              key="outline"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0 }}
-              transition={{
-                type: "spring",
-                stiffness: 700,
-                damping: 20,
-                duration: 0.15,
-              }}
-              className="inline-flex"
-            >
-              <HeartOutline className="h-5 w-5 text-muted-foreground group-hover:text-red-400 transition-colors" />
-            </motion.span>
-          )}
-        </AnimatePresence>
+    <motion.button
+      type="button"
+      onClick={handleClick}
+      disabled={isPending}
+      className="group flex items-center gap-2 rounded-full border border-border px-4 py-2 cursor-pointer transition-colors hover:border-red-300 hover:bg-red-50 dark:hover:border-red-800 dark:hover:bg-red-950/30 disabled:opacity-70 disabled:cursor-not-allowed"
+      whileTap={{ scale: 0.95 }}
+      aria-label={hasLiked ? "Unlike this post" : "Like this post"}
+    >
+      <AnimatePresence mode="wait" initial={false}>
+        {hasLiked ? (
+          <motion.span
+            key="filled"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+            transition={{
+              type: "spring",
+              stiffness: 700,
+              damping: 20,
+              duration: 0.15,
+            }}
+            className="inline-flex"
+          >
+            <HeartSolid className="h-5 w-5 text-red-500" />
+          </motion.span>
+        ) : (
+          <motion.span
+            key="outline"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+            transition={{
+              type: "spring",
+              stiffness: 700,
+              damping: 20,
+              duration: 0.15,
+            }}
+            className="inline-flex"
+          >
+            <HeartOutline className="h-5 w-5 text-muted-foreground group-hover:text-red-400 transition-colors" />
+          </motion.span>
+        )}
+      </AnimatePresence>
 
-        <span className="text-sm font-medium text-muted-foreground tabular-nums">
-          {count}
-        </span>
-      </motion.button>
-    </div>
+      <span className="text-sm font-medium text-muted-foreground tabular-nums">
+        {count}
+      </span>
+    </motion.button>
   );
 }
