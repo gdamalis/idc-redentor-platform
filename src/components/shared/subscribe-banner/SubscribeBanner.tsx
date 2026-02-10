@@ -78,7 +78,7 @@ export const SubscribeBanner = ({ content }: SubscribeBannerProps) => {
           <button
             type="submit"
             disabled={isPending}
-            className="shrink-0 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-navy disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-primary-light"
+            className="shrink-0 rounded-lg bg-primary px-5 py-2.5 text-sm cursor-pointer font-semibold text-white shadow-sm transition-colors hover:bg-primary-navy disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-primary-light"
           >
             {isPending ? <LoadingSpinner size="sm" /> : content.ctaText}
           </button>

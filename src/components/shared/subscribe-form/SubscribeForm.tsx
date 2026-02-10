@@ -100,7 +100,7 @@ export const SubscribeForm = ({
           <div className="text-center sm:shrink-0">
             <button
               type="submit"
-              className={`flex w-full text-nowrap items-center justify-center rounded-r-2xl bg-primary px-6 py-2 font-semibold text-white shadow-sm hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${sizeClasses.button}`}
+              className={`flex w-full text-nowrap items-center justify-center rounded-r-2xl bg-primary px-6 py-2 font-semibold text-white cursor-pointer shadow-sm hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${sizeClasses.button}`}
             >
               {isPending ? <LoadingSpinner size={size} /> : content.ctaText}
             </button>
