@@ -43,8 +43,8 @@ export const Footer = ({ content }: FooterProps) => {
               <Image
                 src={content.logo.url}
                 alt={content.logo.title}
-                width={64}
-                height={64}
+                width={192}
+                height={128}
                 className="h-16 w-auto"
               />
               <div className="flex flex-col">
