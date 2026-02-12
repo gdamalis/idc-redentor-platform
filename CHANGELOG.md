@@ -1,3 +1,17 @@
+# [1.9.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.8.2...v1.9.0) (2026-02-12)
+
+
+### Bug Fixes
+
+* optimize client and adapter initialization to avoid connecting to DB during build ([005c19f](https://github.com/gdamalis/idc-redentor-web/commit/005c19f24893887ccb65b2c1958a484b7b9fad1e))
+* update button styles for improved user interaction ([c2ce26e](https://github.com/gdamalis/idc-redentor-web/commit/c2ce26e1a5ab62e8c7323f46d3edbe54cf75630d))
+
+
+### Features
+
+* **ICR-36:** integrate like functionality for Blog posts ([992d38f](https://github.com/gdamalis/idc-redentor-web/commit/992d38f0bec50b11eb8ef3374eb8bce5f76265ce))
+* **ICR-38:**  add post share actions ([72e4ec7](https://github.com/gdamalis/idc-redentor-web/commit/72e4ec7dbc9a49f612531962df49c2503411ab44))
+
 ## [1.8.2](https://github.com/gdamalis/idc-redentor-web/compare/v1.8.1...v1.8.2) (2026-02-10)
 
 
