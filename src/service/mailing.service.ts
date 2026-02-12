@@ -6,7 +6,11 @@ export const FROM_EMAIL = "no-reply@notifications.idcredentor.com";
 
 const DEFAULT_FROM_EMAIL = process.env.FROM_EMAIL ?? FROM_EMAIL;
 
-function createEmailAdapter(): EmailAdapter {
+let emailAdapter: EmailAdapter | null = null;
+
+function getEmailAdapter(): EmailAdapter {
+  if (emailAdapter) return emailAdapter;
+
   const provider = process.env.MAIL_PROVIDER;
 
   if (!provider) {
@@ -15,18 +19,19 @@ function createEmailAdapter(): EmailAdapter {
 
   switch (provider) {
     case "sendgrid":
-      return createSendGridAdapter();
+      emailAdapter = createSendGridAdapter();
+      break;
     case "resend":
-      return createResendAdapter();
+      emailAdapter = createResendAdapter();
+      break;
     default:
       throw new Error(
         `Invalid MAIL_PROVIDER: ${provider}. Must be 'sendgrid' or 'resend'`
       );
   }
-}
 
-// Initialize the adapter once
-const emailAdapter = createEmailAdapter();
+  return emailAdapter;
+}
 
 export async function sendEmail(emailContent: EmailContent): Promise<boolean> {
   const contentWithDefaults = {
@@ -34,5 +39,5 @@ export async function sendEmail(emailContent: EmailContent): Promise<boolean> {
     from: emailContent.from ?? DEFAULT_FROM_EMAIL,
   };
 
-  return emailAdapter.sendEmail(contentWithDefaults);
+  return getEmailAdapter().sendEmail(contentWithDefaults);
 }
