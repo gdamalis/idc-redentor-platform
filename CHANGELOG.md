@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.9.0...v1.10.0) (2026-02-16)
+
+
+### Features
+
+* enhance creed section and management with new types and rich text options ([c00dd39](https://github.com/gdamalis/idc-redentor-web/commit/c00dd39e9f255330659dbc6983afe3b31c12b514))
+
 # [1.9.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.8.2...v1.9.0) (2026-02-12)
 
 
