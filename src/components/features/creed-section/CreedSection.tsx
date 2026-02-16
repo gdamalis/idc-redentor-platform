@@ -1,69 +1,104 @@
- 
+"use client";
+
+import { ComponentType } from "react";
+import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
 import { documentToPlainTextString } from "@contentful/rich-text-plain-text-renderer";
-import { Document } from "@contentful/rich-text-types";
 import { Container } from "@src/components/ui/container";
-import { Typography } from "@src/components/ui/typography";
+import { IconCard } from "@src/components/ui/icon-card";
+import { SectionHeader } from "@src/components/ui/section-header";
+import {
+  sectionDescriptionOptions,
+  cardDescriptionOptions,
+} from "@lib/contentful/rich-text-options";
+import type { ContentCollection } from "@lib/contentful/types";
+import {
+  MessageCircle,
+  Heart,
+  Sparkles,
+  Users,
+  HeartHandshake,
+  Home,
+  Compass,
+  BookOpen,
+} from "lucide-react";
 
-type CreedItem = {
-  title: string;
-  description: {
-    json: Document;
-  };
-  bibleVerse: {
-    json: Document;
-  };
-  image: {
-    title: string;
-    url: string;
-  };
+/**
+ * Maps creed titles (both EN and ES) to Lucide icons.
+ * Covers both locales so the correct icon renders regardless of language.
+ */
+const CREED_ICON_MAP: Record<
+  string,
+  ComponentType<{ className?: string }>
+> = {
+  // English
+  Testimony: MessageCircle,
+  Redemption: Heart,
+  Mercy: Sparkles,
+  Unity: Users,
+  Service: HeartHandshake,
+  "A place for volunteers": Home,
+  Vocation: Compass,
+  // Spanish
+  Testimonio: MessageCircle,
+  Redención: Heart,
+  Misericordia: Sparkles,
+  Unidad: Users,
+  Servicio: HeartHandshake,
+  "Un lugar de voluntarios": Home,
+  Vocación: Compass,
 };
 
-type CreedSectionProps = {
-  content: {
-    title: string;
-    description: {
-      json: Document;
-    };
-    creedItems: CreedItem[];
-  };
-};
+const DEFAULT_ICON = BookOpen;
+
+interface CreedSectionProps {
+  content: ContentCollection;
+}
 
 export const CreedSection = ({ content }: CreedSectionProps) => {
-  const description = documentToPlainTextString(content.description?.json);
+  const description = content.description
+    ? documentToReactComponents(
+        content.description.json,
+        sectionDescriptionOptions,
+      )
+    : null;
 
   return (
-    <Container>
-      <div className="py-24 sm:py-32">
-        <Typography component="h2" variant="h1" className="text-center">
-          {content?.title}
-        </Typography>
-        <Typography component="p" variant="body1" className="text-center">
-          {description}
-        </Typography>
+    <section className="py-24 bg-muted/30">
+      <Container>
+        <SectionHeader title={content.title} description={description} />
 
-        <dl className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-x-8 gap-y-16 text-base/7 sm:grid-cols-2 lg:mx-0 lg:max-w-none lg:grid-cols-3">
-          {content?.creedItems?.map((credo: CreedItem) => {
-            const description = documentToPlainTextString(
-              credo.description.json,
-            );
-            const bibleVerse = documentToPlainTextString(credo.bibleVerse.json);
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          {content.creedItems.map((credo, index) => {
+            const Icon = CREED_ICON_MAP[credo.title] ?? DEFAULT_ICON;
+            const bibleVerse = credo.bibleVerse
+              ? documentToPlainTextString(credo.bibleVerse.json)
+              : null;
 
             return (
-              <div key={credo.title}>
-                <dt className="text-lg font-bold text-primary">
-                  {credo.title}
-                </dt>
-                <dd className="mt-2 text-gray-800 dark:text-gray-100">
-                  {description}
-                </dd>
-                <dd className="mt-3 italic text-gray-600 dark:text-gray-400">
-                  {bibleVerse}
-                </dd>
-              </div>
+              <IconCard
+                key={credo.title}
+                icon={Icon}
+                title={credo.title}
+                index={index}
+                footer={
+                  bibleVerse ? (
+                    <div className="border-t border-border pt-4 mt-4">
+                      <p className="text-sm italic text-muted-foreground/80">
+                        {bibleVerse}
+                      </p>
+                    </div>
+                  ) : undefined
+                }
+              >
+                {documentToReactComponents(
+                  credo.description.json,
+                  cardDescriptionOptions,
+                )}
+              </IconCard>
             );
           })}
-        </dl>
-      </div>
-    </Container>
+        </div>
+      </Container>
+    </section>
   );
 };

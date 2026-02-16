@@ -1,4 +1,5 @@
 import { fetchGraphQL } from "./fetch";
+import { ContentCollection } from "./types";
 
 const GRAPHQL_FIELDS = `
   title
@@ -45,7 +46,7 @@ export async function getContentCollection(
   name: string,
   locale: string,
   isDraftMode = false,
-) {
+): Promise<ContentCollection> {
   const data = await fetchGraphQL(
     `query {
         contentCollectionCollection(
