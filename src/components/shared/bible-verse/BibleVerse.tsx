@@ -5,8 +5,8 @@ type BibleVerseProps = {
   chapter: number;
   fromVerse: number;
   toVerse: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  verseContent: any;
+   
+  verseContent: string;
   className?: string;
 };
 
@@ -28,7 +28,7 @@ export default function BibleVerse({
         </Typography>
       </blockquote>
       <figcaption className="mt-2 flex gap-x-2">
-        —<cite className="text-base font-semibold text-gray-900">
+        —<cite className="text-base font-semibold text-gray-900 dark:text-gray-300">
           {book} {chapter}:{verse}
         </cite>
       </figcaption>

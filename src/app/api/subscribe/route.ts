@@ -31,13 +31,32 @@ export async function POST(request: Request) {
       { message: "Successfully subscribed!" },
       { status: 200 },
     );
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (error: any) {
-    if (JSON.parse(error?.response?.error?.text)?.title === "Member Exists") {
-      return NextResponse.json(
-        { message: "Email is already subscribed" },
-        { status: error.status },
-      );
+     
+  } catch (error: unknown) {
+    // Type narrowing for Mailchimp error
+    if (
+      error &&
+      typeof error === "object" &&
+      "response" in error &&
+      error.response &&
+      typeof error.response === "object" &&
+      "error" in error.response &&
+      error.response.error &&
+      typeof error.response.error === "object" &&
+      "text" in error.response.error &&
+      typeof error.response.error.text === "string"
+    ) {
+      try {
+        const errorData = JSON.parse(error.response.error.text);
+        if (errorData?.title === "Member Exists") {
+          return NextResponse.json(
+            { message: "Email is already subscribed" },
+            { status: "status" in error && typeof error.status === "number" ? error.status : 400 },
+          );
+        }
+      } catch {
+        // If JSON parsing fails, fall through to generic error
+      }
     }
 
     return NextResponse.json(

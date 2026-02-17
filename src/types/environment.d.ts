@@ -3,6 +3,9 @@ declare namespace NodeJS {
     // Base URL
     NEXT_PUBLIC_BASE_URL: string;
     
+    // Vercel Environment
+    VERCEL_ENV?: 'production' | 'preview' | 'development';
+    
     // Contentful CMS
     CONTENTFUL_SPACE_ID: string;
     CONTENTFUL_ACCESS_TOKEN: string;
@@ -15,10 +18,16 @@ declare namespace NodeJS {
     MAILCHIMP_API_SERVER: string;
     MAILCHIMP_AUDIENCE_ID: string;
     
-    // SendGrid
-    SENDGRID_API_KEY: string;
+    // Mail Provider
+    MAIL_PROVIDER: 'sendgrid' | 'resend';
     CONTACT_FORM_RECIPIENT_EMAIL: string;
     FROM_EMAIL: string;
+    
+    // SendGrid
+    SENDGRID_API_KEY: string;
+    
+    // Resend
+    RESEND_API_KEY: string;
     
     // MongoDB
     MONGODB_URI: string;

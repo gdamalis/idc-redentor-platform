@@ -1,38 +1,47 @@
+import { getAllBlogPostSlugs } from "@lib/contentful/getBlogPostPages";
+import { i18n } from "@src/i18n/config";
 import type { MetadataRoute } from "next";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+const staticPages = [
+  "",
+  "blog",
+  "community",
+  "come-meet-us",
+  "who-is-jesus",
+];
+
+function buildAlternates(path: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  const suffix = path ? `/${path}` : "";
+  return {
+    languages: Object.fromEntries(
+      i18n.locales.map((locale) => [
+        locale,
+        `${baseUrl}/${locale}${suffix}`,
+      ]),
+    ),
+  };
+}
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
-  return [
-    {
-      url: `${baseUrl}/es-AR`,
+  const staticEntries: MetadataRoute.Sitemap = staticPages.map((page) => {
+    const suffix = page ? `/${page}` : "";
+    return {
+      url: `${baseUrl}/${i18n.defaultLocale}${suffix}`,
       lastModified: new Date(),
-      alternates: {
-        languages: {
-          "es-AR": `${baseUrl}/es-AR`,
-          "en-US": `${baseUrl}/en-US`,
-        },
-      },
-    },
-    {
-      url: `${baseUrl}/es-AR/community`,
-      lastModified: new Date(),
-      alternates: {
-        languages: {
-          "es-AR": `${baseUrl}/es-AR/community`,
-          "en-US": `${baseUrl}/en-US/community`,
-        },
-      },
-    },
-    {
-      url: `${baseUrl}/es-AR/come-meet-us`,
-      lastModified: new Date(),
-      alternates: {
-        languages: {
-          "es-AR": `${baseUrl}/es-AR/come-meet-us`,
-          "en-US": `${baseUrl}/en-US/come-meet-us`,
-        },
-      },
-    },
-  ];
+      alternates: buildAlternates(page),
+    };
+  });
+
+  const blogSlugs = await getAllBlogPostSlugs(i18n.defaultLocale);
+
+  const blogEntries: MetadataRoute.Sitemap = blogSlugs.map((post) => ({
+    url: `${baseUrl}/${i18n.defaultLocale}/blog/${post.slug}`,
+    lastModified: new Date(post.updatedAt),
+    alternates: buildAlternates(`blog/${post.slug}`),
+  }));
+
+  return [...staticEntries, ...blogEntries];
 }

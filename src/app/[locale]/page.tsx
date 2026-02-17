@@ -1,12 +1,15 @@
+import { shouldUseDraftMode } from "@lib/contentful/draftMode";
+import { getLatestBlogPostPages } from "@lib/contentful/getBlogPostPages";
+import { getContentCollection } from "@lib/contentful/getContentCollection";
 import { getCtaComponent } from "@lib/contentful/getCtaComponent";
 import { getHeroBannerComponent } from "@lib/contentful/getHeroBannerComponent";
-import { getSeo } from "@lib/contentful/getSeo";
-import { ContactCta } from "@src/components/features/contact-cta";
+import { buildPageMetadata } from "@lib/metadata";
+import { BlogSection } from "@src/components/features/blog-section";
+import { ComponentCta } from "@src/components/features/component-cta";
 import { OurMissionCta } from "@src/components/features/our-mission-cta";
-import { localesPath } from "@src/i18n/config";
+import { OurMissionSection } from "@src/components/features/our-mission-section";
 import { type Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
-import { draftMode } from "next/headers";
 
 export async function generateMetadata({
   params,
@@ -14,27 +17,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }>): Promise<Metadata> {
   const { locale } = await params;
-
-  const seoContent = await getSeo("seo-home", locale);
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-
-  return {
-    title: seoContent.title,
-    description: seoContent.description,
-    keywords: seoContent.keywords,
-    openGraph: {
-      title: seoContent.title,
-      description: seoContent.description,
-      images: [{ url: seoContent.image.url }],
-      url: `${baseUrl}/${locale}`,
-      siteName: seoContent.siteName,
-      type: seoContent.type,
-    },
-    alternates: {
-      canonical: `${baseUrl}/${locale}`,
-      languages: localesPath,
-    },
-  };
+  return buildPageMetadata({ machineName: "seo-home", locale, path: "" });
 }
 
 export default async function Home({
@@ -45,9 +28,14 @@ export default async function Home({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const { isEnabled } = await draftMode();
+  const isEnabled = await shouldUseDraftMode();
   const ourMission = await getHeroBannerComponent(
     "our-mission",
+    locale,
+    isEnabled,
+  );
+  const ourMissionCollection = await getContentCollection(
+    "collection-our-mission",
     locale,
     isEnabled,
   );
@@ -56,12 +44,16 @@ export default async function Home({
     locale,
     isEnabled,
   );
+  const latestPosts = await getLatestBlogPostPages(locale, {
+    isDraftMode: isEnabled,
+  });
 
   return (
     <main>
       <OurMissionCta content={ourMission} />
-      {/* <BlogSection posts={posts} /> */}
-      <ContactCta content={contactCta} />
+      <OurMissionSection content={ourMissionCollection} />
+      <BlogSection posts={latestPosts} />
+      <ComponentCta content={contactCta} />
     </main>
   );
 }

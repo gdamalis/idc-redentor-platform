@@ -2,9 +2,17 @@ import { fetchGraphQL } from "./fetch";
 
 const GRAPHQL_FIELDS = `
   headline
-  subline
+  subtitle
   body {
     json
+  }
+  imagesCollection {
+    items {
+      url
+      title
+      width
+      height
+    }
   }
   sys {
     id

@@ -1,5 +1,6 @@
-import { BLOCKS } from "@contentful/rich-text-types";
+"use client";
 
+import { BLOCKS, Document } from "@contentful/rich-text-types";
 import {
   CommonNode,
   documentToReactComponents,
@@ -8,6 +9,10 @@ import { Typography } from "@src/components/ui/typography";
 import { Link } from "@src/i18n/routing";
 import Image from "next/image";
 import { ReactNode } from "react";
+import { motion } from "framer-motion";
+import { Button } from "@src/components/ui/button";
+import { useTranslations } from "next-intl";
+import { trackEvent } from "@src/lib/analytics";
 
 const options = {
   renderNode: {
@@ -15,7 +20,7 @@ const options = {
       <Typography
         component="p"
         variant="body1"
-        className="mt-6 text-xl leading-8 text-gray-600"
+        className="text-lg md:text-xl text-white max-w-2xl mx-auto leading-relaxed [text-shadow:_0_2px_8px_rgb(0_0_0_/_60%)]"
       >
         {children}
       </Typography>
@@ -23,12 +28,27 @@ const options = {
   },
 };
 
+// Animation variants
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.6 },
+};
+
+const stagger = {
+  animate: {
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
 type OurMissionCtaProps = {
   content: {
     headline: string;
+    subHeadline: string;
     bodyText: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      json: any;
+      json: Document;
     };
     ctaText: string;
     targetPage: {
@@ -48,74 +68,101 @@ type OurMissionCtaProps = {
 };
 
 export const OurMissionCta = ({ content }: OurMissionCtaProps) => {
+  const t = useTranslations("OurMissionCta");
   const bodyText = documentToReactComponents(content.bodyText.json, options);
 
   return (
-    <div className="overflow-hidden bg-white dark:bg-blue-900/80 py-32">
-      <div className="mx-auto max-w-7xl px-6 lg:flex lg:px-8">
-        <div className="mx-auto grid max-w-2xl grid-cols-1 gap-x-12 gap-y-16 lg:mx-0 lg:min-w-full lg:max-w-none lg:flex-none lg:gap-y-8">
-          <div className="lg:col-end-1 lg:w-full lg:max-w-lg lg:pb-8">
-            <Typography
-              component="h2"
-              variant="h2"
-              className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl"
-            >
-              {content?.headline}
-            </Typography>
-
-            {bodyText}
-
-            <div className="mt-10 flex">
-              <Link
-                href={`/${content?.targetPage?.slug}`}
-                className="rounded-3xl bg-blue-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-              >
-                {content?.ctaText}
-              </Link>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-start justify-end gap-6 sm:gap-8 lg:contents">
-            <div className="w-0 flex-auto lg:ml-auto lg:w-auto lg:flex-none lg:self-end">
-              <Image
-                width={800}
-                height={800}
-                alt={content.image.title}
-                src={content.image.url}
-                className="aspect-[7/5] w-[37rem] max-w-none rounded-2xl bg-gray-50 object-cover"
-              />
-            </div>
-            <div className="contents lg:col-span-2 lg:col-end-2 lg:ml-auto lg:flex lg:w-[37rem] lg:items-start lg:justify-end lg:gap-x-8">
-              <div className="order-first flex w-64 flex-none justify-end self-end lg:w-auto">
-                <Image
-                  width={800}
-                  height={800}
-                  alt={content.additionalImagesCollection.items[0].title}
-                  src={content.additionalImagesCollection.items[0].url}
-                  className="aspect-[4/3] w-[24rem] max-w-none flex-none rounded-2xl bg-gray-50 object-cover"
-                />
-              </div>
-              <div className="flex w-96 flex-auto justify-end lg:w-auto lg:flex-none">
-                <Image
-                  width={800}
-                  height={800}
-                  alt={content.additionalImagesCollection.items[1].title}
-                  src={content.additionalImagesCollection.items[1].url}
-                  className="aspect-[7/5] w-[37rem] max-w-none flex-none rounded-2xl bg-gray-50 object-cover"
-                />
-              </div>
-              <div className="hidden sm:block sm:w-0 sm:flex-auto lg:w-auto lg:flex-none">
-                <Image
-                  width={800}
-                  height={800}
-                  alt={content.additionalImagesCollection.items[2].title}
-                  src={content.additionalImagesCollection.items[2].url}
-                  className="aspect-[4/3] w-[24rem] max-w-none rounded-2xl bg-gray-50 object-cover"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      {/* Background Image with Parallax-like effect */}
+      <div className="absolute inset-0 z-0">
+        <Image
+          src={content.image.url}
+          alt={content.image.title}
+          fill
+          className="object-cover"
+          priority
+        />
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-background" />
       </div>
-    </div>
+
+      {/* Content */}
+      <div className="relative z-10 px-4 text-center text-white max-w-4xl mx-auto mt-16">
+        <motion.div
+          initial="initial"
+          animate="animate"
+          variants={stagger}
+          className="space-y-6"
+        >
+          <motion.span
+            variants={fadeInUp}
+            className="inline-block py-1 px-3 rounded-full bg-primary/90 backdrop-blur-sm text-sm font-medium tracking-wide uppercase mb-4"
+          >
+            {t("welcome-home")}
+          </motion.span>
+
+          <motion.h1
+            variants={fadeInUp}
+            className="font-serif text-5xl md:text-7xl font-bold leading-tight"
+          >
+            {content.headline}
+            <br />
+            <span className="italic">{content.subHeadline}</span>
+          </motion.h1>
+
+          <motion.div 
+            variants={fadeInUp}
+            className="max-w-3xl mx-auto backdrop-blur-sm bg-black/20 p-6 rounded-2xl border border-white/10"
+          >
+            {bodyText}
+          </motion.div>
+
+          <motion.div
+            variants={fadeInUp}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8"
+          >
+            <Link 
+              href="/come-meet-us"
+              onClick={() => trackEvent("join_us_click", {
+                click_location: "hero_cta",
+                page_path: window.location.pathname,
+              })}
+            >
+              <Button
+                size="lg"
+                className="rounded-full px-8 text-lg h-14 bg-primary hover:bg-primary/90"
+              >
+                {t("join-us-sunday")}
+              </Button>
+            </Link>
+            <Link href={`/${content.targetPage.slug}`}>
+              <Button
+                size="lg"
+                className="rounded-full px-8 text-lg h-14 bg-black/20 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm [text-shadow:_0_2px_8px_rgb(0_0_0_/_60%)]"
+              >
+                {content.ctaText}
+              </Button>
+            </Link>
+          </motion.div>
+        </motion.div>
+      </div>
+
+      {/* Additional Images Section - Below the Fold */}
+      {/* <div className="absolute bottom-0 left-0 right-0 z-10 pb-8 hidden lg:flex justify-center gap-4 opacity-50 hover:opacity-100 transition-opacity">
+        {content.additionalImagesCollection.items.slice(0, 3).map((img, i) => (
+          <div
+            key={i}
+            className="relative w-24 h-24 rounded-lg overflow-hidden"
+          >
+            <Image
+              src={img.url}
+              alt={img.title}
+              fill
+              className="object-cover"
+            />
+          </div>
+        ))}
+      </div> */}
+    </section>
   );
 };

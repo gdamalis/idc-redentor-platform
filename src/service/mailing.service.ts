@@ -1,37 +1,43 @@
-import sgMail from "@sendgrid/mail";
+import type { EmailAdapter, EmailContent } from "./mailing/types";
+import { createSendGridAdapter } from "./mailing/sendgrid.adapter";
+import { createResendAdapter } from "./mailing/resend.adapter";
 
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-} else {
-  console.error("SENDGRID_API_KEY is not defined in environment variables");
-}
-
-export const FROM_EMAIL = "info@idcredentor.com";
+export const FROM_EMAIL = "no-reply@notifications.idcredentor.com";
 
 const DEFAULT_FROM_EMAIL = process.env.FROM_EMAIL ?? FROM_EMAIL;
 
-interface EmailContent {
-  to: string | string[];
-  from?: string;
-  subject: string;
-  text: string;
-  html: string;
+let emailAdapter: EmailAdapter | null = null;
+
+function getEmailAdapter(): EmailAdapter {
+  if (emailAdapter) return emailAdapter;
+
+  const provider = process.env.MAIL_PROVIDER;
+
+  if (!provider) {
+    throw new Error("MAIL_PROVIDER is not defined in environment variables");
+  }
+
+  switch (provider) {
+    case "sendgrid":
+      emailAdapter = createSendGridAdapter();
+      break;
+    case "resend":
+      emailAdapter = createResendAdapter();
+      break;
+    default:
+      throw new Error(
+        `Invalid MAIL_PROVIDER: ${provider}. Must be 'sendgrid' or 'resend'`
+      );
+  }
+
+  return emailAdapter;
 }
 
 export async function sendEmail(emailContent: EmailContent): Promise<boolean> {
-  try {
-    const msg = {
-      to: emailContent.to,
-      from: emailContent.from ?? DEFAULT_FROM_EMAIL,
-      subject: emailContent.subject,
-      text: emailContent.text,
-      html: emailContent.html,
-    };
+  const contentWithDefaults = {
+    ...emailContent,
+    from: emailContent.from ?? DEFAULT_FROM_EMAIL,
+  };
 
-    await sgMail.send(msg);
-    return true;
-  } catch (error) {
-    console.error("Error sending email:", error);
-    return false;
-  }
+  return getEmailAdapter().sendEmail(contentWithDefaults);
 }

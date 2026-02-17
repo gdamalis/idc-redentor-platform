@@ -1,4 +1,5 @@
 import { fetchGraphQL } from "./fetch";
+import { ContentCollection } from "./types";
 
 const GRAPHQL_FIELDS = `
   title
@@ -11,12 +12,25 @@ const GRAPHQL_FIELDS = `
         title
         description {
           json
+        }
+        bibleVerse {
+          json
+        }
+        image {
+          url
+          title
+        }
       }
-      bibleVerse {
-        json
-      }
-      image {
-        url
+      ... on ValueItem {
+        title
+        description {
+          json
+        }
+        bibleVerse {
+          json
+        }
+        image {
+          url
           title
         }
       }
@@ -32,7 +46,7 @@ export async function getContentCollection(
   name: string,
   locale: string,
   isDraftMode = false,
-) {
+): Promise<ContentCollection> {
   const data = await fetchGraphQL(
     `query {
         contentCollectionCollection(
@@ -54,7 +68,8 @@ export async function getContentCollection(
     title: data?.data?.contentCollectionCollection?.items[0].title,
     description: data?.data?.contentCollectionCollection?.items[0].description,
     creedItems:
-      data?.data?.contentCollectionCollection?.items[0].contentItemsCollection.items,
+      data?.data?.contentCollectionCollection?.items[0].contentItemsCollection
+        .items,
     image: data?.data?.contentCollectionCollection?.items[0].image,
   };
 

@@ -1,3 +1,4 @@
+import { Document } from "@contentful/rich-text-types";
 import { Field } from "./formFields";
 
 export type ContactFormProps = {
@@ -10,8 +11,8 @@ export type ContactFormProps = {
       title: string;
     };
     agreementNote: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      json: any;
+       
+      json: Document;
     };
     bibleVerse: {
       book: string;

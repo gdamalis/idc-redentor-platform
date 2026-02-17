@@ -1,15 +1,14 @@
+import { shouldUseDraftMode } from "@lib/contentful/draftMode";
 import { getContactForm } from "@lib/contentful/getContactForm";
 import { getEventBanner } from "@lib/contentful/getEventBanner";
-import { getSeo } from "@lib/contentful/getSeo";
 import { getTextBlockComponent } from "@lib/contentful/getTextBlockComponent";
+import { buildPageMetadata } from "@lib/metadata";
 import { CommunityEvent } from "@src/components/features/community-event";
 import { ContactForm } from "@src/components/features/contact-form";
 import { InfoConnect } from "@src/components/features/info-connect/InfoConnect";
 import { Header } from "@src/components/shared/header";
-import { localesPath } from "@src/i18n/config";
 import { Metadata } from "next";
-import { setRequestLocale } from "next-intl/server";
-import { draftMode } from "next/headers";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 export async function generateMetadata({
   params,
@@ -17,27 +16,11 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }>): Promise<Metadata> {
   const { locale } = await params;
-
-  const seoContent = await getSeo("seo-connect", locale);
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-
-  return {
-    title: seoContent.title,
-    description: seoContent.description,
-    keywords: seoContent.keywords,
-    openGraph: {
-      title: seoContent.title,
-      description: seoContent.description,
-      images: [{ url: seoContent.image.url }],
-      url: `${baseUrl}/${locale}`,
-      siteName: seoContent.siteName,
-      type: seoContent.type,
-    },
-    alternates: {
-      canonical: `${baseUrl}/${locale}`,
-      languages: localesPath,
-    },
-  };
+  return buildPageMetadata({
+    machineName: "seo-connect",
+    locale,
+    path: "come-meet-us",
+  });
 }
 
 export default async function ComeMeetUsPage({
@@ -48,7 +31,8 @@ export default async function ComeMeetUsPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const { isEnabled } = await draftMode();
+  const t = await getTranslations("Connect");
+  const isEnabled = await shouldUseDraftMode();
 
   const infoContact = await getTextBlockComponent(
     "info-connect",
@@ -64,7 +48,11 @@ export default async function ComeMeetUsPage({
 
   return (
     <main>
-      <Header titlePath="Connect.header-title" className="bg-community" />
+      <Header 
+        titlePath="Connect.header-title" 
+        variant="gradient"
+        subtitle={t("header-subtitle")}
+      />
 
       <InfoConnect content={infoContact} />
 

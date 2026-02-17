@@ -2,7 +2,7 @@ import {
   CommonNode,
   documentToReactComponents,
 } from "@contentful/rich-text-react-renderer";
-import { BLOCKS } from "@contentful/rich-text-types";
+import { BLOCKS, Document } from "@contentful/rich-text-types";
 import { Container } from "@src/components/ui/container";
 import { Typography } from "@src/components/ui/typography";
 import { ReactNode } from "react";
@@ -25,8 +25,8 @@ type InfoCommunityProps = {
   content: {
     headline: string;
     body: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      json: any;
+       
+      json: Document;
     };
   };
 };
@@ -34,11 +34,11 @@ type InfoCommunityProps = {
 export default function InfoCommunity({
   content,
 }: Readonly<InfoCommunityProps>) {
-  const bodyText = documentToReactComponents(content.body.json, options);
+  const bodyText = documentToReactComponents(content?.body.json, options);
 
   return (
-    <div className="bg-blue-600/20 ">
-      <Container className="max-w-5xl py-16 text-center md:space-y-6 sm:py-24">
+    <div className="bg-muted/50">
+      <Container size="md" className="py-16 text-center md:space-y-6 sm:py-24">
         {bodyText}
       </Container>
     </div>
