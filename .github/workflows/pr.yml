@@ -42,3 +42,6 @@ jobs:
 
       - name: TSC
         run: pnpm run type-check
+
+      - name: Vitest
+        run: pnpm test
