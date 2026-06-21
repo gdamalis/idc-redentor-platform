@@ -1,0 +1,176 @@
+{
+  "project": "idc-redentor-web",
+  "ticketKeyPrefix": "ICR",
+  "ticketLinkBase": "https://trello.com/c/",
+  "tracker": {
+    "type": "trello",
+    "mcpNamespace": "mcp__trello__",
+    "boardName": "IDC Redentor website",
+    "boardId": "67a7a743186065f07e87bbe9",
+    "boardShortLink": "sxuUAeck",
+    "ticketKeyPrefix": "ICR",
+    "ticketIdField": "idShort",
+    "ticketKeyNote": "ICR-N is a DERIVED display key: N == the Trello card's idShort. There is no native 'ICR-N' field. To fetch a card from key ICR-N: set_active_board(boardId), then resolve the card whose idShort === N (scan lists via get_cards_by_list_id, or get_card once the id is known). Branches/PRs/commits use the ICR-N string; all Trello WRITE calls use the resolved card id.",
+    "lists": {
+      "discovery": { "id": "67a7a748b44f06e964c9eddd", "name": "Dsicovery" },
+      "todo": { "id": "67b500c7c65a4d3edf11e180", "name": "To Do" },
+      "inProgress": { "id": "67a7a74bc9dd606c2e41cea2", "name": "In Progress" },
+      "inReview": { "id": "67a7a74df6bfc532c70a06c8", "name": "In Review" },
+      "done": { "id": "67a7a758f2da48a6482634a2", "name": "Done" }
+    },
+    "listResolution": "by-list-id",
+    "listResolutionNote": "Trello cards move between LISTS by listId (move_card takes the destination listId), not by status name. Always use the listId values above. The name fields are display-only — 'Dsicovery' is misspelled on the real board; do NOT 'correct' it. If a listId 404s at runtime, re-fetch via get_lists(boardId), match by name, surface the drift — never invent an id.",
+    "workflow": [
+      { "key": "discovery", "name": "Dsicovery", "listId": "67a7a748b44f06e964c9eddd", "order": 1, "automated": false, "setBy": "PM / human (backlog grooming)" },
+      { "key": "todo", "name": "To Do", "listId": "67b500c7c65a4d3edf11e180", "order": 2, "automated": false, "setBy": "PM / human (ready to pick up)" },
+      { "key": "inProgress", "name": "In Progress", "listId": "67a7a74bc9dd606c2e41cea2", "order": 3, "automated": true, "setBy": "/work step 3 (To Do -> In Progress)" },
+      { "key": "inReview", "name": "In Review", "listId": "67a7a74df6bfc532c70a06c8", "order": 4, "automated": true, "setBy": "/work step 14 via pr-author (In Progress -> In Review, at PR-ready)" },
+      { "key": "done", "name": "Done", "listId": "67a7a758f2da48a6482634a2", "order": 5, "automated": false, "setBy": "HUMAN ONLY — set when the human merges the PR and closes the card. NEVER set by any agent or command." }
+    ],
+    "automatedTransitions": [
+      { "from": "todo", "to": "inProgress", "ownedBy": "/work step 3", "gate": "after mandatory worktree creation" },
+      { "from": "inProgress", "to": "inReview", "ownedBy": "/work step 14 (pr-author)", "gate": "after PR flipped to ready + PR-link comment posted" }
+    ],
+    "forbiddenTransitions": [
+      { "to": "done", "reason": "Human-only. /work and all agents MUST NOT move any card to Done. Done == merged and closed by a human." }
+    ],
+    "labelToCommitType": {
+      "Feature": { "color": "green", "commitType": "feat" },
+      "Bug": { "color": "red", "commitType": "fix" },
+      "Integration": { "color": "purple", "commitType": "feat", "alt": "chore", "note": "feat when it adds user-facing capability; chore when it's wiring/config only" },
+      "NFR": { "color": "sky", "commitType": "chore", "alt": ["refactor", "perf"], "note": "default chore; use refactor/perf when the work is purely that" }
+    },
+    "needsRefinementMechanism": "checklist",
+    "needsRefinementNote": "The 4 board labels (Feature/Bug/Integration/NFR) are reserved for commit-type. Refinement state is structural: an intake card carries a 'Refinement' checklist with an unchecked 'needs-refinement' item; refine clears it. A To Do card with no open needs-refinement item is the /work-ready signal.",
+    "humanGateNote": "Every tracker WRITE (move_card, add_comment, update_card_details) happens at or after a human gate. /work owns exactly two automated moves (todo->inProgress, inProgress->inReview) and posts the PR-link comment at PR-ready. It NEVER moves a card to Done."
+  },
+  "qaDepth": {
+    "default": "standard",
+    "allowed": ["light", "standard", "heavy"],
+    "sourceNote": "Trello has no native 'QA Depth' field. Resolve in priority order: (1) a custom field 'QA Depth' if get_board_custom_fields exposes one; (2) a label or a 'QA: <depth>' token in the card description/checklist; (3) fall back to qaDepth.default. Reject values not in qaDepth.allowed."
+  },
+  "qaLoop": {
+    "_note": "Drives /qa + qa-acceptance. Reads the top-level tracker block for board/list ids. SHIPS IN PHASE 1 REPORT-ONLY: enabledModes=[report]; seed/fix/auto recognized but gated. QA target is Vercel PREVIEW DEPLOYMENTS (per-PR) — there is NO separate staging env. autoMerge disabled (kill switch).",
+    "ticketSource": "trello",
+    "defaultMode": "report",
+    "modes": ["report", "seed", "fix", "auto"],
+    "enabledModes": ["report"],
+    "batch": { "list": "inReview", "maxTickets": 5, "sequential": true },
+    "humanGate": { "neverMoveTo": ["done"] },
+    "env": {
+      "preview": {
+        "target": "vercel-preview",
+        "vercelProject": "idc-redentor-web",
+        "baseUrlFrom": "qa-env.preview.baseUrl",
+        "baseUrlHostAllow": "^[a-z0-9-]+\\.vercel\\.app$",
+        "productionHostDeny": ["idcredentor.com", "www.idcredentor.com", "idcredentor.org"],
+        "baseUrlHostAllowNote": "Default-deny allowlist for the QA base URL host. /qa refuses to run unless the host matches a Vercel preview deployment (*.vercel.app). The production custom domain is rejected. Preview URL is discovered per-PR via mcp__claude_ai_Vercel__list_deployments / get_deployment, or the GitHub deployment status on the PR.",
+        "mongoMcp": "mcp__mongodb-localhost__",
+        "dbNameAllow": "^website-(test|qa|e2e)$",
+        "dbNote": "Mongo backs ONLY the blog 'likes' + saved 'contact' messages, in a DB literally named 'website'. The allowlist excludes 'website' so QA never reads/writes production data. Phase 1: no Mongo writes at all."
+      }
+    },
+    "transitions": {
+      "_note": "Trello list moves by listId. Phase 1 report-only: /qa may move To Do/In Progress -> In Review, never Done. When fix/auto land later, onRemediationReady moves inProgress->inReview via pr-author.",
+      "onPickup": "inReview",
+      "onRemediationStart": "inProgress",
+      "onRemediationReady": "inReview"
+    },
+    "autoCloseOnPass": false,
+    "autoMerge": {
+      "enabled": false,
+      "killSwitchNote": "Phase 1 kill switch. Even when modes fix/auto are enabled later, autoMerge stays false until explicitly flipped — a human merges every PR.",
+      "maxDiffLines": 150,
+      "maxIterations": 3,
+      "maxMergesPerRun": 2,
+      "confidenceThreshold": 80,
+      "sensitivePaths": [
+        "src/service/**",
+        "src/templates/**",
+        "src/app/api/**",
+        "src/proxy.ts",
+        "src/i18n/**",
+        "lib/contentful/fetch.ts",
+        "config/headers.js",
+        "config/**",
+        "next.config.*",
+        "package.json",
+        "pnpm-lock.yaml",
+        ".env*",
+        ".github/**"
+      ]
+    },
+    "deploy": { "provider": "vercel", "detect": "github-deployments", "environment": "Preview", "pollSeconds": 30, "timeoutSeconds": 900 },
+    "reviewAgents": { "code": "feature-dev:code-reviewer", "security": "security-reviewer" }
+  },
+  "branchPrefixByType": {
+    "feat": "feat/",
+    "fix": "fix/",
+    "refactor": "refactor/",
+    "perf": "perf/",
+    "chore": "chore/",
+    "docs": "docs/",
+    "test": "test/",
+    "ci": "ci/"
+  },
+  "worktree": {
+    "parentDir": ".claude/worktrees",
+    "parentDirAnchor": "main-repo-root",
+    "namePattern": "<ticket-id>",
+    "base": "origin/main"
+  },
+  "paths": {
+    "specs": "tasks/specs",
+    "todo": "tasks/todo.md",
+    "lessons": "tasks/lessons.md",
+    "qaEnv": "qa-env.json",
+    "docs": "docs",
+    "productBrain": "docs/product"
+  },
+  "commands": {
+    "typecheck": "pnpm type-check",
+    "lint": "pnpm lint",
+    "test": "pnpm test",
+    "build": "pnpm build",
+    "dev": "pnpm dev",
+    "e2e": "pnpm e2e"
+  },
+  "commandsNote": "typecheck maps to ICR's actual 'type-check' script (hyphen). 'test' = vitest run (single-pass; package.json 'test' is 'vitest run', never watch). 'e2e' = playwright test (config present, no specs in Phase 1). lint = eslint . If a script is absent at runtime, verifier/qa-runner reports it rather than inventing one.",
+  "playwrightProjectMap": {
+    "_note": "ICR uses src/app/[locale]/<segment> (NO route groups) plus src/app/api/<route>. Phase 1 has NO e2e suite — qa-runner authors specs per-ticket on heavy depth. This map tells qa-runner which e2e project/tag to target for a given changed path.",
+    "src/app/[locale]/page.tsx": ["e2ePublic"],
+    "src/app/[locale]/blog": ["e2eBlog"],
+    "src/app/[locale]/community": ["e2ePublic"],
+    "src/app/[locale]/come-meet-us": ["e2ePublic"],
+    "src/app/[locale]/who-is-jesus": ["e2ePublic"],
+    "src/app/api/contact": ["apiForms"],
+    "src/app/api/subscribe": ["apiForms"],
+    "src/app/api/likes": ["apiLikes"],
+    "src/app/api/revalidate": ["apiForms"],
+    "src/app/api/draft": ["apiForms"],
+    "src/service": ["apiForms", "apiLikes", "e2ePublic"],
+    "src/components": ["e2ePublic"],
+    "src/i18n": ["e2ePublic", "e2eBlog"],
+    "src/proxy.ts": ["e2ePublic"],
+    "public/locales": ["e2ePublic", "e2eBlog"],
+    "lib/contentful": ["e2ePublic", "e2eBlog"],
+    "config/headers.js": ["e2ePublic"]
+  },
+  "graphify": {
+    "enabled": "auto",
+    "enabledNote": "auto = detect at runtime by checking ${MAIN_REPO_ROOT}/graphify-out/graph.json. false to skip; true to require.",
+    "outDir": "graphify-out",
+    "graphFile": "graphify-out/graph.json",
+    "lockDir": "graphify-out/.harness-update.lock",
+    "lockStaleSeconds": 600,
+    "updateTimeoutSeconds": 300,
+    "staleWarnSeconds": 86400,
+    "updateCommand": "graphify --update",
+    "queryCommand": "graphify query",
+    "policy": {
+      "whoRefreshes": "First /work of the session that gets the lock; others read the existing graph.",
+      "whoQueries": "explorer always (when available); implementer only when tracing callers/deps; verifier/qa-runner/pr-author never.",
+      "onFailureFallback": "Proceed with existing graph (or Grep/Read if no graph). Agents include staleness/error notes in their reports."
+    }
+  }
+}
