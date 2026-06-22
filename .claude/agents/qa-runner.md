@@ -54,7 +54,7 @@ The Playwright projects (`e2ePublic`, `e2eBlog`, `apiLikes`, `apiForms`) are def
 
 ## Target selection
 
-- If `previewUrl` is supplied: extract its hostname and require it to match `config.qaLoop.env.preview.baseUrlHostAllow` (`^[a-z0-9-]+\.vercel\.app$`) and **not** appear in `productionHostDeny` (`idcredentor.com`, `www.idcredentor.com`, `idcredentor.org`). If it passes, set `BASE_URL=<previewUrl>` for the Playwright run and the MCP walk. If the host fails the check, **refuse loudly**: `❌ qa-runner refuses to run against <host> — not an allowlisted *.vercel.app preview. Production idcredentor domains are denied.`
+- If `previewUrl` is supplied: extract its hostname and require it to match `config.qaLoop.env.preview.baseUrlHostAllow` (`^[a-z0-9-]+\.vercel\.app$`) and **not** appear in `productionHostDeny` — which includes the production `*.vercel.app` aliases (`idc-redentor-website.vercel.app`, `idc-redentor-web.vercel.app`) as well as the `idcredentor` custom domains. The orchestrator only passes a confirmed **Preview** deployment URL (target=preview); treat a bare `<project>.vercel.app` host as production and refuse it. If it passes, set `BASE_URL=<previewUrl>` for the Playwright run and the MCP walk. If the host fails the check, **refuse loudly**: `❌ qa-runner refuses to run against <host> — not a confirmed *.vercel.app Preview. Production custom domains and production *.vercel.app aliases are denied.`
 - Otherwise, run against a **locally started dev server** (see the heavy dev-server lifecycle below for the port-3000 safety pattern).
 
 ## Running Playwright (standard + heavy)

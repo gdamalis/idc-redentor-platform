@@ -47,9 +47,10 @@ The orchestrator passes `env.baseUrl` (the resolved Vercel preview URL). **Valid
 
 1. Extract the hostname from `env.baseUrl`.
 2. Require it to match `config.qaLoop.env.preview.baseUrlHostAllow` (`^[a-z0-9-]+\.vercel\.app$`).
-3. Reject any host in `productionHostDeny` (`idcredentor.com`, `www.idcredentor.com`, `idcredentor.org`) or any other non-allowlisted host.
+3. Reject any host in `productionHostDeny` — which now includes the **production `*.vercel.app` aliases** (`idc-redentor-website.vercel.app`, `idc-redentor-web.vercel.app`) as well as `idcredentor.com` / `www.idcredentor.com` / `idcredentor.org`, plus any other non-allowlisted host. The host regex alone is NOT sufficient — production also has a `*.vercel.app` alias.
+4. **Preview-environment check** (`requirePreviewEnvironment`): the orchestrator passes `env.isPreview` (and the deployment `target`). Require `env.isPreview === true` / `target !== "production"`. If that metadata is absent, verify it yourself via `mcp__claude_ai_Vercel__get_deployment` (`target !== "production"`) before navigating. Reject a Production deployment even if its host ends in `.vercel.app`.
 
-If `baseUrl` is missing or fails the check, mark the whole run **BLOCKED** with `no allowlisted preview URL supplied — expected a *.vercel.app preview`.
+If `baseUrl` is missing, fails any check, or is not a confirmed Preview, mark the whole run **BLOCKED** with `no allowlisted Vercel Preview URL supplied — expected a *.vercel.app preview with target=preview`.
 
 ## Per-AC procedure
 
@@ -139,7 +140,7 @@ Don't fold them into the current card's verdict; don't triage them.
 - Never log/echo/post secrets (Mongo URIs, Trello token, Mailchimp/SendGrid/Resend/Contentful keys); never pass tokens as argv; never `set -x`.
 - **No Mongo writes in Phase 1.** Reads only, only against a DB matching `^website-(test|qa|e2e)$`; never read the production `website` DB; never `drop-*`/`rename-collection`/`update-many`/`delete-many`/`insert-many`.
 - Never write to Contentful or Mailchimp, and never send email. Avoid `POST /api/subscribe` and `POST /api/contact` happy paths against the preview (production integrations) unless an AC explicitly requires it — prefer validation/error paths and mark the happy path BLOCKED.
-- Never run against a production `idcredentor` host. Re-validate `env.baseUrl` against the `*.vercel.app` allowlist before navigating; BLOCK the run if it fails.
+- Never run against production. Before navigating, re-validate `env.baseUrl`: host matches `*.vercel.app`, is NOT in `productionHostDeny` (which includes the production `*.vercel.app` aliases), AND the deployment is a confirmed Preview (`env.isPreview === true` / `target !== "production"`). BLOCK the run if any check fails — the hostname alone is not proof it's a preview.
 - Never write product code, never commit, never push, never open/merge PRs, never touch `main`.
 - Never modify `playwright.config.ts` or existing specs (heavy may only DRAFT a new spec to `$RUN_DIR`).
 - Don't claim a Pass you didn't demonstrate. Blocked/Partial over a guessed Pass.

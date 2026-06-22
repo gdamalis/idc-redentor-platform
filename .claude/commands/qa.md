@@ -77,12 +77,21 @@ For each card:
      or (b) `gh pr view <n> --json statusCheckRollup` / the GitHub deployments API to read the Vercel
      preview URL from the PR's deployment status. Prefer the Vercel MCP; fall back to `gh`. (Vercel and
      `gh` MCP tools are deferred — load via ToolSearch if needed.)
-   - **Validate the host before anything else** (the safety gate): extract the hostname; require it to
-     match `config.qaLoop.env.preview.baseUrlHostAllow` (`*.vercel.app`); if it matches
-     `config.qaLoop.env.preview.productionHostDeny` (the `idcredentor` production domains) or any
-     non-allowlisted host, **stop this card immediately**: "`/qa` refuses to run against `<host>` — not an
-     allowlisted preview host. Expected a `*.vercel.app` preview." This enforces "never touch production"
-     before any browser/API action.
+   - **Validate the target before anything else** (the safety gate — three required checks, all must pass):
+     1. **Host allowlist**: extract the hostname; require it to match `config.qaLoop.env.preview.baseUrlHostAllow`
+        (`*.vercel.app`).
+     2. **Host denylist**: reject if the host is in `config.qaLoop.env.preview.productionHostDeny` — this now
+        includes the **production `*.vercel.app` aliases** (`idc-redentor-website.vercel.app`,
+        `idc-redentor-web.vercel.app`) as well as the `idcredentor` custom domains. (The host regex alone is
+        NOT enough: production has a `*.vercel.app` alias too.)
+     3. **Preview-environment check** (`config.qaLoop.env.preview.requirePreviewEnvironment`): confirm the
+        resolved deployment is a **Preview**, not Production — `mcp__claude_ai_Vercel__get_deployment` →
+        `target !== "production"` (or the GitHub deployment `environment === "Preview"`). Reject a Production
+        deployment even if its host ends in `.vercel.app`. Prefer the per-PR branch preview (host contains
+        `-git-<branch>-` or a unique deployment hash).
+     If any check fails, **stop this card immediately**: "`/qa` refuses to run against `<host>` — not a Vercel
+     Preview deployment for this PR. Expected a `*.vercel.app` preview with target=preview." This enforces
+     "never touch production" before any browser/API action.
    - If no READY preview exists (deploy pending/failed), mark the card BLOCKED with "no READY Vercel
      preview for ICR-N — wait for the deploy or check build logs
      (`mcp__claude_ai_Vercel__get_deployment_build_logs`)" and continue.
@@ -93,7 +102,7 @@ For each card:
 5. **Dispatch a fresh `qa-acceptance` agent** (Task tool — one per card, fresh context) with:
    - `ticketId` (`ICR-N`), `summary`, `acceptanceCriteria` (the parsed list, numbered)
    - `depth`, `mode` (effective `report` in Phase 1), `dryRun`
-   - `env`: `{ name: "preview", baseUrl: <resolved preview URL>, mongoMcp: config.qaLoop.env.preview.mongoMcp, dbNameAllow: config.qaLoop.env.preview.dbNameAllow }`
+   - `env`: `{ name: "preview", baseUrl: <resolved preview URL>, isPreview: true, target: "preview", mongoMcp: config.qaLoop.env.preview.mongoMcp, dbNameAllow: config.qaLoop.env.preview.dbNameAllow }` — `isPreview`/`target` reflect the Preview-environment check you already passed in step 3; qa-acceptance re-checks them.
    - `mainRepoRoot`, `runId`
    The agent re-validates the preview host defensively, reads any URIs from `qa-env.json` itself, and
    returns a fenced JSON result block (block 1) + a ready-to-post Trello Markdown comment (block 2).

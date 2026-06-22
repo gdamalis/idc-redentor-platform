@@ -56,7 +56,7 @@ If `config.graphify.enabled` is `false`, set both flags to false and skip this s
      # We hold the lock — run the update with timeout, then release.
      timeout ${graphify.updateTimeoutSeconds}s graphify "${MAIN_REPO_ROOT}" --update
      rc=$?
-     rmdir "$LOCK"
+     rm -rf "$LOCK"   # the lock dir holds an `info` marker, so rmdir would fail — rm -rf releases it
      if [ $rc -eq 0 ]; then
        GRAPHIFY_FRESH=true
      else
@@ -72,7 +72,7 @@ If `config.graphify.enabled` is `false`, set both flags to false and skip this s
        if mkdir "$LOCK" 2>/dev/null; then
          echo "$$ $(date +%s)" > "$LOCK/info"
          timeout ${graphify.updateTimeoutSeconds}s graphify "${MAIN_REPO_ROOT}" --update
-         rmdir "$LOCK"
+         rm -rf "$LOCK"   # non-empty (holds `info`) — rm -rf, not rmdir
          GRAPHIFY_FRESH=true
        else
          GRAPHIFY_FRESH=false

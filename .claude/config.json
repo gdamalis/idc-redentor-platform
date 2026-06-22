@@ -60,11 +60,13 @@
     "env": {
       "preview": {
         "target": "vercel-preview",
-        "vercelProject": "idc-redentor-web",
+        "vercelProject": "idc-redentor-website",
         "baseUrlFrom": "qa-env.preview.baseUrl",
         "baseUrlHostAllow": "^[a-z0-9-]+\\.vercel\\.app$",
-        "productionHostDeny": ["idcredentor.com", "www.idcredentor.com", "idcredentor.org"],
-        "baseUrlHostAllowNote": "Default-deny allowlist for the QA base URL host. /qa refuses to run unless the host matches a Vercel preview deployment (*.vercel.app). The production custom domain is rejected. Preview URL is discovered per-PR via mcp__claude_ai_Vercel__list_deployments / get_deployment, or the GitHub deployment status on the PR.",
+        "productionHostDeny": ["idcredentor.com", "www.idcredentor.com", "idcredentor.org", "idc-redentor-website.vercel.app", "idc-redentor-web.vercel.app"],
+        "requirePreviewEnvironment": true,
+        "requirePreviewEnvironmentNote": "The hostname allowlist is NECESSARY BUT NOT SUFFICIENT: the production deployment ALSO has a *.vercel.app alias (e.g. idc-redentor-website.vercel.app), which the regex would otherwise accept. Before ANY browser/API/seed action the resolver MUST confirm the resolved deployment is a PREVIEW, not Production — check mcp__claude_ai_Vercel__get_deployment.target !== 'production' (or the GitHub deployment environment === 'Preview'). Reject any deployment whose target/environment is Production even when its host ends in .vercel.app. Prefer the per-PR branch preview whose host contains '-git-<branch>-' or a unique deployment hash.",
+        "baseUrlHostAllowNote": "Default-deny allowlist for the QA base URL host. /qa runs ONLY against a Vercel PREVIEW deployment for the PR. Three gates, all required: (1) host matches baseUrlHostAllow (*.vercel.app); (2) host is NOT in productionHostDeny (custom domains AND the production *.vercel.app aliases); (3) the deployment's target/environment is Preview (requirePreviewEnvironment). Preview URL is discovered per-PR via mcp__claude_ai_Vercel__list_deployments / get_deployment (target=preview), or the GitHub deployment status on the PR.",
         "mongoMcp": "mcp__mongodb-localhost__",
         "dbNameAllow": "^website-(test|qa|e2e)$",
         "dbNote": "Mongo backs ONLY the blog 'likes' + saved 'contact' messages, in a DB literally named 'website'. The allowlist excludes 'website' so QA never reads/writes production data. Phase 1: no Mongo writes at all."
