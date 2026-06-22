@@ -1,0 +1,10 @@
+{
+  "trello": {
+    "apiKey": "<your-trello-api-key>",
+    "token": "<your-trello-token>"
+  },
+  "preview": {
+    "baseUrl": ""
+  },
+  "mongodbUri": "<optional: connection string for a test DB named website-test|website-qa|website-e2e>"
+}

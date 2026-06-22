@@ -13,6 +13,10 @@ package-lock.json
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+/blob-report/
+/.playwright/
 
 # next.js
 /.next/
@@ -41,3 +45,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env*.local
+
+# Claude Code agent harness
+.claude/worktrees/
+.claude/settings.local.json
+tasks/todo.md
+tasks/lessons.md
+tasks/specs/*.state.json
+qa-env.json
+graphify-out/
