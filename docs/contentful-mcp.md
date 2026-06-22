@@ -62,24 +62,41 @@ card to Done).
    environment**, name it `agent-sandbox`, and **clone from `master`**. (Alternatively, once
    the MCP is connected, an agent can call `create_environment`.)
 
-3. **Export the two env vars** into the shell that launches Claude Code — `.mcp.json`
-   expands `${...}` from the _process_ environment, and the repo `.env` is not auto-loaded
-   into it. Easiest:
+3. **Export the two env vars** into the shell that launches Claude Code — Claude Code expands
+   `${...}` in `.mcp.json` **once, at startup**, reading only the launching shell's process
+   environment. It does **not** auto-load the repo's dotenv file. This project keeps secrets in
+   **`.env.local`** (Next.js convention), so:
 
    ```sh
-   set -a; source .env; set +a   # then launch `claude` from the same shell
+   set -a; source .env.local; set +a   # then launch `claude` from THIS shell
    ```
+
+   In a git **worktree**, `.env.local` is gitignored and not copied in — source the main
+   checkout's copy by absolute path, e.g.
+   `set -a; source /path/to/idc-redentor-website/.env.local; set +a`.
 
    The vars consumed:
    - `CONTENTFUL_MANAGEMENT_ACCESS_TOKEN` → server's `CONTENTFUL_MANAGEMENT_ACCESS_TOKEN`
    - `CONTENTFUL_SPACE_ID` → server's `SPACE_ID` (reused from the app's existing env var)
 
-   Add `CONTENTFUL_MANAGEMENT_ACCESS_TOKEN` to your local `.env` (gitignored). `.env.example`
-   documents it.
+   Add `CONTENTFUL_MANAGEMENT_ACCESS_TOKEN` to your local `.env.local` (gitignored).
+   `.env.example` documents it. To avoid re-exporting every session, use **direnv** (commit a
+   gitignored `.envrc` that sources `.env.local`) or add the exports to your shell profile.
 
-4. **Restart Claude Code** in this repo and approve the `contentful` MCP server when prompted.
-   Verify with `claude mcp list` (or `/mcp`) — `contentful` should show as connected. A quick
-   functional check: ask an agent to `list_content_types`.
+4. **Fully restart Claude Code.** Quit the `claude` process entirely and relaunch it from the
+   shell where you exported the vars — **`/reload-plugins` and reconnecting the MCP server are
+   NOT enough**, because env expansion happens at process startup, so a running session keeps
+   the old (unexpanded) values. After relaunch, approve the `contentful` server, verify with
+   `/mcp` (or `claude mcp list`), and functionally check with `list_spaces` / `list_content_types`.
+
+## Troubleshooting
+
+**`401 — The access token you sent could not be found or is invalid`, and the request header
+shows `Authorization: Bearer ${CONTENTFUL_MANAGEMENT_ACCESS_TOKEN}` (or `get_initial_context`
+reports `Space ID: ${CONTENTFUL_SPACE_ID}`).** The `${...}` placeholder reached the server
+**unexpanded** — the env var was not set in the shell that launched `claude`. Fix: export the
+vars (step 3) and **fully restart** `claude` (step 4). Confirm they're live with
+`echo $CONTENTFUL_SPACE_ID` in the launching shell before starting `claude`.
 
 ## Region
 
