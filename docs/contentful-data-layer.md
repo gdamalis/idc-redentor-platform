@@ -13,6 +13,11 @@ lib/contentful/get*.ts         one getter per content type     ← the query str
 src/app/[locale]/**            RSC pages call the getters       ← the consumers
 ```
 
+> This is the app's **read** path (Delivery/Preview GraphQL API). There is a separate,
+> agent-only **write** path: Claude Code agents talk to Contentful's Management API through
+> the MCP server in `.mcp.json` (token-based, writes scoped to a sandbox environment). The
+> two never mix — see `docs/contentful-mcp.md`.
+
 ## `fetchGraphQL` — the only transport
 
 `lib/contentful/fetch.ts`:
@@ -55,7 +60,11 @@ const GRAPHQL_FIELDS = `
   …field selection, with inline fragments (... on TypeName { … }) for unions/components…
 `;
 
-export async function getThing(name: string, locale: string, isDraftMode = false) {
+export async function getThing(
+  name: string,
+  locale: string,
+  isDraftMode = false,
+) {
   const data = await fetchGraphQL(
     `query {
         thingCollection(
@@ -98,10 +107,10 @@ Rich-text fields come back as Contentful's `{ json: Document }` shape and are re
 
 ```ts
 export async function shouldUseDraftMode(): Promise<boolean> {
-  const { isEnabled } = await draftMode();      // manual toggle via /api/draft/enable
+  const { isEnabled } = await draftMode(); // manual toggle via /api/draft/enable
   if (isEnabled) return true;
-  if (process.env.NODE_ENV === "development") return true;   // local dev
-  if (process.env.VERCEL_ENV === "preview") return true;     // every PR preview
+  if (process.env.NODE_ENV === "development") return true; // local dev
+  if (process.env.VERCEL_ENV === "preview") return true; // every PR preview
   return false;
 }
 ```
