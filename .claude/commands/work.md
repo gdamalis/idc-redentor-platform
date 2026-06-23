@@ -209,11 +209,19 @@ Dispatch the `explorer` subagent with:
 
 Wait for the subagent's summary (≤400 words). It returns relevant files, existing patterns, reusable utilities, **Sensitive areas touched**, and risk notes. Save the summary in conversation context — you'll feed it into brainstorming.
 
-## 6. Brainstorm  ★ HUMAN GATE ★
+**Parse and pin two signals from the explorer's report:**
+- `EXPLORER_NEEDS_DESIGN_GATE` (boolean) — from the explorer's `Design gate` section (`needsDesignGate: true|false`).
+- `EXPLORER_SUGGESTED_QA_DEPTH` — from the explorer's `Suggested QA depth` section (`light|standard|heavy`).
+
+**Fail-safe:** if the explorer omitted `needsDesignGate` (older output) or it can't be parsed as a literal boolean, default `EXPLORER_NEEDS_DESIGN_GATE = true` — never auto-skip the design gate on ambiguity. These signals drive whether sections 6 (brainstorm) and 7 (spec) run.
+
+## 6. Brainstorm  ★ HUMAN GATE ★  (conditional)
+
+**Conditional gate.** This section **and section 7 (spec)** run ONLY when `EXPLORER_NEEDS_DESIGN_GATE === true`. When `false` (trivial ticket: no sensitive areas, QA depth `light`, no data-model/API/CSP/i18n/email touch), **SKIP both** — print one line `Design gate: not required (needsDesignGate=false) — proceeding automated to implementation` and jump straight to **section 8 (write the implementation plan)**, building the plan from the card description + explorer findings (no spec doc). When `true`, this gate is **MANDATORY**.
 
 Invoke the `superpowers:brainstorming` skill. Pass the card description + explorer findings as initial context.
 
-**Do not skip this even for "simple" tickets.** The brainstorming skill is rigid; follow it. The user will steer scope, design choices, edge cases. Outcome: an agreed design in conversation (not yet a doc).
+**Do not skip this when the gate is required (needsDesignGate=true) — even for tickets that look simple.** The brainstorming skill is rigid; follow it. The user will steer scope, design choices, edge cases. Outcome: an agreed design in conversation (not yet a doc).
 
 ### Sensitive-areas heads-up
 
@@ -234,7 +242,9 @@ The brainstorming skill's normal Socratic flow then handles the rest.
 
 Trello has no native priority. If unset and the team wants one, optionally add a `Priority: <x>` token via `update_card_details` once — a single touch, never re-touched. (Lower-stakes than a Jira priority field; the team may skip this entirely.)
 
-## 7. Write the spec
+## 7. Write the spec  (conditional)
+
+**Runs only when `EXPLORER_NEEDS_DESIGN_GATE === true`** (same condition as section 6). When the design gate is skipped there is no spec file — section 8 builds the plan directly from the card + explorer summary. The `★ HUMAN GATE ★` spec-review block below executes only when the gate is required.
 
 Write the spec to `${config.paths.specs}/ICR-N-<slug>.md`. Required sections (ICR-tailored):
 
@@ -258,6 +268,8 @@ Flag sensitive areas if touched: **email services, forms (contact/subscribe), li
 
 Invoke the `superpowers:writing-plans` skill. Output goes to `${config.paths.specs}/ICR-N-<slug>.plan.md` (same dir, `.plan.md` suffix). The plan turns each spec checkpoint into concrete file edits with verification steps.
 
+> **When the design gate was skipped** (sections 6 + 7 did not run, so there is **no spec doc**): pass the **card description + explorer summary** to `superpowers:writing-plans` instead of a spec path. The plan is still written to `${config.paths.specs}/ICR-N-<slug>.plan.md`. When a spec exists, behave as today (plan from the spec).
+
 ### 8.1 Ticket-too-large guard
 
 After the plan is written, count the **Implementation Checkpoints** in it (each numbered checkpoint = 1). If the count is **> 8**, surface to the user with `AskUserQuestion`:
@@ -273,8 +285,8 @@ This guard is a one-time gate; once the user picks "Continue anyway," subsequent
 ## 9. First checkpoint: implement  (subagent: implementer)
 
 Dispatch the `implementer` subagent with:
-- `specPath` — `tasks/specs/ICR-N-<slug>.md`
-- `planPath` — `tasks/specs/ICR-N-<slug>.plan.md`
+- `specPath` — `tasks/specs/ICR-N-<slug>.md` — **omit when the design gate was skipped** (no spec was written); the plan alone is authoritative in that case.
+- `planPath` — `tasks/specs/ICR-N-<slug>.plan.md` — **always present** (written in section 8 whether or not a spec exists).
 - `checkpointNumber: 1`
 - `branch` — current feature branch name
 - `worktreePath` — absolute path to the worktree
@@ -285,6 +297,8 @@ Dispatch the `implementer` subagent with:
 - `mainRepoRoot: <MAIN_REPO_ROOT>`
 
 The implementer composes `superpowers:test-driven-development` + `superpowers:executing-plans`. It commits at the end of the checkpoint with message `<type>(ICR-N): …`.
+
+> The remaining-checkpoints loop (section 12) reuses this input shape — it likewise **omits `specPath` when no spec was written** and always passes `planPath`.
 
 ## 10. First verify  (subagent: verifier)
 
