@@ -73,5 +73,13 @@
     "message": "Valoramos tu privacidad. Usamos herramientas de analítica para entender cómo mejorar este sitio. No recopilamos datos personales con fines comerciales.",
     "accept": "Está bien",
     "decline": "Prefiero que no"
+  },
+  "ContactForm": {
+    "form-heading": "Envianos un Mensaje",
+    "error-required-fields": "Por favor completá todos los campos obligatorios.",
+    "error-invalid-email": "Por favor ingresá una dirección de correo válida.",
+    "success-message": "¡Tu mensaje fue enviado con éxito!",
+    "error-save-failed": "No pudimos guardar tu mensaje. Por favor intentá de nuevo más tarde.",
+    "error-unexpected": "Ocurrió un error inesperado."
   }
 }
