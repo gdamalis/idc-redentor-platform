@@ -1,3 +1,9 @@
+## [1.11.2](https://github.com/gdamalis/idc-redentor-web/compare/v1.11.1...v1.11.2) (2026-06-23)
+
+### Bug Fixes
+
+- **harness:** repair broken graphify refresh and make its use consistent ([#42](https://github.com/gdamalis/idc-redentor-web/issues/42)) ([f97c8ab](https://github.com/gdamalis/idc-redentor-web/commit/f97c8ab121ba3b920d893e2889033e400ff8ec98))
+
 ## [1.11.1](https://github.com/gdamalis/idc-redentor-web/compare/v1.11.0...v1.11.1) (2026-06-23)
 
 # [1.11.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.10.0...v1.11.0) (2026-06-22)
