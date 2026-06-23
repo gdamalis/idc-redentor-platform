@@ -445,7 +445,107 @@ Process:
 
 Dispatch `pr-author` with `action: "mark_ready"`. It runs `gh pr ready`, posts a final Trello comment summarizing what shipped (PR URL + screenshot links if heavy) via `add_comment(cardId, ...)`, and **moves the card `In Progress → In Review`** via `move_card(cardId, listId=config.tracker.lists.inReview.id /* "67a7a74df6bfc532c70a06c8" */)`. **This is the second and final automated move. It does NOT touch Done.**
 
+## 14.5 Post-PR review + CI loop (detached — ScheduleWakeup)
+
+After the PR is **ready** and the card is **In Review**, `/work` enters a **detached, dynamic-paced loop** that watches the PR's **code-review comments** (including the **Codex review bot**, which posts a few minutes after PR-ready) **and CI**, auto-remediates via the `implementer`, and notifies you when the PR is ready for your eyes. The loop **NEVER merges and NEVER moves a card** — it only fixes, replies, and notifies. Merge stays human-only (`/merge`, a later phase).
+
+> **Invariant (unchanged):** this section adds **no** Trello move and **no** merge. `/work` still owns exactly two automated moves (steps 3 and 14) and never touches Done. The loop is read-fix-reply-notify only.
+
+### Pre-flight: pin config + decide whether the loop runs
+
+1. **Read `config.reviewLoop`** (added in Phase 0). Pin **by name** — never hardcode the values:
+   `driver`, `firstCheckSeconds`, `pollSeconds`, `afterPushSeconds`, `maxIterations`, `totalTimeoutSeconds`, `ciTimeoutSeconds`, `watch`, `idempotency`, `readinessRequires`, `notify`.
+2. **Graceful degradation — REQUIRED.** If **`config.reviewLoop` is absent** OR the **`ScheduleWakeup` tool is unavailable at runtime** (it is the spec-mandated driver but may be runtime-only / not present in this harness build), **SKIP the detached loop entirely**. Instead do a **single one-shot check** right now — pull review threads + CI once (the TICK procedure below, steps i–vi, with no scheduling) — then fire **one** `PushNotification` (or, if `PushNotification` is also unavailable, print a plain user message) telling the user the PR is up and they should **watch it manually**: e.g. `"ICR-N PR is up: <prUrl>. Auto-loop unavailable — watch CI + review comments yourself, then /merge when green."`. Then fall through to **step 15 (triage)**. The rest of `/work` MUST NOT break when the loop can't run — the loop is purely additive.
+3. If the loop **can** run, initialize loop bookkeeping in the state file (see "Resume-from-state hook" → Shape): `loopActive=true`, `loopIteration=0`, `loopStartedAt=<now-epoch>`, `lastPushAt=0`, `addressedThreadIds=[]` (preserve any pre-existing ids on resume), `lastStepCompleted=14`. Persist before scheduling.
+
+### Schedule the FIRST wakeup, then STOP this turn
+
+```
+ScheduleWakeup(
+  delaySeconds = config.reviewLoop.firstCheckSeconds,   // ~240s: catch the Codex review bot (it posts a few
+                                                         //   minutes after PR-ready) + the first CI signal
+  reason = "/work ICR-N post-PR loop: tick 1 — pull review threads + CI for PR <prUrl>"
+)
+```
+Then **STOP this turn — do not block or busy-wait.** The session resumes on the scheduled wakeup and runs the TICK procedure. (`delaySeconds` always comes from `config.reviewLoop`; the comment above is rationale, not a literal source of truth.)
+
+### TICK procedure (runs on every wakeup)
+
+i. **Kill-switch FIRST (before any work):** if `loopIteration >= config.reviewLoop.maxIterations` OR `(now-epoch − loopStartedAt) >= config.reviewLoop.totalTimeoutSeconds` → go to **CAP exit**.
+ii. **Increment** `loopIteration`; **persist state** (so caps bind even if the tick does work).
+iii. **Pull review threads.** From inside the worktree: `gh pr view <prUrl> --json comments,reviews,reviewThreads`. Cross-check unresolved threads via `mcp__github__pull_request_read` (load first: ToolSearch `select:mcp__github__pull_request_read`). **Actionable threads** = unresolved (`isResolved=false`) AND not our own replies (`author != self`) AND whose `threadId` is **NOT** in `addressedThreadIds`. Filter out pure bot-noise / acknowledgements.
+iv. **Pull CI.** `gh pr checks <prUrl>` (and/or `statusCheckRollup` from `gh pr view <prUrl> --json statusCheckRollup`). Classify `ciState` as `green | red | pending`. If **pending** and `(now-epoch − lastPushAt) < config.reviewLoop.ciTimeoutSeconds`, treat CI as **still-running** (NOT red) — a fix we just pushed kicks a fresh run and reading too soon shows stale/pending.
+v. **Read the latest QA verdict (`qaPass`).** Use the most recent `acceptance-judge` result / the QA comment dual-posted in step 13.2 — **do NOT re-run QA here.**
+vi. **DECISION:** if there are **actionable threads** OR `ciState === red` → go to **FIX branch**. Else → go to **READINESS evaluation**.
+
+### FIX branch (actionable threads and/or red CI)
+
+Dispatch the **`implementer`** subagent (see its `prReviewThreads` input contract) with:
+- `prReviewThreads` — the actionable threads as an array, each `{ threadId, commentId, path, line, body, author }`
+- `replyPerThread: true`
+- `previousFeedback` — when CI is red, the failing-check excerpts (red CI feeds back through the **same** channel)
+- `prUrl`, `branch`, `worktreePath`, `ticketId` (`ICR-N`), `commitType`
+- `graphifyAvailable`, `graphifyFresh`, `mainRepoRoot`
+
+Instruct: the implementer **invokes `superpowers:receiving-code-review`** (verify / fix / push-back-with-rationale — never blind agreement), fixes on the **feature branch** (NEVER `--no-verify`), commits + pushes to the open PR, and **replies per-thread** via `mcp__github__add_reply_to_pull_request_comment`.
+
+After the implementer returns:
+1. **IDEMPOTENCY — persist immediately.** Append every `threadId` the implementer reports as `replied`/`pushed-back` into `addressedThreadIds`, and **persist the state file right away** (`idempotency: "reply-marker"`). This must happen the instant the implementer returns so a crash-then-resume never double-replies. Do **not** mark a `threadId` addressed if the implementer reported it `unreplied`.
+2. Set `lastAction="pushed-fix"`, `lastPushAt=<now-epoch>`; persist.
+3. **Schedule the next wakeup** at the after-push pace:
+   ```
+   ScheduleWakeup(
+     delaySeconds = config.reviewLoop.afterPushSeconds,   // ~420s: our push kicked a fresh CI run —
+                                                           //   wait for it to start + finish before re-checking
+     reason = "/work ICR-N post-PR loop: tick <n+1> after push — re-check CI + threads"
+   )
+   ```
+4. **STOP the turn.**
+
+### READINESS evaluation (no actionable threads, CI not red)
+
+Compute `clean` = ALL of `config.reviewLoop.readinessRequires` true:
+- `qaPass === true` (latest acceptance-judge verdict)
+- `ciState === "green"`
+- `commentsAddressed` — no unaddressed actionable threads remain.
+
+- If **clean** → **CLEAN exit**.
+- If **not clean only because CI is still pending** → schedule the next **idle** wakeup:
+  ```
+  ScheduleWakeup(
+    delaySeconds = config.reviewLoop.pollSeconds,   // ~270s: idle re-check, inside the 5-min prompt-cache window
+    reason = "/work ICR-N post-PR loop: tick <n+1> idle — awaiting CI"
+  )
+  ```
+  Then **STOP the turn.**
+
+### CLEAN exit
+
+Fire the readiness notification (`config.reviewLoop.notify === "push"`):
+```
+PushNotification(
+  status: "proactive",
+  message: "ICR-N PR ready for your review: <prUrl> (CI green, QA pass, all review threads addressed)"   // <200 chars
+)
+```
+Set `loopActive=false`; persist. Then **continue to step 15 (triage)** in the same resumed turn. The card stays **In Review** — the loop never merges, never moves.
+
+### CAP exit (maxIterations or totalTimeoutSeconds hit)
+
+Fire the "needs your eyes" notification + the reason:
+```
+PushNotification(
+  status: "proactive",
+  message: "ICR-N needs your eyes: <reason e.g. 'maxIterations(8) hit' | 'totalTimeout(40m) hit'>, <m> open threads, CI <state>: <prUrl>"   // <200 chars
+)
+```
+Do **NOT** keep scheduling. Leave the card **In Review** and the PR as-is. Set `loopActive=false`; persist. Then proceed to **step 15** — the human takes over.
+
+> **This loop NEVER merges and NEVER moves the card.** It only fixes / replies / notifies. Merge is owned by `/merge` (a later phase) on an explicit human trigger; `Done` stays human-only.
+
 ## 15. Triage stray observations
+
+Triage runs after the post-PR loop (step 14.5) reaches its **CLEAN** or **CAP** exit, or immediately after step 14 when `config.reviewLoop` is absent / the loop was skipped via graceful degradation.
 
 Open `${MAIN_REPO_ROOT}/tasks/todo.md`. Filter the entries to ones tagged with the current ticket (`ICR-N`). Observations tagged with other tickets or `—` (human, generic) are NOT yours to triage — leave them.
 
@@ -535,13 +635,18 @@ To survive aborted runs (user `Ctrl-C`, machine sleep, network drop), the orches
   "qaDepth": "standard",
   "lastStepCompleted": 11,
   "checkpointsCompleted": [1, 2],
+  "loopActive": false,
+  "loopIteration": 0,
+  "loopStartedAt": 0,
+  "lastPushAt": 0,
+  "addressedThreadIds": [],
   "updatedAt": "<iso>"
 }
 ```
 
 ### When to write
 
-After completing each major step (5 onward). Overwrite atomically — write to `<file>.tmp` then `mv`. Don't fail the pipeline if the state write fails; just log a warning.
+After completing each major step (5 onward), **and on every post-PR loop tick (step 14.5)** — persist `loopIteration`, `addressedThreadIds`, and `lastPushAt` **before** scheduling the next wakeup (and immediately after the implementer returns in the FIX branch), so a session drop mid-loop resumes idempotently and never double-replies. Overwrite atomically — write to `<file>.tmp` then `mv`. Don't fail the pipeline if the state write fails; just log a warning.
 
 ### When to read
 
@@ -550,6 +655,7 @@ At the start of `/work ICR-N`, after pre-flight (step 0) and before pulling the 
 1. Read it. Surface to the user with `AskUserQuestion`:
    > Prior `/work ICR-N` run found, last completed step `<N>`. Resume or start over?
    - **Resume from step `<N+1>`** — load `cardId`, `branch`, `worktreePath`, `prUrl`, `qaDepth` into orchestrator state and skip ahead. Verify the worktree still exists and is on the right branch; if not, fall back to "start over."
+     - **Loop resume:** if `loopActive === true`, the prior run was inside the post-PR loop (step 14.5). Re-load `addressedThreadIds`, `loopIteration`, `loopStartedAt`, and `lastPushAt`, then re-enter the TICK procedure. Do **NOT** re-reply to any thread already in `addressedThreadIds`; before posting any reply, cross-check that the thread's latest reply author is **not** self (guards the crash-after-reply-before-persist window). Re-evaluate the kill switches against the persisted `loopStartedAt` / `loopIteration` — a resume does not reset the caps.
    - **Start over** — delete the state file, clean up the existing worktree + branch (print the commands; don't auto-execute), then run the pipeline from step 0.
 2. If the user picks Resume but verification fails (worktree gone, branch deleted), fall back to "Start over" with a warning.
 
