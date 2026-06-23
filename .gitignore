@@ -54,3 +54,6 @@ tasks/lessons.md
 tasks/specs/*.state.json
 qa-env.json
 graphify-out/
+
+# obsidian
+.obsidian/
