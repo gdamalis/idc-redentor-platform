@@ -17,14 +17,16 @@ Always read `.claude/config.json` first — every command, path, list id/name, a
 
 The board flow (`config.tracker.workflow`, in order) is:
 
-`Backlog → To Do → In Progress → In Review → Done`
+`Backlog → To Do → In Progress → In Review → In Testing → Done`
 
 **`/work` owns exactly two Trello moves:**
 
 1. **To Do → In Progress** (step 3) — `move_card` to `config.tracker.lists.inProgress.id`, right after the worktree exists.
 2. **In Progress → In Review** (step 14, via `pr-author` at PR-ready) — `move_card` to `config.tracker.lists.inReview.id`, paired with a PR-link comment.
 
-**`/work` must NEVER move a card to Done.** `Done` is **human-only** — set when the human merges the PR and closes the card. There is intentionally no Done move anywhere in this pipeline, in any subagent, or in the failure handler. `Backlog` and `To Do` are also human/PM-owned (grooming) — `/work` only reads them.
+The next move, **In Review → In Testing**, is owned by **`/merge`** (move #3, after the user-triggered squash-merge) — never by `/work`.
+
+**`/work` must NEVER move a card to Done.** `Done` is **human-only** — set by the human after they deploy to production and close the card (the card sits in **In Testing** until then). There is intentionally no Done move anywhere in this pipeline, in any subagent, or in the failure handler. `Backlog` and `To Do` are also human/PM-owned (grooming) — `/work` only reads them.
 
 Every Trello **write** (`move_card`, `add_comment`, `update_card_details`) happens at or after a human gate, mirroring our discipline: the two moves above occur after the worktree exists and after the PR is ready, respectively; the PR-link comment is posted with the In Review move.
 
@@ -32,7 +34,7 @@ Every Trello **write** (`move_card`, `add_comment`, `update_card_details`) happe
 
 ## 0. Pre-flight
 
-1. Read `.claude/config.json`. Pin to local variables: `config.commands`, `config.paths`, `config.worktree`, `config.playwrightProjectMap`, `config.graphify`, and the whole `config.tracker` block — `boardId`, `lists` (id+name for `todo`/`inProgress`/`inReview`/`done`), `workflow`, `labelToCommitType`, `ticketKeyPrefix`. **Do not pin or hardcode anything Done-related as a move target.**
+1. Read `.claude/config.json`. Pin to local variables: `config.commands`, `config.paths`, `config.worktree`, `config.playwrightProjectMap`, `config.graphify`, and the whole `config.tracker` block — `boardId`, `lists` (id+name for `todo`/`inProgress`/`inReview`/`inTesting`/`done`), `workflow`, `labelToCommitType`, `ticketKeyPrefix`. **Do not pin or hardcode anything Done-related as a move target.** (`inTesting` is pinned for reference only — `/work` never moves there; `/merge` owns that move.)
 2. Read `${config.paths.lessons}` (`tasks/lessons.md`) — internalize prior corrections before working.
 3. Validate `$1` matches `ICR-\d+` (case-insensitive; normalize to uppercase). Extract `N` (the numeric `idShort`). If it doesn't match, stop and ask the user.
 4. **Resume check** — see "Resume-from-state hook" at the end of this file; run it here, before pulling the card. If a state file exists for this ticket, branch to resume / start-over.
