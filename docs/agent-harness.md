@@ -105,10 +105,11 @@ Grep/Read on an empty/stale/absent graph and notes it. Full guide: [`graphify.md
   `implementer` for caller/dep + `explain` impact lookups before edits/deletes; `security-reviewer` for
   `explain` blast-radius on changed shared symbols; `product-manager` for reuse lookups. `verifier`/
   `qa-runner`/`pr-author` never. Ad-hoc sessions follow the same rule via the `## graphify` section in `CLAUDE.md`.
-- **Who refreshes** (two layers): the **git post-commit hook** (`.husky/post-commit`) re-extracts
-  changed *code* on every commit (AST, no LLM, free); `/work` additionally runs `graphify update`
-  once per session (lock-guarded) to catch *doc/content* (semantic) drift. `enabled: "auto"` detects
-  the graph at runtime.
+- **Who refreshes** (two layers): the **git post-commit hook** (`.husky/post-commit`) keeps the
+  shared graph in sync with `main` on every commit (AST, no LLM, free; resolves the main repo root via
+  the common git dir so it works from worktrees, lock-guarded); `/work` additionally runs
+  `graphify update` once per session (lock-guarded) to catch *doc/content* (semantic) drift.
+  `enabled: "auto"` detects the graph at runtime. A worktree's feature code enters the graph on merge.
 - **Verbs** (`config.graphify.verbs`): `query` (BFS context), `affected` (reverse/blast-radius),
   `path` (shortest dependency path), `explain` (one-node onboarding), `save-result` (memory loop).
 - **Command form**: the CLI uses a **subcommand** — `graphify update <root>`, never `graphify --update`

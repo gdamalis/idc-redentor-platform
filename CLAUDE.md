@@ -50,9 +50,11 @@ for "what depends on this". To enable `affected`, rebuild once with `/graphify -
 
 - **Confirm negatives.** A "not found" from the graph may mean stale, not absent — Grep to confirm
   before acting on it (e.g. before deleting a "no callers" symbol).
-- **Freshness.** The git **post-commit hook** re-extracts changed _code_ on every commit (AST,
-  no LLM, free). For uncommitted edits or _doc/content_ changes, run `graphify update .`
-  (also free for code; folds in `graphify-out/memory/` Q&A from `graphify save-result`).
+- **Freshness.** The git **post-commit hook** keeps the shared graph (in the main checkout,
+  which the graph tracks) in sync on every commit — AST, no LLM, free, and resolved via the
+  common git dir so it works from `/work` worktrees too. A worktree's feature code enters the
+  graph when it merges to main. For uncommitted edits or _doc/content_ (semantic) changes, run
+  `graphify update .` (also folds in `graphify-out/memory/` Q&A from `graphify save-result`).
 - **Bootstrap.** `graphify-out/` is **gitignored** (per-machine). On a fresh clone it won't exist
   yet — run `/graphify` once (or `graphify extract .`) to build it; until then, agents fall back to
   Read/Grep automatically.
