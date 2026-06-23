@@ -12,19 +12,19 @@ It is a **content-managed informational site**, not an app: there is **no authen
 
 > Run everything with **pnpm**. Note `type-check` is **hyphenated** (unlike some sibling projects' `typecheck`). The verifier and QA agents call `pnpm type-check`.
 
-| Command | Purpose |
-|---------|---------|
-| `pnpm dev` | Dev server (Turbopack) |
-| `pnpm build` | Production build |
-| `pnpm start` | Serve the production build |
-| `pnpm lint` | ESLint (`eslint .`) |
-| `pnpm type-check` | TypeScript check (`tsc --noEmit`) |
-| `pnpm test` | Vitest, single run (`vitest run`) |
-| `pnpm test:watch` | Vitest in watch mode |
-| `pnpm e2e` | Playwright (`playwright test`) — config present, no specs in Phase 1 |
-| `pnpm format` | Prettier write |
-| `pnpm format:check` | Prettier check |
-| `pnpm prepare` | Husky install (runs automatically on `pnpm install`) |
+| Command             | Purpose                                                              |
+| ------------------- | -------------------------------------------------------------------- |
+| `pnpm dev`          | Dev server (Turbopack)                                               |
+| `pnpm build`        | Production build                                                     |
+| `pnpm start`        | Serve the production build                                           |
+| `pnpm lint`         | ESLint (`eslint .`)                                                  |
+| `pnpm type-check`   | TypeScript check (`tsc --noEmit`)                                    |
+| `pnpm test`         | Vitest, single run (`vitest run`)                                    |
+| `pnpm test:watch`   | Vitest in watch mode                                                 |
+| `pnpm e2e`          | Playwright (`playwright test`) — config present, no specs in Phase 1 |
+| `pnpm format`       | Prettier write                                                       |
+| `pnpm format:check` | Prettier check                                                       |
+| `pnpm prepare`      | Husky install (runs automatically on `pnpm install`)                 |
 
 ## Architecture
 
@@ -122,35 +122,35 @@ Sessions are named after the active Trello ticket automatically.
 
 ### Required (must be set for the app to function)
 
-| Variable | Purpose | In `.env.example`? |
-|----------|---------|:---:|
-| `NEXT_PUBLIC_BASE_URL` | Canonical base URL for SEO/metadata. Set in Vercel, not committed | ✅ |
-| `CONTENTFUL_SPACE_ID` | Contentful space | ✅ |
-| `CONTENTFUL_ACCESS_TOKEN` | Content Delivery API token (published content) | ✅ |
-| `CONTENTFUL_PREVIEW_ACCESS_TOKEN` | Content Preview API token (drafts) | ✅ |
-| `CONTENTFUL_PREVIEW_SECRET` | Secret for `/api/draft/enable` | ✅ |
-| `CONTENTFUL_REVALIDATE_SECRET` | `x-vercel-reval-key` for `/api/revalidate` | ❌ **missing** |
-| `MONGODB_URI` | MongoDB connection (likes + contact) | ❌ **missing** |
-| `MAIL_PROVIDER` | `sendgrid` or `resend` — selects the email adapter | ❌ **missing** |
-| `CONTACT_FORM_RECIPIENT_EMAIL` | Where contact-form notifications are sent | ❌ **missing** |
-| `FROM_EMAIL` | From address for transactional email | ❌ **missing** |
-| `MAILCHIMP_API_KEY` | Newsletter | ✅ |
-| `MAILCHIMP_API_SERVER` | Newsletter datacenter (e.g. `us21`) | ✅ |
-| `MAILCHIMP_AUDIENCE_ID` | Newsletter list | ✅ |
+| Variable                          | Purpose                                                           | In `.env.example`? |
+| --------------------------------- | ----------------------------------------------------------------- | :----------------: |
+| `NEXT_PUBLIC_BASE_URL`            | Canonical base URL for SEO/metadata. Set in Vercel, not committed |         ✅         |
+| `CONTENTFUL_SPACE_ID`             | Contentful space                                                  |         ✅         |
+| `CONTENTFUL_ACCESS_TOKEN`         | Content Delivery API token (published content)                    |         ✅         |
+| `CONTENTFUL_PREVIEW_ACCESS_TOKEN` | Content Preview API token (drafts)                                |         ✅         |
+| `CONTENTFUL_PREVIEW_SECRET`       | Secret for `/api/draft/enable`                                    |         ✅         |
+| `CONTENTFUL_REVALIDATE_SECRET`    | `x-vercel-reval-key` for `/api/revalidate`                        |   ❌ **missing**   |
+| `MONGODB_URI`                     | MongoDB connection (likes + contact)                              |   ❌ **missing**   |
+| `MAIL_PROVIDER`                   | `sendgrid` or `resend` — selects the email adapter                |   ❌ **missing**   |
+| `CONTACT_FORM_RECIPIENT_EMAIL`    | Where contact-form notifications are sent                         |   ❌ **missing**   |
+| `FROM_EMAIL`                      | From address for transactional email                              |   ❌ **missing**   |
+| `MAILCHIMP_API_KEY`               | Newsletter                                                        |         ✅         |
+| `MAILCHIMP_API_SERVER`            | Newsletter datacenter (e.g. `us21`)                               |         ✅         |
+| `MAILCHIMP_AUDIENCE_ID`           | Newsletter list                                                   |         ✅         |
 
 ### Conditionally required (by `MAIL_PROVIDER`)
 
-| Variable | Purpose | In `.env.example`? |
-|----------|---------|:---:|
-| `SENDGRID_API_KEY` | Required when `MAIL_PROVIDER=sendgrid` | ❌ **missing** |
-| `RESEND_API_KEY` | Required when `MAIL_PROVIDER=resend` | ❌ **missing** |
+| Variable           | Purpose                                | In `.env.example`? |
+| ------------------ | -------------------------------------- | :----------------: |
+| `SENDGRID_API_KEY` | Required when `MAIL_PROVIDER=sendgrid` |   ❌ **missing**   |
+| `RESEND_API_KEY`   | Required when `MAIL_PROVIDER=resend`   |   ❌ **missing**   |
 
 ### Optional / injected
 
-| Variable | Purpose |
-|----------|---------|
-| `ENVIRONMENT_NAME` | Free-form environment label (e.g. `local`) |
-| `VERCEL_ENV` | Injected by Vercel (`production` \| `preview` \| `development`); drives draft mode |
+| Variable           | Purpose                                                                            |
+| ------------------ | ---------------------------------------------------------------------------------- |
+| `ENVIRONMENT_NAME` | Free-form environment label (e.g. `local`)                                         |
+| `VERCEL_ENV`       | Injected by Vercel (`production` \| `preview` \| `development`); drives draft mode |
 
 > **Secret hygiene:** never paste real secret values into docs, commits, or PRs — reference variable **names** only. `.env*` files are gitignored.
 
@@ -171,10 +171,11 @@ A human always merges the PR and closes the card (moves it to **Done**). Scratch
 - **Engineering docs** — in `docs/`:
   - `architecture.md` — App Router groups, the Contentful↔MongoDB split, request lifecycle, path aliases, security posture.
   - `contentful-data-layer.md` — `fetchGraphQL`, the getter convention, the `site-content` cache tag, draft/preview, the revalidate webhook, why codegen is unused.
+  - `contentful-mcp.md` — the official Contentful MCP server for agents (registered inline in local `~/.claude.json`; local/token, sandbox-env writes, `PROTECTED_ENVIRONMENTS=master`); the agent-only write path, separate from the app's read path.
   - `i18n.md` — next-intl setup, locales, message files, the `src/proxy.ts` middleware, locale alternates/hreflang.
   - `forms-and-email.md` — contact + subscribe flows, the SendGrid/Resend adapter, templates, spam/PII handling.
   - `likes-and-mongodb.md` — the cached Mongo client, the `likes`/`contact` collections, visitor de-dup, write safety.
   - `seo-and-metadata.md` — `lib/metadata.ts`, the Contentful `Seo` type, OG/Twitter cards, JSON-LD, locale alternates.
   - `agent-harness.md` — how to use the agents and commands; the human-gated Trello automation.
   - `contributing.md` — branch/commit/PR conventions, semantic-release, husky/CI gates, the worktree flow.
-  - `gtm-ga4-setup.md` — *(existing)* GTM/GA4 analytics + consent setup.
+  - `gtm-ga4-setup.md` — _(existing)_ GTM/GA4 analytics + consent setup.
