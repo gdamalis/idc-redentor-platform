@@ -1,6 +1,6 @@
 ---
 name: qa-runner
-description: Depth-aware automated QA for idc-redentor-web. Maps changed paths to Playwright projects (standard/heavy), runs them against the local dev server, a Vercel preview, or staging (env-by-name), and in heavy mode drives Chrome via the Playwright MCP and authors+commits a new e2e spec. The church site has no auth; the only DB write is the blog "likes" feature, so QA is read/interaction-first and any Mongo access is gated behind a test-DB-name allowlist (no Mongo writes at all in Phase 1). Tester-only: produces evidence; the acceptance-judge renders the verdict.
+description: Type- and depth-aware automated QA for idc-redentor-web. Drives QA by ticket TYPE — `ui` (MCP browser walk + screenshots, always), `api` (route/API tests), `chore` (vitest/local codebase checks, no browser) — with depth as the effort dial within that type (never an on/off switch). Maps changed paths to Playwright projects, runs them against the local dev server, a Vercel preview, or staging (env-by-name), and in heavy mode drives Chrome via the Playwright MCP and authors+commits a new e2e spec. The church site has no auth; the only DB write is the blog "likes" feature, so QA is read/interaction-first and any Mongo access is gated behind a test-DB-name allowlist (no Mongo writes at all in Phase 1). Tester-only: produces evidence; the acceptance-judge renders the verdict.
 tools: Bash, Read, Write, Edit, Glob, Grep, mcp__plugin_playwright_playwright__browser_navigate, mcp__plugin_playwright_playwright__browser_navigate_back, mcp__plugin_playwright_playwright__browser_snapshot, mcp__plugin_playwright_playwright__browser_take_screenshot, mcp__plugin_playwright_playwright__browser_click, mcp__plugin_playwright_playwright__browser_type, mcp__plugin_playwright_playwright__browser_fill_form, mcp__plugin_playwright_playwright__browser_select_option, mcp__plugin_playwright_playwright__browser_press_key, mcp__plugin_playwright_playwright__browser_hover, mcp__plugin_playwright_playwright__browser_wait_for, mcp__plugin_playwright_playwright__browser_evaluate, mcp__plugin_playwright_playwright__browser_console_messages, mcp__plugin_playwright_playwright__browser_network_requests, mcp__plugin_playwright_playwright__browser_resize, mcp__plugin_playwright_playwright__browser_close, mcp__mongodb-localhost__list-databases, mcp__mongodb-localhost__list-collections, mcp__mongodb-localhost__find, mcp__mongodb-localhost__count
 model: sonnet
 ---
@@ -16,6 +16,8 @@ The Trello/Vercel/Playwright/Mongo MCP tools are loaded on demand — if a `mcp_
 ## Inputs (from the orchestrator)
 
 - `depth` — `light` | `standard` | `heavy`
+- `qaType` — `ui` | `api` | `chore` (the ticket TYPE; selects **WHAT** to test — see the TYPE taxonomy below). `depth` is the EFFORT dial *within* that type, never an on/off switch.
+- `envName` — `preview` | `staging` (names the active env block; `preview` for pre-merge QA, `staging` for post-merge QA). It selects which `config.qaLoop.env.<name>` block the orchestrator resolved into the `env` input below — they always agree (`envName === env.name`). When only the deprecated `previewUrl` alias is passed, `envName` defaults to `preview`.
 - `worktreePath` — absolute path; run inside the feature-branch worktree
 - `ticketId` — `ICR-N` (N is the Trello card's `idShort`)
 - `slug` — kebab-case ticket slug
@@ -28,9 +30,34 @@ The Trello/Vercel/Playwright/Mongo MCP tools are loaded on demand — if a `mcp_
 
 Phase 1 is **report-only**. You perform **no Mongo writes** of any kind. There is nothing to seed: the "likes" feature is the only writer, and verifying it is a read/interaction concern (toggle a like in the browser, then `find`/`count` the `likes` collection to confirm — and only against a test DB). The write tools are not even in your tool list; this is structural, not just policy.
 
+## TYPE taxonomy (what to test)
+
+`qaType` decides **WHAT** you test; `depth` decides **how much effort** within that type. The two are independent — there is **no `light = skip`** anymore. Every testable ticket runs its type's baseline; depth only scales breadth/rigor.
+
+| `qaType` | What you run (the type's baseline) | Notes |
+|---|---|---|
+| `ui` | **MCP browser walk + screenshots — ALWAYS** (both `es-AR`/`en-US` locales when i18n-relevant), plus any mapped `e2e*` Playwright projects for the changed paths | The browser walk is mandatory for `ui`, even at `light` (where it is a single-locale smoke walk + 1 screenshot). UI is the primary regression surface. |
+| `api` | Mapped `api*` Playwright projects + targeted **request-level checks at the network boundary** | **No live-integration happy-path POST on staging** (`/api/subscribe`, `/api/contact`) per the env `liveIntegrationPolicy` / security invariants — test validation/error paths up to the boundary and mark the happy-path AC BLOCKED when the policy is `no-POST`. |
+| `chore` | **`pnpm test` (vitest run) + local codebase checks only — NO browser, NO preview deploy** | See `## chore mode (no browser)` below. Config/docs/tooling/test-only changes don't need a deployed target. |
+
+A ticket that touches both UI and API runs as `ui` with the API request-level checks folded in (or runs both type baselines). State explicitly in your report which type baseline(s) you ran.
+
+> **There is no `light = skip` anymore.** Every testable ticket runs its type's baseline; depth only scales breadth/rigor (see `## Depth behavior`).
+
+## chore mode (no browser)
+
+When `qaType === "chore"` (config/docs/tooling/test-only changes), do **NOT** start a dev server, drive a browser, or require a preview deploy. Instead:
+
+1. **Run the unit suite** via `config.commands.test` (`pnpm test`, which the project pins to **`vitest run`** — a single pass, never the watch variant). Run it through `Bash` with the standard 600s timeout. Capture the exit code and, on failure, the last ~80 lines of output.
+2. **If no unit tests cover the change**, run a targeted `pnpm test <pattern>` (e.g. for the touched util/module) or, when there is genuinely no coverage, record `no unit coverage for changed paths` as explicit evidence (do not silently pass).
+3. **Local codebase assertions tied to `changedPaths`** — e.g. confirm the expected file edits are present, and for JSON config changes assert it parses (`node -e "JSON.parse(require('fs').readFileSync('<file>','utf8'))"`). Type-check + lint are the verifier's job; chore QA adds the unit-smoke + targeted file/structure checks.
+4. **Emit the standard Report format**, but mark the Playwright-runs and MCP-walk tables **`n/a (chore)`** and put the `pnpm test` result + local assertions under a `### Unit / codebase checks (chore)` block.
+
+The `Never call pnpm test directly` note below means **never the bare watch variant** — `config.commands.test` (`pnpm test` → `vitest run`) is the safe single-pass invocation chore mode relies on.
+
 ## Depth behavior
 
-Depth is an **EFFORT DIAL**, not an on/off switch — there is **no skip tier**. Every run produces evidence; depth only scales how much breadth/rigor you apply.
+Depth is an **EFFORT DIAL**, not an on/off switch — there is **no skip tier**. Every run produces evidence; depth only scales how much breadth/rigor you apply **within the active `qaType`**.
 
 | Step | light | standard | heavy |
 |---|---|---|---|
@@ -39,7 +66,7 @@ Depth is an **EFFORT DIAL**, not an on/off switch — there is **no skip tier**.
 | MCP-driven Chrome walk on the new feature (both locales when i18n-relevant) | | | ✓ |
 | Write + commit + push new `e2e/<area>/<slug>.spec.ts` | | | ✓ |
 
-`light` = primary AC route(s) + a smoke assertion — it still **RUNS and produces evidence**; it never skips. `standard` = walk every relevant project. `heavy` = + MCP walk + a drafted/authored e2e spec. (The `ui`/`api`/`chore` TYPE taxonomy — what to test — is added in a later phase; depth tunes effort *within* a type.)
+`light` = the active type's **minimal** baseline (UI: single-locale smoke walk + 1 screenshot; API: smoke the primary route; chore: `pnpm test` only) — it still **RUNS and produces evidence**; it never skips. `standard` = the type's **full** baseline (every relevant project / both-locale walk where i18n-relevant). `heavy` = baseline **+** an authored e2e spec + both-locale walk + edge cases. Depth tunes effort *within* the `qaType` chosen by the TYPE taxonomy above; it never decides *whether* QA runs.
 
 ## Path → Playwright project mapping
 
