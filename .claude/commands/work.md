@@ -9,7 +9,7 @@ This command is the orchestrator playbook. **You (the main thread) follow it ste
 
 The ticket key is in `$1` (e.g., `ICR-45`). If empty, ask the user.
 
-Task tracking lives in **Trello board "IDC Redentor website"** (`boardId 67a7a743186065f07e87bbe9`, shortLink `sxuUAeck`), accessed via the **Trello MCP** (`mcp__trello__*`; many tools are deferred — load them via ToolSearch `select:mcp__trello__get_card,mcp__trello__get_cards_by_list_id,mcp__trello__move_card,mcp__trello__add_comment,...` before first use). **`ICR-N` is a derived display key: `N` is the Trello card's `idShort`.** There is no native key field — resolve the card by `idShort`, then use its Trello `id` for every write.
+Task tracking lives in **Trello board "IDCR Website"** (`boardId 67a7a743186065f07e87bbe9`, shortLink `sxuUAeck`), accessed via the **Trello MCP** (`mcp__trello__*`; many tools are deferred — load them via ToolSearch `select:mcp__trello__get_card,mcp__trello__get_cards_by_list_id,mcp__trello__move_card,mcp__trello__add_comment,...` before first use). **`ICR-N` is a derived display key: `N` is the Trello card's `idShort`.** There is no native key field — resolve the card by `idShort`, then use its Trello `id` for every write.
 
 Always read `.claude/config.json` first — every command, path, list id/name, and the `config.tracker.workflow` order comes from there. Do not hardcode commands/paths. **Trello cards move between lists by `listId`** (from `config.tracker.lists`), not by status name — never invent a listId.
 
@@ -17,14 +17,14 @@ Always read `.claude/config.json` first — every command, path, list id/name, a
 
 The board flow (`config.tracker.workflow`, in order) is:
 
-`Dsicovery → To Do → In Progress → In Review → Done`
+`Backlog → To Do → In Progress → In Review → Done`
 
 **`/work` owns exactly two Trello moves:**
 
 1. **To Do → In Progress** (step 3) — `move_card` to `config.tracker.lists.inProgress.id`, right after the worktree exists.
 2. **In Progress → In Review** (step 14, via `pr-author` at PR-ready) — `move_card` to `config.tracker.lists.inReview.id`, paired with a PR-link comment.
 
-**`/work` must NEVER move a card to Done.** `Done` is **human-only** — set when the human merges the PR and closes the card. There is intentionally no Done move anywhere in this pipeline, in any subagent, or in the failure handler. `Dsicovery` and `To Do` are also human/PM-owned (grooming) — `/work` only reads them.
+**`/work` must NEVER move a card to Done.** `Done` is **human-only** — set when the human merges the PR and closes the card. There is intentionally no Done move anywhere in this pipeline, in any subagent, or in the failure handler. `Backlog` and `To Do` are also human/PM-owned (grooming) — `/work` only reads them.
 
 Every Trello **write** (`move_card`, `add_comment`, `update_card_details`) happens at or after a human gate, mirroring our discipline: the two moves above occur after the worktree exists and after the PR is ready, respectively; the PR-link comment is posted with the In Review move.
 
@@ -108,7 +108,7 @@ If `config.graphify.enabled` is `false`, set both flags to false and skip this s
    - **Priority** — Trello has no native priority; if a `Priority` label or `Priority: <x>` token exists, record it for the brainstorm; otherwise prompt once during refinement (step 6).
    - **Current list** — log only; you transition it later.
 4. **Commit-type inference** from labels via `config.tracker.labelToCommitType`: `Bug`→`fix`, `Feature`→`feat`, `Integration`→`feat`|`chore` (pick after brainstorm), `NFR`→`chore` (or `refactor`/`perf`). Override if `card.name` explicitly starts with `chore:`/`docs:`/etc.
-5. **Already-past guard**: if the card currently sits in `In Review` or `Done` (any `config.tracker.workflow` entry with `order > inProgress.order`), stop and ask the user whether to continue. If it sits in `Dsicovery`/`To Do`, proceed. If its list isn't in `config.tracker.lists`, surface the drift rather than proceeding silently.
+5. **Already-past guard**: if the card currently sits in `In Review` or `Done` (any `config.tracker.workflow` entry with `order > inProgress.order`), stop and ask the user whether to continue. If it sits in `Backlog`/`To Do`, proceed. If its list isn't in `config.tracker.lists`, surface the drift rather than proceeding silently.
 
 ## 2. Create worktree + branch  ★ MANDATORY
 
@@ -147,7 +147,7 @@ Then set the session name now: `/rename ICR-N-<slug>` (same kebab slug as the br
 2. Verify by re-reading the card or trusting the move result. If the move fails, stop and report (do not proceed silently).
 3. (Optional, gated) post a short start comment via `add_comment` — only if the team wants it; default is no comment until PR-ready to keep writes minimal.
 
-> Rule for the rest of the pipeline: `/work` drives only **In Progress** (here) and **In Review** (step 14). Never `Done`. Never `Dsicovery`/`To Do`.
+> Rule for the rest of the pipeline: `/work` drives only **In Progress** (here) and **In Review** (step 14). Never `Done`. Never `Backlog`/`To Do`.
 
 ## 4. Ensure scratchpad exists
 
@@ -156,7 +156,7 @@ Then set the session name now: `/rename ICR-N-<slug>` (same kebab slug as the br
 ````markdown
 # tasks/todo.md — Stray Observations Log
 
-**This file is gitignored.** Append-only scratchpad for things agents (and you) notice while working but that don't belong in the current ticket. At the end of each `/work` run, the orchestrator triages entries tagged with the current ticket and promotes them to Trello cards in **To Do** (board IDC Redentor website).
+**This file is gitignored.** Append-only scratchpad for things agents (and you) notice while working but that don't belong in the current ticket. At the end of each `/work` run, the orchestrator triages entries tagged with the current ticket and promotes them to Trello cards in **To Do** (board IDCR Website).
 
 ## Entry format
 
@@ -499,7 +499,7 @@ Triggered when the pipeline aborts for any reason after step 11 (the draft PR ex
 
 - **OWNS — Move #1:** `To Do → In Progress` at **step 3**, via `mcp__trello__move_card(cardId, listId="67a7a74bc9dd606c2e41cea2")`, immediately after the mandatory worktree exists.
 - **OWNS — Move #2:** `In Progress → In Review` at **step 14** (delegated to `pr-author`), via `mcp__trello__move_card(cardId, listId="67a7a74df6bfc532c70a06c8")`, paired with the PR-link `add_comment`, only after `gh pr ready`.
-- **MUST NOT do:** move any card to **Done** (`67a7a758f2da48a6482634a2`) — ever, in any step, subagent, or the failure handler. Also does not move cards into `Dsicovery` or `To Do` (PM/human-owned grooming lists; `/work` only reads them). The failure handler explicitly leaves the card in **In Progress**.
+- **MUST NOT do:** move any card to **Done** (`67a7a758f2da48a6482634a2`) — ever, in any step, subagent, or the failure handler. Also does not move cards into `Backlog` or `To Do` (PM/human-owned grooming lists; `/work` only reads them). The failure handler explicitly leaves the card in **In Progress**.
 
 ## Notes for the main thread
 

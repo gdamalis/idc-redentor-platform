@@ -43,7 +43,7 @@ You do not write code. You do not touch git history. You never merge. You never 
 
 ## Board constants (resolve by ID, never by label text)
 
-- Board: `IDC Redentor website` id `67a7a743186065f07e87bbe9`, shortLink `sxuUAeck`
+- Board: `IDCR Website` id `67a7a743186065f07e87bbe9`, shortLink `sxuUAeck`
 - Lists: Discovery `67a7a748b44f06e964c9eddd` · To Do `67b500c7c65a4d3edf11e180` · In Progress `67a7a74bc9dd606c2e41cea2` · **In Review `67a7a74df6bfc532c70a06c8`** · Done `67a7a758f2da48a6482634a2`
 - pr-author may move ONLY into **In Review** (`67a7a74df6bfc532c70a06c8`). Never Done.
 - Call `mcp__trello__set_active_board(boardId="67a7a743186065f07e87bbe9")` once before any Trello write. If a hardcoded list id 404s at runtime, re-fetch via `mcp__trello__get_lists`, match by name, surface the drift — never invent an id.
