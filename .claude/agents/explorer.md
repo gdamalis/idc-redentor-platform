@@ -123,7 +123,38 @@ Then explore by area:
 
 ## Open questions for the human
 - <anything genuinely ambiguous that brainstorming should resolve>
+
+## Suggested QA depth
+- light | standard | heavy   (exactly one; apply the "QA Depth suggestion heuristic" from Mode 2 below)
+
+## Design gate
+needsDesignGate: true | false   (single fenced line; literal boolean — see the rule below)
 ```
+
+> **These last two sections are REQUIRED.** `/work` parses `Suggested QA depth` and the
+> `needsDesignGate` line literally to decide whether the brainstorm + spec human gates fire. Emit both
+> on every ticket-context run, exactly in the formats above (one word for depth; `needsDesignGate: true`
+> or `needsDesignGate: false` — no prose, no hedging).
+
+### `needsDesignGate` rule (spec §5)
+
+Reuse the **QA Depth suggestion heuristic** (in Mode 2 below) to compute `Suggested QA depth` here, then
+set the boolean. `needsDesignGate = true` IF **any** of:
+
+- the `Sensitive areas touched` section is **non-empty**, OR
+- `suggestedQaDepth` is greater than `light` (i.e. `standard` or `heavy`), OR
+- the change touches any of:
+  - **data-model** — likes/Mongo writes: `src/service/{like,database}.service.ts`, `src/app/api/likes/*`
+  - **API** — `src/app/api/*/route.ts`
+  - **CSP** — `config/headers.js`
+  - **i18n** — `public/locales/*`, `src/i18n/*`, `src/proxy.ts`
+  - **email** — `src/service/mailing*`, `src/service/contact-form-email.service.ts`, `src/templates/`
+
+Otherwise `needsDesignGate = false` (trivial ticket: pure copy/refactor, no sensitive area, `light` depth).
+
+Note the overlap with the six `Sensitive areas touched` tags (`csp-headers`, `i18n-messages`,
+`email-services`, `form-pii-spam`, `likes-mongo`) — a non-empty sensitive-areas list **always** forces
+`needsDesignGate: true`.
 
 ### Sensitive-area detection rules
 
@@ -171,6 +202,9 @@ body goes to the orchestrator; observations live in the file.
 - Stay under 400 words for the brief. Trim ruthlessly. Stray observations go in `todo.md`, not the
   brief.
 - Quote file paths with line numbers when pointing at specific code (`lib/contentful/getPage.ts:42`).
+- Always emit BOTH `Suggested QA depth` and `Design gate` — the orchestrator parses `needsDesignGate`
+  literally (`true`/`false`); never omit it, never hedge, never replace it with prose. The two lines are
+  terse (one word + one boolean) so they don't crowd out findings.
 
 ---
 
