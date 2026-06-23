@@ -543,6 +543,19 @@ Do **NOT** keep scheduling. Leave the card **In Review** and the PR as-is. Set `
 
 > **This loop NEVER merges and NEVER moves the card.** It only fixes / replies / notifies. Merge is owned by `/merge` (a later phase) on an explicit human trigger; `Done` stays human-only.
 
+## 14.6 In-session merge hand-off (HUMAN-GATED)
+
+After the post-PR loop (14.5) has reached its **CLEAN** or **CAP** exit and you (the human) have reviewed the PR, you may, **in this same `/work` conversation, explicitly say "merge"**. Only then — merge is **NEVER autonomous**; `config.qaLoop.autoMerge.enabled` stays `false` — `/work` **hands off to the `/merge` logic**.
+
+> **Do NOT reimplement merge here.** The real owner is `.claude/commands/merge.md`. This subsection only routes the live session into that logic; the squash-merge, worktree/branch cleanup, the `In Review → In Testing` move, and the post-merge staging QA all live there.
+
+On an explicit in-session "merge", run the **`/merge ICR-N`** logic, passing the already-resolved state from this `/work` run so `/merge` does not re-resolve from scratch:
+- `cardId` / `idShort` (the `ICR-N` key), `prUrl` / PR number, `branch`, and `worktreePath` (all pinned in the state file / orchestrator state).
+
+`/merge` then, per `merge.md`: enforces `config.merge.requireCiGreen` (**refuses on red/pending CI**), **squash-merges** + deletes the remote branch, removes the local **worktree + branch** (anchored to `MAIN_REPO_ROOT`; if this session is inside the target worktree, it leaves it first via `ExitWorktree`), moves the card **In Review → In Testing** (automated move #3, owned by `/merge`), and runs **post-merge staging QA** (tester → `acceptance-judge` → post to Trello). It **never** moves the card to **Done**.
+
+> **`/work`'s contract is unchanged.** `/work` itself still **NEVER merges** and **NEVER moves a card to Done**. The third automated move (`In Review → In Testing`) is owned by **`/merge`**, not `/work` — so `/work` keeps its **exactly-two-moves** contract (steps 3 and 14). The hand-off is a human-gated delegation, not a new `/work` transition.
+
 ## 15. Triage stray observations
 
 Triage runs after the post-PR loop (step 14.5) reaches its **CLEAN** or **CAP** exit, or immediately after step 14 when `config.reviewLoop` is absent / the loop was skipped via graceful degradation.
@@ -691,6 +704,7 @@ Triggered when the pipeline aborts for any reason after step 11 (the draft PR ex
 - **OWNS — Move #1:** `To Do → In Progress` at **step 3**, via `mcp__trello__move_card(cardId, listId="67a7a74bc9dd606c2e41cea2")`, immediately after the mandatory worktree exists.
 - **OWNS — Move #2:** `In Progress → In Review` at **step 14** (delegated to `pr-author`), via `mcp__trello__move_card(cardId, listId="67a7a74df6bfc532c70a06c8")`, paired with the PR-link `add_comment`, only after `gh pr ready`.
 - **MUST NOT do:** move any card to **Done** (`67a7a758f2da48a6482634a2`) — ever, in any step, subagent, or the failure handler. Also does not move cards into `Backlog` or `To Do` (PM/human-owned grooming lists; `/work` only reads them). The failure handler explicitly leaves the card in **In Progress**.
+- **NOT `/work`'s — Move #3 is owned by `/merge`:** the third automated move, `In Review → In Testing` (`config.tracker.lists.inTesting.id` / `6a3a7f99c43d9b731c47fe61`), is dispatched **only** on an explicit in-session human "merge" (the **14.6** hand-off to `merge.md`) — `/work` itself never performs it. So `/work` still owns exactly Moves #1 and #2 and never touches Done; `/merge` owns Move #3 after a verified squash-merge.
 
 ## Notes for the main thread
 
