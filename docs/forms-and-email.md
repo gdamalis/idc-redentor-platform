@@ -28,7 +28,7 @@ src/components/features/contact-form/contactFormAction.ts   "use server"
 - Caller passes `requiredFields`; the action rejects with `"Please fill in all required fields"` if any are empty.
 - Email is checked against a regex; bad addresses get `"Please enter a valid email address"`.
 - The form content shape is `ContactDetails = { name, email, subject, message }` (`src/types/ContactDetails.ts`).
-- **Note:** validation here is a hand-rolled regex, not a Zod schema. The project convention is Zod at boundaries — when extending this form, prefer migrating to a Zod schema shared between client and the action. (The form *fields* themselves are content-driven: `getContactForm` reads a `ContactForm` Contentful entry whose `fieldsCollection` defines `FormField` name/type/required/validation/placeholder.)
+- **Note:** validation here is a hand-rolled regex, not a Zod schema. The project convention is Zod at boundaries — when extending this form, prefer migrating to a Zod schema shared between client and the action. (The form _fields_ themselves are content-driven: `getContactForm` reads a `ContactForm` Contentful entry whose `fieldsCollection` defines `FormField` name/type/required/validation/placeholder.)
 
 ### Persistence (`contact.service.ts`)
 
@@ -40,10 +40,10 @@ src/components/features/contact-form/contactFormAction.ts   "use server"
 
 ```ts
 return await sendEmail({
-  to: RECIPIENT_EMAIL,                                  // process.env.CONTACT_FORM_RECIPIENT_EMAIL
+  to: RECIPIENT_EMAIL, // process.env.CONTACT_FORM_RECIPIENT_EMAIL
   subject: `Nuevo mensaje de Contacto: ${subject}`,
   text: plainTextContent,
-  html: htmlContent,                                    // renderTemplate("contact-form", { … })
+  html: htmlContent, // renderTemplate("contact-form", { … })
 });
 ```
 
@@ -51,7 +51,9 @@ The recipient is `CONTACT_FORM_RECIPIENT_EMAIL`. The user's free-text `message` 
 
 ### Failure semantics
 
-The action treats the **database write as the source of truth**: if the Mongo insert succeeds it returns success **even when the email fails** (the email failure is logged, not surfaced). If the DB write fails, the user sees `"Failed to save your message. Please try again later."` This is intentional — a submission is never silently lost, but a transient email outage doesn't block the user.
+The action treats the **database write as the source of truth**: if the Mongo insert succeeds it returns success **even when the email fails** (the email failure is logged, not surfaced). If the DB write fails, the user sees the localized save-failure message. This is intentional — a submission is never silently lost, but a transient email outage doesn't block the user.
+
+The action is **locale-agnostic**: it returns a stable `messageKey` (one of `ContactFormKey` from `src/components/features/contact-form/contactFormMessageKeys.ts` — `success-message`, `error-required-fields`, `error-invalid-email`, `error-save-failed`, `error-unexpected`), and the client (`ContactForm.tsx`) resolves it to localized text via `useTranslations()` against the `ContactForm` namespace in `public/locales/{es-AR,en-US}.json`. Raw `error.message` from caught exceptions is **never** surfaced to the user (it maps to the generic `error-unexpected` key) — see ICR-49.
 
 ## Newsletter subscribe (Mailchimp)
 
@@ -99,15 +101,15 @@ src/service/mailing.service.ts          sendEmail(content) + FROM_EMAIL default
 
 > All of these are **required at runtime but several are missing from `.env.example`** — flag and set them. Never put real values in docs or commits; reference names only.
 
-| Variable | Used by | In `.env.example`? |
-|----------|---------|:---:|
-| `MAIL_PROVIDER` (`sendgrid`\|`resend`) | `mailing.service.ts` | ❌ missing |
-| `CONTACT_FORM_RECIPIENT_EMAIL` | `contact-form-email.service.ts` | ❌ missing |
-| `FROM_EMAIL` | `mailing.service.ts` | ❌ missing |
-| `SENDGRID_API_KEY` | `sendgrid.adapter.ts` (if provider=sendgrid) | ❌ missing |
-| `RESEND_API_KEY` | `resend.adapter.ts` (if provider=resend) | ❌ missing |
-| `MONGODB_URI` | `contact.service.ts` | ❌ missing |
-| `MAILCHIMP_API_KEY` / `MAILCHIMP_API_SERVER` / `MAILCHIMP_AUDIENCE_ID` | `/api/subscribe` | ✅ present |
+| Variable                                                               | Used by                                      | In `.env.example`? |
+| ---------------------------------------------------------------------- | -------------------------------------------- | :----------------: |
+| `MAIL_PROVIDER` (`sendgrid`\|`resend`)                                 | `mailing.service.ts`                         |     ❌ missing     |
+| `CONTACT_FORM_RECIPIENT_EMAIL`                                         | `contact-form-email.service.ts`              |     ❌ missing     |
+| `FROM_EMAIL`                                                           | `mailing.service.ts`                         |     ❌ missing     |
+| `SENDGRID_API_KEY`                                                     | `sendgrid.adapter.ts` (if provider=sendgrid) |     ❌ missing     |
+| `RESEND_API_KEY`                                                       | `resend.adapter.ts` (if provider=resend)     |     ❌ missing     |
+| `MONGODB_URI`                                                          | `contact.service.ts`                         |     ❌ missing     |
+| `MAILCHIMP_API_KEY` / `MAILCHIMP_API_SERVER` / `MAILCHIMP_AUDIENCE_ID` | `/api/subscribe`                             |     ✅ present     |
 
 ## Spam & PII discipline
 
