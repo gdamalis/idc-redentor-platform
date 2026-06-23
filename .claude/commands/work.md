@@ -36,7 +36,7 @@ Every Trello **write** (`move_card`, `add_comment`, `update_card_details`) happe
 2. Read `${config.paths.lessons}` (`tasks/lessons.md`) — internalize prior corrections before working.
 3. Validate `$1` matches `ICR-\d+` (case-insensitive; normalize to uppercase). Extract `N` (the numeric `idShort`). If it doesn't match, stop and ask the user.
 4. **Resume check** — see "Resume-from-state hook" at the end of this file; run it here, before pulling the card. If a state file exists for this ticket, branch to resume / start-over.
-5. Verify `${config.paths.qaEnv}` (`qa-env.json`) exists at `MAIN_REPO_ROOT`. If missing, warn: "Create `qa-env.json` (Vercel preview baseUrl) before heavy QA." Do **not** hard-stop for `light`/`standard` (Phase 1 QA is report-only against preview deploys), but record that heavy QA is unavailable.
+5. Verify `${config.paths.qaEnv}` (`qa-env.json`) exists at `MAIN_REPO_ROOT`. Pre-merge QA is always-on (step 13): `ui`/`api` tickets test against the PR's Vercel **preview** deploy and need `qa-env.json` (preview baseUrl + Trello creds for evidence posting). If missing, warn: "Create `qa-env.json` (Vercel preview baseUrl + Trello creds) before UI/API QA." Do **not** hard-stop — `chore` QA (vitest/local) needs no deployed target, and the Trello post degrades to the MCP fallback — but record that deployed-target QA / REST evidence posting is degraded.
 6. Resolve `MAIN_REPO_ROOT` early: `git rev-parse --git-common-dir` then `dirname`. Pin it — every later step that needs the main repo path uses this.
 7. **Activate the Trello board**: `mcp__trello__set_active_board(boardId="67a7a743186065f07e87bbe9")` so later list/card calls resolve on the right board.
 8. **Graphify update (with lock)** — see the "Graphify refresh" section below. Pin `GRAPHIFY_AVAILABLE` (boolean) and `GRAPHIFY_FRESH` (boolean) for use when dispatching subagents.
@@ -108,7 +108,13 @@ If `config.graphify.enabled` is `false`, set both flags to false and skip this s
    - **Priority** — Trello has no native priority; if a `Priority` label or `Priority: <x>` token exists, record it for the brainstorm; otherwise prompt once during refinement (step 6).
    - **Current list** — log only; you transition it later.
 4. **Commit-type inference** from labels via `config.tracker.labelToCommitType`: `Bug`→`fix`, `Feature`→`feat`, `Integration`→`feat`|`chore` (pick after brainstorm), `NFR`→`chore` (or `refactor`/`perf`). Override if `card.name` explicitly starts with `chore:`/`docs:`/etc.
-5. **Already-past guard**: if the card currently sits in `In Review` or `Done` (any `config.tracker.workflow` entry with `order > inProgress.order`), stop and ask the user whether to continue. If it sits in `Backlog`/`To Do`, proceed. If its list isn't in `config.tracker.lists`, surface the drift rather than proceeding silently.
+5. **QA TYPE inference** — derive `qaType` (`ui` | `api` | `chore`), **independent of depth** (depth is the effort dial; TYPE is what to test):
+   - `api` — when the change touches API/route logic only: `src/app/api/*` or `src/service/*` route/handler logic.
+   - `ui` — when it touches rendered UI: `src/app/[locale]/*` pages or `src/components/*`.
+   - `chore` — pure config/docs/tooling/test-only changes (no UI, no API): `.claude/*`, `docs/*`, `*.config.*`, `e2e/*`, `src/utils/*` unit-only, etc.
+   - A ticket touching **both** UI and API runs as `ui` with the API request-level checks folded in (or runs both type baselines).
+   - At this point `changedPaths` may not exist yet (no code written); infer from the card's described areas / explorer findings, then **reconcile against the real `git diff` `changedPaths` at the QA step (13)** and correct `qaType` if the diff disagrees. Record `qaType`; the pre-merge QA step uses it.
+6. **Already-past guard**: if the card currently sits in `In Review` or `Done` (any `config.tracker.workflow` entry with `order > inProgress.order`), stop and ask the user whether to continue. If it sits in `Backlog`/`To Do`, proceed. If its list isn't in `config.tracker.lists`, surface the drift rather than proceeding silently.
 
 ## 1.5 Entry gate — needs-refinement  ★ HUMAN GATE ★
 
@@ -350,27 +356,70 @@ When all checkpoints are done, move to QA.
 
 ## 13. QA  (subagent: qa-runner)
 
-Compute `changedPaths` first: `git diff --name-only origin/main...HEAD` (from inside the worktree).
+**Pre-merge QA is UNCONDITIONAL for every testable ticket.** There is no longer a `light = skip` early-return — QA always runs, on the PR's Vercel **preview** deploy. Depth only scales how much EFFORT QA spends; it never decides *whether* QA runs.
+
+Compute `changedPaths` first: `git diff --name-only origin/main...HEAD` (from inside the worktree). **Reconcile `qaType`** (inferred at step 1.5) against this real diff and correct it if the diff disagrees (e.g. a "UI" card that only touched an API route).
 
 Dispatch `qa-runner` with:
-- `depth` — QA Depth from the card
+- `depth` — QA Depth from the card (effort dial)
+- `qaType` — `ui` | `api` | `chore` (reconciled against `changedPaths`)
+- `envName: "preview"` — pre-merge QA targets the PR's Vercel **preview** deploy
 - `worktreePath` — absolute path
 - `ticketId` — `ICR-N`
 - `slug` — kebab-case slug from the card name
 - `changedPaths` — array from the `git diff` above
 - `mainRepoRoot: <MAIN_REPO_ROOT>`
 
-The runner reads `qa-env.json` itself (Vercel preview baseUrl; the host must match the `*.vercel.app` allowlist).
+The runner reads `qa-env.json` itself (Vercel preview baseUrl; the host must match the `*.vercel.app` allowlist; the prod hard-deny applies in every env).
 
-- `light` — runner returns immediately; the verifier already covered it.
-- `standard` — runner runs Playwright tags per `config.playwrightProjectMap` for the changed paths against the **preview deploy** (Phase 1: runs only the specs that exist; report-only). No MCP walk. No new spec.
-- `heavy` — runner runs the standard suite, then drives Chrome via `mcp__plugin_playwright_playwright__*` through the new feature on the preview URL, then writes a new `e2e/<area>/<slug>.spec.ts` and commits+pushes it.
+**TYPE → what the runner tests** (depth scales effort within each):
+- `ui` → **MCP browser walk + screenshots, ALWAYS** (both `es-AR`/`en-US` locales when i18n-relevant) + mapped `e2e*` Playwright projects.
+- `api` → mapped `api*` Playwright projects + request-level checks at the network boundary (no live-integration happy-path POST on staging per the env policy).
+- `chore` → `pnpm test` (vitest run) + local codebase checks only — **no browser, no preview deploy needed**.
+
+### 13.1 Acceptance judge (verdict)
+
+After the tester (`qa-runner`) returns its **EVIDENCE bundle** (written report + screenshot paths + raw per-AC observations), dispatch the **acceptance-judge** subagent (agent name from `config.qaLoop.reviewAgents.acceptance` → `acceptance-judge`) with:
+- the tester's evidence (written report + screenshot paths + the block-1 JSON)
+- the card's acceptance criteria — `mcp__trello__get_acceptance_criteria(cardId)`
+- `cardId`, `ticketId: "ICR-N"`, `envName: "preview"`
+
+It returns the **authoritative** `overall: pass | partial | fail` verdict plus a `perAC` array (`{n, text, type, verdict, rationale, evidenceRef}`) shaped for the trello-result table. **The tester proves what the system does; the judge decides whether it meets the card — never fuse them.** The QA-loop guard's pass/fail decision keys off the **judge's** verdict, not the tester's raw output.
+
+> Map the judge's verdict onto the trello-result `perAC` table: `verdict → result`, `rationale (+evidenceRef) → notes`, `overall → status` (pass→PASS, partial→PARTIAL, fail→FAIL, blocked-present→BLOCKED).
+
+### 13.2 Dual-post evidence (PR + Trello)
+
+Post the SAME evidence + judge verdict to **BOTH** the Trello card and the PR. Build both from the one bundle. **Secret-scrub before every write** (security invariant #4 — the script scrubs; the PR path must scrub too).
+
+**Trello (screenshots as attachments):** write a `0600` temp payload JSON:
+```jsonc
+{
+  "cardId": "<trello card id>",
+  "ticketKey": "ICR-N",
+  "qaEnvPath": "<config.paths.qaEnv>",   // "qa-env.json"
+  "meta": {
+    "title": "<card title>", "testedAt": "<iso>", "envName": "preview",
+    "host": "<preview host>", "targetUrl": "<previewUrl>",
+    "testType": "<qaType>", "postedBy": "/work", "runId": "<run id>"
+  },
+  "result": { /* judge overall→status + perAC mapped to {n,text,type,result,notes} + summary */ },
+  "evidence": [ { "path": "<abs screenshot>", "caption": "...", "ac": 1 } ]
+}
+```
+Run `node .claude/scripts/qa/post-trello-result.mjs <payload>`. The script attaches each screenshot to the card then posts the Markdown comment. **`meta.envName` is now REQUIRED** (it exits 2 if absent) and **`meta.postedBy: "/work"`** so the comment isn't mislabeled as `/qa`. On exit code 3 (creds absent) fall back to `mcp__trello__add_comment` + `mcp__trello__attach_image_to_card`.
+
+**PR (report + verdict table + link — screenshots live on Trello):** GitHub has **no simple CLI to upload local image files into a PR comment**, so do NOT invent a `gh` image upload. Post the WRITTEN acceptance report + the per-AC verdict table + a **link to the Trello card** (which carries the screenshots as attachments) via:
+```bash
+gh pr comment <pr-url> --body-file <scrubbed-report.md>
+```
+The report body contains: overall status, the per-AC verdict table (`# | Criterion | Type | Result | Notes`), the blockers list, and a line `Screenshots: see the Trello card <https://trello.com/c/<shortLink>> (attachments).` If you want inline images on the PR, the ONLY sane mechanism is to reference the **Trello attachment URLs** returned by the attach step in `post-trello-result.mjs` — there is no native `gh` image upload. Screenshots live on Trello; the PR carries the report + verdict + link.
 
 ### QA-loop guard ★ MAX 3 ATTEMPTS
 
-Same shape as the Verify-loop guard. Maintain `qaAttemptCount` and `lastTwoQaFailures`. After 3 attempts, **STOP** and trigger the Failure handler. If the failure output is identical to the prior attempt, surface before re-dispatching.
+Same shape as the Verify-loop guard. Maintain `qaAttemptCount` and `lastTwoQaFailures`. After 3 attempts, **STOP** and trigger the Failure handler. If the failure output is identical to the prior attempt, surface before re-dispatching. The pass/fail decision keys off the **acceptance-judge's** verdict (13.1), not the tester's raw output.
 
-If QA fails (and we have attempts left), route back to the implementer with the failures. Re-run the verifier after, then re-dispatch qa-runner. **Phase 1 is report-only — QA findings are reported; `/work` does not auto-remediate beyond this loop and never auto-merges.**
+If QA fails (and we have attempts left), route back to the implementer with the failures. Re-run the verifier after, then re-dispatch qa-runner → acceptance-judge → dual-post. **QA is always-on and evidence is dual-posted (PR + Trello).** The loop still auto-remediates up to the 3-attempt cap and **NEVER auto-merges**; the merge gate remains human-only (handed to `/merge` in a later phase).
 
 ## 13.5 Docs evaluation
 
@@ -541,7 +590,7 @@ Triggered when the pipeline aborts for any reason after step 11 (the draft PR ex
 
 - **Branch hygiene**: never commit on `main`. The worktree ensures this — the branch is created off `origin/main` and lives in a sibling directory.
 - **Concurrency**: `/work` is safe to run in parallel sessions on different tickets. The worktree-per-ticket isolation means no branch or file collisions.
-- **Cost discipline**: skip phases the QA Depth doesn't warrant. Don't run heavy QA on `light` tickets.
+- **Cost discipline**: depth scales QA EFFORT, not whether QA runs. Every testable ticket gets at least its TYPE's baseline QA (ui/api/chore); reserve `heavy` (authored e2e + both-locale walk) for high-risk tickets.
 - **Self-correction**: if any subagent returns "I don't know how to proceed", stop the pipeline and surface to the user rather than guessing.
 - **Failure modes**: the verify-loop and QA-loop guards (steps 10, 12, 13) enforce a 3-attempt cap with prior-error diff. Both routes call the Failure handler above.
 - **The two automated Trello moves are the only tracker state changes `/work` makes; Done is exclusively human.**
