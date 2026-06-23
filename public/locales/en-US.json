@@ -80,6 +80,6 @@
     "error-invalid-email": "Please enter a valid email address.",
     "success-message": "Your message was sent successfully!",
     "error-save-failed": "Failed to save your message. Please try again later.",
-    "error-unexpected": "An unexpected error occurred."
+    "error-unexpected": "An unexpected error occurred. Please try again later."
   }
 }
