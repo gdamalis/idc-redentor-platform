@@ -25,8 +25,8 @@ src/components/features/contact-form/contactFormAction.ts   "use server"
 
 ### Validation (`contactFormAction.ts`)
 
-- Caller passes `requiredFields`; the action rejects with `"Please fill in all required fields"` if any are empty.
-- Email is checked against a regex; bad addresses get `"Please enter a valid email address"`.
+- Caller passes `requiredFields`; the action rejects with the `error-required-fields` messageKey if any are empty (localized client-side).
+- Email is checked against a regex; bad addresses get the `error-invalid-email` messageKey.
 - The form content shape is `ContactDetails = { name, email, subject, message }` (`src/types/ContactDetails.ts`).
 - **Note:** validation here is a hand-rolled regex, not a Zod schema. The project convention is Zod at boundaries — when extending this form, prefer migrating to a Zod schema shared between client and the action. (The form _fields_ themselves are content-driven: `getContactForm` reads a `ContactForm` Contentful entry whose `fieldsCollection` defines `FormField` name/type/required/validation/placeholder.)
 
