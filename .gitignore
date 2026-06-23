@@ -49,6 +49,8 @@ next-env.d.ts
 # Claude Code agent harness
 .claude/worktrees/
 .claude/settings.local.json
+# Local, machine-specific MCP server config (secrets / cred paths). Commit .mcp.json.example instead.
+.mcp.json
 tasks/todo.md
 tasks/lessons.md
 tasks/specs/*.state.json

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "google-analytics-idcr": {
+      "type": "stdio",
+      "command": "pipx",
+      "args": ["run", "analytics-mcp"],
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "/absolute/path/to/your/ga-idcr-sa.json"
+      }
+    }
+  }
+}
