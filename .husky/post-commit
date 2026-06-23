@@ -1,0 +1,15 @@
+# --- Keep the graphify knowledge graph fresh after each commit ---
+# Re-extracts changed code into graphify-out/graph.json so `graphify query` stays accurate.
+# AST-only: no LLM, no network, runs in ~seconds. Detached so it never blocks the commit,
+# and post-commit can't fail a commit anyway. Graceful no-op when:
+#   - graphify isn't installed (other devs, CI, fresh machines)
+#   - this checkout has no graph yet (gitignored & per-machine; run /graphify once to opt in)
+#   - a /work session holds the harness update lock (don't race it)
+# Doc/content (semantic) changes still need an occasional `graphify update .` or /work run.
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+[ -n "$ROOT" ] || exit 0
+[ -f "$ROOT/graphify-out/graph.json" ] || exit 0
+command -v graphify >/dev/null 2>&1 || exit 0
+[ -d "$ROOT/graphify-out/.harness-update.lock" ] && exit 0
+( graphify update "$ROOT" >/dev/null 2>&1 & ) >/dev/null 2>&1
+exit 0
