@@ -1,3 +1,9 @@
+# [1.12.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.11.3...v1.12.0) (2026-06-24)
+
+### Features
+
+- **harness:** automate full ticket lifecycle — staging QA, /merge, post-PR review loop ([#44](https://github.com/gdamalis/idc-redentor-web/issues/44)) ([c133aca](https://github.com/gdamalis/idc-redentor-web/commit/c133acace1e751e28993a3ace1472fa7c41bec40))
+
 ## [1.11.3](https://github.com/gdamalis/idc-redentor-web/compare/v1.11.2...v1.11.3) (2026-06-23)
 
 ## [1.11.2](https://github.com/gdamalis/idc-redentor-web/compare/v1.11.1...v1.11.2) (2026-06-23)
