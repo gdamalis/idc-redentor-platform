@@ -1,8 +1,9 @@
  
 
-export async function fetchGraphQL(query: string, preview = false) { 
+export async function fetchGraphQL(query: string, preview = false) {
+  const environment = process.env.CONTENTFUL_ENVIRONMENT ?? "master";
   return fetch(
-    `https://graphql.contentful.com/content/v1/spaces/${process.env.CONTENTFUL_SPACE_ID}`,
+    `https://graphql.contentful.com/content/v1/spaces/${process.env.CONTENTFUL_SPACE_ID}/environments/${environment}`,
     {
       method: "POST",
       headers: {
