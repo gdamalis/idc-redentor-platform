@@ -1,3 +1,9 @@
+## [1.12.1](https://github.com/gdamalis/idc-redentor-web/compare/v1.12.0...v1.12.1) (2026-06-24)
+
+### Bug Fixes
+
+- **ICR-49:** localize contact-form heading and submit feedback messages ([#45](https://github.com/gdamalis/idc-redentor-web/issues/45)) ([287a063](https://github.com/gdamalis/idc-redentor-web/commit/287a063473e9d0ecaee1f6b8785ea201f8acf037))
+
 # [1.12.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.11.3...v1.12.0) (2026-06-24)
 
 ### Features
