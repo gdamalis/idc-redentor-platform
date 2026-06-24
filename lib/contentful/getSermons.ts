@@ -121,11 +121,45 @@ function mapSermon(item: Record<string, unknown>): Sermon {
   };
 }
 
+const ARCHIVE_PAGE_SIZE = 100;
+
+/**
+ * Fetches every item of a `sermonCollection` query across pages, so the public
+ * archive and the sitemap never silently truncate once there are more than
+ * ARCHIVE_PAGE_SIZE sermons. `buildQuery(skip, limit)` MUST request `total`
+ * alongside `items`.
+ */
+async function fetchAllSermonItems<T>(
+  buildQuery: (skip: number, limit: number) => string,
+  isDraftMode: boolean,
+): Promise<T[]> {
+  const all: T[] = [];
+  let skip = 0;
+  let total = 0;
+
+  do {
+    const data = await fetchGraphQL(
+      buildQuery(skip, ARCHIVE_PAGE_SIZE),
+      isDraftMode,
+    );
+    const collection = data?.data?.sermonCollection as
+      | { total?: number; items?: T[] }
+      | undefined;
+    const items = collection?.items ?? [];
+    total = collection?.total ?? all.length + items.length;
+    all.push(...items);
+    skip += ARCHIVE_PAGE_SIZE;
+    if (items.length < ARCHIVE_PAGE_SIZE) break;
+  } while (skip < total);
+
+  return all;
+}
+
 export async function getSermon(
   slug: string,
   locale: string,
   isDraftMode = false,
-): Promise<Sermon> {
+): Promise<Sermon | undefined> {
   const data = await fetchGraphQL(
     `query {
       sermonCollection(
@@ -142,7 +176,14 @@ export async function getSermon(
     isDraftMode,
   );
 
-  return mapSermon(data?.data?.sermonCollection?.items[0]);
+  // A typoed/deleted slug yields an empty `items` array; returning undefined
+  // here lets callers hit their `if (!sermon)` not-found path instead of
+  // mapSermon dereferencing undefined and throwing a 500.
+  const item = data?.data?.sermonCollection?.items?.[0] as
+    | Record<string, unknown>
+    | undefined;
+
+  return item ? mapSermon(item) : undefined;
 }
 
 export async function getLatestSermons(
@@ -184,14 +225,17 @@ export async function getAllSermons(
     isDraftMode?: boolean;
   } = {},
 ): Promise<Sermon[]> {
-  const data = await fetchGraphQL(
-    `query {
+  const items = await fetchAllSermonItems<Record<string, unknown>>(
+    (skip, limit) =>
+      `query {
       sermonCollection(
         locale: "${locale}",
-        limit: 100,
+        limit: ${limit},
+        skip: ${skip},
         order: sermonDate_DESC,
         preview: ${options?.isDraftMode ? "true" : "false"}
       ) {
+        total
         items {
           ${GRAPHQL_FIELDS}
         }
@@ -200,21 +244,25 @@ export async function getAllSermons(
     options?.isDraftMode ?? false,
   );
 
-  return (data?.data?.sermonCollection?.items ?? []).map(
-    (item: Record<string, unknown>) => mapSermon(item),
-  );
+  return items.map((item) => mapSermon(item));
 }
 
 export async function getAllSermonSlugs(
   locale: string,
 ): Promise<Array<{ slug: string; updatedAt: string }>> {
-  const data = await fetchGraphQL(
-    `query {
+  const items = await fetchAllSermonItems<{
+    slug: string;
+    sys: { publishedAt: string };
+  }>(
+    (skip, limit) =>
+      `query {
       sermonCollection(
         locale: "${locale}",
-        limit: 100,
+        limit: ${limit},
+        skip: ${skip},
         preview: false
       ) {
+        total
         items {
           slug
           sys {
@@ -226,12 +274,8 @@ export async function getAllSermonSlugs(
     false,
   );
 
-  return (
-    data?.data?.sermonCollection?.items?.map(
-      (item: { slug: string; sys: { publishedAt: string } }) => ({
-        slug: item.slug,
-        updatedAt: item.sys.publishedAt,
-      }),
-    ) ?? []
-  );
+  return items.map((item) => ({
+    slug: item.slug,
+    updatedAt: item.sys.publishedAt,
+  }));
 }

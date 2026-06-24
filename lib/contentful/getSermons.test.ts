@@ -76,6 +76,25 @@ function makeCollectionResponse(items: unknown[]) {
   return { data: { sermonCollection: { items } } };
 }
 
+function makePage(items: unknown[], total: number) {
+  return { data: { sermonCollection: { total, items } } };
+}
+
+function minimalSermonItems(count: number, startIndex = 0) {
+  return Array.from({ length: count }, (_, i) => ({
+    title: `Sermón ${startIndex + i}`,
+    slug: `sermon-${startIndex + i}`,
+    sys: { id: `id-${startIndex + i}`, publishedAt: "2025-01-01T00:00:00Z" },
+  }));
+}
+
+function minimalSlugItems(count: number, startIndex = 0) {
+  return Array.from({ length: count }, (_, i) => ({
+    slug: `sermon-${startIndex + i}`,
+    sys: { publishedAt: "2025-01-01T00:00:00Z" },
+  }));
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -84,7 +103,7 @@ describe("getSermon", () => {
   it("returns a sermon mapped with scriptureReferences and relatedSermons arrays", async () => {
     mockFetchGraphQL.mockResolvedValueOnce(makeCollectionResponse([SERMON_ITEM]));
 
-    const result = await getSermon("la-gracia-de-dios", "es-AR");
+    const result = (await getSermon("la-gracia-de-dios", "es-AR"))!;
 
     expect(result.title).toBe("La gracia de Dios");
     expect(result.slug).toBe("la-gracia-de-dios");
@@ -99,7 +118,7 @@ describe("getSermon", () => {
   it("maps scriptureReferencesCollection.items → scriptureReferences array", async () => {
     mockFetchGraphQL.mockResolvedValueOnce(makeCollectionResponse([SERMON_ITEM]));
 
-    const result = await getSermon("la-gracia-de-dios", "es-AR");
+    const result = (await getSermon("la-gracia-de-dios", "es-AR"))!;
 
     expect(Array.isArray(result.scriptureReferences)).toBe(true);
     expect(result.scriptureReferences).toHaveLength(2);
@@ -117,7 +136,7 @@ describe("getSermon", () => {
   it("maps relatedSermonsCollection.items → relatedSermons array", async () => {
     mockFetchGraphQL.mockResolvedValueOnce(makeCollectionResponse([SERMON_ITEM]));
 
-    const result = await getSermon("la-gracia-de-dios", "es-AR");
+    const result = (await getSermon("la-gracia-de-dios", "es-AR"))!;
 
     expect(Array.isArray(result.relatedSermons)).toBe(true);
     expect(result.relatedSermons).toHaveLength(1);
@@ -128,7 +147,7 @@ describe("getSermon", () => {
   it("maps audio and pdfSummary fields", async () => {
     mockFetchGraphQL.mockResolvedValueOnce(makeCollectionResponse([SERMON_ITEM]));
 
-    const result = await getSermon("la-gracia-de-dios", "es-AR");
+    const result = (await getSermon("la-gracia-de-dios", "es-AR"))!;
 
     expect(result.audio).toMatchObject({
       url: "https://assets.ctfassets.net/sermon.mp3",
@@ -144,7 +163,7 @@ describe("getSermon", () => {
   it("maps preacher fields including optional avatar", async () => {
     mockFetchGraphQL.mockResolvedValueOnce(makeCollectionResponse([SERMON_ITEM]));
 
-    const result = await getSermon("la-gracia-de-dios", "es-AR");
+    const result = (await getSermon("la-gracia-de-dios", "es-AR"))!;
 
     expect(result.preacher.name).toBe("Juan García");
     expect(result.preacher.email).toBe("juan@example.com");
@@ -160,6 +179,14 @@ describe("getSermon", () => {
       expect.stringContaining('preview: true'),
       true,
     );
+  });
+
+  it("returns undefined when no sermon matches the slug (missing/typoed)", async () => {
+    mockFetchGraphQL.mockResolvedValueOnce(makeCollectionResponse([]));
+
+    const result = await getSermon("does-not-exist", "es-AR");
+
+    expect(result).toBeUndefined();
   });
 });
 
@@ -208,6 +235,26 @@ describe("getAllSermons", () => {
       false,
     );
   });
+
+  it("does not make a second request when one page covers the archive", async () => {
+    mockFetchGraphQL.mockResolvedValueOnce(makePage(minimalSermonItems(5), 5));
+
+    await getAllSermons("es-AR");
+
+    expect(mockFetchGraphQL).toHaveBeenCalledTimes(1);
+  });
+
+  it("paginates across pages when the archive exceeds one page", async () => {
+    mockFetchGraphQL
+      .mockResolvedValueOnce(makePage(minimalSermonItems(100, 0), 150))
+      .mockResolvedValueOnce(makePage(minimalSermonItems(50, 100), 150));
+
+    const result = await getAllSermons("es-AR");
+
+    expect(mockFetchGraphQL).toHaveBeenCalledTimes(2);
+    expect(result).toHaveLength(150);
+    expect(mockFetchGraphQL.mock.calls[1][0]).toContain("skip: 100");
+  });
 });
 
 describe("getAllSermonSlugs", () => {
@@ -238,5 +285,17 @@ describe("getAllSermonSlugs", () => {
       expect.stringContaining("preview: false"),
       false,
     );
+  });
+
+  it("paginates slugs across pages for the sitemap", async () => {
+    mockFetchGraphQL
+      .mockResolvedValueOnce(makePage(minimalSlugItems(100, 0), 120))
+      .mockResolvedValueOnce(makePage(minimalSlugItems(20, 100), 120));
+
+    const result = await getAllSermonSlugs("es-AR");
+
+    expect(mockFetchGraphQL).toHaveBeenCalledTimes(2);
+    expect(result).toHaveLength(120);
+    expect(mockFetchGraphQL.mock.calls[1][0]).toContain("skip: 100");
   });
 });
