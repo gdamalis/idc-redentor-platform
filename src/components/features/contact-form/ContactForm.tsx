@@ -16,7 +16,9 @@ import { Card } from "@src/components/ui/card";
 import { Button } from "@src/components/ui/button";
 import { trackEvent } from "@src/lib/analytics";
 
+import { useTranslations } from "next-intl";
 import { handleContactFormSubmission } from "./contactFormAction";
+import { CONTACT_FORM_KEYS } from "./contactFormMessageKeys";
 import {
   getDropdownField,
   getEmailInput,
@@ -56,6 +58,7 @@ const richTextOptions = {
 };
 
 export const ContactForm = ({ content }: ContactFormProps) => {
+  const t = useTranslations();
   const agreementNote = documentToReactComponents(
     content.agreementNote.json,
     richTextOptions,
@@ -126,7 +129,7 @@ export const ContactForm = ({ content }: ContactFormProps) => {
                 variant="h2"
                 className="font-serif text-2xl font-bold mb-6 text-foreground"
               >
-                Send us a Message
+                {t(CONTACT_FORM_KEYS.FORM_HEADING)}
               </Typography>
               
               <form action={formAction} className="space-y-6">
@@ -151,7 +154,7 @@ export const ContactForm = ({ content }: ContactFormProps) => {
                 </div>
 
                 {/* Feedback message */}
-                {state?.message && (
+                {state?.messageKey && (
                   <div
                     className={`p-4 rounded-lg ${
                       state.success
@@ -159,7 +162,7 @@ export const ContactForm = ({ content }: ContactFormProps) => {
                         : "bg-red-50 text-red-800 border border-red-200"
                     }`}
                   >
-                    {state.message}
+                    {t(state.messageKey)}
                   </div>
                 )}
 

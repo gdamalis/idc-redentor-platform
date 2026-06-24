@@ -73,5 +73,13 @@
     "message": "We value your privacy. We use analytics to understand how to improve this site. We do not collect personal data for commercial purposes.",
     "accept": "That's fine",
     "decline": "I'd rather not"
+  },
+  "ContactForm": {
+    "form-heading": "Send us a Message",
+    "error-required-fields": "Please fill in all required fields.",
+    "error-invalid-email": "Please enter a valid email address.",
+    "success-message": "Your message was sent successfully!",
+    "error-save-failed": "Failed to save your message. Please try again later.",
+    "error-unexpected": "An unexpected error occurred. Please try again later."
   }
 }

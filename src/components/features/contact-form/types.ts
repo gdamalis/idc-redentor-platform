@@ -1,4 +1,5 @@
 import { Document } from "@contentful/rich-text-types";
+import type { ContactFormKey } from "./contactFormMessageKeys";
 import { Field } from "./formFields";
 
 export type ContactFormProps = {
@@ -28,5 +29,5 @@ export type ContactFormProps = {
 
 export type ContactFormState = {
   success: boolean;
-  message: string;
+  messageKey: ContactFormKey;
 }; 
