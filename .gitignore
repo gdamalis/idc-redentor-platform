@@ -59,3 +59,7 @@ graphify-out/
 
 # obsidian
 .obsidian/
+
+# Sermon PDF generator — generated output (never committed; use --out $TMPDIR)
+.claude/scripts/predica/**/*.pdf
+.claude/scripts/predica/**/*.png
