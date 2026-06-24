@@ -9,8 +9,10 @@ Runs **acceptance QA** on a Trello card by reading its acceptance criteria (ACs)
 browser (and APIs where relevant) against the **resolved env target**, then posting a consistent,
 structured result comment on the card. By **default** the target is the dedicated **staging** deployment
 (`staging.idcredentor.com`); pass **`--preview`** to re-target the PR's **Vercel preview** deployment
-(the original pre-merge path). With no card it processes the whole **In Review** list, one fresh
-`qa-acceptance` (tester) → `acceptance-judge` (verdict) pair per card.
+(the original pre-merge path). With no card it batches the **env-appropriate** list — **In Testing**
+for the default staging target (post-merge cards awaiting staging verification), or **In Review** with
+`--preview` (pre-merge cards on their PR preview) — one fresh `qa-acceptance` (tester) →
+`acceptance-judge` (verdict) pair per card.
 
 > **Phase status.** This command ships **Phase 1**: testing + the structured Trello comment + the
 > In Review transition. Modes `seed`, `fix`, and `auto` (staging seeding / autonomous remediation /
@@ -67,11 +69,14 @@ structured result comment on the card. By **default** the target is the dedicate
   `idShort`. So: `mcp__trello__get_cards_by_list_id` across lists (or `get_my_cards`) and match
   `card.idShort === N`; capture the card's full `id` / `shortLink`. Allow any list (note the current list
   in the report).
-- **No card**: batch mode over the **In Review** list —
-  `mcp__trello__get_cards_by_list_id(listId = config.tracker.lists.inReview.id)`. Take the first
+- **No card**: batch mode over the **env-appropriate** list — pick the `listId` by the resolved target:
+  default **staging** → **In Testing** (`config.tracker.lists.inTesting.id`, post-merge cards awaiting
+  staging verification); `--preview` → **In Review** (`config.tracker.lists.inReview.id`, pre-merge cards
+  on their PR preview). Running default staging QA against In Review would test unmerged cards that have
+  no staging build yet, and `--preview` against In Testing would test already-merged cards that no longer
+  have a PR preview — so the list MUST follow the env. Take the first
   `min(max, config.qaLoop.batch.maxTickets)` by oldest activity; remember any overflow to report at the
-  end (no silent truncation). Process **sequentially** (`config.qaLoop.batch.sequential`) to avoid
-  preview-seed collisions and to serialize any future merges.
+  end (no silent truncation). Process **sequentially** (`config.qaLoop.batch.sequential`).
 
 ## 2. Per card (sequential)
 For each card:

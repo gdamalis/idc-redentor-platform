@@ -362,17 +362,28 @@ When all checkpoints are done, move to QA.
 
 Compute `changedPaths` first: `git diff --name-only origin/main...HEAD` (from inside the worktree). **Reconcile `qaType`** (inferred at step 1.5) against this real diff and correct it if the diff disagrees (e.g. a "UI" card that only touched an API route).
 
+### Resolve the preview target FIRST  (`ui` / `api` only)
+
+For `qaType` `ui` or `api`, QA must run against the **PR's Vercel preview**, never a local dev server. **You must resolve the preview URL and pass it in** — `qa-runner`'s contract falls back to a **local dev server when no `env.baseUrl` is supplied** (see `.claude/agents/qa-runner.md` Inputs), so passing only `envName` would make the evidence + acceptance-judge verdict come from `localhost`, not the preview. The draft PR from step 11 has a preview deploy by now; resolve it:
+
+1. Find the PR's preview URL: `mcp__claude_ai_Vercel__list_deployments` for project `idc-redentor-website` filtered to the PR's branch/commit → latest **READY** preview; or `gh pr view <pr> --json statusCheckRollup` and read the Vercel preview deployment URL.
+2. Validate it against `config.qaLoop.env.preview` (host matches `baseUrlHostAllow`; not in `productionHostDeny`; `requirePreviewEnvironment` → confirm `target=preview`). If no READY preview yet, poll up to `config.qaLoop.deploy.timeoutSeconds`; if still none, mark QA **BLOCKED** (do **not** silently fall back to `localhost`) and surface it via the QA-loop guard.
+3. Build the env block: `env = { name: "preview", baseUrl: <resolved preview URL>, ...config.qaLoop.env.preview }`. Pin the resolved URL as `PREVIEW_URL` — it's reused for `meta.targetUrl` in the dual-post (13.2).
+
+For `qaType` `chore`, **skip** preview resolution — chore QA runs local codebase checks only (no deploy), so `env` is intentionally omitted and the runner runs locally.
+
 Dispatch `qa-runner` with:
 - `depth` — QA Depth from the card (effort dial)
 - `qaType` — `ui` | `api` | `chore` (reconciled against `changedPaths`)
-- `envName: "preview"` — pre-merge QA targets the PR's Vercel **preview** deploy
+- `env` — the resolved **preview env block** above for `ui`/`api` (**REQUIRED** for them — without `env.baseUrl` the runner targets `localhost`); **omit** for `chore` (local-only by design)
+- `envName: "preview"` — names the active env block (agrees with `env.name`)
 - `worktreePath` — absolute path
 - `ticketId` — `ICR-N`
 - `slug` — kebab-case slug from the card name
 - `changedPaths` — array from the `git diff` above
 - `mainRepoRoot: <MAIN_REPO_ROOT>`
 
-The runner reads `qa-env.json` itself (Vercel preview baseUrl; the host must match the `*.vercel.app` allowlist; the prod hard-deny applies in every env).
+The orchestrator (not the runner) owns preview-URL resolution + validation above; `qa-env.json` only supplies the Trello REST creds for posting. The prod hard-deny applies in every env.
 
 **TYPE → what the runner tests** (depth scales effort within each):
 - `ui` → **MCP browser walk + screenshots, ALWAYS** (both `es-AR`/`en-US` locales when i18n-relevant) + mapped `e2e*` Playwright projects.
