@@ -134,3 +134,11 @@
 - The **logo** and any brand imagery should be supplied as real assets (Claude Design shouldn't draw them in SVG). Point it at the church logo from `@idcr/ui` / `public/assets` when available.
 - Once mockups are approved, they inform `apps/admin`'s component build in `tasks/specs/admin-mvp.md` (CP1 shell, CP4 People, CP6 calendar). The implementation uses shadcn/ui with these exact tokens, so the mockups should translate closely.
 - Keep the **A4 print calendar** honest to real paper dimensions — it's a primary church deliverable ("print it and pin it").
+
+---
+
+## D. Status & next steps
+
+- **v1 (accepted 2026-06-23):** a static, self-contained HTML mockup of the **app shell + People list** at `tasks/specs/design-mockups/people-list.html`, built directly from the §A tokens (Outfit/Playfair, the HSL palette, sidebar tokens, light+dark). Approved as the starting direction for the admin panel. Built as static HTML because the Claude Design MCP was unavailable at the time.
+- **Next iteration:** use **Claude Design** to build a proper **shared design system covering both the public website and the ministry admin panel** — one set of tokens + components as the source of truth for both products — iterating from this v1. The admin-only prompt in §B seeds the admin side; the design-system pass should generalize it (tokens, primitives, light/dark) across `apps/web` + `apps/admin`, landing in `@idcr/ui` (see `monorepo-migration.md` CP3).
+- Remaining MVP screens to mock (static or via Claude Design): Person detail, Calendar (month view), A4 print calendar, Sign-in, Users, Roles permission matrix.

@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Panel Ministerial · Personas — IDC Redentor (mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
+<style>
+  /* ===== Design tokens — lifted verbatim from the website (src/app/globals.css) ===== */
+  :root {
+    --background: 210 20% 98%;     --foreground: 222 47% 11%;
+    --primary: 210 100% 35%;       --primary-foreground: 210 40% 98%;
+    --secondary: 35 30% 90%;       --secondary-foreground: 24 10% 10%;
+    --card: 0 0% 100%;             --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;          --popover-foreground: 222 47% 11%;
+    --muted: 210 40% 96.1%;        --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;       --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;  --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;   --input: 214.3 31.8% 91.4%;   --ring: 210 100% 35%;
+    --radius: 0.75rem;
+    --sidebar: 0 0% 98%;                 --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;     --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;       --sidebar-ring: 217.2 91.2% 59.8%;
+    --gold: 35 45% 62%; /* derived from --secondary hue, for sparing leadership accents */
+  }
+  .dark {
+    --background: 222 47% 11%;     --foreground: 210 40% 98%;
+    --primary: 210 90% 60%;        --primary-foreground: 222 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;--secondary-foreground: 210 40% 98%;
+    --card: 222 47% 14%;           --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;        --popover-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;   --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;  --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;   --input: 217.2 32.6% 17.5%;   --ring: 210 90% 60%;
+    --sidebar: 240 5.9% 10%;             --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;  --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;    --sidebar-ring: 217.2 91.2% 59.8%;
+    --gold: 35 40% 58%;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: "Outfit", system-ui, sans-serif;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    -webkit-font-smoothing: antialiased;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  h1, h2, h3 { font-family: "Playfair Display", Georgia, serif; font-weight: 700; letter-spacing: -0.011em; margin: 0; }
+  a { color: inherit; text-decoration: none; }
+
+  /* ===== App layout ===== */
+  .app { display: grid; grid-template-columns: 264px 1fr; min-height: 100vh; }
+
+  /* ===== Sidebar ===== */
+  .sidebar {
+    background: hsl(var(--sidebar));
+    border-right: 1px solid hsl(var(--sidebar-border));
+    color: hsl(var(--sidebar-foreground));
+    display: flex; flex-direction: column;
+    position: sticky; top: 0; height: 100vh;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 18px 18px 14px; }
+  .brand .mark {
+    width: 34px; height: 34px; border-radius: calc(var(--radius) - 2px);
+    background: hsl(var(--primary)); color: hsl(var(--primary-foreground));
+    display: grid; place-items: center; font-family: "Playfair Display", serif; font-weight: 800; font-size: 16px;
+    flex: none;
+  }
+  .brand .brand-name { font-weight: 600; font-size: 14px; line-height: 1.1; color: hsl(var(--sidebar-accent-foreground)); }
+  .brand .brand-sub { font-size: 11.5px; color: hsl(var(--muted-foreground)); }
+
+  .nav { padding: 6px 10px; overflow-y: auto; flex: 1; }
+  .nav-group { margin-top: 14px; }
+  .nav-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: hsl(var(--muted-foreground)); padding: 6px 10px; font-weight: 600; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: calc(var(--radius) - 2px);
+    color: hsl(var(--sidebar-foreground)); font-weight: 500; cursor: pointer;
+    transition: background .12s ease, color .12s ease;
+  }
+  .nav-item svg { width: 17px; height: 17px; stroke: currentColor; flex: none; opacity: .85; }
+  .nav-item:hover { background: hsl(var(--sidebar-accent)); color: hsl(var(--sidebar-accent-foreground)); }
+  .nav-item.active {
+    background: hsl(var(--primary) / 0.10);
+    color: hsl(var(--primary));
+  }
+  .dark .nav-item.active { background: hsl(var(--primary) / 0.18); }
+  .nav-item.active svg { opacity: 1; }
+  .nav-item.disabled { opacity: .45; cursor: not-allowed; }
+  .nav-item .soon { margin-left: auto; font-size: 10px; color: hsl(var(--muted-foreground)); border: 1px solid hsl(var(--border)); padding: 1px 6px; border-radius: 999px; }
+
+  .side-foot { border-top: 1px solid hsl(var(--sidebar-border)); padding: 12px; display: flex; align-items: center; gap: 10px; }
+  .avatar { width: 32px; height: 32px; border-radius: 999px; background: hsl(var(--primary) / .12); color: hsl(var(--primary)); display: grid; place-items: center; font-weight: 600; font-size: 12px; flex: none; }
+  .side-foot .who { line-height: 1.15; min-width: 0; }
+  .side-foot .who b { font-weight: 600; font-size: 13px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .side-foot .who span { font-size: 11.5px; color: hsl(var(--muted-foreground)); }
+
+  /* ===== Main ===== */
+  .main { display: flex; flex-direction: column; min-width: 0; }
+  .topbar {
+    height: 60px; border-bottom: 1px solid hsl(var(--border));
+    display: flex; align-items: center; gap: 14px; padding: 0 22px;
+    background: hsl(var(--background) / .85); backdrop-filter: blur(6px);
+    position: sticky; top: 0; z-index: 5;
+  }
+  .crumb { color: hsl(var(--muted-foreground)); font-size: 13px; }
+  .crumb b { color: hsl(var(--foreground)); font-weight: 600; }
+  .topbar .spacer { flex: 1; }
+  .seg { display: inline-flex; border: 1px solid hsl(var(--border)); border-radius: 999px; padding: 2px; background: hsl(var(--card)); }
+  .seg button { border: 0; background: transparent; padding: 4px 11px; border-radius: 999px; font: inherit; font-size: 12.5px; font-weight: 600; color: hsl(var(--muted-foreground)); cursor: pointer; }
+  .seg button.on { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+  .icon-btn { width: 36px; height: 36px; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border)); background: hsl(var(--card)); display: grid; place-items: center; cursor: pointer; color: hsl(var(--foreground)); }
+  .icon-btn svg { width: 18px; height: 18px; stroke: currentColor; }
+  .icon-btn:hover { background: hsl(var(--accent)); }
+
+  .content { padding: 26px 26px 40px; }
+  .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+  .page-head h1 { font-size: 30px; }
+  .page-head .sub { color: hsl(var(--muted-foreground)); margin-top: 4px; font-size: 13.5px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 15px; border-radius: calc(var(--radius) - 2px); font: inherit; font-weight: 600; font-size: 13.5px; cursor: pointer; border: 1px solid transparent; }
+  .btn svg { width: 16px; height: 16px; stroke: currentColor; }
+  .btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+  .btn-primary:hover { filter: brightness(1.06); }
+  .btn-ghost { background: hsl(var(--card)); color: hsl(var(--foreground)); border-color: hsl(var(--border)); }
+  .btn-ghost:hover { background: hsl(var(--accent)); }
+
+  /* Toolbar */
+  .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .search { position: relative; flex: 1; min-width: 220px; max-width: 420px; }
+  .search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; stroke: hsl(var(--muted-foreground)); }
+  .search input { width: 100%; height: 38px; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--input)); background: hsl(var(--card)); color: hsl(var(--foreground)); padding: 0 12px 0 34px; font: inherit; font-size: 13.5px; }
+  .search input::placeholder { color: hsl(var(--muted-foreground)); }
+  .search input:focus { outline: none; border-color: hsl(var(--ring)); box-shadow: 0 0 0 3px hsl(var(--ring) / .18); }
+  .filter { height: 38px; display: inline-flex; align-items: center; gap: 7px; padding: 0 12px; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border)); background: hsl(var(--card)); color: hsl(var(--foreground)); font-size: 13px; font-weight: 500; cursor: pointer; }
+  .filter svg { width: 15px; height: 15px; stroke: hsl(var(--muted-foreground)); }
+
+  /* Card + table */
+  .card { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: var(--radius); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: hsl(var(--muted-foreground)); font-weight: 600; padding: 12px 16px; background: hsl(var(--muted) / .5); border-bottom: 1px solid hsl(var(--border)); }
+  tbody td { padding: 12px 16px; border-bottom: 1px solid hsl(var(--border)); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: hsl(var(--accent) / .55); }
+  .person { display: flex; align-items: center; gap: 11px; }
+  .person .nm { font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .person .em { color: hsl(var(--muted-foreground)); font-size: 12.5px; }
+  .star { width: 13px; height: 13px; fill: hsl(var(--gold)); stroke: none; }
+  .muted { color: hsl(var(--muted-foreground)); }
+  .pii { color: hsl(var(--muted-foreground)); letter-spacing: 1px; }
+
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; border: 1px solid transparent; }
+  .badge.dot::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+  .b-active { color: hsl(160 60% 34%); background: hsl(160 60% 34% / .12); }
+  .dark .b-active { color: hsl(160 55% 60%); background: hsl(160 55% 50% / .15); }
+  .b-occ { color: hsl(35 70% 38%); background: hsl(35 70% 45% / .14); }
+  .dark .b-occ { color: hsl(35 75% 62%); background: hsl(35 70% 50% / .16); }
+  .b-inactive { color: hsl(var(--muted-foreground)); background: hsl(var(--muted)); }
+
+  .tag { font-size: 11.5px; font-weight: 500; color: hsl(var(--secondary-foreground)); background: hsl(var(--secondary)); border-radius: 6px; padding: 2px 7px; }
+  .dark .tag { color: hsl(var(--secondary-foreground)); background: hsl(var(--secondary)); }
+
+  .kebab { width: 30px; height: 30px; border-radius: 8px; border: 0; background: transparent; display: grid; place-items: center; cursor: pointer; color: hsl(var(--muted-foreground)); }
+  .kebab:hover { background: hsl(var(--accent)); color: hsl(var(--foreground)); }
+  .kebab svg { width: 18px; height: 18px; stroke: currentColor; }
+
+  .table-foot { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; color: hsl(var(--muted-foreground)); font-size: 12.5px; }
+  .pager { display: flex; gap: 6px; }
+  .pager button { min-width: 30px; height: 30px; border-radius: 8px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); color: hsl(var(--foreground)); font: inherit; font-size: 12.5px; cursor: pointer; }
+  .pager button.on { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-color: transparent; }
+
+  .mock-flag { position: fixed; right: 12px; bottom: 12px; font-size: 11px; color: hsl(var(--muted-foreground)); background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 999px; padding: 4px 10px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ===== Sidebar ===== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark">R</div>
+      <div>
+        <div class="brand-name">IDC Redentor</div>
+        <div class="brand-sub">Panel Ministerial</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-group">
+        <div class="nav-label">Principal</div>
+        <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg> Inicio</div>
+        <div class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 4.5a3 3 0 0 1 0 6"/><path d="M21 20c0-2.5-1.5-4.6-3.6-5.5"/></svg> Personas</div>
+        <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="7" r="3"/><path d="M5.5 21c0-3.6 2.9-6.5 6.5-6.5S18.5 17.4 18.5 21"/><circle cx="5" cy="9" r="1.8"/><circle cx="19" cy="9" r="1.8"/></svg> Familias</div>
+        <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg> Actividades</div>
+        <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M7 14h2M11 14h2M15 14h2M7 17h2M11 17h2"/></svg> Calendario</div>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-label">Administración</div>
+        <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/></svg> Usuarios</div>
+        <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9.5 12l1.8 1.8L15 10"/></svg> Roles y permisos</div>
+        <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg> Configuración</div>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-label">Próximamente</div>
+        <div class="nav-item disabled"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 2v20M7 6h7a3 3 0 0 1 0 6H8a3 3 0 0 0 0 6h8"/></svg> Finanzas <span class="soon">Pronto</span></div>
+        <div class="nav-item disabled"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg> Cultos <span class="soon">Pronto</span></div>
+      </div>
+    </nav>
+
+    <div class="side-foot">
+      <div class="avatar">GD</div>
+      <div class="who"><b>Gabriel Damalis</b><span>Administrador</span></div>
+    </div>
+  </aside>
+
+  <!-- ===== Main ===== -->
+  <div class="main">
+    <header class="topbar">
+      <div class="crumb">Panel · <b>Personas</b></div>
+      <div class="spacer"></div>
+      <div class="seg" title="Idioma / Language">
+        <button class="on">ES</button>
+        <button>EN</button>
+      </div>
+      <button class="icon-btn" id="themeBtn" title="Tema claro / oscuro" aria-label="Cambiar tema">
+        <svg id="iconMoon" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <div class="avatar" title="Gabriel Damalis">GD</div>
+    </header>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Personas</h1>
+          <div class="sub">128 personas · 34 familias · 6 países de origen</div>
+        </div>
+        <button class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Nueva persona</button>
+      </div>
+
+      <div class="toolbar">
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
+          <input placeholder="Buscar por nombre, familia o teléfono…" />
+        </div>
+        <button class="filter"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="7" cy="7" r="3"/><circle cx="17" cy="17" r="3"/><path d="M10 7h11M3 17h11"/></svg> Familia</button>
+        <button class="filter"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 6h18M6 12h12M10 18h4"/></svg> Participación</button>
+        <button class="filter"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 6h18M6 12h12M10 18h4"/></svg> País</button>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Familia</th>
+              <th>Cumpleaños</th>
+              <th>País de origen</th>
+              <th>Áreas</th>
+              <th>Participación</th>
+              <th style="width:48px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><div class="person"><div class="avatar">SP</div><div><div class="nm">Servando Peña <svg class="star" viewBox="0 0 24 24"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.2l1.4-6.8L2.2 9l6.9-.7z"/></svg></div><div class="em">servando@idcredentor.com</div></div></div></td>
+              <td>Familia Peña</td>
+              <td>14 mar · <span class="muted">38</span></td>
+              <td class="muted">Argentina</td>
+              <td><span class="tag">Cantos</span> <span class="tag">Lecturas</span></td>
+              <td><span class="badge dot b-active">Activo</span></td>
+              <td><button class="kebab"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><div class="person"><div class="avatar">NV</div><div><div class="nm">Naibelis Vargas <svg class="star" viewBox="0 0 24 24"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.2l1.4-6.8L2.2 9l6.9-.7z"/></svg></div><div class="em">naibelis@idcredentor.com</div></div></div></td>
+              <td>Familia Vargas</td>
+              <td>2 jul · <span class="muted">31</span></td>
+              <td class="muted">Venezuela</td>
+              <td><span class="tag">Lecturas</span></td>
+              <td><span class="badge dot b-active">Activo</span></td>
+              <td><button class="kebab"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><div class="person"><div class="avatar">MR</div><div><div class="nm">Mili Rodríguez</div><div class="em pii">•••• ocultar PII</div></div></div></td>
+              <td>Familia Rodríguez</td>
+              <td>21 nov · <span class="muted">26</span></td>
+              <td class="muted">Perú</td>
+              <td><span class="tag">Lecturas</span></td>
+              <td><span class="badge dot b-active">Activo</span></td>
+              <td><button class="kebab"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><div class="person"><div class="avatar">EC</div><div><div class="nm">Eric Castro <svg class="star" viewBox="0 0 24 24"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.2l1.4-6.8L2.2 9l6.9-.7z"/></svg></div><div class="em">eric@idcredentor.com</div></div></div></td>
+              <td>Familia Castro</td>
+              <td>9 ene · <span class="muted">44</span></td>
+              <td class="muted">Argentina</td>
+              <td><span class="tag">Santa Cena</span> <span class="tag">Ofrenda</span></td>
+              <td><span class="badge dot b-active">Activo</span></td>
+              <td><button class="kebab"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><div class="person"><div class="avatar">VM</div><div><div class="nm">Vanessa Morales</div><div class="em">vanessa@idcredentor.com</div></div></div></td>
+              <td>Familia Morales</td>
+              <td>30 abr · <span class="muted">35</span></td>
+              <td class="muted">Colombia</td>
+              <td><span class="tag">Lecturas</span></td>
+              <td><span class="badge dot b-occ">Ocasional</span></td>
+              <td><button class="kebab"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><div class="person"><div class="avatar">AM</div><div><div class="nm">Amílcar Mendoza</div><div class="em">amilcar@idcredentor.com</div></div></div></td>
+              <td>Familia Mendoza</td>
+              <td>17 sep · <span class="muted">41</span></td>
+              <td class="muted">Bolivia</td>
+              <td><span class="tag">Santa Cena</span></td>
+              <td><span class="badge dot b-active">Activo</span></td>
+              <td><button class="kebab"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><div class="person"><div class="avatar">DL</div><div><div class="nm">Dana López</div><div class="em">dana@idcredentor.com</div></div></div></td>
+              <td>Familia Rodríguez</td>
+              <td>5 jun · <span class="muted">19</span></td>
+              <td class="muted">México</td>
+              <td><span class="tag">Lecturas</span></td>
+              <td><span class="badge dot b-occ">Ocasional</span></td>
+              <td><button class="kebab"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><div class="person"><div class="avatar">FG</div><div><div class="nm">Fernando Gil</div><div class="em">fernando@idcredentor.com</div></div></div></td>
+              <td>—</td>
+              <td>28 feb · <span class="muted">52</span></td>
+              <td class="muted">Argentina</td>
+              <td><span class="tag">Recoger ofrenda</span></td>
+              <td><span class="badge dot b-inactive">Inactivo</span></td>
+              <td><button class="kebab"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg></button></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="table-foot">
+          <span>Mostrando 1–8 de 128 personas</span>
+          <div class="pager">
+            <button>‹</button>
+            <button class="on">1</button>
+            <button>2</button>
+            <button>3</button>
+            <button>…</button>
+            <button>16</button>
+            <button>›</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="mock-flag">Mockup estático · tokens del sitio · IDC Redentor</div>
+
+<script>
+  // Cosmetic-only theme toggle so both palettes are reviewable.
+  var btn = document.getElementById('themeBtn');
+  btn.addEventListener('click', function () {
+    document.documentElement.classList.toggle('dark');
+  });
+</script>
+</body>
+</html>
