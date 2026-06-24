@@ -95,10 +95,10 @@ VERCEL_ENV              # injected by Vercel; drives draft mode
 
 ## Tracker (Trello)
 
-- Board: **"IDC Redentor website"** — `boardId` `67a7a743186065f07e87bbe9`, short link `sxuUAeck`. Access via the Trello MCP (`mcp__trello__*`).
+- Board: **"IDCR Website"** — `boardId` `67a7a743186065f07e87bbe9`, short link `sxuUAeck`. Access via the Trello MCP (`mcp__trello__*`).
 - A card's `idShort` **N** is its display key **`ICR-N`**. There is no native `ICR-N` field — resolve the card whose `idShort === N`; all Trello writes use the resolved card id.
 - Branches: `<type>/ICR-N-<slug>` · PR titles: `<type>(ICR-N): description`.
-- Workflow lists: **Dsicovery** *(yes, misspelled on the real board — do not "fix" it)* → **To Do** → **In Progress** → **In Review** → **Done**. Agents may move To Do → In Progress → In Review. **No agent ever moves a card to Done** — a human does that on merge.
+- Workflow lists: **Backlog** → **To Do** → **In Progress** → **In Review** → **In Testing** → **Done**. `/work` moves To Do → In Progress → In Review; `/merge` moves In Review → In Testing (after a user-triggered squash-merge). **No agent ever moves a card to Done** — a human does that after deploying to production. (The first list was renamed `Dsicovery` → `Backlog` on the real board; the `discovery` config key is unchanged — trust listIds, not names.)
 
 ## Git & Release
 

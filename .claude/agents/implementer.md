@@ -20,7 +20,15 @@ you need; you commit when the checkpoint is done.
 - `worktreePath` — absolute path to the worktree (operate INSIDE this)
 - `commitType` — `feat` | `fix` | `refactor` | `perf` | `chore` | `docs` (matches the Trello label)
 - `ticketId` — `ICR-<N>` (Trello card idShort `N`)
-- `previousFeedback` (optional) — verifier/QA errors from the prior attempt
+- `previousFeedback` (optional) — verifier/QA errors from the prior attempt. In the post-PR loop
+  (step 14.5 of `/work`) this channel ALSO carries **CI-failure excerpts** (red CI is fed back here).
+- `prReviewThreads` (optional) — array of actionable PR review-comment threads from the post-PR loop
+  (step 14.5 of `/work`). Each: `{ threadId, commentId, path, line, body, author }`. Present ONLY when
+  the orchestrator routes review feedback to you.
+- `replyPerThread` (optional boolean) — when `true`, after fixing you MUST reply on EACH addressed
+  thread via `mcp__github__add_reply_to_pull_request_comment` (load first: ToolSearch
+  `select:mcp__github__add_reply_to_pull_request_comment`).
+- `prUrl` (optional) — the open PR URL, for posting replies / context.
 
 ## Order of operations
 
@@ -127,6 +135,41 @@ If `previousFeedback` is set, it is the priority:
 4. Re-run `pnpm type-check` + `pnpm test` before committing.
 5. Same checkpoint message + a short ` (fixup)` suffix, or a new commit if the change is substantive.
 
+## When you get PR review-comment threads (post-PR loop)
+
+When `prReviewThreads` is set, the orchestrator routed PR review feedback to you from the detached
+post-PR loop (step 14.5 of `/work`). Handle it with rigor, not reflexive agreement:
+
+1. **Invoke `superpowers:receiving-code-review` FIRST — before changing anything.** It requires
+   technical rigor: verify each suggestion against the actual code, **fix what is correct**, and
+   **push back (politely, with reasoning) on what is wrong or technically questionable**. Do NOT perform
+   blind agreement; an incorrect "fix" that satisfies a reviewer is worse than a reasoned disagreement.
+2. **Fix on the feature branch.** For each thread you act on, make the minimum correct change. Re-run
+   `pnpm type-check` + `pnpm test` before committing. Commit with a conventional message
+   `<commitType>(ICR-<N>): address review — <short>` (header ≤ 100 chars). **NEVER `--no-verify`. NEVER
+   `--amend` a pushed commit.** Push to the open PR.
+3. **Red CI:** if `previousFeedback` carries CI-failure excerpts, apply `superpowers:systematic-debugging`
+   — root cause, not a paper-over — then the same commit/push discipline as above.
+4. **Reply per-thread (when `replyPerThread` is true).** For EACH thread in `prReviewThreads`, call
+   `mcp__github__add_reply_to_pull_request_comment` with a concise reply — either **what you changed**
+   (link the fix / commit) or, for a push-back, the **technical reason** you did not apply it. Reply
+   **EXACTLY ONCE per thread**; the orchestrator records the `threadId` in `addressedThreadIds` so the
+   next loop tick skips it. If you CANNOT reply (API error), report the unreplied `threadId`s back so
+   the orchestrator does NOT mark them addressed (it must not double-reply, but it also must not lose
+   the thread).
+5. **Secret-scrub every reply body before posting.** Never paste `.env*` contents, tokens,
+   `MONGODB_URI`, `CONTENTFUL_PREVIEW_SECRET`, or any Contentful/SendGrid/Resend/Mailchimp credential
+   into a GitHub reply (mirrors the `tasks/todo.md` secret rule). Reference paths only.
+6. **Report back** the list of `{ threadId: replied | pushed-back | unreplied }` plus the commit SHA(s),
+   so the orchestrator can update `addressedThreadIds` and re-tick.
+
+### How the orchestrator re-enters the loop (for your awareness)
+
+You do **NOT** schedule wakeups yourself. After you return, the `/work` orchestrator calls
+`ScheduleWakeup(delaySeconds=config.reviewLoop.afterPushSeconds, reason="…re-check CI + threads")` to
+wait for the fresh CI run your push triggered, then re-pulls threads + CI on the next tick. Your job is
+solely: **fix on-branch, push, reply-once-per-thread, report which `threadId`s you replied to.**
+
 ## What you return to the orchestrator
 
 ```markdown
@@ -136,6 +179,8 @@ If `previousFeedback` is set, it is the priority:
 - **i18n**: strings added to both es-AR.json and en-US.json? yes/n-a
 - **Local checks**: type-check ✓ / test ✓
 - **Commit**: <SHA> "<message>"
+- **Review threads addressed**: <threadId → replied|pushed-back|unreplied, …> (only when prReviewThreads was set)
+- **CI failures fixed**: <summary or n-a>
 - **Notes**: anything verifier/QA should know
 ```
 

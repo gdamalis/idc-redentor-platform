@@ -18,7 +18,7 @@ The job is to turn church-team ideas into well-formed Trello cards and keep the 
 
 1. Read `.claude/config.json`. Pin `config.commands`, `config.paths`, and the **`config.tracker`** block —
    `boardId`, `lists` (`discovery`, `todo`, `inProgress`, `inReview`, `done`), `labelToCommitType`,
-   `ticketKeyPrefix` (`ICR`), board `IDC Redentor website`. Call `mcp__trello__set_active_board(boardId)`
+   `ticketKeyPrefix` (`ICR`), board `IDCR Website`. Call `mcp__trello__set_active_board(boardId)`
    once at the start of any run that touches Trello. Read list/label IDs from config — don't hardcode
    literals. (Trello tools are namespaced `mcp__trello__*` and are **deferred** — if a call errors as
    unavailable, load it first via ToolSearch `select:<name>`.)
@@ -38,7 +38,7 @@ The job is to turn church-team ideas into well-formed Trello cards and keep the 
 - **`refine ICR-N`** (or a card title to improve) → **`refine`**: make a thin card `/work`-ready.
   Resolve `ICR-N` → `idShort = N` → the Trello card via `get_cards_by_list_id` / `get_my_cards` matching
   `card.idShort === N`, then `get_card`.
-- **`groom`** → **`groom`**: read-only audit of **Dsicovery + To Do**. For a full audit, you may dispatch
+- **`groom`** → **`groom`**: read-only audit of **Backlog + To Do**. For a full audit, you may dispatch
   the `product-manager` subagent (`subagent_type: product-manager`, `mode: groom`) to keep this
   conversation's context clean, then relay its report.
 
