@@ -151,7 +151,7 @@ await runMigration({
   spaceId: process.env.CONTENTFUL_SPACE_ID,
   accessToken: process.env.CONTENTFUL_MANAGEMENT_ACCESS_TOKEN,
   environmentId,
-  yes: !dryRun,
+  yes: true, // auto-confirm: non-interactive/agent use (the interactive prompt crashes with no TTY). --dry-run below gates whether changes actually apply.
   ...(dryRun ? { dryRun: true } : {}),
 });
 console.log(`Applied ${file} to ${environmentId}${dryRun ? " (dry-run)" : ""}`);
@@ -163,7 +163,14 @@ console.log(`Applied ${file} to ${environmentId}${dryRun ? " (dry-run)" : ""}`);
 "contentful:migrate": "node scripts/contentful/run.mjs"
 ```
 
-- [ ] **Step 6.5: Provision the `master-1.0.0` work env (Contentful MCP).** First cycle of the semver scheme (`docs/contentful-environments.md`). The free tier holds **two** envs, so: (a) **delete** the pre-scheme `agent-sandbox` env to free the slot (`mcp__contentful__delete_environment`); (b) **clone** current production into the work env — `mcp__contentful__create_environment` for `master-1.0.0` sourced from `master-0.0.1` (confirm the exact clone-source param from the tool schema). Then point tooling at it (`config.contentful.perCycleConfigTouch`): re-register the Contentful MCP with `ENVIRONMENT_ID=master-1.0.0` (+ `PROTECTED_ENVIRONMENTS=master,master-0.0.1`) and fully restart; set `CONTENTFUL_ENVIRONMENT=master-1.0.0` in `.env.local`; set the **branch-scoped** Vercel Preview `CONTENTFUL_ENVIRONMENT=master-1.0.0`. Verify via MCP that `master-1.0.0` exists and matches `master-0.0.1` (same content-type count + sampled entry IDs). **Do NOT re-point the `master` alias** — that is the human cutover at the very end (Task 12 / runbook).
+- [ ] **Step 6.5: Provision the `master-1.0.0` work env + point tooling at it.** First cycle of the semver scheme (`docs/contentful-environments.md`). **Free-tier quota is 1 work env** beyond the `master` alias target (not two — creating a second fails `Quota reached … 1 out of 1 allotted`). So:
+  - (a) **Delete** the pre-scheme `agent-sandbox` env to free the single slot (`mcp__contentful__delete_environment`, two-phase confirm). Deleting a shared env requires an explicit user OK (the safety classifier blocks it otherwise). _(Done: agent-sandbox deleted; `master-1.0.0` cloned from `master-0.0.1` via `create_environment` with `sourceEnvironmentId`; verified `ready` + content model present.)_
+  - (b) **Point tooling at it** (`config.contentful.perCycleConfigTouch`):
+    - **Grant API-key access FIRST (human-only, Contentful UI).** Add `master-1.0.0` to BOTH the **Delivery (CDA)** and **Preview (CPA)** API keys (Settings → API keys → [key] → Environments). The app tokens are environment-scoped to the `master` alias only; without this, local/preview reads of `master-1.0.0` fail with `UNKNOWN_ENVIRONMENT`. **This gates ALL render verification (this task's and every later task's).**
+    - Re-register the Contentful MCP with `ENVIRONMENT_ID=master-1.0.0` (+ `PROTECTED_ENVIRONMENTS=master,master-0.0.1`) and fully restart (or pass explicit `environmentId` on MCP reads).
+    - `CONTENTFUL_ENVIRONMENT=master-1.0.0` in `.env.local` (done in the worktree copy).
+    - branch-scoped Vercel Preview `CONTENTFUL_ENVIRONMENT=master-1.0.0` (deferred until the PR/preview exists, Task 12).
+  - **Do NOT re-point the `master` alias** — that is the human cutover at the very end (Task 12 / runbook).
 
 - [ ] **Step 7: Verify default behavior is unchanged.** Run `CONTENTFUL_ENVIRONMENT=` `pnpm build` (var unset) — build succeeds and pages render from `master`. Then run `CONTENTFUL_ENVIRONMENT=master-1.0.0 pnpm dev`, open `http://localhost:3000/es-AR`, confirm the home page renders (it reads `master-1.0.0`). Clear `.next` (`rm -rf .next`) when switching envs.
 

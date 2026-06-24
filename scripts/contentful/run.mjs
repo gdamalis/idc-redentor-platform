@@ -11,7 +11,9 @@ const dryRun = flags.includes("--dry-run");
 const environmentId = process.env.CONTENTFUL_ENVIRONMENT ?? "master-1.0.0";
 
 if (environmentId === "master") {
-  throw new Error("Refusing to run migrations against master. Set CONTENTFUL_ENVIRONMENT.");
+  throw new Error(
+    "Refusing to run migrations against master. Set CONTENTFUL_ENVIRONMENT.",
+  );
 }
 const dir = join(here, "migrations");
 const file = readdirSync(dir).find((f) => f.startsWith(`${num}-`));
@@ -22,7 +24,10 @@ await runMigration({
   spaceId: process.env.CONTENTFUL_SPACE_ID,
   accessToken: process.env.CONTENTFUL_MANAGEMENT_ACCESS_TOKEN,
   environmentId,
-  yes: !dryRun,
+  // Always auto-confirm: this runner is meant for non-interactive/agent use, where the
+  // interactive "apply?" prompt crashes (ERR_USE_AFTER_CLOSE) with no TTY. The review step
+  // is the `--dry-run` invocation; `dryRun` (below) is what actually gates whether changes apply.
+  yes: true,
   ...(dryRun ? { dryRun: true } : {}),
 });
 console.log(`Applied ${file} to ${environmentId}${dryRun ? " (dry-run)" : ""}`);

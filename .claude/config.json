@@ -281,8 +281,8 @@
     "spaceId": "vg9le24yw8hb",
     "productionAlias": "master",
     "aliasTarget": "master-0.0.1",
-    "freeTierEnvLimit": 2,
-    "freeTierNote": "Only two environments may exist at once. Each cycle: delete the stale idle env, then clone CURRENT production into a fresh versioned work env. Never hold three. You can only ever delete the NON-aliased env (Contentful blocks deleting the alias target).",
+    "freeTierWorkEnvLimit": 1,
+    "freeTierNote": "Free tier allows production (the master alias target) + exactly ONE other environment. The API enforces a quota of 1 environment beyond the alias target (creating a second fails: 'Quota reached ... 1 out of 1 allotted'). Each cycle: delete the stale idle env to free the slot, then clone CURRENT production into a fresh versioned work env. You can only ever delete the NON-aliased env (Contentful blocks deleting the alias target).",
     "appEnvVar": "CONTENTFUL_ENVIRONMENT",
     "appEnvVarNote": "Read by lib/contentful/fetch.ts. Unset/absent => the app targets the `master` alias (production) — production config NEVER sets it. Set it to the current work env (e.g. master-1.0.0) in .env.local AND the branch-scoped Vercel Preview to test model changes before cutover.",
     "workEnvNaming": {
@@ -309,8 +309,10 @@
       "humanGateNote": "HUMAN-ONLY, like merge and Done. NO agent or command ever re-points the `master` alias. Agents propose changes in the work env; a human promotes at PR-merge time.",
       "rollback": "re-point `master` back to the previous production env (kept intact until the next cycle deletes it) and revert/redeploy the PR"
     },
+    "apiKeyEnvAccess": "Contentful Delivery (CDA) + Preview (CPA) API keys are ENVIRONMENT-SCOPED. The app's existing tokens allow the `master` alias ONLY, so a freshly created work env returns UNKNOWN_ENVIRONMENT until it is added to BOTH keys (Contentful -> Settings -> API keys -> [key] -> Environments). Do this FIRST each cycle, before local/preview testing. After cutover the alias covers the new env automatically, so production never needs a key change. (No MCP tool manages API keys -> human action in the Contentful UI.)",
     "perCycleConfigTouch": [
-      "MCP ENVIRONMENT_ID -> new work env",
+      "Delivery (CDA) + Preview (CPA) API keys -> add new work env (Settings -> API keys -> Environments) [do first; human-only]",
+      "MCP ENVIRONMENT_ID -> new work env (re-register + restart)",
       ".env.local CONTENTFUL_ENVIRONMENT -> new work env",
       "Vercel Preview CONTENTFUL_ENVIRONMENT (branch-scoped) -> new work env"
     ]

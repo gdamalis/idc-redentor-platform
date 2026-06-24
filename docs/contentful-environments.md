@@ -14,9 +14,11 @@
 - **`master` is an alias**, not an environment. It points at whichever environment is **production**
   (today: `master-0.0.1`). The website and all production config read the `master` alias and **never
   change**.
-- The **free tier caps us at two environments.** So we **ping-pong**: always work in the environment
-  the alias is _not_ pointing at; when verified, **re-point the alias** to it; it becomes production;
-  the freed (old-production) env is recycled for the next cycle.
+- The **free tier allows production (the `master` alias target) plus exactly one work environment**
+  (the API enforces a quota of 1 environment beyond the alias target — creating a second fails with
+  `Quota reached … 1 out of 1 allotted`). So we **ping-pong**: always work in the environment the
+  alias is _not_ pointing at; when verified, **re-point the alias** to it; it becomes production; the
+  freed (old-production) env is deleted and recloned for the next cycle.
 - **You never rename an environment** (IDs are immutable). The stable handle for production is the
   **alias**. Work environments carry **semver IDs** — `master-<major>.<minor>.<patch>`.
 - **The alias re-point is HUMAN-ONLY** — like merging a PR or moving a card to Done. Agents make
@@ -28,15 +30,18 @@ Contentful environment **aliases** let a stable name (`master`) point at any und
 Production code targets the alias, so it's insulated from which physical environment is live. That's
 the blue-green primitive. Two constraints force the rest:
 
-1. **Two-environment cap (free tier).** We can hold production + exactly one work env. No third
-   "permanent sandbox," no holding the new and old prod simultaneously beyond the cutover instant.
+1. **One-work-env cap (free tier).** Production (the `master` alias target) + exactly **one** other
+   environment; the API enforces a quota of 1 environment beyond the alias target (creating a second
+   fails with `Quota reached … 1 out of 1 allotted`). No "permanent sandbox," no holding the new and
+   old prod simultaneously beyond the cutover instant.
 2. **Editors keep adding content to production** between cycles. So the work env must be a **fresh
    clone of current production** at the start of each cycle — you can't refresh an env in place, and
    you can't keep a third around. Hence **delete-stale + clone-current-prod each cycle**.
 
 A permanently-fixed work-env _name_ is impossible here: promoting the work env **consumes its name
-into production**. So we accept a small, predictable cost — a **version bump** in three dev/preview
-config spots per cycle (never in production config).
+into production**. So we accept a small, predictable cost — pointing a few **dev/preview** settings at
+the new env each cycle (Delivery + Preview API-key access, MCP `ENVIRONMENT_ID`, `.env.local`, Vercel
+Preview), never any production config.
 
 ## Semver naming rule
 
@@ -60,9 +65,14 @@ Let the current production env be `env-A` (the alias `master` → `env-A`).
    - Delete the **stale idle** env if one exists. _(Contentful blocks deleting the env the alias
      points at — a built-in safety net; you can only ever delete the non-production env.)_
    - **Clone current production → a fresh work env** named per the semver rule (`env-B` =
-     `master-X.Y.Z`). You're back to exactly two environments.
-2. **Point tooling at the work env** (the only per-cycle config touch — all dev/preview, never prod):
-   - **MCP** `ENVIRONMENT_ID` → `env-B` (so agent writes land in the work env).
+     `master-X.Y.Z`). You're back to production + one work env (the quota max).
+2. **Point tooling at the work env** (the per-cycle config touch — all dev/preview, never prod):
+   - **Grant API-key access (do this first).** Add the new env to BOTH the **Delivery (CDA)** and
+     **Preview (CPA)** API keys' environment list (Contentful → Settings → API keys → [key] →
+     Environments → check the new env → save). The app's read tokens are **environment-scoped** (the
+     existing ones allow only the `master` alias); without this, reading the work env fails with
+     `UNKNOWN_ENVIRONMENT`. Production is unaffected — the alias is already on the keys.
+   - **MCP** `ENVIRONMENT_ID` → `env-B` (so agent writes land in the work env; re-register + restart).
    - **`.env.local`** `CONTENTFUL_ENVIRONMENT=env-B` (so local renders the work env).
    - **Vercel Preview** `CONTENTFUL_ENVIRONMENT=env-B`, **branch-scoped** to the feature branch (so
      the PR preview renders the work env — required, because new code only works against the new model).
@@ -87,6 +97,11 @@ Let the current production env be `env-A` (the alias `master` → `env-A`).
   targets `.../environments/master` (the alias) — see `lib/contentful/fetch.ts`. **This never changes.**
 - **`CONTENTFUL_ENVIRONMENT`** (added for this workflow) overrides the environment segment. Unset →
   `master`. Set it in `.env.local` and the **branch-scoped** Vercel Preview to the current work env.
+- **API keys are environment-scoped.** The Delivery (CDA) + Preview (CPA) tokens only read
+  environments on their allowlist — the existing tokens allow the `master` alias **only**, so a freshly
+  created work env returns `UNKNOWN_ENVIRONMENT` until it's added to **both** keys (Settings → API keys
+  → Environments). After cutover the alias covers the new env automatically, so production never needs
+  a key change.
 - **Draft mode + token.** `pnpm dev` auto-enables draft mode (`draftMode.ts`), so local reads the work
   env via the **preview** token (space-scoped, works across environments). Clear `.next` when switching
   environments so the static `site-content` cache tag doesn't serve cross-env data.
@@ -130,13 +145,14 @@ From here on, work envs are versioned (`master-1.1.0`, `master-1.0.1`, …) and 
 
 ## Quick reference
 
-| Thing                        | Value                                                                     |
-| ---------------------------- | ------------------------------------------------------------------------- |
-| Production handle            | the `master` **alias** (never renamed; app reads it)                      |
-| Work env                     | `master-<major>.<minor>.<patch>`, a fresh clone of current prod           |
-| Bump = major / minor / patch | breaking-or-significant / new-or-additive / fix                           |
-| App override                 | `CONTENTFUL_ENVIRONMENT` (unset ⇒ `master`)                               |
-| Write path                   | Contentful MCP + `scripts/contentful/` migrations, targeting the work env |
-| Cutover                      | **human** re-points the `master` alias (≈ merge/Done)                     |
-| Rollback                     | re-point alias to previous prod env (kept intact)                         |
-| Free-tier cap                | 2 environments → delete-stale + clone-current-prod each cycle             |
+| Thing                        | Value                                                                            |
+| ---------------------------- | -------------------------------------------------------------------------------- |
+| Production handle            | the `master` **alias** (never renamed; app reads it)                             |
+| Work env                     | `master-<major>.<minor>.<patch>`, a fresh clone of current prod                  |
+| Bump = major / minor / patch | breaking-or-significant / new-or-additive / fix                                  |
+| App override                 | `CONTENTFUL_ENVIRONMENT` (unset ⇒ `master`)                                      |
+| Write path                   | Contentful MCP + `scripts/contentful/` migrations, targeting the work env        |
+| Cutover                      | **human** re-points the `master` alias (≈ merge/Done)                            |
+| Rollback                     | re-point alias to previous prod env (kept intact)                                |
+| Free-tier cap                | prod alias target + **1** work env (quota: 1) → delete-stale + clone each cycle  |
+| New work env API access      | add it to Delivery + Preview API keys (Settings → API keys → Environments) first |
