@@ -20,8 +20,25 @@ import { trackEvent } from "@src/lib/analytics";
 
 interface ShareButtonProps {
   readonly slug: string;
+  readonly basePath: string;
+  readonly likeKey: string;
   readonly title: string;
   readonly featuredImageUrl: string;
+}
+
+interface BuildShareUrlParams {
+  baseUrl: string | undefined;
+  locale: string;
+  basePath: string;
+  slug: string;
+}
+
+/**
+ * Pure helper that constructs the canonical share URL for a piece of content.
+ * Exported so tests can verify URL construction without rendering the component.
+ */
+export function buildShareUrl({ baseUrl, locale, basePath, slug }: BuildShareUrlParams): string {
+  return `${baseUrl}/${locale}/${basePath}/${slug}`;
 }
 
 function XSocialIcon({ className }: { readonly className?: string }) {
@@ -101,7 +118,7 @@ const SHARE_OPTIONS = [
   },
 ] as const;
 
-export function ShareButton({ slug, title, featuredImageUrl }: ShareButtonProps) {
+export function ShareButton({ slug, basePath, likeKey, title, featuredImageUrl }: ShareButtonProps) {
   const locale = useLocale();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -115,19 +132,20 @@ export function ShareButton({ slug, title, featuredImageUrl }: ShareButtonProps)
     globalThis.window === undefined
       ? process.env.NEXT_PUBLIC_BASE_URL
       : globalThis.location.origin;
-  const shareUrl = `${baseUrl}/${locale}/blog/${slug}`;
+
+  const shareUrl = buildShareUrl({ baseUrl, locale, basePath, slug });
 
   const handleNativeShare = useCallback(async () => {
     try {
       await navigator.share({ title, url: shareUrl });
-      trackEvent("blog_post_share", { slug, method: "native" });
+      trackEvent("blog_post_share", { slug: likeKey, method: "native" });
     } catch (error) {
       // User cancelled or share failed -- ignore AbortError
       if (error instanceof Error && error.name !== "AbortError") {
         console.error("Share failed:", error);
       }
     }
-  }, [title, shareUrl, slug]);
+  }, [title, shareUrl, likeKey]);
 
   const handleSocialShare = useCallback(
     (optionId: string, url: string) => {
@@ -136,17 +154,17 @@ export function ShareButton({ slug, title, featuredImageUrl }: ShareButtonProps)
       } else {
         globalThis.open(url, "_blank", "noopener,noreferrer,width=600,height=500");
       }
-      trackEvent("blog_post_share", { slug, method: optionId });
+      trackEvent("blog_post_share", { slug: likeKey, method: optionId });
       setIsOpen(false);
     },
-    [slug],
+    [likeKey],
   );
 
   const handleCopyLink = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
       toast({ title: "Link copied to clipboard" });
-      trackEvent("blog_post_share", { slug, method: "copy_link" });
+      trackEvent("blog_post_share", { slug: likeKey, method: "copy_link" });
     } catch {
       // Fallback for older browsers
       const textArea = document.createElement("textarea");
@@ -156,10 +174,10 @@ export function ShareButton({ slug, title, featuredImageUrl }: ShareButtonProps)
       document.execCommand("copy");
       textArea.remove();
       toast({ title: "Link copied to clipboard" });
-      trackEvent("blog_post_share", { slug, method: "copy_link" });
+      trackEvent("blog_post_share", { slug: likeKey, method: "copy_link" });
     }
     setIsOpen(false);
-  }, [shareUrl, slug]);
+  }, [shareUrl, likeKey]);
 
   const handleOptionClick = useCallback(
     (optionId: string, getUrl?: (url: string, title: string) => string) => {
