@@ -34,22 +34,37 @@ assets (`upload/list/get/update/publish/delete_asset`), spaces & environments
 (`list_spaces`, `list/create/delete_environment`), locales, tags, editor interfaces, taxonomy,
 and AI Actions.
 
-## Safety model: sandbox environment + protected master
+## Safety model: versioned work environment + protected master
 
-The agents write to a **non-master Contentful environment**, never to the live site directly.
-Two guardrails in the server's env:
+The agents write to a **non-production Contentful environment**, never to the live site directly.
+Production is the `master` **alias**; agents work in a **versioned work environment** and a human
+re-points the alias to promote. Two guardrails in the server's env:
 
-- `ENVIRONMENT_ID=agent-sandbox` — every tool call defaults to the `agent-sandbox`
-  environment (a branch of `master`). Agents iterate there.
-- `PROTECTED_ENVIRONMENTS=master` — a backstop: even if a call explicitly targets `master`,
-  the server blocks all write/delete operations on it.
+- `ENVIRONMENT_ID=<work env>` — every tool call defaults to the current **work** environment
+  (a clone of production, named `master-<major>.<minor>.<patch>` — e.g. `master-1.0.0`). Agents
+  iterate there. (Historically this was a single static `agent-sandbox`; it is now a **per-change
+  versioned env** — see the workflow section below.)
+- `PROTECTED_ENVIRONMENTS=master` — a backstop: even if a call explicitly targets the `master`
+  alias, the server blocks all write/delete operations on it. (Also list the current production env
+  id when it differs from the alias target, so a just-promoted env can't be written before reclone.)
 
-A human reviews and **merges `agent-sandbox` → `master`** in the Contentful web app when the
-changes look right. This mirrors the harness ethos elsewhere in this repo: agents propose,
-a human promotes to production.
+A human reviews and **promotes the work env → production by re-pointing the `master` alias** in the
+Contentful web app when the changes look right. This mirrors the harness ethos elsewhere in this repo:
+agents propose, a human promotes to production.
 
-> Rename `agent-sandbox` to taste — just keep the server's `ENVIRONMENT_ID` and the actual
-> Contentful environment name in sync.
+## Contentful model-change workflow (semver blue-green env cutover)
+
+Model changes (a new/changed/deleted content type or field, or an entry remap) follow a **blue-green
+deployment via environment aliases**, with **semver-named work environments** and a **human-only
+alias re-point**. Because the free tier caps the space at **two environments**, each cycle deletes the
+stale idle env and clones current production into a fresh work env.
+
+The full runbook — the semver bump rule (**major** = breaking/significant, **minor** = new/additive,
+**patch** = fix), the per-cycle config touch points (MCP `ENVIRONMENT_ID`, `.env.local`
+`CONTENTFUL_ENVIRONMENT`, branch-scoped Vercel Preview), and the cutover/rollback — lives in
+**[`docs/contentful-environments.md`](./contentful-environments.md)** (machine-readable wiring in
+`.claude/config.json` → `contentful`). **Keep this server's `ENVIRONMENT_ID` pointed at the _current_
+work env each cycle.** The alias re-point is **never** done by an agent — it is a human promotion.
 
 ## Setup (recommended: inline, local, no ritual)
 
@@ -58,9 +73,12 @@ a human promotes to production.
    the Delivery/Preview tokens the app already uses. Store it in your gitignored `.env.local`
    as `CONTENTFUL_MANAGEMENT_ACCESS_TOKEN` (`.env.example` documents it). Treat it as a secret.
 
-2. **Create the sandbox environment.** Contentful → **Settings → Environments → Add
-   environment**, name it `agent-sandbox`, **clone from `master`**. (Or, once the MCP is
-   connected, an agent can call `create_environment`.)
+2. **Create the work environment.** Contentful → **Settings → Environments → Add
+   environment**, name it per the semver scheme (`master-<major>.<minor>.<patch>`, e.g.
+   `master-1.0.0`), **clone from current production** (the `master` alias target). (Or, once the
+   MCP is connected, an agent can call `create_environment`.) See
+   [`docs/contentful-environments.md`](./contentful-environments.md) for the bump rule + the
+   two-environment cycle.
 
 3. **Register the server in your local Claude Code config**, baking the values in from
    `.env.local` so the secret lives only on your machine (never in git, never in shell history
@@ -71,10 +89,14 @@ a human promotes to production.
    claude mcp add contentful -s user \
      -e CONTENTFUL_MANAGEMENT_ACCESS_TOKEN="$CONTENTFUL_MANAGEMENT_ACCESS_TOKEN" \
      -e SPACE_ID="$CONTENTFUL_SPACE_ID" \
-     -e ENVIRONMENT_ID=agent-sandbox \
+     -e ENVIRONMENT_ID=master-1.0.0 \
      -e PROTECTED_ENVIRONMENTS=master \
      -- npx -y @contentful/mcp-server
    ```
+
+   `ENVIRONMENT_ID` is the **current work env** (`master-<major>.<minor>.<patch>`) — re-run this
+   `claude mcp add` (and fully restart) to re-point it at the new work env at the start of each
+   model-change cycle. `PROTECTED_ENVIRONMENTS=master` keeps the production alias write-protected.
 
    This writes a resolved (inline) entry to `~/.claude.json`. No env vars are needed at launch
    afterward, and it applies in every project directory and worktree — matching how the other
@@ -101,7 +123,7 @@ If this needs to be **shared via the repo** (multiple contributors, CI), use a p
       "env": {
         "CONTENTFUL_MANAGEMENT_ACCESS_TOKEN": "${CONTENTFUL_MANAGEMENT_ACCESS_TOKEN}",
         "SPACE_ID": "${CONTENTFUL_SPACE_ID}",
-        "ENVIRONMENT_ID": "agent-sandbox",
+        "ENVIRONMENT_ID": "master-1.0.0",
         "PROTECTED_ENVIRONMENTS": "master"
       }
     }

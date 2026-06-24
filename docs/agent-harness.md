@@ -13,7 +13,7 @@ card all the way to a merged-and-staging-verified change. The harness is **human
 (1) a _conditional_ brainstorm/spec gate during `/work`, and (2) the **merge approval** — a human triggers
 `/merge`. Agents do the mechanical work (research, implement, verify, QA, open PRs, address review
 comments, run the squash-merge when asked, run staging QA, move cards forward) but **no agent ever
-*autonomously* merges, and no agent ever moves a card to Done.** Configuration lives in `.claude/config.json`;
+_autonomously_ merges, and no agent ever moves a card to Done.** Configuration lives in `.claude/config.json`;
 agent definitions in `.claude/agents/`; commands in `.claude/commands/`.
 
 > **What changed from v1.** v1 stopped at _"idea → reviewed PR"_ — it had a human merge every PR by hand and
@@ -21,18 +21,18 @@ agent definitions in `.claude/agents/`; commands in `.claude/commands/`.
 > _"idea → merged → staging-verified"_: it adds the **In Testing** list, a real **staging** QA env
 > (`staging.idcredentor.com` / `website-staging` DB), the **`acceptance-judge`** verdict agent (split from
 > the QA tester), the detached **post-PR loop**, and the user-triggered **`/merge`** command. Merge is no
-> longer "humans do it by hand" — the human *triggers* `/merge`, which performs the squash. `autoMerge`
+> longer "humans do it by hand" — the human _triggers_ `/merge`, which performs the squash. `autoMerge`
 > stays `false`; nothing merges autonomously.
 
 ## Commands
 
-| Command | Backed by | Does | Card moves |
-|---------|-----------|------|------------|
-| **`/pm`** | `product-manager` | Intake a raw idea → To Do card; refine a thin card to ready; groom the Backlog + To Do lists. Enforces `docs/product/scope-and-boundaries.md`. **Never implements.** | Creates/updates cards up to **To Do**; never past it |
-| **`/work [ICR-N]`** | explorer → implementer → verifier → qa-runner → acceptance-judge → pr-author | Pick up a ready card, refine-gate it, create a worktree + branch, (conditionally) brainstorm + spec, implement ↔ verify, open a draft PR, run always-on type-aware pre-merge QA on the preview, mark ready, then run the detached post-PR review + CI loop. Hands off to `/merge` on an explicit in-session "merge". | **To Do → In Progress** (step 3), **In Progress → In Review** (step 14, via pr-author) |
-| **`/merge ICR-N`** | `/work` hand-off or standalone | **User-triggered ONLY.** Squash-merge the PR (refuse on red/pending CI), delete the worktree + branch, move the card → In Testing, then run post-merge **staging** QA. **Never merges autonomously; never moves to Done.** | **In Review → In Testing** (after a verified squash-merge) |
-| **`/qa [ICR-N] [--preview]`** | `qa-acceptance` (tester) → `acceptance-judge` (verdict) | Acceptance QA against the **staging** deployment by default; `--preview` re-targets the PR's Vercel preview. Posts a structured Trello comment with inline screenshots. **Phase 1: report-only.** | May move To Do/In Progress → In Review on the **preview** path only; **never Done** |
-| **`/verify`** | verifier (+ security-reviewer) | Run `pnpm type-check && pnpm lint && pnpm test && pnpm build` and security checks. Local-only. | none |
+| Command                       | Backed by                                                                    | Does                                                                                                                                                                                                                                                                                                                 | Card moves                                                                             |
+| ----------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| **`/pm`**                     | `product-manager`                                                            | Intake a raw idea → To Do card; refine a thin card to ready; groom the Backlog + To Do lists. Enforces `docs/product/scope-and-boundaries.md`. **Never implements.**                                                                                                                                                 | Creates/updates cards up to **To Do**; never past it                                   |
+| **`/work [ICR-N]`**           | explorer → implementer → verifier → qa-runner → acceptance-judge → pr-author | Pick up a ready card, refine-gate it, create a worktree + branch, (conditionally) brainstorm + spec, implement ↔ verify, open a draft PR, run always-on type-aware pre-merge QA on the preview, mark ready, then run the detached post-PR review + CI loop. Hands off to `/merge` on an explicit in-session "merge". | **To Do → In Progress** (step 3), **In Progress → In Review** (step 14, via pr-author) |
+| **`/merge ICR-N`**            | `/work` hand-off or standalone                                               | **User-triggered ONLY.** Squash-merge the PR (refuse on red/pending CI), delete the worktree + branch, move the card → In Testing, then run post-merge **staging** QA. **Never merges autonomously; never moves to Done.**                                                                                           | **In Review → In Testing** (after a verified squash-merge)                             |
+| **`/qa [ICR-N] [--preview]`** | `qa-acceptance` (tester) → `acceptance-judge` (verdict)                      | Acceptance QA against the **staging** deployment by default; `--preview` re-targets the PR's Vercel preview. Posts a structured Trello comment with inline screenshots. **Phase 1: report-only.**                                                                                                                    | May move To Do/In Progress → In Review on the **preview** path only; **never Done**    |
+| **`/verify`**                 | verifier (+ security-reviewer)                                               | Run `pnpm type-check && pnpm lint && pnpm test && pnpm build` and security checks. Local-only.                                                                                                                                                                                                                       | none                                                                                   |
 
 ## The agents
 
@@ -68,7 +68,7 @@ The roster is read from `.claude/agents/` — always check it for the live set. 
   or English), drives a real browser via the Playwright MCP and hits APIs against the env resolved **by name**
   (`preview`|`staging`), captures screenshots, and returns a raw evidence bundle. The authoritative verdict
   comes from the `acceptance-judge`, not here.
-- **`acceptance-judge`** *(new in v2)* — **fresh, evidence-only product verdict.** Modeled on
+- **`acceptance-judge`** _(new in v2)_ — **fresh, evidence-only product verdict.** Modeled on
   `security-reviewer` (fresh context, adversarial, read-only, **no execution** — never drives a browser, runs
   a command, hits an API/Mongo, or re-runs QA). Inputs = the tester's evidence bundle + the card's acceptance
   criteria. Output = a structured compliance verdict (overall `pass|partial|fail` + per-AC
@@ -103,14 +103,14 @@ Move cards by **listId** (from `config.tracker.lists`), never by name — the na
 may be renamed on the board without changing the ids. If a listId 404s at runtime, re-fetch via
 `get_lists(boardId)`, match by name, and surface the drift rather than inventing an id.
 
-| List | Set by | Automated? |
-|------|--------|:---:|
-| Backlog | PM / human (backlog grooming) | no |
-| To Do | PM / human (ready to pick up) | no |
-| In Progress | `/work` step 3 (after the worktree exists) | yes |
-| In Review | `/work` step 14 via pr-author (at PR-ready) | yes |
-| In Testing | `/merge` (after a verified squash-merge) | yes |
-| **Done** | **HUMAN ONLY** — after the human's manual prod deploy from Vercel | **never by any agent** |
+| List        | Set by                                                            |       Automated?       |
+| ----------- | ----------------------------------------------------------------- | :--------------------: |
+| Backlog     | PM / human (backlog grooming)                                     |           no           |
+| To Do       | PM / human (ready to pick up)                                     |           no           |
+| In Progress | `/work` step 3 (after the worktree exists)                        |          yes           |
+| In Review   | `/work` step 14 via pr-author (at PR-ready)                       |          yes           |
+| In Testing  | `/merge` (after a verified squash-merge)                          |          yes           |
+| **Done**    | **HUMAN ONLY** — after the human's manual prod deploy from Vercel | **never by any agent** |
 
 There are exactly **three** automated moves across the harness:
 
@@ -153,7 +153,7 @@ only at the marked points; the human gates (★) stay in the main conversation. 
 5. **Conditional design gate ★ (brainstorm + spec).** Sections 6 + 7 run **only when
    `needsDesignGate === true`** — a sensitive area touched, QA depth above `light`, or a data-model / API /
    CSP / i18n / email change. Then the human reviews the spec (`★ HUMAN GATE ★`). When `needsDesignGate ===
-   false` (a trivial copy/refactor), **both are skipped** and `/work` auto-pilots straight to the
+false` (a trivial copy/refactor), **both are skipped** and `/work` auto-pilots straight to the
    implementation plan built from the card + explorer summary. **The six sensitive areas always gate.**
 6. **Implement ↔ verify loop.** The implementer executes each plan checkpoint TDD-first and commits; the
    verifier runs the gate stack per depth. A **3-attempt cap** (with prior-error diff) guards the loop; on
@@ -273,18 +273,40 @@ guardrails:
   from a Trello custom field / label / description token. **There is no `light = skip` tier** — every testable
   ticket runs its TYPE's baseline.
 
+## Contentful model-change workflow (semver blue-green env cutover)
+
+When a card changes the Contentful **content model** — a new/changed/deleted content type or field, or an
+entry remap (**not** just a new read fragment in `lib/contentful/*`) — the harness routes it through a
+**blue-green deployment via environment aliases**, wired in `.claude/config.json` → `contentful` and
+documented in full in [`contentful-environments.md`](./contentful-environments.md):
+
+- **`master` is an alias → production** (today `master-0.0.1`). The app reads the alias; production config
+  never changes. Agents make model + entry changes in a **versioned work env**
+  (`master-<major>.<minor>.<patch>`) via the Contentful MCP + committed `scripts/contentful/` migrations —
+  **never** against the alias.
+- **Semver by change class:** **major** = breaking/significant (type deletion, field rename, merge),
+  **minor** = new/additive, **patch** = fix. The new work env = the current production version bumped by the
+  change class (e.g. `master-0.0.1` → `master-1.0.0` for a breaking consolidation).
+- **`/work` step 8.2 — Contentful model-change gate:** after the plan is written, if it touches the model,
+  `/work` stops, requires the spec's "Data Model Changes" section to carry an **env-cutover plan** (which
+  work env + bump, how `.env.local`/the branch Vercel Preview point at it), and defers the alias re-point to
+  the human. The `implementer` operates the MCP against the **work env**, never the alias.
+- **The cutover is HUMAN-ONLY** — a human re-points the `master` alias (at PR-merge time); rollback is
+  re-pointing it back to the prior production env. (Free tier = **two** environments; each cycle deletes the
+  stale idle env and clones current production into the new work env.)
+
 ## Commands map (what the agents actually run)
 
 From `config.commands` — the canonical invocations, accounting for ICR's actual scripts:
 
-| Logical | Actual |
-|---------|--------|
-| typecheck | `pnpm type-check` *(hyphen — not `typecheck`)* |
-| lint | `pnpm lint` (`eslint .`) |
-| test | `pnpm test` (`vitest run`, single pass — never watch) |
-| build | `pnpm build` |
-| dev | `pnpm dev` |
-| e2e | `pnpm e2e` (`playwright test`; no specs in Phase 1) |
+| Logical   | Actual                                                |
+| --------- | ----------------------------------------------------- |
+| typecheck | `pnpm type-check` _(hyphen — not `typecheck`)_        |
+| lint      | `pnpm lint` (`eslint .`)                              |
+| test      | `pnpm test` (`vitest run`, single pass — never watch) |
+| build     | `pnpm build`                                          |
+| dev       | `pnpm dev`                                            |
+| e2e       | `pnpm e2e` (`playwright test`; no specs in Phase 1)   |
 
 If a script is absent at runtime, the verifier/qa-runner **reports it** rather than inventing one.
 
@@ -317,7 +339,7 @@ Grep/Read on an empty/stale/absent graph and notes it. Full guide: [`graphify.md
 - **Who refreshes** (two layers): the **git post-commit hook** (`.husky/post-commit`) keeps the
   shared graph in sync with `main` on every commit (AST, no LLM, free; resolves the main repo root via
   the common git dir so it works from worktrees, lock-guarded); `/work` additionally runs
-  `graphify update` once per session (lock-guarded) to catch *doc/content* (semantic) drift.
+  `graphify update` once per session (lock-guarded) to catch _doc/content_ (semantic) drift.
   `enabled: "auto"` detects the graph at runtime. A worktree's feature code enters the graph on merge.
 - **Verbs** (`config.graphify.verbs`): `query` (BFS context), `explain` (one-node onboarding + direction —
   the reliable impact lookup on this undirected graph), `path` (shortest dependency path), `affected`
@@ -340,3 +362,6 @@ Grep/Read on an empty/stale/absent graph and notes it. Full guide: [`graphify.md
    out-of-scope ideas.
 7. **Treat the sensitive paths as sensitive** — email, PII, API routes, CSP, env, middleware, the Contentful
    transport; they always gate the design discussion and raise the QA bar. **Staging is `no-POST`.**
+8. **Never re-point the Contentful `master` alias** — that's a human promotion, like merge/Done. Agents make
+   content-model changes in a versioned work env (`master-X.Y.Z`) via the MCP + `scripts/contentful/` and
+   propose; the human cuts over. See `docs/contentful-environments.md` (`/work` step 8.2 gates this).

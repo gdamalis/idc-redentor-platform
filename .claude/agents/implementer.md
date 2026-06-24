@@ -55,12 +55,14 @@ you need; you commit when the checkpoint is done.
 Distilled from `.cursorrules` + the workspace `CLAUDE.md`. Non-negotiable.
 
 ### Tooling & package manager
+
 - **`pnpm` only.** Never `npm`/`yarn`. Node `22.14.0` (`.nvmrc`).
 - Local checks before any commit: **`pnpm type-check` and `pnpm test`** must pass.
   (The typecheck script is `type-check` with a hyphen — NEVER write `pnpm typecheck`. The test script
   `pnpm test` is single-run `vitest run`.)
 
 ### TypeScript
+
 - Strict mode. `no-explicit-any` is a **warn** in ESLint — still treat `any` as forbidden; do not
   introduce new `any`. No `// @ts-ignore` / `@ts-expect-error` without an inline justification.
 - **Prefer `interface` over `type`.** **Avoid `enum`; use `const` maps** + `satisfies`.
@@ -68,6 +70,7 @@ Distilled from `.cursorrules` + the workspace `CLAUDE.md`. Non-negotiable.
 - **Prefer nullish coalescing (`??`) over `||`** for defaulting.
 
 ### React 19 / Next.js 16 (App Router)
+
 - **RSC-first**: minimize `'use client'`; only mark a component client when it needs interactivity.
 - **Always `await` Next runtime APIs**: `cookies()`, `headers()`, `draftMode()`, `props.params`,
   `props.searchParams`.
@@ -75,6 +78,7 @@ Distilled from `.cursorrules` + the workspace `CLAUDE.md`. Non-negotiable.
 - Error boundaries + `Suspense` for async.
 
 ### Data layer (Contentful)
+
 - Content is fetched with the **hand-written GraphQL pattern**, NOT the Contentful SDK and NOT codegen.
   Add a new `lib/contentful/get<Thing>.ts` that builds a GraphQL query string and calls
   **`fetchGraphQL(query, preview)`** from `lib/contentful/fetch.ts`. Mirror the existing `getPage.ts` /
@@ -86,14 +90,33 @@ Distilled from `.cursorrules` + the workspace `CLAUDE.md`. Non-negotiable.
 - MongoDB is used ONLY by the blog "likes" feature (`src/service/*`, `/api/likes`,
   `src/service/database.service.ts`, `MONGODB_URI`, db `website`). Do not introduce Mongo elsewhere.
 
+### Contentful model changes (MCP write path + env cutover)
+
+The section above is the **read** path (code-only). If a checkpoint changes the Contentful **content
+model** — creates/updates/deletes a content type or field, or remaps entries — you do NOT hand-edit it
+and you do NOT touch the `master` alias:
+
+- Make the change **via the Contentful MCP** (`mcp__contentful__*`) and/or a committed migration under
+  `scripts/contentful/`, targeting the **versioned work env** the orchestrator points you at
+  (`.claude/config.json` → `contentful`; `master-<major>.<minor>.<patch>`, **never** `master`).
+  `PROTECTED_ENVIRONMENTS=master` blocks the alias regardless.
+- **Never re-point the `master` alias** — that is a HUMAN promotion at cutover (like merge/Done). You
+  propose changes in the work env; the human cuts over.
+- Keep migrations **idempotent** (guard create/delete by existence) so a re-cloned work env can replay
+  them. Mirror the read getters' shape for any new/changed type, and update both the GraphQL fragment
+  and its consumers in the same checkpoint so code and model stay in lockstep.
+- Full workflow: `docs/contentful-environments.md`; write-path safety model: `docs/contentful-mcp.md`.
+
 ### API boundaries
+
 - **Validate inputs with Zod** at every API route boundary (`src/app/api/{contact,subscribe,likes,
-  revalidate,draft}`). Define the schema inline or colocated. Sensitive areas — treat with care:
+revalidate,draft}`). Define the schema inline or colocated. Sensitive areas — treat with care:
   email-sending (`src/service/{contact,mailing,subscribe}`, SendGrid/Resend/Mailchimp), contact/
   subscribe forms (spam + PII), `/api/likes` Mongo writes, env/secret handling, and the CSP / security
   headers in `config/headers.js`. Never log PII or secret values.
 
 ### i18n (next-intl)
+
 - Default locale **`es-AR`**, secondary **`en-US`**.
 - **Every user-facing string MUST be added to BOTH** `public/locales/es-AR.json` AND
   `public/locales/en-US.json`. Never hardcode a literal in JSX. Use `next-intl` (`useTranslations` /
@@ -102,11 +125,13 @@ Distilled from `.cursorrules` + the workspace `CLAUDE.md`. Non-negotiable.
   Middleware lives at `src/proxy.ts`.
 
 ### Styling / UI
+
 - **Tailwind CSS v4** (+ `@tailwindcss/typography`). Headless UI + Heroicons + `lucide-react`, CVA for
   variants, Framer Motion for animation. Compose classes with **`cn()`** (`src/utils/cn.ts`, clsx +
   tailwind-merge); legacy `classNames()` exists but prefer `cn()` for new code.
 
 ### Naming & structure
+
 - Descriptive names with auxiliary verbs: `isLoading`, `hasError`. Event handlers prefixed `handle*`
   (`handleClick`, `handleSubmit`). Predicates `is*` / `has*`.
 - **lowercase-with-dashes** for directory names. **Named exports** for components.
@@ -129,6 +154,7 @@ Distilled from `.cursorrules` + the workspace `CLAUDE.md`. Non-negotiable.
 ## When you get feedback from verifier/QA
 
 If `previousFeedback` is set, it is the priority:
+
 1. Read the errors carefully.
 2. Apply `superpowers:systematic-debugging` — root cause, no papering over.
 3. Make the minimum change that fixes the failure without breaking other behavior.
@@ -174,6 +200,7 @@ solely: **fix on-branch, push, reply-once-per-thread, report which `threadId`s y
 
 ```markdown
 ## Checkpoint <N> complete
+
 - **Files touched**: <list>
 - **Tests added**: <names + counts>
 - **i18n**: strings added to both es-AR.json and en-US.json? yes/n-a
@@ -196,6 +223,7 @@ graphify explain "<functionName>()"   # PREFERRED for impact: lists neighbours W
                                       #   `<-- caller.tsx [imports|calls]` is who depends on this symbol
 graphify query "how does <area> work?"   # free-form conceptual follow-up
 ```
+
 Match code symbols by their node label **including `()`** (e.g. `getPage()`). `explain` is the reliable
 impact lookup on this (undirected) graph; `graphify affected "X"` is the dedicated blast-radius verb but
 needs a **directed** graph (rebuild once with `/graphify --directed` to enable it).
