@@ -1,0 +1,67 @@
+name: Contentful drift detector
+
+on:
+  schedule:
+    - cron: "0 12 * * 1" # Mondays 12:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    env:
+      CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+      CONTENTFUL_MANAGEMENT_ACCESS_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.14.0"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Detect drift (read-only, both directions)
+        id: drift
+        run: |
+          {
+            echo "## production -> staging (refresh candidates)"
+            echo '```'
+            node scripts/contentful/sync-entries.mjs --from production --to staging || true
+            echo '```'
+            echo "## staging -> production (promotion candidates)"
+            echo '```'
+            node scripts/contentful/sync-entries.mjs --from staging --to production || true
+            echo '```'
+          } > drift.md
+          # "drift present" = any [new]/[changed]/[target] line in the report
+          if grep -qE '\[(new|changed|target)\]' drift.md; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Open/update/close the drift issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('drift.md', 'utf8');
+            const title = 'Contentful drift: staging ↔ production';
+            const present = '${{ steps.drift.outputs.present }}' === 'true';
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo, state: 'open', labels: 'contentful-drift',
+            });
+            const existing = issues.find((i) => i.title === title);
+            if (present) {
+              const stamped = `_Last checked: ${new Date().toISOString()}_\n\n${body}`;
+              if (existing) {
+                await github.rest.issues.update({ owner: context.repo.owner, repo: context.repo.repo, issue_number: existing.number, body: stamped });
+              } else {
+                await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title, body: stamped, labels: ['contentful-drift'] });
+              }
+            } else if (existing) {
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: existing.number, body: 'Environments are in sync — closing.' });
+              await github.rest.issues.update({ owner: context.repo.owner, repo: context.repo.repo, issue_number: existing.number, state: 'closed' });
+            }
