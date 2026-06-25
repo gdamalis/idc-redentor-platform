@@ -18,22 +18,22 @@ IDC Redentor is the official bilingual (es-AR / en-US) website of Iglesia de Cri
 
 > Use **pnpm**. `type-check` is hyphenated — call `pnpm type-check`, not `pnpm typecheck`.
 
-| Command | Purpose |
-| --- | --- |
-| `pnpm dev` | Dev server (Turbopack) |
-| `pnpm build` | Production build |
-| `pnpm start` | Serve production build |
-| `pnpm lint` | ESLint (`eslint .`) |
-| `pnpm type-check` | TypeScript check (`tsc --noEmit`) |
-| `pnpm test` | Vitest single run (`vitest run`) |
-| `pnpm test:watch` | Vitest watch |
-| `pnpm e2e` | Playwright (config present; no specs in Phase 1) |
-| `pnpm format` / `pnpm format:check` | Prettier write / check |
+| Command                             | Purpose                                          |
+| ----------------------------------- | ------------------------------------------------ |
+| `pnpm dev`                          | Dev server (Turbopack)                           |
+| `pnpm build`                        | Production build                                 |
+| `pnpm start`                        | Serve production build                           |
+| `pnpm lint`                         | ESLint (`eslint .`)                              |
+| `pnpm type-check`                   | TypeScript check (`tsc --noEmit`)                |
+| `pnpm test`                         | Vitest single run (`vitest run`)                 |
+| `pnpm test:watch`                   | Vitest watch                                     |
+| `pnpm e2e`                          | Playwright (config present; no specs in Phase 1) |
+| `pnpm format` / `pnpm format:check` | Prettier write / check                           |
 
 ## Architecture
 
 - **App Router**: pages under `src/app/[locale]/{page,who-is-jesus,community,come-meet-us,blog/[slug]}`; route handlers under `src/app/api/{likes,subscribe,revalidate,draft/{enable,disable}}`. No route groups; the contact form is a Server Action (`src/components/features/contact-form/contactFormAction.ts`).
-- **Contentful data layer (hand-written GraphQL, not an SDK)**: `lib/contentful/fetch.ts` (`fetchGraphQL`) → `lib/contentful/get*.ts` → RSC pages/components. Every request is tagged `next: { tags: ["site-content"] }`. **`codegen.ts` is unused — ignore it.**
+- **Contentful data layer (hand-written GraphQL, not an SDK)**: `lib/contentful/fetch.ts` (`fetchGraphQL`) → `lib/contentful/get*.ts` → RSC pages/components. Every request is tagged `next: { tags: ["site-content"] }`. **There is no codegen or generated client — it's all hand-written** (the unused `codegen.ts` + `@graphql-codegen/*` deps were removed).
 - **MongoDB** backs only two collections in db `website`: `likes` and `contact` (`src/service/database.service.ts` caches the client).
 - **Email**: adapter pattern (`src/service/mailing.service.ts` selects `mailing/{sendgrid,resend}.adapter.ts` by `MAIL_PROVIDER`); templates in `src/templates/`. **Newsletter** = Mailchimp (`/api/subscribe`).
 - **i18n**: next-intl, default `es-AR`, secondary `en-US`. Middleware in **`src/proxy.ts`** (exports `proxy`). UI strings in `public/locales/{es-AR,en-US}.json`.
