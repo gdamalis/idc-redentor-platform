@@ -14,7 +14,12 @@ const GRAPHQL_FIELDS = `
           json
         }
         bibleVerse {
-          json
+          book
+          chapter
+          fromVerse
+          toVerse
+          verseContent
+          bibleVersion
         }
         image {
           url

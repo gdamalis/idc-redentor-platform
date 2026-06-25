@@ -10,10 +10,20 @@ import { getContentCollection } from "./getContentCollection";
 
 const mockFetchGraphQL = vi.mocked(fetchGraphQL);
 
+const STRUCTURED_BIBLE_VERSE = {
+  book: "Marcos",
+  chapter: "10",
+  fromVerse: "45",
+  toVerse: null,
+  verseContent:
+    "Porque ni aun el Hijo del Hombre vino para ser servido, sino para servir",
+  bibleVersion: "RVR60",
+};
+
 const BELIEF_ITEM_1 = {
   title: "La Trinidad",
   description: { json: { nodeType: "document", content: [] } },
-  bibleVerse: { json: { nodeType: "document", content: [] } },
+  bibleVerse: STRUCTURED_BIBLE_VERSE,
   image: { url: "https://images.ctfassets.net/trinity.jpg", title: "Trinidad" },
   kind: "Creed",
 };
@@ -21,7 +31,7 @@ const BELIEF_ITEM_1 = {
 const BELIEF_ITEM_2 = {
   title: "Servicio al prójimo",
   description: { json: { nodeType: "document", content: [] } },
-  bibleVerse: { json: { nodeType: "document", content: [] } },
+  bibleVerse: null,
   image: { url: "https://images.ctfassets.net/service.jpg", title: "Servicio" },
   kind: "Value",
 };
@@ -71,14 +81,42 @@ describe("getContentCollection", () => {
     expect(result.creedItems[0].description.json.nodeType).toBe("document");
   });
 
-  it("passes through bibleVerse and image on each beliefItem", async () => {
+  it("passes through structured bibleVerse fields on each beliefItem", async () => {
+    mockFetchGraphQL.mockResolvedValueOnce(
+      makeCollectionResponse([BELIEF_ITEM_1]),
+    );
+
+    const result = await getContentCollection("creed", "es-AR");
+    const verse = result.creedItems[0].bibleVerse;
+
+    expect(verse).not.toBeNull();
+    expect(verse?.book).toBe("Marcos");
+    expect(verse?.chapter).toBe("10");
+    expect(verse?.fromVerse).toBe("45");
+    expect(verse?.toVerse).toBeNull();
+    expect(verse?.verseContent).toBe(
+      "Porque ni aun el Hijo del Hombre vino para ser servido, sino para servir",
+    );
+    expect(verse?.bibleVersion).toBe("RVR60");
+  });
+
+  it("passes through null bibleVerse for Value items", async () => {
+    mockFetchGraphQL.mockResolvedValueOnce(
+      makeCollectionResponse([BELIEF_ITEM_2]),
+    );
+
+    const result = await getContentCollection("creed", "es-AR");
+
+    expect(result.creedItems[0].bibleVerse).toBeNull();
+  });
+
+  it("passes through image on each beliefItem", async () => {
     mockFetchGraphQL.mockResolvedValueOnce(
       makeCollectionResponse([BELIEF_ITEM_1]),
     );
 
     const result = await getContentCollection("creed", "es-AR");
 
-    expect(result.creedItems[0].bibleVerse?.json.nodeType).toBe("document");
     expect(result.creedItems[0].image?.url).toBe(
       "https://images.ctfassets.net/trinity.jpg",
     );
@@ -140,5 +178,15 @@ describe("getContentCollection", () => {
 
     const query = mockFetchGraphQL.mock.calls[0][0] as string;
     expect(query).toContain("kind");
+  });
+
+  it("selects verseContent (not json) under bibleVerse in the GraphQL query", async () => {
+    mockFetchGraphQL.mockResolvedValueOnce(makeCollectionResponse([]));
+
+    await getContentCollection("creed", "es-AR");
+
+    const query = mockFetchGraphQL.mock.calls[0][0] as string;
+    expect(query).toContain("verseContent");
+    expect(query).not.toMatch(/bibleVerse\s*\{\s*json/);
   });
 });
