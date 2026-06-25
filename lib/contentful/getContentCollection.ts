@@ -8,7 +8,7 @@ const GRAPHQL_FIELDS = `
   }
   contentItemsCollection {
     items {
-      ... on Credo {
+      ... on BeliefItem {
         title
         description {
           json
@@ -20,19 +20,7 @@ const GRAPHQL_FIELDS = `
           url
           title
         }
-      }
-      ... on ValueItem {
-        title
-        description {
-          json
-        }
-        bibleVerse {
-          json
-        }
-        image {
-          url
-          title
-        }
+        kind
       }
     }
   }
