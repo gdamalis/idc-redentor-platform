@@ -1,3 +1,9 @@
+# [1.14.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.13.0...v1.14.0) (2026-06-25)
+
+### Features
+
+- **ICR-81:** /predica harness — transcribe → bilingual draft → PDF → WhatsApp ([#52](https://github.com/gdamalis/idc-redentor-web/issues/52)) ([f282598](https://github.com/gdamalis/idc-redentor-web/commit/f282598711445cb5982cecd33041b33c13b6dde0))
+
 # [1.13.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.12.2...v1.13.0) (2026-06-25)
 
 ### Features
