@@ -63,3 +63,6 @@ graphify-out/
 # Sermon PDF generator — generated output (never committed; use --out $TMPDIR)
 .claude/scripts/predica/**/*.pdf
 .claude/scripts/predica/**/*.png
+
+# /predica harness artifacts — audio, transcripts, sermon.json, generated PDFs (large, not source)
+tasks/predicas/

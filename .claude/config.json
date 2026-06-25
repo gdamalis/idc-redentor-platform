@@ -22,26 +22,96 @@
     "listResolution": "by-list-id",
     "listResolutionNote": "Trello cards move between LISTS by listId (move_card takes the destination listId), not by status name. Always use the listId values above. The name fields are display-only and may be renamed on the board without changing listIds/boardId; trust the ids, not the names. If a listId 404s at runtime, re-fetch via get_lists(boardId), match by name, surface the drift — never invent an id.",
     "workflow": [
-      { "key": "discovery", "name": "Backlog", "listId": "67a7a748b44f06e964c9eddd", "order": 1, "automated": false, "setBy": "PM / human (backlog grooming)" },
-      { "key": "todo", "name": "To Do", "listId": "67b500c7c65a4d3edf11e180", "order": 2, "automated": false, "setBy": "PM / human (ready to pick up)" },
-      { "key": "inProgress", "name": "In Progress", "listId": "67a7a74bc9dd606c2e41cea2", "order": 3, "automated": true, "setBy": "/work step 3 (To Do -> In Progress)" },
-      { "key": "inReview", "name": "In Review", "listId": "67a7a74df6bfc532c70a06c8", "order": 4, "automated": true, "setBy": "/work step 14 via pr-author (In Progress -> In Review, at PR-ready)" },
-      { "key": "inTesting", "name": "In Testing", "listId": "6a3a7f99c43d9b731c47fe61", "order": 5, "automated": true, "setBy": "/merge (In Review -> In Testing, after squash-merge succeeds)" },
-      { "key": "done", "name": "Done", "listId": "67a7a758f2da48a6482634a2", "order": 6, "automated": false, "setBy": "HUMAN ONLY — set when the human deploys to prod and closes the card. NEVER set by any agent or command." }
+      {
+        "key": "discovery",
+        "name": "Backlog",
+        "listId": "67a7a748b44f06e964c9eddd",
+        "order": 1,
+        "automated": false,
+        "setBy": "PM / human (backlog grooming)"
+      },
+      {
+        "key": "todo",
+        "name": "To Do",
+        "listId": "67b500c7c65a4d3edf11e180",
+        "order": 2,
+        "automated": false,
+        "setBy": "PM / human (ready to pick up)"
+      },
+      {
+        "key": "inProgress",
+        "name": "In Progress",
+        "listId": "67a7a74bc9dd606c2e41cea2",
+        "order": 3,
+        "automated": true,
+        "setBy": "/work step 3 (To Do -> In Progress)"
+      },
+      {
+        "key": "inReview",
+        "name": "In Review",
+        "listId": "67a7a74df6bfc532c70a06c8",
+        "order": 4,
+        "automated": true,
+        "setBy": "/work step 14 via pr-author (In Progress -> In Review, at PR-ready)"
+      },
+      {
+        "key": "inTesting",
+        "name": "In Testing",
+        "listId": "6a3a7f99c43d9b731c47fe61",
+        "order": 5,
+        "automated": true,
+        "setBy": "/merge (In Review -> In Testing, after squash-merge succeeds)"
+      },
+      {
+        "key": "done",
+        "name": "Done",
+        "listId": "67a7a758f2da48a6482634a2",
+        "order": 6,
+        "automated": false,
+        "setBy": "HUMAN ONLY — set when the human deploys to prod and closes the card. NEVER set by any agent or command."
+      }
     ],
     "automatedTransitions": [
-      { "from": "todo", "to": "inProgress", "ownedBy": "/work step 3", "gate": "after mandatory worktree creation" },
-      { "from": "inProgress", "to": "inReview", "ownedBy": "/work step 14 (pr-author)", "gate": "after PR flipped to ready + PR-link comment posted" },
-      { "from": "inReview", "to": "inTesting", "ownedBy": "/merge", "gate": "after squash-merge succeeds" }
+      {
+        "from": "todo",
+        "to": "inProgress",
+        "ownedBy": "/work step 3",
+        "gate": "after mandatory worktree creation"
+      },
+      {
+        "from": "inProgress",
+        "to": "inReview",
+        "ownedBy": "/work step 14 (pr-author)",
+        "gate": "after PR flipped to ready + PR-link comment posted"
+      },
+      {
+        "from": "inReview",
+        "to": "inTesting",
+        "ownedBy": "/merge",
+        "gate": "after squash-merge succeeds"
+      }
     ],
     "forbiddenTransitions": [
-      { "to": "done", "reason": "Human-only. /work and all agents MUST NOT move any card to Done. Done == merged and closed by a human." }
+      {
+        "to": "done",
+        "reason": "Human-only. /work and all agents MUST NOT move any card to Done. Done == merged and closed by a human."
+      }
     ],
     "labelToCommitType": {
       "Feature": { "color": "green", "commitType": "feat" },
       "Bug": { "color": "red", "commitType": "fix" },
-      "Integration": { "color": "purple", "commitType": "feat", "alt": "chore", "note": "feat when it adds user-facing capability; chore when it's wiring/config only" },
-      "NFR": { "color": "sky", "commitType": "chore", "alt": ["refactor", "perf"], "note": "default chore; use refactor/perf when the work is purely that" }
+      "Integration": {
+        "color": "purple",
+        "commitType": "feat",
+        "alt": "chore",
+        "note": "feat when it adds user-facing capability; chore when it's wiring/config only"
+      },
+      "NFR": {
+        "color": "sky",
+        "commitType": "chore",
+        "alt": ["refactor", "perf"],
+        "note": "default chore; use refactor/perf when the work is purely that"
+      }
     },
     "needsRefinementMechanism": "checklist",
     "needsRefinementChecklistName": "Refinement",
@@ -68,7 +138,13 @@
         "vercelProject": "idc-redentor-website",
         "baseUrlFrom": "qa-env.preview.baseUrl",
         "baseUrlHostAllow": "^[a-z0-9-]+\\.vercel\\.app$",
-        "productionHostDeny": ["idcredentor.com", "www.idcredentor.com", "idcredentor.org", "idc-redentor-website.vercel.app", "idc-redentor-web.vercel.app"],
+        "productionHostDeny": [
+          "idcredentor.com",
+          "www.idcredentor.com",
+          "idcredentor.org",
+          "idc-redentor-website.vercel.app",
+          "idc-redentor-web.vercel.app"
+        ],
         "requirePreviewEnvironment": true,
         "requirePreviewEnvironmentNote": "The hostname allowlist is NECESSARY BUT NOT SUFFICIENT: the production deployment ALSO has a *.vercel.app alias (e.g. idc-redentor-website.vercel.app), which the regex would otherwise accept. Before ANY browser/API/seed action the resolver MUST confirm the resolved deployment is a PREVIEW, not Production — check mcp__claude_ai_Vercel__get_deployment.target !== 'production' (or the GitHub deployment environment === 'Preview'). Reject any deployment whose target/environment is Production even when its host ends in .vercel.app. Prefer the per-PR branch preview whose host contains '-git-<branch>-' or a unique deployment hash.",
         "baseUrlHostAllowNote": "Default-deny allowlist for the QA base URL host. /qa runs ONLY against a Vercel PREVIEW deployment for the PR. Three gates, all required: (1) host matches baseUrlHostAllow (*.vercel.app); (2) host is NOT in productionHostDeny (custom domains AND the production *.vercel.app aliases); (3) the deployment's target/environment is Preview (requirePreviewEnvironment). Preview URL is discovered per-PR via mcp__claude_ai_Vercel__list_deployments / get_deployment (target=preview), or the GitHub deployment status on the PR.",
@@ -80,7 +156,13 @@
         "target": "staging",
         "baseUrlFrom": "qa-env.staging.baseUrl",
         "baseUrlHostAllow": "^staging\\.idcredentor\\.com$",
-        "productionHostDeny": ["idcredentor.com", "www.idcredentor.com", "idcredentor.org", "idc-redentor-website.vercel.app", "idc-redentor-web.vercel.app"],
+        "productionHostDeny": [
+          "idcredentor.com",
+          "www.idcredentor.com",
+          "idcredentor.org",
+          "idc-redentor-website.vercel.app",
+          "idc-redentor-web.vercel.app"
+        ],
         "requirePreviewEnvironment": false,
         "requirePreviewEnvironmentNote": "Staging is NOT a Vercel preview — it has its OWN host allowlist (^staging\\.idcredentor\\.com$). It MUST NOT inherit the preview's 'must be a Vercel preview deployment (target!==production)' check. But it MUST still hard-deny every productionHostDeny host. Net: the only sanctioned non-preview QA target is exactly staging.idcredentor.com.",
         "liveIntegrationPolicy": "no-POST",
@@ -121,8 +203,18 @@
         ".github/**"
       ]
     },
-    "deploy": { "provider": "vercel", "detect": "github-deployments", "environment": "Preview", "pollSeconds": 30, "timeoutSeconds": 900 },
-    "reviewAgents": { "code": "feature-dev:code-reviewer", "security": "security-reviewer", "acceptance": "acceptance-judge" }
+    "deploy": {
+      "provider": "vercel",
+      "detect": "github-deployments",
+      "environment": "Preview",
+      "pollSeconds": 30,
+      "timeoutSeconds": 900
+    },
+    "reviewAgents": {
+      "code": "feature-dev:code-reviewer",
+      "security": "security-reviewer",
+      "acceptance": "acceptance-judge"
+    }
   },
   "reviewLoop": {
     "_note": "Drives the detached post-PR loop in /work after the PR is marked ready: watch code-review comments (incl. the Codex bot, which posts a few minutes after PR-ready) AND CI checks, address them, then notify the user. Driver is ScheduleWakeup (dynamic-paced, stateful, worktree-bound). If ScheduleWakeup is unavailable at runtime, /work skips the loop and falls back to a one-shot check + notify. CronCreate is a deferred headless-only variant.",
@@ -229,6 +321,89 @@
       "whoQueries": "explorer always (query/explain/path when available); implementer for caller/dep + `explain` impact lookups before edits/deletes (confirm negatives with Grep); security-reviewer for `explain` blast-radius on changed shared symbols in the diff; product-manager for reuse lookups; verifier/qa-runner/pr-author never. (`affected` is the dedicated blast-radius verb but needs a directed graph — see verbsNote.)",
       "onFailureFallback": "Proceed with existing graph (or Grep/Read if no graph). Agents include staleness/error notes in their reports and Grep to confirm any 'not found' negative when the graph may be stale.",
       "memoryLoop": "After answering a codebase question from the graph, the querying agent runs `graphify save-result --question ... --answer ... --nodes ...` so the next `graphify update` folds the Q&A back into the graph."
+    }
+  },
+  "predica": {
+    "_note": "Drives /predica + the four predica-* subagents (transcriber, writer, publisher, whatsapp). Local on-demand sermon pipeline: a recording -> transcript -> bilingual sermon.json -> two branded PDFs (Card C) -> a Contentful DRAFT in agent-sandbox -> a ready-to-paste WhatsApp text. TWO human gates (transcript correction; promote/publish). Draft-only + send-only: the publisher's MCP allowlist omits every publish_* and writes only to agent-sandbox; nothing is ever auto-published or auto-sent. See tasks/specs/sermon-pipeline.md §7-§9.",
+    "audioInbox": "/Users/gabriel/Documents/Church/Redentor/02 - Vida en Comunidad/Cultos/Predicas",
+    "audioInboxNote": "Where Sunday recordings land. `/predica` with no path picks the NEWEST audio file here. Spaces/accents in filenames are expected; the slug is derived from the TITLE, not the filename (§7.1).",
+    "artifactsDir": "tasks/predicas",
+    "artifactsDirNote": "Per-sermon working dir tasks/predicas/<slug>/ holds the WAV (throwaway), transcript.{txt,srt,json}, audio.mp3, the original .m4a archive copy, sermon.json, both PDFs, contentful-entry artifacts, and whatsapp.txt. gitignored (large, not source).",
+    "contentType": "sermon",
+    "contentfulSpaceId": "vg9le24yw8hb",
+    "contentfulEnv": "agent-sandbox",
+    "contentfulProtectedEnv": "master",
+    "contentfulEnvNote": "The publisher writes ONLY to agent-sandbox (a branch of master). The MCP server runs PROTECTED_ENVIRONMENTS=master as a server-side backstop. A human promotes agent-sandbox -> master in the Contentful web app at Gate 2. If agent-sandbox is missing (consumed by a prior merge), re-create it from master before running (create_environment); free the single work-env quota slot first if needed.",
+    "defaultContentfulLocale": "es-AR",
+    "locales": ["es-AR", "en-US"],
+    "defaultLocale": "es-AR",
+    "whatsappLocale": "es-AR",
+    "siteBaseUrl": "https://www.idcredentor.com",
+    "siteBaseUrlNote": "Production canonical used to build the deterministic share URL ${siteBaseUrl}/es-AR/predicas/<slug>. NOT the local .env.local NEXT_PUBLIC_BASE_URL (which is http://localhost:3000 in dev). The human verifies/corrects this URL at Gate 2 if the live domain differs.",
+    "scriptureVersion": { "es-AR": "RVR1960", "en-US": "NIV" },
+    "whisper": {
+      "bin": "/Users/gabriel/repos/whisper.cpp/build/bin/whisper-cli",
+      "model": "/Users/gabriel/repos/whisper.cpp/models/ggml-large-v3-turbo.bin",
+      "lang": "es",
+      "threads": 8,
+      "extraFlags": ["-sns"],
+      "prompt": "Prédica en español. Iglesia de Cristo Redentor. Jesús, evangelio, Espíritu Santo, gracia, arrepentimiento, salvación, Escritura.",
+      "note": "large-v3-turbo is fast (~3-5 min for a 60-min sermon on the M3 Pro). The prompt seeds church vocabulary. -sns = suppress non-speech tokens. transcribe(audioPath) is a swappable boundary so V2 can drop in a cloud provider."
+    },
+    "audio": {
+      "wavSampleRate": 16000,
+      "wavChannels": 1,
+      "webFormat": "mp3",
+      "webCodec": "libmp3lame",
+      "webBitrate": "96k",
+      "archiveOriginal": true,
+      "note": "ffmpeg makes a throwaway 16k mono WAV for whisper, and a browser-universal .mp3 (96k) for the web audio player; the original .m4a is kept as the archive."
+    },
+    "pdf": {
+      "script": ".claude/scripts/predica/build-predica-pdf.mjs",
+      "logo": "public/assets/img/redentor_logo.png",
+      "outputs": ["predica.es-AR.pdf", "predica.en-US.pdf"],
+      "note": "Card C's generator (consumed as a black box): node <script> <sermon.json> [--out <dir>]. Needs Chromium: `pnpm exec playwright install chromium` on a fresh checkout."
+    },
+    "entryBuilder": ".claude/scripts/predica/build-sermon-entry.mjs",
+    "entryBuilderNote": "Deterministic builder: turns sermon.json (+ resolved link ids) into the exact Contentful `fields` payloads (bibleVerse + sermon), incl. localized wrapping and rich-text from content blocks. Canonical typed impl + tests: src/utils/predica/sermonEntry.ts. The publisher feeds these fields to entryCreator (below).",
+    "assetUploader": ".claude/scripts/predica/upload-contentful-asset.mjs",
+    "entryCreator": ".claude/scripts/predica/create-contentful-entry.mjs",
+    "writePathNote": "All Contentful WRITES go through these two CMA scripts (binary-upload + create-entry), NOT the MCP write tools — reliable at any size (a ~20MB mp3, a 50KB+ rich-text entry) where MCP base64 / LLM round-trip is infeasible. Both scripts are DRAFT-ONLY (no publish call) and HARD-REFUSE the master environment; they read CONTENTFUL_MANAGEMENT_ACCESS_TOKEN from env/.env.local (name only, never printed). The publisher's MCP allowlist is READ-ONLY, so it structurally cannot publish or touch master by any path.",
+    "assetUploadPolicy": {
+      "uploadedViaCma": ["audio", "pdfSummary"],
+      "deferToHumanAtGate2": ["featuredImage"],
+      "note": "The CMA upload endpoint handles any size, so the audio mp3 AND both PDFs are uploaded + linked automatically. Only featuredImage is deferred — none is generated by the pipeline and it is required only on PUBLISH (the human attaches one at Gate 2). durationSeconds is set from ffprobe."
+    },
+    "agents": {
+      "transcriber": "predica-transcriber",
+      "writer": "predica-writer",
+      "publisher": "predica-publisher",
+      "whatsapp": "predica-whatsapp"
+    },
+    "gates": {
+      "transcriptReview": {
+        "after": "transcribe",
+        "owner": "human",
+        "blocking": true,
+        "note": "Gate 1 — the orchestrator stops in-conversation and waits while the human corrects transcript.txt (names, scripture refs, theology). Never delegated, never auto-skipped."
+      },
+      "promote": {
+        "after": "publish",
+        "owner": "human",
+        "blocking": true,
+        "note": "Gate 2 — the orchestrator presents the summary and stops. The human reviews the DRAFT in Contentful, attaches the deferred media (audio, featuredImage), merges agent-sandbox -> master, publishes, and pastes the WhatsApp text. No agent publishes or sends."
+      }
+    },
+    "draftOnly": true,
+    "neverPublish": true,
+    "neverSend": true,
+    "tempFilePerms": "600",
+    "audit": {
+      "enabled": false,
+      "collection": "sermons",
+      "db": "website",
+      "note": "Optional idempotency/resume via a `sermons` collection { sourceFile, slug, status, contentfulEntryId, updatedAt }. Deferred in V1 (spec §7.1); re-runs are instead guarded by the publisher's slug-collision check (search_entries before create, append -2/-3)."
     }
   }
 }
