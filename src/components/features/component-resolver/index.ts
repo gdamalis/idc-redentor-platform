@@ -1,1 +1,0 @@
-export { resolveComponent, resolveComponents, type ContentfulComponent } from './component-resolver'; 

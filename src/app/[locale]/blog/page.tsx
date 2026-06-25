@@ -1,9 +1,9 @@
 import { shouldUseDraftMode } from "@lib/contentful/draftMode";
 import { getLatestBlogPostPages } from "@lib/contentful/getBlogPostPages";
-import { getPage } from "@lib/contentful/getPage";
+import { getCtaComponent } from "@lib/contentful/getCtaComponent";
 import { buildPageMetadata } from "@lib/metadata";
 import { BlogSection } from "@src/components/features/blog-section";
-import { resolveComponents } from "@src/components/features/component-resolver";
+import { ComponentCta } from "@src/components/features/component-cta";
 import { Header } from "@src/components/shared/header";
 import { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -24,25 +24,28 @@ export default async function BlogPage({
 }>) {
   const { locale } = await params;
   setRequestLocale(locale);
-  
+
   const t = await getTranslations("Blog");
   const isEnabled = await shouldUseDraftMode();
-
-  const landingPage = await getPage("blog", locale, isEnabled);
 
   const latestPosts = await getLatestBlogPostPages(locale, {
     isDraftMode: isEnabled,
   });
+  const contactCta = await getCtaComponent(
+    "connect-with-us",
+    locale,
+    isEnabled,
+  );
 
   return (
     <main>
-      <Header 
-        titlePath="Blog.header-title" 
+      <Header
+        titlePath="Blog.header-title"
         variant="gradient"
         subtitle={t("header-subtitle")}
       />
       <BlogSection posts={latestPosts} showHeader={false} />
-      {resolveComponents(landingPage.extraSectionCollection)}
+      {contactCta && <ComponentCta content={contactCta} />}
     </main>
   );
 }
