@@ -91,10 +91,12 @@ Confirm both PDFs exist with non-zero size.
 ## 5. Publish the DRAFT — (subagent: `config.predica.agents.publisher`)
 
 Dispatch `predica-publisher` with `slugDir`, `sermon.json`, the canonical `finalSlug`,
-`config.predica.{contentfulSpaceId,contentfulEnv,defaultContentfulLocale,entryBuilder}`, the two `pdfPaths`,
-and the `deferredAssets` (audio mp3 path + featuredImage note). It creates the bilingual **DRAFT** `sermon`
-entry + both-locale `bibleVerse` refs + uploads the PDFs, and returns `{ entryId, editUrl, finalSlug,
-deferred[], published:false }`. If it reports a slug bump (collision), thread the new `finalSlug` forward.
+`config.predica.{contentfulSpaceId,contentfulEnv,entryBuilder,assetUploader,entryCreator}`, the two `pdfPaths`,
+and the `audioMp3` path. It uploads the audio + both PDFs (via the CMA scripts), upserts both-locale
+`bibleVerse` refs, links the preacher, and creates the bilingual **DRAFT** `sermon` entry, returning
+`{ entryId, editUrl, finalSlug, assetIds, deferred[], published:false }`. Only `featuredImage` is deferred
+(none is generated; required only on publish). If it reports a slug bump (collision), thread the new
+`finalSlug` forward.
 
 ## 6. Compose the WhatsApp text — (subagent: `config.predica.agents.whatsapp`)
 
@@ -109,16 +111,16 @@ Print a single summary block and **stop** (no further action):
 - **Transcript:** `<…>/transcript.txt`
 - **sermon.json:** `<…>/sermon.json`
 - **PDFs:** `<…>/predica.es-AR.pdf`, `<…>/predica.en-US.pdf`
-- **Contentful DRAFT (agent-sandbox):** `<editUrl>` — status **draft, not published**
-- **Deferred media to attach in Contentful before publishing:** audio `<…>/audio.mp3`, plus a featuredImage
-  (required on publish)
+- **Contentful DRAFT (agent-sandbox):** `<editUrl>` — status **draft, not published** (audio + both PDFs
+  already attached)
+- **Deferred media to attach before publishing:** a `featuredImage` (required on publish; none is generated)
 - **WhatsApp (es-AR):** `<…>/whatsapp.txt` — canonical URL `<…>` (verify the production domain)
 
 Then tell the user, verbatim intent:
 
-> "Done — everything is a **draft**. To go live: in Contentful (agent-sandbox) attach the audio +
-> featuredImage to the draft, review both locales, **merge agent-sandbox → master**, and **Publish**
-> (the publish webhook revalidates the site). Then paste the WhatsApp text. **No agent publishes or sends.**"
+> "Done — everything is a **draft**. To go live: in Contentful (agent-sandbox) attach a **featuredImage** to
+> the draft, review both locales, **merge agent-sandbox → master**, and **Publish** (the publish webhook
+> revalidates the site). Then paste the WhatsApp text. **No agent publishes or sends.**"
 
 **Never move any Trello card to Done. Never publish. Never send.**
 
