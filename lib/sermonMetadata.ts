@@ -31,12 +31,16 @@ export function buildSermonMetadata({
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
   const pageUrl = `${baseUrl}/${locale}/${path}`;
 
-  const ogImage = {
-    url: sermon.featuredImage.url,
-    width: 1200,
-    height: 630,
-    alt: sermon.featuredImage.title,
-  };
+  // featuredImage is optional in Contentful and is often empty on drafts, so
+  // omit the OG/Twitter image rather than dereferencing a missing asset.
+  const ogImage = sermon.featuredImage
+    ? {
+        url: sermon.featuredImage.url,
+        width: 1200,
+        height: 630,
+        alt: sermon.featuredImage.title,
+      }
+    : undefined;
 
   const audioEntry = sermon.audio
     ? { url: sermon.audio.url, type: sermon.audio.contentType }
@@ -49,7 +53,7 @@ export function buildSermonMetadata({
     openGraph: {
       title: sermon.seoTitle,
       description: sermon.seoDescription,
-      images: [ogImage],
+      ...(ogImage ? { images: [ogImage] } : {}),
       url: pageUrl,
       type: "article",
       locale: locale.replace("-", "_"),
@@ -63,7 +67,7 @@ export function buildSermonMetadata({
       card: "summary_large_image",
       title: sermon.seoTitle,
       description: sermon.seoDescription,
-      images: [ogImage],
+      ...(ogImage ? { images: [ogImage] } : {}),
     },
     alternates: {
       canonical: pageUrl,
@@ -99,7 +103,7 @@ export function buildSermonJsonLd(sermon: Sermon, locale: string) {
     "@type": "Article" as const,
     headline: sermon.seoTitle,
     description: sermon.seoDescription,
-    image: sermon.featuredImage.url,
+    ...(sermon.featuredImage ? { image: sermon.featuredImage.url } : {}),
     datePublished: sermon.sermonDate,
     dateModified: sermon.sys.publishedAt ?? sermon.sermonDate,
     author: {

@@ -39,7 +39,7 @@ export interface Sermon {
       };
     };
   };
-  featuredImage: {
+  featuredImage?: {
     url: string;
     title: string;
   };
@@ -63,7 +63,7 @@ export interface Sermon {
     slug: string;
     sermonDate: string;
     excerpt: string;
-    featuredImage: {
+    featuredImage?: {
       url: string;
       title: string;
     };

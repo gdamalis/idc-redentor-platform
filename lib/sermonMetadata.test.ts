@@ -64,6 +64,13 @@ const SERMON_NO_AUDIO: Sermon = {
   scriptureReferences: undefined,
 };
 
+// A draft sermon where the editor has not yet uploaded a featured image.
+// This is the exact shape that crashed the live preview (featuredImage: null).
+const SERMON_NO_IMAGE: Sermon = {
+  ...FULL_SERMON,
+  featuredImage: undefined,
+};
+
 describe("formatIsoDuration", () => {
   it("formats whole minutes correctly", () => {
     expect(formatIsoDuration(60)).toBe("PT1M0S");
@@ -142,6 +149,18 @@ describe("buildSermonMetadata", () => {
   it("includes keywords", () => {
     const meta = buildSermonMetadata({ sermon: FULL_SERMON, locale: "es-AR", path: "predicas/la-gracia-de-dios" });
     expect(meta.keywords).toEqual(["gracia", "fe", "salvación"]);
+  });
+
+  it("does not throw when featuredImage is absent (draft preview)", () => {
+    expect(() =>
+      buildSermonMetadata({ sermon: SERMON_NO_IMAGE, locale: "es-AR", path: "predicas/la-gracia-de-dios" }),
+    ).not.toThrow();
+  });
+
+  it("omits openGraph.images and twitter.images when featuredImage is absent", () => {
+    const meta = buildSermonMetadata({ sermon: SERMON_NO_IMAGE, locale: "es-AR", path: "predicas/la-gracia-de-dios" });
+    expect((meta.openGraph as Record<string, unknown>)?.images).toBeUndefined();
+    expect((meta.twitter as Record<string, unknown>)?.images).toBeUndefined();
   });
 });
 
@@ -235,5 +254,13 @@ describe("buildSermonJsonLd", () => {
   it("omits citation when scriptureReferences absent", () => {
     const ld = buildSermonJsonLd(SERMON_NO_AUDIO, "es-AR");
     expect(ld.citation).toBeUndefined();
+  });
+
+  it("does not throw and omits image when featuredImage is absent (draft preview)", () => {
+    let ld: ReturnType<typeof buildSermonJsonLd> | undefined;
+    expect(() => {
+      ld = buildSermonJsonLd(SERMON_NO_IMAGE, "es-AR");
+    }).not.toThrow();
+    expect(ld?.image).toBeUndefined();
   });
 });

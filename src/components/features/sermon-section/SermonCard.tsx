@@ -33,14 +33,16 @@ export function SermonCard({ sermon, index = 0 }: Readonly<SermonCardProps>) {
     >
       <Link href={`/predicas/${sermon.slug}`}>
         <Card className="group flex flex-col h-full overflow-hidden rounded-2xl border border-border shadow-sm hover:shadow-md transition-all hover:-translate-y-1 cursor-pointer">
-          <div className="relative h-48 overflow-hidden">
-            <Image
-              alt={sermon.featuredImage.title}
-              src={sermon.featuredImage.url}
-              width={780}
-              height={780}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
+          <div className="relative h-48 overflow-hidden bg-muted">
+            {sermon.featuredImage && (
+              <Image
+                alt={sermon.featuredImage.title}
+                src={sermon.featuredImage.url}
+                width={780}
+                height={780}
+                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+            )}
 
             {/* Audio indicator badge */}
             {sermon.audio && (
