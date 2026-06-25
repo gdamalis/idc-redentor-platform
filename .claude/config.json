@@ -368,16 +368,16 @@
     }
   },
   "predica": {
-    "_note": "Drives /predica + the four predica-* subagents (transcriber, writer, publisher, whatsapp). Local on-demand sermon pipeline: a recording -> transcript -> bilingual sermon.json -> two branded PDFs (Card C) -> a Contentful DRAFT in agent-sandbox -> a ready-to-paste WhatsApp text. TWO human gates (transcript correction; promote/publish). Draft-only + send-only: the publisher's MCP allowlist omits every publish_* and writes only to agent-sandbox; nothing is ever auto-published or auto-sent. See tasks/specs/sermon-pipeline.md §7-§9.",
+    "_note": "Drives /predica + the four predica-* subagents (transcriber, writer, publisher, whatsapp). Local on-demand sermon pipeline: a recording -> transcript -> bilingual sermon.json -> two branded PDFs (Card C) -> a Contentful DRAFT in production -> a ready-to-paste WhatsApp text. TWO human gates (transcript correction; promote/publish). Draft-only + send-only: the publisher's MCP allowlist omits every publish_* and writes only a DRAFT to production (never publishes); nothing is ever auto-published or auto-sent. See tasks/specs/sermon-pipeline.md §7-§9.",
     "audioInbox": "/Users/gabriel/Documents/Church/Redentor/02 - Vida en Comunidad/Cultos/Predicas",
     "audioInboxNote": "Where Sunday recordings land. `/predica` with no path picks the NEWEST audio file here. Spaces/accents in filenames are expected; the slug is derived from the TITLE, not the filename (§7.1).",
     "artifactsDir": "tasks/predicas",
     "artifactsDirNote": "Per-sermon working dir tasks/predicas/<slug>/ holds the WAV (throwaway), transcript.{txt,srt,json}, audio.mp3, the original .m4a archive copy, sermon.json, both PDFs, contentful-entry artifacts, and whatsapp.txt. gitignored (large, not source).",
     "contentType": "sermon",
     "contentfulSpaceId": "vg9le24yw8hb",
-    "contentfulEnv": "agent-sandbox",
+    "contentfulEnv": "production",
     "contentfulProtectedEnv": "master",
-    "contentfulEnvNote": "The publisher writes ONLY to agent-sandbox (a branch of master). The MCP server runs PROTECTED_ENVIRONMENTS=master as a server-side backstop. A human promotes agent-sandbox -> master in the Contentful web app at Gate 2. If agent-sandbox is missing (consumed by a prior merge), re-create it from master before running (create_environment); free the single work-env quota slot first if needed.",
+    "contentfulEnvNote": "The publisher creates the sermon as a DRAFT in `production` (the live env behind the master alias) via the two committed CMA scripts — it has NO publish call, so nothing goes live until a human reviews both locales and clicks Publish at Gate 2. The scripts refuse the `master` ALIAS by name (you write the `production` ENV, never the alias). The MCP server runs PROTECTED_ENVIRONMENTS=master,production as a backstop, which does not affect these scripts (they use the management token directly, not the MCP).",
     "defaultContentfulLocale": "es-AR",
     "locales": ["es-AR", "en-US"],
     "defaultLocale": "es-AR",
@@ -436,7 +436,7 @@
         "after": "publish",
         "owner": "human",
         "blocking": true,
-        "note": "Gate 2 — the orchestrator presents the summary and stops. The human reviews the DRAFT in Contentful, attaches the deferred media (audio, featuredImage), merges agent-sandbox -> master, publishes, and pastes the WhatsApp text. No agent publishes or sends."
+        "note": "Gate 2 — the orchestrator presents the summary and stops. The human reviews the DRAFT in Contentful (production), attaches any deferred media (audio, featuredImage), reviews both locales, and Publishes; then pastes the WhatsApp text. No agent publishes or sends."
       }
     },
     "draftOnly": true,

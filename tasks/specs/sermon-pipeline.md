@@ -1,5 +1,7 @@
 # Sermon Pipeline — Design Spec (V1)
 
+> **v2 update (ICR-83, 2026-06-25):** `agent-sandbox` is retired. `/predica` now creates the sermon as a **DRAFT in `production`**; a human reviews both locales and **Publishes** (Gate 2). The "merge agent-sandbox → master" step below is historical. See `docs/contentful-environments.md`.
+
 > **Status:** Draft for review · 2026-06-23
 > **Author:** Claude (brainstorming → spec)
 > **Feature:** Record a Sunday sermon → transcribe → generate a bilingual Contentful **draft** post (audio player + downloadable PDF summary, both languages) → produce a WhatsApp share message. Runs locally in the Claude Code harness (V1). Cloud automation is a documented V2 (appendix).

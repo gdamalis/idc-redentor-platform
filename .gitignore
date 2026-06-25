@@ -66,3 +66,6 @@ graphify-out/
 
 # /predica harness artifacts — audio, transcripts, sermon.json, generated PDFs (large, not source)
 tasks/predicas/
+
+# Contentful cold-backup exports (heavy-cutover insurance; local only)
+scripts/contentful/backups/
