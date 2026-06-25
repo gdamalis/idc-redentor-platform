@@ -38,3 +38,33 @@ export interface ContentCollection {
   description: RichTextField;
   creedItems: ContentItem[];
 }
+
+export const SECTION_LAYOUT = {
+  hero: "hero",
+  cta: "cta",
+  textBlock: "textBlock",
+} as const;
+
+export type SectionLayout = (typeof SECTION_LAYOUT)[keyof typeof SECTION_LAYOUT];
+
+export interface SectionImageItem {
+  url: string;
+  title: string;
+  width?: number;
+  height?: number;
+}
+
+export interface Section {
+  layout?: SectionLayout;
+  machineName?: string;
+  headline?: string;
+  subHeadline?: string;
+  body?: RichTextField;
+  ctaText?: string;
+  targetPage?: { slug: string };
+  urlParameters?: string;
+  image?: ContentfulImage;
+  imagesCollection?: { items: SectionImageItem[] };
+  sys?: { id: string };
+  __typename?: string;
+}

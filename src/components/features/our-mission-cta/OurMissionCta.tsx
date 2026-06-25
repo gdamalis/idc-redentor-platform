@@ -47,7 +47,7 @@ type OurMissionCtaProps = {
   content: {
     headline: string;
     subHeadline: string;
-    bodyText: {
+    body: {
       json: Document;
     };
     ctaText: string;
@@ -58,18 +58,12 @@ type OurMissionCtaProps = {
       title: string;
       url: string;
     };
-    additionalImagesCollection: {
-      items: {
-        title: string;
-        url: string;
-      }[];
-    };
   };
 };
 
 export const OurMissionCta = ({ content }: OurMissionCtaProps) => {
   const t = useTranslations("OurMissionCta");
-  const bodyText = documentToReactComponents(content.bodyText.json, options);
+  const bodyText = documentToReactComponents(content.body.json, options);
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -146,23 +140,6 @@ export const OurMissionCta = ({ content }: OurMissionCtaProps) => {
           </motion.div>
         </motion.div>
       </div>
-
-      {/* Additional Images Section - Below the Fold */}
-      {/* <div className="absolute bottom-0 left-0 right-0 z-10 pb-8 hidden lg:flex justify-center gap-4 opacity-50 hover:opacity-100 transition-opacity">
-        {content.additionalImagesCollection.items.slice(0, 3).map((img, i) => (
-          <div
-            key={i}
-            className="relative w-24 h-24 rounded-lg overflow-hidden"
-          >
-            <Image
-              src={img.url}
-              alt={img.title}
-              fill
-              className="object-cover"
-            />
-          </div>
-        ))}
-      </div> */}
     </section>
   );
 };
