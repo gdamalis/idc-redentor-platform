@@ -2,8 +2,10 @@ import { shouldUseDraftMode } from "@lib/contentful/draftMode";
 import { getFooter } from "@lib/contentful/getFooter";
 import { getNavigationMenu } from "@lib/contentful/getNavigationMenu";
 import { getSingleEmailForm } from "@lib/contentful/getSingleEmailForm";
+import { buildOrganizationJsonLd } from "@lib/metadata";
 import { ConsentBanner } from "@src/components/shared/consent-banner/ConsentBanner";
 import { Footer } from "@src/components/shared/footer";
+import { JsonLd } from "@src/components/shared/json-ld";
 import { NavbarWrapper } from "@src/components/shared/navbar";
 import { SubscribeBanner } from "@src/components/shared/subscribe-banner";
 import { Toaster } from "@src/components/ui/toaster";
@@ -107,6 +109,7 @@ export default async function LocaleLayout({
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: consentDefaultScript }}
         />
+        <JsonLd data={buildOrganizationJsonLd(locale)} />
         <GoogleTagManager gtmId={process.env.NEXT_PUBLIC_GTM_ID!} />
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <NextIntlClientProvider messages={messages}>

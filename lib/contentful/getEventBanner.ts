@@ -16,6 +16,10 @@ const GRAPHQL_FIELDS = `
       country
       mapEmbedUrl
       googleMapsUrl
+      location {
+        lat
+        lon
+      }
     }
   }
   image {

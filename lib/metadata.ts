@@ -6,6 +6,27 @@ import { buildLocaleAlternates } from "@src/i18n/config";
 import { shouldUseDraftMode } from "./contentful/draftMode";
 import { getSeo } from "./contentful/getSeo";
 
+interface EventBannerLocation {
+  addressLine1: string;
+  neighborhood?: string;
+  city: string;
+  country: string;
+  mapEmbedUrl?: string;
+  googleMapsUrl?: string;
+  location?: { lat: number; lon: number };
+}
+
+interface EventBannerData {
+  eventInfo: {
+    name: string;
+    dayOfWeek: string;
+    date?: string | null;
+    time: string;
+    note?: string | null;
+  };
+  location: EventBannerLocation;
+}
+
 interface BuildPageMetadataOptions {
   machineName: string;
   locale: string;
@@ -122,12 +143,96 @@ export function buildArticleMetadata({
   };
 }
 
+export function buildOrganizationJsonLd(locale: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+
+  const name =
+    locale === "en-US" ? "Redentor Church of Christ" : "Iglesia de Cristo Redentor";
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Church" as const,
+    "@id": `${baseUrl}/#church`,
+    name,
+    url: `${baseUrl}/${locale}`,
+    logo: `${baseUrl}/assets/img/redentor_logo.png`,
+    image: `${baseUrl}/assets/img/og_default.jpeg`,
+    email: "info@idcredentor.com",
+    address: {
+      "@type": "PostalAddress" as const,
+      streetAddress: "Tte. Gral. Juan Domingo Perón 4385",
+      addressLocality: "Buenos Aires",
+      addressRegion: "Ciudad Autónoma de Buenos Aires",
+      addressCountry: "AR",
+    },
+    geo: {
+      "@type": "GeoCoordinates" as const,
+      latitude: -34.6058,
+      longitude: -58.4287,
+    },
+    sameAs: [
+      "https://www.facebook.com/iglesiadecristoredentor",
+      "https://www.instagram.com/idcredentor/",
+    ],
+  };
+}
+
+export function buildEventJsonLd(eventBanner: EventBannerData, locale: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  const { eventInfo, location } = eventBanner;
+
+  const name =
+    locale === "en-US" ? "Redentor Church of Christ" : "Iglesia de Cristo Redentor";
+
+  const geo =
+    location.location?.lat != null
+      ? {
+          "@type": "GeoCoordinates" as const,
+          latitude: location.location.lat,
+          longitude: location.location.lon,
+        }
+      : undefined;
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Event" as const,
+    name: eventInfo.name,
+    ...(eventInfo.note ? { description: eventInfo.note } : {}),
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    eventStatus: "https://schema.org/EventScheduled",
+    eventSchedule: {
+      "@type": "Schedule" as const,
+      byDay: "https://schema.org/Sunday",
+      startTime: eventInfo.time,
+      repeatFrequency: "P1W",
+    },
+    location: {
+      "@type": "Place" as const,
+      name,
+      address: {
+        "@type": "PostalAddress" as const,
+        streetAddress: location.addressLine1,
+        addressLocality: location.city,
+        ...(location.neighborhood ? { addressRegion: location.neighborhood } : {}),
+        addressCountry: location.country,
+      },
+      ...(geo ? { geo } : {}),
+      ...(location.googleMapsUrl ? { hasMap: location.googleMapsUrl } : {}),
+    },
+    organizer: {
+      "@type": "Church" as const,
+      name,
+      url: `${baseUrl}/${locale}`,
+    },
+  };
+}
+
 export function buildArticleJsonLd(post: BlogPost, locale: string) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   return {
     "@context": "https://schema.org",
-    "@type": "Article",
+    "@type": "BlogPosting" as const,
     headline: post.seoTitle,
     description: post.seoDescription,
     image: post.featuredImage.url,

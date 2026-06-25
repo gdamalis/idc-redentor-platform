@@ -2,11 +2,12 @@ import { shouldUseDraftMode } from "@lib/contentful/draftMode";
 import { getContactForm } from "@lib/contentful/getContactForm";
 import { getEventBanner } from "@lib/contentful/getEventBanner";
 import { getTextBlockComponent } from "@lib/contentful/getTextBlockComponent";
-import { buildPageMetadata } from "@lib/metadata";
+import { buildEventJsonLd, buildPageMetadata } from "@lib/metadata";
 import { CommunityEvent } from "@src/components/features/community-event";
 import { ContactForm } from "@src/components/features/contact-form";
 import { InfoConnect } from "@src/components/features/info-connect/InfoConnect";
 import { Header } from "@src/components/shared/header";
+import { JsonLd } from "@src/components/shared/json-ld";
 import { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -48,8 +49,11 @@ export default async function ComeMeetUsPage({
 
   return (
     <main>
-      <Header 
-        titlePath="Connect.header-title" 
+      {eventSundayMeetings && (
+        <JsonLd data={buildEventJsonLd(eventSundayMeetings, locale)} />
+      )}
+      <Header
+        titlePath="Connect.header-title"
         variant="gradient"
         subtitle={t("header-subtitle")}
       />
