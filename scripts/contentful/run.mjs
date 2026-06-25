@@ -24,10 +24,14 @@ await runMigration({
   spaceId: process.env.CONTENTFUL_SPACE_ID,
   accessToken: process.env.CONTENTFUL_MANAGEMENT_ACCESS_TOKEN,
   environmentId,
-  // Always auto-confirm: this runner is meant for non-interactive/agent use, where the
-  // interactive "apply?" prompt crashes (ERR_USE_AFTER_CLOSE) with no TTY. The review step
-  // is the `--dry-run` invocation; `dryRun` (below) is what actually gates whether changes apply.
-  yes: true,
-  ...(dryRun ? { dryRun: true } : {}),
+  // contentful-migration@5 has NO programmatic dry-run, so the real preview gate is the
+  // interactive confirm: apply mode auto-confirms (yes:true) for non-interactive/agent use;
+  // dry-run keeps the confirm (yes:false) and is declined by piping "n" to stdin, printing the
+  // plan WITHOUT applying:  printf 'n\n' | node scripts/contentful/run.mjs NN --dry-run
+  yes: !dryRun,
 });
-console.log(`Applied ${file} to ${environmentId}${dryRun ? " (dry-run)" : ""}`);
+console.log(
+  dryRun
+    ? `Planned ${file} against ${environmentId} (dry-run — nothing applied)`
+    : `Applied ${file} to ${environmentId}`,
+);
