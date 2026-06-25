@@ -91,7 +91,7 @@ Contentful → lib/contentful/fetch.ts (fetchGraphQL) → lib/contentful/get*.ts
 MongoDB    → src/service/database.service.ts (cached client) → like/contact services → API route / Server Action
 ```
 
-- **Contentful (read-only content)** is the primary source. Each `lib/contentful/get*.ts` getter hand-writes a GraphQL query string with inline `locale:` + `preview:` arguments and POSTs it through `fetchGraphQL`. Every request is tagged `next: { tags: ["site-content"] }` for on-demand revalidation. **`codegen.ts` is unused/aspirational — ignore it; there is no generated client.** See `docs/contentful-data-layer.md`.
+- **Contentful (read-only content)** is the primary source. Each `lib/contentful/get*.ts` getter hand-writes a GraphQL query string with inline `locale:` + `preview:` arguments and POSTs it through `fetchGraphQL`. Every request is tagged `next: { tags: ["site-content"] }` for on-demand revalidation. **There is no GraphQL codegen or generated client — the data layer is entirely hand-written** (the unused `codegen.ts` + `@graphql-codegen/*` deps were removed). See `docs/contentful-data-layer.md`.
 - **MongoDB (the only writes)** backs exactly two collections in a database literally named `website`: `likes` (blog post likes) and `contact` (saved contact messages). See `docs/likes-and-mongodb.md`.
 
 ### i18n (next-intl)

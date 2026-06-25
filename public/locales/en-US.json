@@ -28,6 +28,21 @@
     "header-subtitle": "We are a diverse community united by the love of Jesus. No matter your background, story, or struggles, you have a family here.",
     "photo-grid-caption": "Life Together"
   },
+  "Sermons": {
+    "header-title": "Sermons",
+    "header-subtitle": "Messages from our Sunday services",
+    "preached-by": "Preached by",
+    "audio-in-spanish": "This sermon's audio is in Spanish.",
+    "play": "Play",
+    "pause": "Pause",
+    "seek": "Seek",
+    "speed": "Speed",
+    "scripture": "Scripture",
+    "summary-pdf": "Download summary (PDF)",
+    "more-sermons": "More sermons",
+    "no-sermons": "No sermons published yet.",
+    "view-all": "View all sermons"
+  },
   "common": {
     "regionalSettings": "Regional Settings",
     "homepage": "Homepage",
@@ -36,6 +51,7 @@
     "home": "Home",
     "community": "Community",
     "blog": "Blog",
+    "sermons": "Sermons",
     "join-us": "Join Us"
   },
   "footer": {
@@ -73,5 +89,13 @@
     "message": "We value your privacy. We use analytics to understand how to improve this site. We do not collect personal data for commercial purposes.",
     "accept": "That's fine",
     "decline": "I'd rather not"
+  },
+  "ContactForm": {
+    "form-heading": "Send us a Message",
+    "error-required-fields": "Please fill in all required fields.",
+    "error-invalid-email": "Please enter a valid email address.",
+    "success-message": "Your message was sent successfully!",
+    "error-save-failed": "Failed to save your message. Please try again later.",
+    "error-unexpected": "An unexpected error occurred. Please try again later."
   }
 }

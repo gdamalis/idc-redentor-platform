@@ -30,6 +30,7 @@ export const Footer = ({ content }: FooterProps) => {
     { href: "/", label: t("common.home") },
     { href: "/community", label: t("common.community") },
     { href: "/blog", label: t("common.blog") },
+    { href: "/predicas", label: t("common.sermons") },
     { href: "/come-meet-us", label: t("common.join-us") },
   ];
 

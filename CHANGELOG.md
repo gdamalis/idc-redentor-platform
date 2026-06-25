@@ -1,3 +1,24 @@
+# [1.14.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.13.0...v1.14.0) (2026-06-25)
+
+### Features
+
+- **ICR-81:** /predica harness — transcribe → bilingual draft → PDF → WhatsApp ([#52](https://github.com/gdamalis/idc-redentor-web/issues/52)) ([f282598](https://github.com/gdamalis/idc-redentor-web/commit/f282598711445cb5982cecd33041b33c13b6dde0))
+
+# [1.13.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.12.2...v1.13.0) (2026-06-25)
+
+### Features
+
+- **ICR-79:** /predicas bilingual sermon section — audio player, likes, PDF link, SEO ([#47](https://github.com/gdamalis/idc-redentor-web/issues/47)) ([f1c0b26](https://github.com/gdamalis/idc-redentor-web/commit/f1c0b2694932f52f0e85a4fcb370f16f9faace40))
+- **ICR-80:** bilingual branded sermon PDF generator (HTML→Playwright print) ([#49](https://github.com/gdamalis/idc-redentor-web/issues/49)) ([828d3df](https://github.com/gdamalis/idc-redentor-web/commit/828d3df69c9bc23ddd03af0e3c003e8bc4a26ab5))
+
+## [1.12.2](https://github.com/gdamalis/idc-redentor-web/compare/v1.12.1...v1.12.2) (2026-06-24)
+
+## [1.12.1](https://github.com/gdamalis/idc-redentor-web/compare/v1.12.0...v1.12.1) (2026-06-24)
+
+### Bug Fixes
+
+- **ICR-49:** localize contact-form heading and submit feedback messages ([#45](https://github.com/gdamalis/idc-redentor-web/issues/45)) ([287a063](https://github.com/gdamalis/idc-redentor-web/commit/287a063473e9d0ecaee1f6b8785ea201f8acf037))
+
 # [1.12.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.11.3...v1.12.0) (2026-06-24)
 
 ### Features

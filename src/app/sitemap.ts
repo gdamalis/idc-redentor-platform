@@ -1,10 +1,12 @@
 import { getAllBlogPostSlugs } from "@lib/contentful/getBlogPostPages";
+import { getAllSermonSlugs } from "@lib/contentful/getSermons";
 import { i18n } from "@src/i18n/config";
 import type { MetadataRoute } from "next";
 
 const staticPages = [
   "",
   "blog",
+  "predicas",
   "community",
   "come-meet-us",
   "who-is-jesus",
@@ -43,5 +45,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     alternates: buildAlternates(`blog/${post.slug}`),
   }));
 
-  return [...staticEntries, ...blogEntries];
+  const sermonSlugs = await getAllSermonSlugs(i18n.defaultLocale);
+
+  const sermonEntries: MetadataRoute.Sitemap = sermonSlugs.flatMap((sermon) =>
+    i18n.locales.map((locale) => ({
+      url: `${baseUrl}/${locale}/predicas/${sermon.slug}`,
+      lastModified: new Date(sermon.updatedAt),
+      alternates: buildAlternates(`predicas/${sermon.slug}`),
+    })),
+  );
+
+  return [...staticEntries, ...blogEntries, ...sermonEntries];
 }

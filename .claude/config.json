@@ -366,5 +366,88 @@
       "onFailureFallback": "Proceed with existing graph (or Grep/Read if no graph). Agents include staleness/error notes in their reports and Grep to confirm any 'not found' negative when the graph may be stale.",
       "memoryLoop": "After answering a codebase question from the graph, the querying agent runs `graphify save-result --question ... --answer ... --nodes ...` so the next `graphify update` folds the Q&A back into the graph."
     }
+  },
+  "predica": {
+    "_note": "Drives /predica + the four predica-* subagents (transcriber, writer, publisher, whatsapp). Local on-demand sermon pipeline: a recording -> transcript -> bilingual sermon.json -> two branded PDFs (Card C) -> a Contentful DRAFT in agent-sandbox -> a ready-to-paste WhatsApp text. TWO human gates (transcript correction; promote/publish). Draft-only + send-only: the publisher's MCP allowlist omits every publish_* and writes only to agent-sandbox; nothing is ever auto-published or auto-sent. See tasks/specs/sermon-pipeline.md §7-§9.",
+    "audioInbox": "/Users/gabriel/Documents/Church/Redentor/02 - Vida en Comunidad/Cultos/Predicas",
+    "audioInboxNote": "Where Sunday recordings land. `/predica` with no path picks the NEWEST audio file here. Spaces/accents in filenames are expected; the slug is derived from the TITLE, not the filename (§7.1).",
+    "artifactsDir": "tasks/predicas",
+    "artifactsDirNote": "Per-sermon working dir tasks/predicas/<slug>/ holds the WAV (throwaway), transcript.{txt,srt,json}, audio.mp3, the original .m4a archive copy, sermon.json, both PDFs, contentful-entry artifacts, and whatsapp.txt. gitignored (large, not source).",
+    "contentType": "sermon",
+    "contentfulSpaceId": "vg9le24yw8hb",
+    "contentfulEnv": "agent-sandbox",
+    "contentfulProtectedEnv": "master",
+    "contentfulEnvNote": "The publisher writes ONLY to agent-sandbox (a branch of master). The MCP server runs PROTECTED_ENVIRONMENTS=master as a server-side backstop. A human promotes agent-sandbox -> master in the Contentful web app at Gate 2. If agent-sandbox is missing (consumed by a prior merge), re-create it from master before running (create_environment); free the single work-env quota slot first if needed.",
+    "defaultContentfulLocale": "es-AR",
+    "locales": ["es-AR", "en-US"],
+    "defaultLocale": "es-AR",
+    "whatsappLocale": "es-AR",
+    "siteBaseUrl": "https://www.idcredentor.com",
+    "siteBaseUrlNote": "Production canonical used to build the deterministic share URL ${siteBaseUrl}/es-AR/predicas/<slug>. NOT the local .env.local NEXT_PUBLIC_BASE_URL (which is http://localhost:3000 in dev). The human verifies/corrects this URL at Gate 2 if the live domain differs.",
+    "scriptureVersion": { "es-AR": "RVR1960", "en-US": "NIV" },
+    "whisper": {
+      "bin": "/Users/gabriel/repos/whisper.cpp/build/bin/whisper-cli",
+      "model": "/Users/gabriel/repos/whisper.cpp/models/ggml-large-v3-turbo.bin",
+      "lang": "es",
+      "threads": 8,
+      "extraFlags": ["-sns"],
+      "prompt": "Prédica en español. Iglesia de Cristo Redentor. Jesús, evangelio, Espíritu Santo, gracia, arrepentimiento, salvación, Escritura.",
+      "note": "large-v3-turbo is fast (~3-5 min for a 60-min sermon on the M3 Pro). The prompt seeds church vocabulary. -sns = suppress non-speech tokens. transcribe(audioPath) is a swappable boundary so V2 can drop in a cloud provider."
+    },
+    "audio": {
+      "wavSampleRate": 16000,
+      "wavChannels": 1,
+      "webFormat": "mp3",
+      "webCodec": "libmp3lame",
+      "webBitrate": "96k",
+      "archiveOriginal": true,
+      "note": "ffmpeg makes a throwaway 16k mono WAV for whisper, and a browser-universal .mp3 (96k) for the web audio player; the original .m4a is kept as the archive."
+    },
+    "pdf": {
+      "script": ".claude/scripts/predica/build-predica-pdf.mjs",
+      "logo": "public/assets/img/redentor_logo.png",
+      "outputs": ["predica.es-AR.pdf", "predica.en-US.pdf"],
+      "note": "Card C's generator (consumed as a black box): node <script> <sermon.json> [--out <dir>]. Needs Chromium: `pnpm exec playwright install chromium` on a fresh checkout."
+    },
+    "entryBuilder": ".claude/scripts/predica/build-sermon-entry.mjs",
+    "entryBuilderNote": "Deterministic builder: turns sermon.json (+ resolved link ids) into the exact Contentful `fields` payloads (bibleVerse + sermon), incl. localized wrapping and rich-text from content blocks. Canonical typed impl + tests: src/utils/predica/sermonEntry.ts. The publisher feeds these fields to entryCreator (below).",
+    "assetUploader": ".claude/scripts/predica/upload-contentful-asset.mjs",
+    "entryCreator": ".claude/scripts/predica/create-contentful-entry.mjs",
+    "writePathNote": "All Contentful WRITES go through these two CMA scripts (binary-upload + create-entry), NOT the MCP write tools — reliable at any size (a ~20MB mp3, a 50KB+ rich-text entry) where MCP base64 / LLM round-trip is infeasible. Both scripts are DRAFT-ONLY (no publish call) and HARD-REFUSE the master environment; they read CONTENTFUL_MANAGEMENT_ACCESS_TOKEN from env/.env.local (name only, never printed). The publisher's MCP allowlist is READ-ONLY, so it structurally cannot publish or touch master by any path.",
+    "assetUploadPolicy": {
+      "uploadedViaCma": ["audio", "pdfSummary"],
+      "deferToHumanAtGate2": ["featuredImage"],
+      "note": "The CMA upload endpoint handles any size, so the audio mp3 AND both PDFs are uploaded + linked automatically. Only featuredImage is deferred — none is generated by the pipeline and it is required only on PUBLISH (the human attaches one at Gate 2). durationSeconds is set from ffprobe."
+    },
+    "agents": {
+      "transcriber": "predica-transcriber",
+      "writer": "predica-writer",
+      "publisher": "predica-publisher",
+      "whatsapp": "predica-whatsapp"
+    },
+    "gates": {
+      "transcriptReview": {
+        "after": "transcribe",
+        "owner": "human",
+        "blocking": true,
+        "note": "Gate 1 — the orchestrator stops in-conversation and waits while the human corrects transcript.txt (names, scripture refs, theology). Never delegated, never auto-skipped."
+      },
+      "promote": {
+        "after": "publish",
+        "owner": "human",
+        "blocking": true,
+        "note": "Gate 2 — the orchestrator presents the summary and stops. The human reviews the DRAFT in Contentful, attaches the deferred media (audio, featuredImage), merges agent-sandbox -> master, publishes, and pastes the WhatsApp text. No agent publishes or sends."
+      }
+    },
+    "draftOnly": true,
+    "neverPublish": true,
+    "neverSend": true,
+    "tempFilePerms": "600",
+    "audit": {
+      "enabled": false,
+      "collection": "sermons",
+      "db": "website",
+      "note": "Optional idempotency/resume via a `sermons` collection { sourceFile, slug, status, contentfulEntryId, updatedAt }. Deferred in V1 (spec §7.1); re-runs are instead guarded by the publisher's slug-collision check (search_entries before create, append -2/-3)."
+    }
   }
 }
