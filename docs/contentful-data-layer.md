@@ -117,6 +117,8 @@ export async function shouldUseDraftMode(): Promise<boolean> {
 
 So editors get drafts automatically in local dev and on **every Vercel preview deployment**, and can opt into drafts in production by hitting `/api/draft/enable?secret=…&locale=…` (validates `CONTENTFUL_PREVIEW_SECRET`, enables Next draft mode, redirects to `/{locale}`). `/api/draft/disable` turns it back off. Always call `shouldUseDraftMode()` in a Server Component before calling getters; never hard-code `preview: true`.
 
+> Environment topology + the content/model workflow: see `docs/contentful-environments.md`.
+
 ## On-demand revalidation
 
 Published content is cached until a publish event invalidates it. The flow:

@@ -206,7 +206,8 @@ A human always merges the PR and closes the card (moves it to **Done**). Scratch
 - **Engineering docs** — in `docs/`:
   - `architecture.md` — App Router groups, the Contentful↔MongoDB split, request lifecycle, path aliases, security posture.
   - `contentful-data-layer.md` — `fetchGraphQL`, the getter convention, the `site-content` cache tag, draft/preview, the revalidate webhook, why codegen is unused.
-  - `contentful-mcp.md` — the official Contentful MCP server for agents (registered inline in local `~/.claude.json`; local/token, sandbox-env writes, `PROTECTED_ENVIRONMENTS=master`); the agent-only write path, separate from the app's read path.
+  - `contentful-environments.md` — the canonical content/model workflow (3 scenarios, heavy alias-swap cutover runbook, entry-sync tool, drift detector); the single source of truth on the `master → production` + `staging` topology.
+  - `contentful-mcp.md` — the official Contentful MCP server for agents (registered inline in local `~/.claude.json`; local/token, `ENVIRONMENT_ID=staging` default, `PROTECTED_ENVIRONMENTS=master,production`); the agent-only write path, separate from the app's read path.
   - `i18n.md` — next-intl setup, locales, message files, the `src/proxy.ts` middleware, locale alternates/hreflang.
   - `forms-and-email.md` — contact + subscribe flows, the SendGrid/Resend adapter, templates, spam/PII handling.
   - `likes-and-mongodb.md` — the cached Mongo client, the `likes`/`contact` collections, visitor de-dup, write safety.
