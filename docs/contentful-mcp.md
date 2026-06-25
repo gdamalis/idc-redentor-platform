@@ -40,13 +40,15 @@ The agents write to a **non-production Contentful environment**, never to the li
 Production is the `master` **alias**; agents work in a **work environment** and a human promotes (applies
 the change to prod, or re-points the alias). Two guardrails in the server's env:
 
-- `ENVIRONMENT_ID=<work env>` — every tool call defaults to the current **work** environment: the
-  permanent **`staging`** for everyday model changes, or a versioned clone `master-<major>.<minor>.<patch>`
-  (e.g. `master-1.0.0`) for a big breaking change (the two lanes in `docs/contentful-environments.md`).
-  Agents iterate there. (Historically this was a single static `agent-sandbox`, now retired.)
-- `PROTECTED_ENVIRONMENTS=master` — a backstop: even if a call explicitly targets the `master`
-  alias, the server blocks all write/delete operations on it. (Also list the current production env
-  id when it differs from the alias target, so a just-promoted env can't be written before reclone.)
+- `ENVIRONMENT_ID=staging` — every tool call defaults to the permanent **`staging`** work
+  environment. Every MCP tool also accepts `environmentId` as a **required per-call argument**,
+  so reads can target any environment explicitly (e.g. `environmentId: "production"` to inspect
+  live data) while writes are blocked by the guardrail below.
+- `PROTECTED_ENVIRONMENTS=master,production` — a hard backstop: even if a call explicitly passes
+  `environmentId: "master"` or `environmentId: "production"`, the server blocks all write/delete
+  operations against both the live alias and the live environment. Model changes go to `staging`
+  only; production is changed by a human cutover (Merge, committed scripts, or alias-swap), never
+  by an agent via the MCP.
 
 A human reviews and **promotes the work env → production** when the changes look right — by applying the
 tested migration to prod (default lane) or re-pointing the `master` alias (heavy lane). This mirrors the
@@ -61,12 +63,13 @@ env (`master-<major>.<minor>.<patch>`) + a **human alias re-point** for an atomi
 cutover. The free tier allows only **one** work env beyond the `master` alias target, so the two lanes
 share that slot (one at a time).
 
-The full runbook — the semver bump rule (**major** = breaking/significant, **minor** = new/additive,
-**patch** = fix), the per-cycle config touch points (MCP `ENVIRONMENT_ID`, `.env.local`
-`CONTENTFUL_ENVIRONMENT`, branch-scoped Vercel Preview), and the cutover/rollback — lives in
+The full runbook — the cutover/rollback steps, the one-time config touch points (MCP `ENVIRONMENT_ID`,
+`.env.local` `CONTENTFUL_ENVIRONMENT`, branch-scoped Vercel Preview), and the heavy alias-swap
+procedure for breaking changes — lives in
 **[`docs/contentful-environments.md`](./contentful-environments.md)** (machine-readable wiring in
-`.claude/config.json` → `contentful`). **Keep this server's `ENVIRONMENT_ID` pointed at the _current_
-work env each cycle.** The alias re-point is **never** done by an agent — it is a human promotion.
+`.claude/config.json` → `contentful`). **`ENVIRONMENT_ID` is permanently `staging`** — it is set once
+and does not rotate each cycle. The alias re-point is **never** done by an agent — it is a human
+promotion.
 
 ## Setup (recommended: inline, local, no ritual)
 
@@ -75,12 +78,12 @@ work env each cycle.** The alias re-point is **never** done by an agent — it i
    the Delivery/Preview tokens the app already uses. Store it in your gitignored `.env.local`
    as `CONTENTFUL_MANAGEMENT_ACCESS_TOKEN` (`.env.example` documents it). Treat it as a secret.
 
-2. **Create the work environment.** Contentful → **Settings → Environments → Add
-   environment**, name it per the semver scheme (`master-<major>.<minor>.<patch>`, e.g.
-   `master-1.0.0`), **clone from current production** (the `master` alias target). (Or, once the
-   MCP is connected, an agent can call `create_environment`.) See
-   [`docs/contentful-environments.md`](./contentful-environments.md) for the bump rule + the
-   two-environment cycle.
+2. **Create the `staging` work environment (one-time).** Contentful → **Settings →
+   Environments → Add environment**, name it `staging`, **clone from current production** (the
+   `master` alias target). (Or, once the MCP is connected, an agent can call `create_environment`.)
+   This is done once — `staging` is a permanent env, not recreated each cycle. See
+   [`docs/contentful-environments.md`](./contentful-environments.md) for the two-lane workflow and
+   the heavy alias-swap procedure for breaking changes.
 
 3. **Register the server in your local Claude Code config**, baking the values in from
    `.env.local` so the secret lives only on your machine (never in git, never in shell history
@@ -91,14 +94,14 @@ work env each cycle.** The alias re-point is **never** done by an agent — it i
    claude mcp add contentful -s user \
      -e CONTENTFUL_MANAGEMENT_ACCESS_TOKEN="$CONTENTFUL_MANAGEMENT_ACCESS_TOKEN" \
      -e SPACE_ID="$CONTENTFUL_SPACE_ID" \
-     -e ENVIRONMENT_ID=master-1.0.0 \
-     -e PROTECTED_ENVIRONMENTS=master \
+     -e ENVIRONMENT_ID=staging \
+     -e PROTECTED_ENVIRONMENTS=master,production \
      -- npx -y @contentful/mcp-server
    ```
 
-   `ENVIRONMENT_ID` is the **current work env** (`master-<major>.<minor>.<patch>`) — re-run this
-   `claude mcp add` (and fully restart) to re-point it at the new work env at the start of each
-   model-change cycle. `PROTECTED_ENVIRONMENTS=master` keeps the production alias write-protected.
+   `ENVIRONMENT_ID=staging` is the **permanent** default — it is set once and does not rotate.
+   `PROTECTED_ENVIRONMENTS=master,production` blocks write/delete operations against both the live
+   alias and the live environment; reads can still target any env by passing `environmentId` per call.
 
    This writes a resolved (inline) entry to `~/.claude.json`. No env vars are needed at launch
    afterward, and it applies in every project directory and worktree — matching how the other
@@ -125,8 +128,8 @@ If this needs to be **shared via the repo** (multiple contributors, CI), use a p
       "env": {
         "CONTENTFUL_MANAGEMENT_ACCESS_TOKEN": "${CONTENTFUL_MANAGEMENT_ACCESS_TOKEN}",
         "SPACE_ID": "${CONTENTFUL_SPACE_ID}",
-        "ENVIRONMENT_ID": "master-1.0.0",
-        "PROTECTED_ENVIRONMENTS": "master"
+        "ENVIRONMENT_ID": "staging",
+        "PROTECTED_ENVIRONMENTS": "master,production"
       }
     }
   }
