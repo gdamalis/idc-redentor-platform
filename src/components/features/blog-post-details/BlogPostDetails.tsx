@@ -31,6 +31,8 @@ export default function BlogPostDetails({
         <BlogPostContent post={post} />
         <PostActions
           slug={post.slug}
+          basePath="blog"
+          likeKey={post.slug}
           title={post.title}
           featuredImageUrl={post.featuredImage.url}
           initialLikeCount={initialLikeCount}

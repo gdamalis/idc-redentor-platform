@@ -28,6 +28,21 @@
     "header-subtitle": "Somos una comunidad diversa unida por el amor de Jesús. No importa tu trasfondo, historia o luchas, aquí tenés una familia.",
     "photo-grid-caption": "Vida en Comunidad"
   },
+  "Sermons": {
+    "header-title": "Prédicas",
+    "header-subtitle": "Mensajes de nuestros cultos dominicales",
+    "preached-by": "Predicado por",
+    "audio-in-spanish": "El audio de esta prédica está en español.",
+    "play": "Reproducir",
+    "pause": "Pausar",
+    "seek": "Buscar",
+    "speed": "Velocidad",
+    "scripture": "Pasaje bíblico",
+    "summary-pdf": "Descargar resumen (PDF)",
+    "more-sermons": "Más prédicas",
+    "no-sermons": "Aún no hay prédicas publicadas.",
+    "view-all": "Ver todas las prédicas"
+  },
   "common": {
     "regionalSettings": "Configuración regional",
     "homepage": "Página principal",
@@ -36,6 +51,7 @@
     "home": "Inicio",
     "community": "Comunidad",
     "blog": "Blog",
+    "sermons": "Prédicas",
     "join-us": "Sumate"
   },
   "footer": {
