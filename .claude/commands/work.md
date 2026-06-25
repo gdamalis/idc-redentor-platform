@@ -302,24 +302,27 @@ After the plan is written, determine whether it changes the **Contentful content
 
 **If it does NOT touch the model** (pure read fragment / code-only): skip this gate → step 9.
 
-**If it DOES touch the model:** this work follows the **semver blue-green env cutover** (`.claude/config.json` → `contentful`; full runbook `docs/contentful-environments.md`). STOP and confirm with `AskUserQuestion`:
+**If it DOES touch the model:** route it through one of the two model-change lanes (`.claude/config.json` → `contentful`; full runbook `docs/contentful-environments.md`). STOP and confirm with `AskUserQuestion` — **which lane?**
 
-> `ICR-N` changes the Contentful content model, so it follows the blue-green env workflow: changes are made in a **versioned work env**, and **you** (the human) re-point the `master` alias at cutover. Confirm the version bump:
+> `ICR-N` changes the Contentful content model. Which lane?
+>
+> - **Default — permanent `staging`** _(recommended)_: develop in the standing `staging` env, promote to prod at cutover via Contentful Merge and/or the committed `scripts/contentful/` migrations. Low setup; rollback = reverse migration.
+> - **Heavy — versioned env + alias re-point**: for a big **breaking** change (type deletions, field renames, merges) that needs instant flip-back rollback. Clone prod into `master-<bumped>`; the human re-points the alias at cutover.
 
-Single-select options from `config.contentful.workEnvNaming.bumpRules`:
+**Default (`staging`) lane:**
 
-- **Major** (`master-X.0.0`) — breaking/significant (type deletion, field rename, merge). _(Recommended when the change breaks existing read code.)_
-- **Minor** (`master-0.X.0`) — new/additive models or fields, non-breaking.
-- **Patch** (`master-0.0.X`) — fixing an issue in an existing model.
+1. Ensure `staging` exists and (if entry-accuracy matters) is current — its one-time setup is already done (API keys + MCP/`.env.local`/preview point at it). The implementer makes changes in `staging` via the MCP + `scripts/contentful/` migrations, **never** the `master` alias.
+2. The spec's "Data Model Changes" section must include the cutover plan: the migration to apply to prod + the reverse/rollback step.
+3. **Cutover is HUMAN-ONLY and deferred** — at PR-merge time the human applies the tested migration to production (Merge and/or the scripts). `/work` never writes to prod or the alias.
 
-Then enforce for the rest of the run:
+**Heavy (alias re-point) lane** — confirm the version bump (`config.contentful.workEnvNaming.bumpRules`): **Major** (breaking), **Minor** (additive), **Patch** (fix). Then:
 
-1. **Work env.** Ensure the versioned work env exists — clone **current production** (the `master` alias target, `config.contentful.aliasTarget`) → `master-<bumped>`. The free tier allows production + **one** work env (`config.contentful.freeTierWorkEnvLimit` = 1; creating a second fails with `Quota reached … 1 out of 1 allotted`), so **delete the stale idle env first** to free the slot (an agent may `create_environment`/`delete_environment` via the MCP — but deleting a shared env needs an explicit user OK; `master` is write-protected, and you can only delete the non-aliased env). Then do every `config.contentful.perCycleConfigTouch` step: **grant the Delivery + Preview API keys access to the new env FIRST** (human-only, Contentful UI — without it the app gets `UNKNOWN_ENVIRONMENT`; see `config.contentful.apiKeyEnvAccess`), then point the MCP `ENVIRONMENT_ID`, `.env.local` `CONTENTFUL_ENVIRONMENT`, and the **branch-scoped** Vercel Preview `CONTENTFUL_ENVIRONMENT` at the work env.
+1. **Work env.** Clone current production (`config.contentful.aliasTarget`) → `master-<bumped>`. The free tier allows production + **one** work env (`config.contentful.freeTierWorkEnvLimit` = 1), so **free the slot first** — delete the idle env (needs explicit user OK; you can only delete the non-aliased env). Then every `config.contentful.perCycleConfigTouch` step: **grant the Delivery + Preview API keys access to the new env FIRST** (human-only, Contentful UI — else `UNKNOWN_ENVIRONMENT`; see `config.contentful.apiKeyEnvAccess`), then point the MCP `ENVIRONMENT_ID`, `.env.local`, and the **branch-scoped** Vercel Preview at it.
 2. **Implementer writes to the work env ONLY** — via the Contentful MCP + committed `scripts/contentful/` migrations. **Never** the `master` alias.
-3. **The spec must carry an env-cutover plan** in its "Data Model Changes" section: which work env + bump, how local/preview point at it, and the human cutover + rollback steps.
-4. **Cutover is HUMAN-ONLY and deferred** — `/work` NEVER re-points the `master` alias. At PR-merge time the human re-points `master` → the work env (rollback = re-point back). This is a **Done-class human gate**: like merge and Done, no agent or command performs it.
+3. **The spec must carry an env-cutover plan** in its "Data Model Changes" section: work env + bump, how local/preview point at it, the human cutover + flip-back rollback.
+4. **Cutover is HUMAN-ONLY and deferred** — `/work` NEVER re-points the `master` alias. At PR-merge time the human re-points `master` → the work env (rollback = re-point back). A **Done-class human gate**: like merge and Done, no agent or command performs it.
 
-One-time gate; once confirmed, later checkpoints in the same run don't re-trigger.
+One-time gate; once the lane is chosen, later checkpoints in the same run don't re-trigger.
 
 ## 9. First checkpoint: implement (subagent: implementer)
 

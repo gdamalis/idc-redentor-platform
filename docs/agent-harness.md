@@ -273,27 +273,30 @@ guardrails:
   from a Trello custom field / label / description token. **There is no `light = skip` tier** — every testable
   ticket runs its TYPE's baseline.
 
-## Contentful model-change workflow (semver blue-green env cutover)
+## Contentful model-change workflow (two lanes)
 
 When a card changes the Contentful **content model** — a new/changed/deleted content type or field, or an
-entry remap (**not** just a new read fragment in `lib/contentful/*`) — the harness routes it through a
-**blue-green deployment via environment aliases**, wired in `.claude/config.json` → `contentful` and
-documented in full in [`contentful-environments.md`](./contentful-environments.md):
+entry remap (**not** just a new read fragment in `lib/contentful/*`) — the harness routes it through one of
+two lanes, wired in `.claude/config.json` → `contentful` and documented in full in
+[`contentful-environments.md`](./contentful-environments.md). (Plain **content** edits — new posts, text
+fixes, a sermon — happen live in production and need none of this.)
 
-- **`master` is an alias → production** (today `master-0.0.1`). The app reads the alias; production config
-  never changes. Agents make model + entry changes in a **versioned work env**
-  (`master-<major>.<minor>.<patch>`) via the Contentful MCP + committed `scripts/contentful/` migrations —
-  **never** against the alias.
-- **Semver by change class:** **major** = breaking/significant (type deletion, field rename, merge),
-  **minor** = new/additive, **patch** = fix. The new work env = the current production version bumped by the
-  change class (e.g. `master-0.0.1` → `master-1.0.0` for a breaking consolidation).
-- **`/work` step 8.2 — Contentful model-change gate:** after the plan is written, if it touches the model,
-  `/work` stops, requires the spec's "Data Model Changes" section to carry an **env-cutover plan** (which
-  work env + bump, how `.env.local`/the branch Vercel Preview point at it), and defers the alias re-point to
-  the human. The `implementer` operates the MCP against the **work env**, never the alias.
-- **The cutover is HUMAN-ONLY** — a human re-points the `master` alias (at PR-merge time); rollback is
-  re-pointing it back to the prior production env. (Free tier = **two** environments; each cycle deletes the
-  stale idle env and clones current production into the new work env.)
+- **`master` is an alias → production** (today `master-0.0.1`); the app reads the alias and production config
+  never changes. Agents make model + entry changes in a **work env** via the Contentful MCP + committed
+  `scripts/contentful/` migrations — **never** against the alias.
+- **Default lane — permanent `staging`:** one stable work env (granted on the Delivery + Preview API keys
+  **once**); at cutover a human applies the tested migration to production (Contentful **Merge** and/or the
+  scripts). Rollback = reverse migration. Use for everyday model changes.
+- **Heavy lane — versioned env + alias re-point:** for a big **breaking** change (type deletions, field
+  renames, merges), clone prod into `master-<major>.<minor>.<patch>` (semver by change class: major =
+  breaking, minor = additive, patch = fix) and a human **re-points the `master` alias** at cutover — atomic,
+  with instant flip-back rollback. The single free-tier work-env slot is shared, so only one lane runs at a
+  time. (Epic ICR-76 uses this lane → `master-1.0.0`.)
+- **`/work` step 8.2 — Contentful model-change gate:** if the plan touches the model, `/work` stops, asks
+  **which lane**, requires the spec's "Data Model Changes" section to carry the cutover plan, and defers the
+  cutover to the human. The `implementer` operates the MCP against the chosen **work env**, never the alias.
+- **The cutover is HUMAN-ONLY** — agents never apply to production or re-point the `master` alias (like
+  merge/Done).
 
 ## Commands map (what the agents actually run)
 
@@ -362,6 +365,7 @@ Grep/Read on an empty/stale/absent graph and notes it. Full guide: [`graphify.md
    out-of-scope ideas.
 7. **Treat the sensitive paths as sensitive** — email, PII, API routes, CSP, env, middleware, the Contentful
    transport; they always gate the design discussion and raise the QA bar. **Staging is `no-POST`.**
-8. **Never re-point the Contentful `master` alias** — that's a human promotion, like merge/Done. Agents make
-   content-model changes in a versioned work env (`master-X.Y.Z`) via the MCP + `scripts/contentful/` and
-   propose; the human cuts over. See `docs/contentful-environments.md` (`/work` step 8.2 gates this).
+8. **Never apply Contentful model changes to production or re-point the `master` alias** — that's a human
+   promotion, like merge/Done. Agents make changes in a **work env** (the permanent `staging`, or a versioned
+   env for big breaking changes) via the MCP + `scripts/contentful/` and propose; the human cuts over. See
+   `docs/contentful-environments.md` (`/work` step 8.2 gates this).

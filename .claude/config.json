@@ -276,7 +276,9 @@
   },
   "commandsNote": "typecheck maps to ICR's actual 'type-check' script (hyphen). 'test' = vitest run (single-pass; package.json 'test' is 'vitest run', never watch). 'e2e' = playwright test (config present, no specs in Phase 1). lint = eslint . If a script is absent at runtime, verifier/qa-runner reports it rather than inventing one.",
   "contentful": {
-    "_note": "Contentful content-model changes follow a SEMVER-NAMED BLUE-GREEN environment cutover. The app reads the `master` ALIAS (production); agents make model+entry changes in a versioned WORK environment via the Contentful MCP + committed scripts/contentful/ migrations, then a HUMAN re-points the `master` alias (the cutover) — like merging a PR or moving a card to Done. Full runbook: docs/contentful-environments.md. Write path + token/safety model: docs/contentful-mcp.md. Read path: docs/contentful-data-layer.md.",
+    "_note": "TWO LANES (docs/contentful-environments.md). CONTENT edits happen live in production (the `master` alias env) with no workflow. MODEL changes (new/changed/deleted content type or field, or an entry remap) use a work env: DEFAULT = a permanent `staging` env (granted on the Delivery+Preview API keys ONCE), promoted to prod at cutover via Contentful Merge and/or the committed scripts/contentful/ migrations (rollback = reverse migration). HEAVY = for big BREAKING changes (type deletions, field renames, merges), clone prod into a versioned env master-<major>.<minor>.<patch> and a HUMAN re-points the `master` alias at cutover (atomic, instant rollback). The single free-tier work-env slot is shared, so only one lane runs at a time. Cutover is HUMAN-ONLY, like merge/Done. Write path + safety: docs/contentful-mcp.md. Read path: docs/contentful-data-layer.md.",
+    "defaultWorkEnv": "staging",
+    "defaultWorkEnvNote": "The standing model-change work env (permanent; set up on the API keys + MCP/.env.local/preview ONCE). The versioned workEnvNaming below is the HEAVY-variant naming, used only for big breaking changes that need instant alias-flip rollback (e.g. epic ICR-76 → master-1.0.0).",
     "mcpNamespace": "mcp__contentful__",
     "spaceId": "vg9le24yw8hb",
     "productionAlias": "master",
@@ -304,7 +306,7 @@
     },
     "cutover": {
       "owner": "human",
-      "action": "re-point the `master` environment alias to the verified work env (Contentful → Settings → Environments → Environment Aliases)",
+      "action": "DEFAULT lane: apply the tested migration to production (Contentful Merge for the model and/or run the committed scripts/contentful/ migrations against the prod env). HEAVY lane: re-point the `master` environment alias to the verified versioned work env (Contentful → Settings → Environments → Environment Aliases). Either way, done at PR-merge time.",
       "humanGate": true,
       "humanGateNote": "HUMAN-ONLY, like merge and Done. NO agent or command ever re-points the `master` alias. Agents propose changes in the work env; a human promotes at PR-merge time.",
       "rollback": "re-point `master` back to the previous production env (kept intact until the next cycle deletes it) and revert/redeploy the PR"

@@ -9,31 +9,44 @@
 > `docs/contentful-data-layer.md` (the app's read path). Machine-readable wiring lives in
 > `.claude/config.json` → `contentful`.
 
-## TL;DR
+## TL;DR — two lanes
 
-- **`master` is an alias**, not an environment. It points at whichever environment is **production**
-  (today: `master-0.0.1`). The website and all production config read the `master` alias and **never
-  change**.
-- The **free tier allows production (the `master` alias target) plus exactly one work environment**
-  (the API enforces a quota of 1 environment beyond the alias target — creating a second fails with
-  `Quota reached … 1 out of 1 allotted`). So we **ping-pong**: always work in the environment the
-  alias is _not_ pointing at; when verified, **re-point the alias** to it; it becomes production; the
-  freed (old-production) env is deleted and recloned for the next cycle.
-- **You never rename an environment** (IDs are immutable). The stable handle for production is the
-  **alias**. Work environments carry **semver IDs** — `master-<major>.<minor>.<patch>`.
-- **The alias re-point is HUMAN-ONLY** — like merging a PR or moving a card to Done. Agents make
-  changes in the work env and propose; a human promotes.
+- **Content edits** (new blog post, text fix, a Creed item, a sermon) happen **directly in production**
+  (the `master` environment) in the Contentful web app. Publish → the revalidate webhook refreshes the
+  site. **No environment, no API-key change, no merge tool, no code.** Draft + preview in prod first if
+  you want (preview token + draft mode). This is the common case — most changes need nothing below.
+  > Contentful's **Merge** app compares content _models_ (schemas), not entries — it's a model tool, not
+  > a content tool. Content entries never need it.
+- **Model changes** (a new/changed/deleted content type or field, or an entry remap) are the only thing
+  that needs a work environment, because the app's code and the model are coupled. Two variants:
+  - **Default — permanent `staging`** (§ Standing workflow): one stable `staging` env, granted on the
+    API keys **once**, MCP/`.env.local`/preview pointed at it **once**. Develop + test the change there,
+    then promote to production at cutover by applying the tested migration (Contentful **Merge** for the
+    model and/or the committed `scripts/contentful/` migrations). Near-zero per-change setup. Rollback =
+    a reverse migration / fix-forward.
+  - **Heavy — alias re-point** (§ Heavy variant; this epic, ICR-76): for a big **breaking** change,
+    clone production into a versioned env `master-<major>.<minor>.<patch>`, do the work there, and
+    **re-point the `master` alias** to it at cutover. Atomic, with **instant rollback** (flip the alias
+    back). Costs a one-time API-key tick + config pointer per such change — reserved for changes where a
+    reverse migration would be painful (type deletions, field renames, merges).
+- **`master` is an alias**, not an environment (today → `master-0.0.1`); production config reads the
+  alias and never changes. **You never rename an environment** (IDs are immutable).
+- **Cutover is HUMAN-ONLY** — applying to prod / re-pointing the alias is a human promotion, like
+  merging a PR or moving a card to Done. Agents make changes in the work env and propose.
+- **Free-tier quota: 1 environment beyond the `master` alias target** (creating a second fails with
+  `Quota reached … 1 out of 1 allotted`). The default lane spends that slot on the permanent `staging`;
+  the heavy lane spends it on the versioned env (so the two lanes don't run simultaneously).
 
-## Why this shape
+## Why the heavy variant works the way it does
 
-Contentful environment **aliases** let a stable name (`master`) point at any underlying environment.
-Production code targets the alias, so it's insulated from which physical environment is live. That's
-the blue-green primitive. Two constraints force the rest:
+Contentful environment **aliases** let a stable name (`master`) point at any underlying environment —
+the blue-green primitive the **heavy variant** uses. Its shape is forced by two constraints:
 
 1. **One-work-env cap (free tier).** Production (the `master` alias target) + exactly **one** other
    environment; the API enforces a quota of 1 environment beyond the alias target (creating a second
-   fails with `Quota reached … 1 out of 1 allotted`). No "permanent sandbox," no holding the new and
-   old prod simultaneously beyond the cutover instant.
+   fails with `Quota reached … 1 out of 1 allotted`). The default lane already spends that one slot on
+   the permanent `staging`, so a heavy-variant cycle uses the slot **instead** — the two lanes can't run
+   at once, and you can't hold the new and old prod simultaneously beyond the cutover instant.
 2. **Editors keep adding content to production** between cycles. So the work env must be a **fresh
    clone of current production** at the start of each cycle — you can't refresh an env in place, and
    you can't keep a third around. Hence **delete-stale + clone-current-prod each cycle**.
@@ -57,7 +70,31 @@ Work environments are named `master-<major>.<minor>.<patch>`. The new work env's
 > Judgment call: a change that is both "new models" and "breaking" is **major** (breaking wins). The
 > `/work` model-change gate proposes the class; the human confirms it at the cutover.
 
-## The cycle (the recurring runbook)
+## Standing workflow: permanent `staging` (default)
+
+For everyday model changes, keep **one permanent work env named `staging`** — set it up once, reuse forever:
+
+1. **One-time setup.** Create `staging` (a clone of production); add it to BOTH the Delivery + Preview
+   API keys' environments; point the MCP `ENVIRONMENT_ID`, `.env.local` `CONTENTFUL_ENVIRONMENT`, and the
+   Vercel Preview at `staging`. You never repeat this.
+2. **Refresh before a change set** (only when entry-accuracy matters). If `staging` has drifted from
+   production, sync it — Contentful **Merge** (model) and/or re-clone. _(If re-cloning forces an API-key
+   re-tick — to be confirmed whether same-id recreate preserves the grant — that's the one recurring
+   cost; model-only changes can skip the refresh entirely.)_
+3. **Develop + test** the change in `staging` (committed `scripts/contentful/` migrations + the MCP),
+   verified on local + the `staging`-pointed preview.
+4. **Cut over (HUMAN).** Apply the **tested** migration to production — Contentful **Merge** for the model
+   diff and/or run the committed scripts against the prod env — and merge the PR together.
+5. **Rollback** = a reverse migration / fix-forward (no instant alias flip — that's the heavy variant).
+
+The `master` alias is **never** re-pointed in this lane; production stays the same env and changes are
+applied into it. Near-zero per-change setup, at the cost of a heavier rollback.
+
+## Heavy variant: alias re-point (big breaking changes)
+
+> Use this **only** when a reverse migration would be painful — type deletions, field renames, merges
+> (e.g. the **ICR-76** epic). It spends the single free-tier work-env slot on a versioned env instead of
+> `staging`, so don't run both lanes at once. The payoff is an **atomic cutover + instant rollback**.
 
 Let the current production env be `env-A` (the alias `master` → `env-A`).
 
@@ -122,18 +159,20 @@ The harness knows this workflow (so `/work` routes model-touching cards through 
   pattern + bump rules, the app env var, the write path, and the human-only cutover gate.
 - **`/work` step 8.2 — Contentful model-change gate.** After the plan is written, if it changes the
   content model (a new/changed/deleted content type or field, or an entry remap — _not_ just a new read
-  fragment), `/work` stops and requires this workflow: pick the semver bump, provision/point at the work
-  env, defer the alias re-point to the human cutover. (`docs/agent-harness.md` → "Contentful
-  model-change workflow"; the spec's "Data Model Changes" section must include the env-cutover plan.)
-- **`implementer`** — when a checkpoint changes the model, it operates via the Contentful MCP against
-  the versioned **work env** (never the `master` alias) and **never re-points the alias**.
-- **Golden rule:** _Never re-point the Contentful `master` alias — human promotion only, like Done._
+  fragment), `/work` stops and asks **which lane** (default `staging` vs heavy alias re-point), then
+  enforces it: work in the chosen env, defer the cutover to the human. (`docs/agent-harness.md` →
+  "Contentful model-change workflow"; the spec's "Data Model Changes" section must include the cutover plan.)
+- **`implementer`** — when a checkpoint changes the model, it operates via the Contentful MCP against the
+  **work env** (`staging` or the versioned env), **never** the `master` alias, and **never** applies to
+  prod / re-points the alias.
+- **Golden rule:** _The cutover is human-only — agents never apply to production or re-point the `master`
+  alias (like merge/Done)._
 
-## This epic (first cycle of the scheme)
+## This epic (ICR-76) — heavy variant
 
-The `agent-sandbox` env was the pre-scheme work env (a fresh clone of `master-0.0.1`). For the
-ICR-76 model-optimization epic — a **major** change (type deletions, field renames, merges) — the work
-env is **`master-1.0.0`**:
+The `agent-sandbox` env was the pre-scheme work env (a fresh clone of `master-0.0.1`). ICR-76 is a
+**major breaking** change (type deletions, field renames, merges), so it uses the **heavy variant** —
+the work env is **`master-1.0.0`**:
 
 1. Delete `agent-sandbox` (frees the slot), clone `master-0.0.1` → `master-1.0.0`.
 2. Point the MCP / `.env.local` / branch Preview at `master-1.0.0`.
@@ -141,18 +180,19 @@ env is **`master-1.0.0`**:
 4. **Human cutover:** re-point `master` → `master-1.0.0` at PR-merge time. Rollback = re-point to
    `master-0.0.1`.
 
-From here on, work envs are versioned (`master-1.1.0`, `master-1.0.1`, …) and `agent-sandbox` is retired.
+`agent-sandbox` is retired. **After this epic the standing workflow is the permanent `staging` lane**
+(above); the heavy/versioned variant is reserved for future big breaking changes.
 
 ## Quick reference
 
-| Thing                        | Value                                                                            |
-| ---------------------------- | -------------------------------------------------------------------------------- |
-| Production handle            | the `master` **alias** (never renamed; app reads it)                             |
-| Work env                     | `master-<major>.<minor>.<patch>`, a fresh clone of current prod                  |
-| Bump = major / minor / patch | breaking-or-significant / new-or-additive / fix                                  |
-| App override                 | `CONTENTFUL_ENVIRONMENT` (unset ⇒ `master`)                                      |
-| Write path                   | Contentful MCP + `scripts/contentful/` migrations, targeting the work env        |
-| Cutover                      | **human** re-points the `master` alias (≈ merge/Done)                            |
-| Rollback                     | re-point alias to previous prod env (kept intact)                                |
-| Free-tier cap                | prod alias target + **1** work env (quota: 1) → delete-stale + clone each cycle  |
-| New work env API access      | add it to Delivery + Preview API keys (Settings → API keys → Environments) first |
+| Thing                        | Value                                                                                |
+| ---------------------------- | ------------------------------------------------------------------------------------ |
+| Production handle            | the `master` **alias** (never renamed; app reads it)                                 |
+| Work env (default)           | permanent `staging` (set up once); heavy: `master-<major>.<minor>.<patch>`           |
+| Bump = major / minor / patch | breaking-or-significant / new-or-additive / fix                                      |
+| App override                 | `CONTENTFUL_ENVIRONMENT` (unset ⇒ `master`)                                          |
+| Write path                   | Contentful MCP + `scripts/contentful/` migrations, targeting the work env            |
+| Cutover                      | **human**: default = apply migration to prod (Merge/scripts); heavy = re-point alias |
+| Rollback                     | default = reverse migration; heavy = re-point alias to previous prod env             |
+| Free-tier cap                | prod alias target + **1** work env (quota: 1) → delete-stale + clone each cycle      |
+| New work env API access      | add it to Delivery + Preview API keys (Settings → API keys → Environments) first     |

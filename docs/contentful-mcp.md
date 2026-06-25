@@ -34,30 +34,32 @@ assets (`upload/list/get/update/publish/delete_asset`), spaces & environments
 (`list_spaces`, `list/create/delete_environment`), locales, tags, editor interfaces, taxonomy,
 and AI Actions.
 
-## Safety model: versioned work environment + protected master
+## Safety model: work environment + protected master
 
 The agents write to a **non-production Contentful environment**, never to the live site directly.
-Production is the `master` **alias**; agents work in a **versioned work environment** and a human
-re-points the alias to promote. Two guardrails in the server's env:
+Production is the `master` **alias**; agents work in a **work environment** and a human promotes (applies
+the change to prod, or re-points the alias). Two guardrails in the server's env:
 
-- `ENVIRONMENT_ID=<work env>` — every tool call defaults to the current **work** environment
-  (a clone of production, named `master-<major>.<minor>.<patch>` — e.g. `master-1.0.0`). Agents
-  iterate there. (Historically this was a single static `agent-sandbox`; it is now a **per-change
-  versioned env** — see the workflow section below.)
+- `ENVIRONMENT_ID=<work env>` — every tool call defaults to the current **work** environment: the
+  permanent **`staging`** for everyday model changes, or a versioned clone `master-<major>.<minor>.<patch>`
+  (e.g. `master-1.0.0`) for a big breaking change (the two lanes in `docs/contentful-environments.md`).
+  Agents iterate there. (Historically this was a single static `agent-sandbox`, now retired.)
 - `PROTECTED_ENVIRONMENTS=master` — a backstop: even if a call explicitly targets the `master`
   alias, the server blocks all write/delete operations on it. (Also list the current production env
   id when it differs from the alias target, so a just-promoted env can't be written before reclone.)
 
-A human reviews and **promotes the work env → production by re-pointing the `master` alias** in the
-Contentful web app when the changes look right. This mirrors the harness ethos elsewhere in this repo:
-agents propose, a human promotes to production.
+A human reviews and **promotes the work env → production** when the changes look right — by applying the
+tested migration to prod (default lane) or re-pointing the `master` alias (heavy lane). This mirrors the
+harness ethos elsewhere in this repo: agents propose, a human promotes to production.
 
-## Contentful model-change workflow (semver blue-green env cutover)
+## Contentful model-change workflow (two lanes)
 
-Model changes (a new/changed/deleted content type or field, or an entry remap) follow a **blue-green
-deployment via environment aliases**, with **semver-named work environments** and a **human-only
-alias re-point**. Because the free tier caps the space at **two environments**, each cycle deletes the
-stale idle env and clones current production into a fresh work env.
+Model changes (a new/changed/deleted content type or field, or an entry remap) run in a work env, then a
+human promotes. **Default lane:** a permanent **`staging`** env (granted on the API keys once), promoted
+via Contentful **Merge** and/or the committed scripts. **Heavy lane** (big breaking changes): a versioned
+env (`master-<major>.<minor>.<patch>`) + a **human alias re-point** for an atomic, instantly-reversible
+cutover. The free tier allows only **one** work env beyond the `master` alias target, so the two lanes
+share that slot (one at a time).
 
 The full runbook — the semver bump rule (**major** = breaking/significant, **minor** = new/additive,
 **patch** = fix), the per-cycle config touch points (MCP `ENVIRONMENT_ID`, `.env.local`

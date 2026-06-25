@@ -39,7 +39,7 @@
 
 ## 3. Environment & cutover workflow (S1)
 
-> This epic is the **first cycle** of the repo's standing Contentful environment workflow — the **semver blue-green alias cutover** documented in [`docs/contentful-environments.md`](./contentful-environments.md) (machine-readable wiring in `.claude/config.json` → `contentful`). Because it is a **major** (breaking) model change, the work env is **`master-1.0.0`**, cloned from production `master-0.0.1` in commit 0. The rest of this section is the epic-specific application of that workflow.
+> This epic uses the **heavy variant** of the repo's Contentful model-change workflow (the two lanes are documented in [`docs/contentful-environments.md`](./contentful-environments.md); machine-readable wiring in `.claude/config.json` → `contentful`). Because it is a **major breaking** change (type deletions, field renames, merges), it warrants the heavy variant's **atomic cutover + instant flip-back rollback**: clone production into a versioned env and re-point the `master` alias at cutover. The work env is **`master-1.0.0`**, cloned from `master-0.0.1`. (The _standing_ workflow for everyday model changes is the permanent `staging` lane; this epic is the exception.) The rest of this section is the epic-specific application.
 
 ### 3.1 The coupling that drives everything
 
