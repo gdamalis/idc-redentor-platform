@@ -89,7 +89,7 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
 
   const isEnabled = await shouldUseDraftMode();
-  const navMenu = await getNavigationMenu("Main menu", locale, isEnabled);
+  const navMenu = await getNavigationMenu("main-menu", locale, isEnabled);
   const footerContent = await getFooter(locale, isEnabled);
   const subscribeContent = await getSingleEmailForm(
     "single-email-subscribe",
