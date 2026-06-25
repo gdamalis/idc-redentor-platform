@@ -20,6 +20,7 @@ type BlogPostCardProps = {
 export const BlogPostCard = ({ post, index = 0 }: BlogPostCardProps) => {
   const locale = useLocale();
   const t = useTranslations("article");
+  const tCategory = useTranslations("BlogPost.categories");
   const formattedDate = formatDate(post.publishedDate, locale);
 
   return (
@@ -42,7 +43,9 @@ export const BlogPostCard = ({ post, index = 0 }: BlogPostCardProps) => {
             {post.category && (
               <div className="absolute top-4 left-4">
                 <span className="bg-background/90 backdrop-blur text-foreground text-xs font-bold px-3 py-1 rounded-full shadow-sm">
-                  {post.category}
+                  {tCategory(
+                    post.category as "Events" | "Spiritual Growth" | "Community",
+                  ) || post.category}
                 </span>
               </div>
             )}

@@ -23,11 +23,11 @@ An internal, access-controlled **ministry/admin platform** for the IDC Redentor 
 
 Every pillar sits **outside** the public website's documented boundaries (`docs/product/scope-and-boundaries.md`: "no user accounts / login / authentication," "no RBAC / admin CMS-in-app," "no storing congregant personal data at scale"). The two products are near-opposites:
 
-| | Public website (`apps/web`) | Admin platform (`apps/admin`) |
-|---|---|---|
-| Data | Read-only, Contentful, minimal PII | Write-heavy, relational, **PII at scale + money** |
-| Access | Fully public, no auth | Auth-gated, RBAC, private |
-| Optimized for | SEO, static speed | Internal workflows, data integrity |
+|               | Public website (`apps/web`)        | Admin platform (`apps/admin`)                     |
+| ------------- | ---------------------------------- | ------------------------------------------------- |
+| Data          | Read-only, Contentful, minimal PII | Write-heavy, relational, **PII at scale + money** |
+| Access        | Fully public, no auth              | Auth-gated, RBAC, private                         |
+| Optimized for | SEO, static speed                  | Internal workflows, data integrity                |
 
 Keeping them as distinct apps (sharing brand/UI via packages) preserves the website's clean scope and isolates congregant PII + financial records in a private, access-controlled deployment.
 
@@ -44,7 +44,7 @@ Keeping them as distinct apps (sharing brand/UI via packages) preserves the webs
 
 ### Confirmed (from leadership, 2026-06-23)
 
-- **Name:** **IDC Redentor — Ministry Admin Panel** (EN) / **IDC Redentor — Panel Ministerial** (ES). The name signals it's the church's ministry-administration platform; the display name is localized per the bilingual UI. *(Exact wording still tweakable.)*
+- **Name:** **IDC Redentor — Ministry Admin Panel** (EN) / **IDC Redentor — Panel Ministerial** (ES). The name signals it's the church's ministry-administration platform; the display name is localized per the bilingual UI. _(Exact wording still tweakable.)_
 - **Auth provider:** **Firebase Auth** (Google + email/password) on a **new, dedicated Firebase project** — already created by leadership, to be shared. Password-reset + invite emails via **Resend** with the church's sending domain (custom templates, not Firebase defaults). Reuses the `divinelab/toulmin-lab` pattern.
 - **Data store:** **MongoDB — same cluster as the public website, but a separate database** (name TBD, e.g. `admin`/`ministry`). For now a **single DB user with access to both** databases; split into a DB-scoped least-privilege user later. Congregant data lives in its own DB, never comingled with the public `website` collections.
 - **Admin UI language:** **bilingual (es-AR + en-US) from the start** — its own next-intl message catalog under `apps/admin`, growing keys in both locales per feature. (The public site stays bilingual independently.)
@@ -80,7 +80,7 @@ idc-redentor-website/            # becomes the monorepo root
 ```
 
 - **Tooling:** pnpm workspaces + Turborepo (mirrors `cancionero`).
-- **Deploys:** two Vercel projects from one repo, each with its own *root directory* (`apps/web`, `apps/admin`). The existing public-site Vercel project is repointed to `apps/web` so its production deploy and domain are preserved.
+- **Deploys:** two Vercel projects from one repo, each with its own _root directory_ (`apps/web`, `apps/admin`). The existing public-site Vercel project is repointed to `apps/web` so its production deploy and domain are preserved.
 - **Harness:** `.claude/` (agents, Trello board, `docs/product`, semantic-release) is currently website-scoped. It gets **broadened** to span both apps as a later step — not part of M1.
 
 ### Migration plan (phased to protect the live site)
@@ -101,6 +101,7 @@ idc-redentor-website/            # becomes the monorepo root
 **Goal:** leadership can log in, manage the people of the church, and print a monthly calendar of birthdays + activities.
 
 **In scope (M1):**
+
 - Auth shell: Firebase login (Google + email/password), invite-only provisioning, password reset via Resend.
 - RBAC foundation: permission registry + roles + a management UI (small catalog: People + Calendar + Users/Roles).
 - People/Membership CRUD: the data model in §6, with search/list + detail/edit. Records carry optional **participation-area tags** (forward-compat with M3 worship planning) and a **soft participation flag** — no membership process.
@@ -109,6 +110,7 @@ idc-redentor-website/            # becomes the monorepo root
 - Print-ready monthly calendar: birthdays auto-populated from People + activities for the month, with a clean print stylesheet (A4).
 
 **Out of scope (M1 — later milestones):**
+
 - Finances (M2). Worship-service planning (M3).
 - Bespoke/generative calendar designs from a reference image (polish, post-MVP).
 - WhatsApp distribution (arrives with worship-service planning / notifications).
@@ -124,25 +126,29 @@ interface Person {
   id: string;
   firstName: string;
   lastName: string;
-  displayName?: string;      // first-name display, disambiguated (e.g. "Sebastián M.") — church convention
-  phone?: string;            // role-gated visibility (PII)
-  email?: string;            // role-gated visibility (PII)
-  dateOfBirth?: string;      // ISO date; drives birthdays + derived age
-  countryOfOrigin?: string;  // ISO 3166 country code; multicultural activities
-  familyGroupId?: string;    // household this person belongs to
-  participationAreas?: string[];   // worship/ministry areas served (forward-compat with M3; e.g. cantos, lecturas)
-  isLeadership?: boolean;          // missionary/pastoral team member (seeds Admin/Leader roles + director rotation)
-  participation?: "active" | "occasional" | "inactive";  // SOFT manual filter flag — NOT a membership gate
+  displayName?: string; // first-name display, disambiguated (e.g. "Sebastián M.") — church convention
+  phone?: string; // role-gated visibility (PII)
+  email?: string; // role-gated visibility (PII)
+  dateOfBirth?: string; // ISO date; drives birthdays + derived age
+  countryOfOrigin?: string; // ISO 3166 country code; multicultural activities
+  familyGroupId?: string; // household this person belongs to
+  participationAreas?: string[]; // worship/ministry areas served (forward-compat with M3; e.g. cantos, lecturas)
+  isLeadership?: boolean; // missionary/pastoral team member (seeds Admin/Leader roles + director rotation)
+  participation?: "active" | "occasional" | "inactive"; // SOFT manual filter flag — NOT a membership gate
   notes?: string;
-  createdAt: string; updatedAt: string; createdBy: string; updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy: string;
 }
 
 interface FamilyGroup {
   id: string;
-  name: string;              // e.g. "Familia Pérez"
-  memberIds: string[];       // people in this household
+  name: string; // e.g. "Familia Pérez"
+  memberIds: string[]; // people in this household
   notes?: string;
-  createdAt: string; updatedAt: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Explicit relationship edges (source of truth for "who is related to whom")
@@ -159,7 +165,7 @@ interface Relationship {
 
 **No formal membership.** The church has no membership process — participation is consistency-based and intentionally informal (someone attending consistently for ~2–3 months is simply part of the community; commitment and responsibility flow naturally, not through a sign-up). `participation` is a **soft, optional, manually-set tag** purely for filtering lists/calendar — it never gates anyone in or out, and there is no approval workflow. `displayName` follows the church's first-name-only convention (surname only when ambiguous).
 
-**PII discipline:** age is *derived* from `dateOfBirth`, never stored separately. Phone/email visibility is permission-gated. All writes are audited (`createdBy`/`updatedBy` + timestamps).
+**PII discipline:** age is _derived_ from `dateOfBirth`, never stored separately. Phone/email visibility is permission-gated. All writes are audited (`createdBy`/`updatedBy` + timestamps).
 
 ---
 
@@ -185,12 +191,14 @@ interface Relationship {
 interface Activity {
   id: string;
   title: string;
-  date: string;              // ISO; (recurring/range handling = M1 spec decision)
+  date: string; // ISO; (recurring/range handling = M1 spec decision)
   time?: string;
   type?: "service" | "conference" | "meeting" | "special" | "other";
   locationNote?: string;
   notes?: string;
-  createdAt: string; updatedAt: string; createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
 }
 ```
 
@@ -210,10 +218,10 @@ This platform takes on responsibility the public site deliberately avoided: **co
 
 ## 10. Roadmap (post-M1)
 
-- **M2 — Finances:** offerings + expenses, balance/control, **planned + forecasted** spend over time. (Internal accounting only — *not* online giving/payments; that stays out of both products.)
+- **M2 — Finances:** offerings + expenses, balance/control, **planned + forecasted** spend over time. (Internal accounting only — _not_ online giving/payments; that stays out of both products.)
 - **M3 — Worship-service planning** (rules now in hand: `Reglas_Orden_Culto_IDCR.md`; the Google Sheet it references gets **deprecated** by this app). The model:
   - **WorshipService per Sunday:** date, monthly **director** (rotates monthly among the missionary/pastoral team and approves each order), liturgical celebration name, optional special event, and an **assignment per area**.
-  - **Areas (const map):** Cantos, Santa Cena, Ofrenda, Recoger ofrenda, Oración comunitaria, Lecturas (AT · Salmo · NT · Evangelio), Reflexión/Prédica, Anuncios y oración final. *(The "Ofrenda" worship role ≠ M2 offering-amount tracking — related vocabulary, different concern.)*
+  - **Areas (const map):** Cantos, Santa Cena, Ofrenda, Recoger ofrenda, Oración comunitaria, Lecturas (AT · Salmo · NT · Evangelio), Reflexión/Prédica, Anuncios y oración final. _(The "Ofrenda" worship role ≠ M2 offering-amount tracking — related vocabulary, different concern.)_
   - **Per-area eligibility** from each person's `participationAreas` (seeded from the rules' per-area lists) — only rotate among people who've served that area.
   - **Assignment rules engine:** rotate by history; the preacher (Reflexión) takes no other area that Sunday (except possibly Anuncios); never the same person/role two Sundays running; "Recoger ofrenda" is exactly one person; coordinator marks absences and the engine substitutes from the same group.
   - **Lectionary:** 4 readings/Sunday (Ciclo A 2025–2026, Escuela Digital de Teología), occasionally 2 options or a 5th reading for long passages.

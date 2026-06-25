@@ -13,7 +13,8 @@
     "e2e": "playwright test --pass-with-no-tests",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "contentful:migrate": "node scripts/contentful/run.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": "eslint --fix",
@@ -71,6 +72,8 @@
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^6.0.2",
     "@vitest/coverage-v8": "^4.1.9",
+    "contentful-management": "^12.8.0",
+    "contentful-migration": "^5.0.0",
     "conventional-changelog-conventionalcommits": "^9.1.0",
     "eslint": "^9.39.1",
     "eslint-config-next": "^16.0.1",

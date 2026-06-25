@@ -12,6 +12,7 @@ declare namespace NodeJS {
     CONTENTFUL_PREVIEW_ACCESS_TOKEN: string;
     CONTENTFUL_PREVIEW_SECRET: string;
     CONTENTFUL_REVALIDATE_SECRET: string;
+    CONTENTFUL_ENVIRONMENT?: string;
     
     // MailChimp
     MAILCHIMP_API_KEY: string;

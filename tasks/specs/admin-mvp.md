@@ -12,6 +12,7 @@
 Ship the first usable slice of the Ministry Admin Panel: leadership signs in (invite-only), manages the people of the church (with family groups, relationships, participation tags), and prints an A4 monthly calendar of birthdays + activities. The RBAC system is granular with a management UI from day one; its permission catalog starts at the People + Calendar + Users/Roles surface and grows per feature.
 
 ### In scope (M1b)
+
 - `apps/admin` Next.js app (App Router, RSC-first) in the monorepo, reusing the website's design tokens (Outfit/Playfair, the HSL palette, sidebar tokens) via shadcn/ui.
 - **Auth:** Firebase Auth (Google + email/password), server session cookie, route protection, **invite-only** provisioning, password reset via **Resend**.
 - **RBAC:** permission registry + roles + user↔role assignment + management UI + server-side enforcement.
@@ -21,6 +22,7 @@ Ship the first usable slice of the Ministry Admin Panel: leadership signs in (in
 - **i18n:** admin message catalog in es-AR + en-US from the start.
 
 ### Out of scope (M1b)
+
 - Finances (M2), Worship-service planning (M3).
 - Bespoke/generative calendar designs (post-MVP; the Claude Design prompt in `tasks/specs/admin-design-prompt.md` seeds the visual direction).
 - WhatsApp distribution, notifications, reporting/exports.
@@ -42,14 +44,14 @@ Ship the first usable slice of the Ministry Admin Panel: leadership signs in (in
 
 ## 3. Dependencies check
 
-| Requirement | Note |
-|---|---|
-| M1a merged | `apps/*` workspace exists; `@idcr/config` + `@idcr/ui` available. |
-| Firebase project | Created by leadership; need client config (`NEXT_PUBLIC_FIREBASE_*`) + Admin SDK service-account (`FIREBASE_*`). **Names only — never commit values.** |
-| MongoDB | `MONGODB_URI` (same cluster); new `ADMIN_DB_NAME` (e.g. `admin`). |
-| Resend | `RESEND_API_KEY` + `FROM_EMAIL` (church sending domain). |
-| shadcn/ui | Tokens already shadcn-shaped; deps `class-variance-authority`, `tailwind-merge`, `@radix-ui/*` present in the web app and liftable to `@idcr/ui`. |
-| Reference patterns | `divinelab/toulmin-lab` (Firebase Auth + session cookie + Mongo + RBAC) — scout and lift before CP2. |
+| Requirement        | Note                                                                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| M1a merged         | `apps/*` workspace exists; `@idcr/config` + `@idcr/ui` available.                                                                                      |
+| Firebase project   | Created by leadership; need client config (`NEXT_PUBLIC_FIREBASE_*`) + Admin SDK service-account (`FIREBASE_*`). **Names only — never commit values.** |
+| MongoDB            | `MONGODB_URI` (same cluster); new `ADMIN_DB_NAME` (e.g. `admin`).                                                                                      |
+| Resend             | `RESEND_API_KEY` + `FROM_EMAIL` (church sending domain).                                                                                               |
+| shadcn/ui          | Tokens already shadcn-shaped; deps `class-variance-authority`, `tailwind-merge`, `@radix-ui/*` present in the web app and liftable to `@idcr/ui`.      |
+| Reference patterns | `divinelab/toulmin-lab` (Firebase Auth + session cookie + Mongo + RBAC) — scout and lift before CP2.                                                   |
 
 ---
 
@@ -66,7 +68,7 @@ middleware.ts ── verifySessionCookie ── redirect to /login if absent/inv
    │
    ▼
 RSC loaders / Server Actions / Route handlers
-   ├── getCurrentUser() → session → Mongo `users` (+ role) 
+   ├── getCurrentUser() → session → Mongo `users` (+ role)
    ├── requirePermission("people:write") → 403 if denied
    └── Mongo data layer (apps/admin db, separate database)
 ```
@@ -86,30 +88,32 @@ Collections in the `admin` database. All timestamps ISO strings; all writes audi
 ```ts
 // --- Auth / RBAC ---
 interface User {
-  id: string;            // Mongo _id (string)
-  firebaseUid: string;   // Firebase Auth UID (unique)
-  email: string;         // unique; matched against Invite on first sign-in
+  id: string; // Mongo _id (string)
+  firebaseUid: string; // Firebase Auth UID (unique)
+  email: string; // unique; matched against Invite on first sign-in
   displayName?: string;
-  roleIds: string[];     // assigned roles (bundles of permissions)
+  roleIds: string[]; // assigned roles (bundles of permissions)
   status: "active" | "disabled";
   lastLoginAt?: string;
-  createdAt: string; updatedAt: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface Role {
   id: string;
-  name: string;              // "Admin" | "Leader" | "Member" | custom
+  name: string; // "Admin" | "Leader" | "Member" | custom
   description?: string;
-  permissions: string[];     // permission keys from the registry (§6)
-  isSystem?: boolean;        // seed roles can't be deleted
-  createdAt: string; updatedAt: string;
+  permissions: string[]; // permission keys from the registry (§6)
+  isSystem?: boolean; // seed roles can't be deleted
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface Invite {
   id: string;
-  email: string;             // who is invited
-  roleIds: string[];         // roles granted on acceptance
-  invitedBy: string;         // userId
+  email: string; // who is invited
+  roleIds: string[]; // roles granted on acceptance
+  invitedBy: string; // userId
   status: "pending" | "accepted" | "revoked";
   expiresAt: string;
   createdAt: string;
@@ -120,25 +124,29 @@ interface Person {
   id: string;
   firstName: string;
   lastName: string;
-  displayName?: string;          // first-name display, disambiguated ("Sebastián M.")
-  phone?: string;                // permission-gated (PII)
-  email?: string;                // permission-gated (PII)
-  dateOfBirth?: string;          // ISO date; birthdays + derived age
-  countryOfOrigin?: string;      // ISO 3166-1 alpha-2
+  displayName?: string; // first-name display, disambiguated ("Sebastián M.")
+  phone?: string; // permission-gated (PII)
+  email?: string; // permission-gated (PII)
+  dateOfBirth?: string; // ISO date; birthdays + derived age
+  countryOfOrigin?: string; // ISO 3166-1 alpha-2
   familyGroupId?: string;
   participationAreas?: string[]; // forward-compat with M3 worship areas
   isLeadership?: boolean;
   participation?: "active" | "occasional" | "inactive"; // SOFT tag, not a gate
   notes?: string;
-  createdAt: string; updatedAt: string; createdBy: string; updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy: string;
 }
 
 interface FamilyGroup {
   id: string;
-  name: string;                  // "Familia Pérez"
+  name: string; // "Familia Pérez"
   memberIds: string[];
   notes?: string;
-  createdAt: string; updatedAt: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface Relationship {
@@ -153,12 +161,14 @@ interface Relationship {
 interface Activity {
   id: string;
   title: string;
-  date: string;                  // ISO date
-  time?: string;                 // "HH:mm"
+  date: string; // ISO date
+  time?: string; // "HH:mm"
   type?: "service" | "conference" | "meeting" | "special" | "other";
   locationNote?: string;
   notes?: string;
-  createdAt: string; updatedAt: string; createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
 }
 ```
 
@@ -289,28 +299,34 @@ Visual system: shadcn/ui components themed with the website's tokens (Playfair h
 Each is independently verifiable, committed (Conventional Commits, scope `admin`, header ≤100), on a feature branch off `main` (post-M1a). TDD-first where logic is non-trivial (RBAC, schemas, calendar math).
 
 **CP1 — Scaffold `apps/admin`.** Next.js App Router app; `@idcr/ui` tokens + shadcn/ui; next-intl bilingual; AppShell (Sidebar/Topbar/theme/locale); cached Mongo client → `admin` DB; Firebase client+admin config (env-driven). No features yet.
-- *Verify:* `pnpm --filter @idcr/admin {type-check,lint,test,build,dev}` green; shell renders in both locales + dark mode.
-- *Commit:* `feat(admin): scaffold apps/admin shell (i18n, theme, shadcn, mongo client)`
+
+- _Verify:_ `pnpm --filter @idcr/admin {type-check,lint,test,build,dev}` green; shell renders in both locales + dark mode.
+- _Commit:_ `feat(admin): scaffold apps/admin shell (i18n, theme, shadcn, mongo client)`
 
 **CP2 — Auth.** Firebase sign-in (Google + email/password); session cookie via Admin SDK; `middleware.ts` protection; invite-only provisioning; password reset via Resend.
-- *Verify:* invited user signs in → provisioned; non-invited → `/no-access`; reset email sends (Resend); protected routes redirect.
-- *Commit:* `feat(admin): firebase auth, session cookies, invite-only provisioning, resend reset`
+
+- _Verify:_ invited user signs in → provisioned; non-invited → `/no-access`; reset email sends (Resend); protected routes redirect.
+- _Commit:_ `feat(admin): firebase auth, session cookies, invite-only provisioning, resend reset`
 
 **CP3 — RBAC.** Permission registry; seed roles; user↔role assignment; `/users` invite + `/roles` permission matrix; `requirePermission` enforced server-side.
-- *Verify:* role changes gate UI + server actions; last-admin protection; system-role guards.
-- *Commit:* `feat(admin): granular RBAC with roles + permission matrix UI`
+
+- _Verify:_ role changes gate UI + server actions; last-admin protection; system-role guards.
+- _Commit:_ `feat(admin): granular RBAC with roles + permission matrix UI`
 
 **CP4 — People.** `Person`/`FamilyGroup`/`Relationship` + `participationAreas`; list (search/filter), detail/edit, create; Zod validation; audit fields; PII gating; derived birthday fields.
-- *Verify:* CRUD works; PII hidden without `people:pii`; family/relationship integrity on delete.
-- *Commit:* `feat(admin): people CRUD with family groups, relationships, participation tags`
+
+- _Verify:_ CRUD works; PII hidden without `people:pii`; family/relationship integrity on delete.
+- _Commit:_ `feat(admin): people CRUD with family groups, relationships, participation tags`
 
 **CP5 — Activities.** Activity CRUD (list + form).
-- *Verify:* activities persist and query by date range.
-- *Commit:* `feat(admin): activities CRUD for the calendar`
+
+- _Verify:_ activities persist and query by date range.
+- _Commit:_ `feat(admin): activities CRUD for the calendar`
 
 **CP6 — Printable A4 calendar.** Month grid with birthdays (from People) + activities; es-AR month/day names; `/calendar/print` A4 print stylesheet; month nav.
-- *Verify:* current + adjacent months render; birthdays/activities correct; A4 print preview clean.
-- *Commit:* `feat(admin): print-ready A4 monthly birthday + activities calendar`
+
+- _Verify:_ current + adjacent months render; birthdays/activities correct; A4 print preview clean.
+- _Commit:_ `feat(admin): print-ready A4 monthly birthday + activities calendar`
 
 > Sequencing: CP1→CP2→CP3 before CP4 (RBAC gates People). CP5 before CP6 (calendar overlays activities).
 
@@ -318,14 +334,14 @@ Each is independently verifiable, committed (Conventional Commits, scope `admin`
 
 ## 13. Environment variables (names only — never commit values)
 
-| Variable | Purpose |
-|---|---|
-| `MONGODB_URI` | Same cluster as the website |
-| `ADMIN_DB_NAME` | Separate DB (e.g. `admin`) |
-| `NEXT_PUBLIC_FIREBASE_API_KEY` … `_APP_ID` | Firebase client config |
+| Variable                                                                 | Purpose                                                |
+| ------------------------------------------------------------------------ | ------------------------------------------------------ |
+| `MONGODB_URI`                                                            | Same cluster as the website                            |
+| `ADMIN_DB_NAME`                                                          | Separate DB (e.g. `admin`)                             |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` … `_APP_ID`                               | Firebase client config                                 |
 | `FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` | Admin SDK (session cookies, reset links, provisioning) |
-| `RESEND_API_KEY` / `FROM_EMAIL` | Invite + reset emails |
-| `NEXT_PUBLIC_ADMIN_BASE_URL` | Links in emails, redirects |
+| `RESEND_API_KEY` / `FROM_EMAIL`                                          | Invite + reset emails                                  |
+| `NEXT_PUBLIC_ADMIN_BASE_URL`                                             | Links in emails, redirects                             |
 
 > Add these to `apps/admin/.env.example` (names only) and document them in the admin app's CLAUDE.md. Secret hygiene per the website convention.
 

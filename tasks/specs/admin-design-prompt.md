@@ -9,6 +9,7 @@
 ## A. Design system to reuse (verbatim from the website)
 
 **Fonts (Google Fonts, via `next/font`):**
+
 - **Body / UI — `Outfit`** (sans). Tailwind `font-sans`. CSS var `--font-outfit`.
 - **Headings — `Playfair Display`** (serif). Tailwind `font-serif`. CSS var `--font-playfair`.
 - Heading treatment: `font-serif font-bold tracking-tight` (h1–h6). Body: `Outfit`, antialiased.
@@ -51,8 +52,8 @@
   --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
   --color-sidebar-border: hsl(var(--sidebar-border));
   --color-sidebar-ring: hsl(var(--sidebar-ring));
-  --font-sans: var(--font-outfit), 'Outfit', sans-serif;
-  --font-serif: var(--font-playfair), 'Playfair Display', serif;
+  --font-sans: var(--font-outfit), "Outfit", sans-serif;
+  --font-serif: var(--font-playfair), "Playfair Display", serif;
   --letter-spacing-snug: -0.011em;
   --font-size-2xs: 0.625rem;
   --font-size-3xl: 1.75rem;
@@ -62,37 +63,65 @@
 
 /* LIGHT */
 :root {
-  --background: 210 20% 98%;     --foreground: 222 47% 11%;
-  --primary: 210 100% 35%;       --primary-foreground: 210 40% 98%;   /* sophisticated blue */
-  --secondary: 35 30% 90%;       --secondary-foreground: 24 10% 10%;  /* warm sand / gold */
-  --card: 0 0% 100%;             --card-foreground: 222 47% 11%;
-  --popover: 0 0% 100%;          --popover-foreground: 222 47% 11%;
-  --muted: 210 40% 96.1%;        --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96.1%;       --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;   --input: 214.3 31.8% 91.4%;   --ring: 210 100% 35%;
+  --background: 210 20% 98%;
+  --foreground: 222 47% 11%;
+  --primary: 210 100% 35%;
+  --primary-foreground: 210 40% 98%; /* sophisticated blue */
+  --secondary: 35 30% 90%;
+  --secondary-foreground: 24 10% 10%; /* warm sand / gold */
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 210 100% 35%;
   --radius: 0.75rem;
-  --sidebar: 0 0% 98%;                 --sidebar-foreground: 240 5.3% 26.1%;
-  --sidebar-primary: 240 5.9% 10%;     --sidebar-primary-foreground: 0 0% 98%;
-  --sidebar-accent: 240 4.8% 95.9%;    --sidebar-accent-foreground: 240 5.9% 10%;
-  --sidebar-border: 220 13% 91%;       --sidebar-ring: 217.2 91.2% 59.8%;
+  --sidebar: 0 0% 98%;
+  --sidebar-foreground: 240 5.3% 26.1%;
+  --sidebar-primary: 240 5.9% 10%;
+  --sidebar-primary-foreground: 0 0% 98%;
+  --sidebar-accent: 240 4.8% 95.9%;
+  --sidebar-accent-foreground: 240 5.9% 10%;
+  --sidebar-border: 220 13% 91%;
+  --sidebar-ring: 217.2 91.2% 59.8%;
 }
 
 /* DARK */
 .dark {
-  --background: 222 47% 11%;     --foreground: 210 40% 98%;
-  --primary: 210 90% 60%;        --primary-foreground: 222 47.4% 11.2%;
-  --secondary: 217.2 32.6% 17.5%;--secondary-foreground: 210 40% 98%;
-  --card: 222 47% 14%;           --card-foreground: 210 40% 98%;
-  --popover: 222 47% 11%;        --popover-foreground: 210 40% 98%;
-  --muted: 217.2 32.6% 17.5%;    --muted-foreground: 215 20.2% 65.1%;
-  --accent: 217.2 32.6% 17.5%;   --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;  --destructive-foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17.5%;   --input: 217.2 32.6% 17.5%;   --ring: 210 90% 60%;
-  --sidebar: 240 5.9% 10%;             --sidebar-foreground: 240 4.8% 95.9%;
-  --sidebar-primary: 224.3 76.3% 48%;  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 3.7% 15.9%;    --sidebar-accent-foreground: 240 4.8% 95.9%;
-  --sidebar-border: 240 3.7% 15.9%;    --sidebar-ring: 217.2 91.2% 59.8%;
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+  --primary: 210 90% 60%;
+  --primary-foreground: 222 47.4% 11.2%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --card: 222 47% 14%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222 47% 11%;
+  --popover-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 210 90% 60%;
+  --sidebar: 240 5.9% 10%;
+  --sidebar-foreground: 240 4.8% 95.9%;
+  --sidebar-primary: 224.3 76.3% 48%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 240 3.7% 15.9%;
+  --sidebar-accent-foreground: 240 4.8% 95.9%;
+  --sidebar-border: 240 3.7% 15.9%;
+  --sidebar-ring: 217.2 91.2% 59.8%;
 }
 ```
 
@@ -100,16 +129,18 @@
 
 ## B. The prompt (paste into Claude Design)
 
-> You are designing the **IDC Redentor Ministry Admin Panel** — the internal, web-based administration tool for the leadership team of *Iglesia de Cristo Redentor*, a bilingual (Argentine-Spanish-first, English-second) church in Buenos Aires. This is a private, authenticated **internal tool**, not a marketing site: prioritize clarity, density, and efficiency for people doing real data work, while keeping the warm, trustworthy feeling of the church's public website.
+> You are designing the **IDC Redentor Ministry Admin Panel** — the internal, web-based administration tool for the leadership team of _Iglesia de Cristo Redentor_, a bilingual (Argentine-Spanish-first, English-second) church in Buenos Aires. This is a private, authenticated **internal tool**, not a marketing site: prioritize clarity, density, and efficiency for people doing real data work, while keeping the warm, trustworthy feeling of the church's public website.
 >
 > **Reuse the existing website design system exactly** — do not invent a new palette or typography. Use the tokens, fonts, radius, and light/dark themes provided alongside this prompt (the `@theme` + `:root`/`.dark` CSS block):
+>
 > - **Type:** headings in **Playfair Display** (serif, bold, tight tracking); all UI/body text in **Outfit** (sans). Nothing else.
 > - **Color:** blue **primary** (`--primary`), warm sand/gold **secondary**, slate neutrals, the dedicated **sidebar** tokens for the nav. Base **radius 0.75rem**. Support **light and dark** (`.dark` class).
 > - Build with a **shadcn/ui-compatible** component vocabulary (cards, buttons, inputs, dialogs, tables, badges, dropdowns, tabs, switches/checkboxes) — the live site already uses this token architecture with Radix primitives, so match it.
 >
-> **Product context (so the screens are real, not filler):** the panel will grow feature-by-feature; design only the **MVP** now — *People/Membership* and a *printable monthly calendar*. Future pillars (finances, worship-service planning) exist but are **out of scope for this pass** — you may show them as disabled/"coming soon" nav items, nothing more. Access is **invite-only** with **granular role-based permissions** (a real screen below). The church has ~40–60 people; there is **no formal membership** concept — the People list is simply the people in the life of the church.
+> **Product context (so the screens are real, not filler):** the panel will grow feature-by-feature; design only the **MVP** now — _People/Membership_ and a _printable monthly calendar_. Future pillars (finances, worship-service planning) exist but are **out of scope for this pass** — you may show them as disabled/"coming soon" nav items, nothing more. Access is **invite-only** with **granular role-based permissions** (a real screen below). The church has ~40–60 people; there is **no formal membership** concept — the People list is simply the people in the life of the church.
 >
 > **Screens to design (MVP), high fidelity, light + dark:**
+>
 > 1. **Sign-in** — invite-only login: "Continue with Google" + email/password, plus a "forgot password" path. Calm, centered, church-warm; small IDC Redentor logo. (No public sign-up.)
 > 2. **App shell** — left **sidebar** (using the sidebar tokens) with nav: Dashboard, People, Families, Activities, Calendar, Users, Roles, Settings (gate items by permission; show finances/worship as disabled "coming soon"). **Topbar** with the page title, a **locale switcher (ES/EN)**, **dark-mode toggle**, and a user menu. Content area is data-first.
 > 3. **Dashboard** — this month's **birthdays** at a glance + quick links/counts. Minimal, no data-slop.

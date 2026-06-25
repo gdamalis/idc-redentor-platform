@@ -275,6 +275,50 @@
     "e2e": "pnpm e2e"
   },
   "commandsNote": "typecheck maps to ICR's actual 'type-check' script (hyphen). 'test' = vitest run (single-pass; package.json 'test' is 'vitest run', never watch). 'e2e' = playwright test (config present, no specs in Phase 1). lint = eslint . If a script is absent at runtime, verifier/qa-runner reports it rather than inventing one.",
+  "contentful": {
+    "_note": "TWO LANES (docs/contentful-environments.md). CONTENT edits happen live in production (the `master` alias env) with no workflow. MODEL changes (new/changed/deleted content type or field, or an entry remap) use a work env: DEFAULT = a permanent `staging` env (granted on the Delivery+Preview API keys ONCE), promoted to prod at cutover via Contentful Merge and/or the committed scripts/contentful/ migrations (rollback = reverse migration). HEAVY = for big BREAKING changes (type deletions, field renames, merges), clone prod into a versioned env master-<major>.<minor>.<patch> and a HUMAN re-points the `master` alias at cutover (atomic, instant rollback). The single free-tier work-env slot is shared, so only one lane runs at a time. Cutover is HUMAN-ONLY, like merge/Done. Write path + safety: docs/contentful-mcp.md. Read path: docs/contentful-data-layer.md.",
+    "defaultWorkEnv": "staging",
+    "defaultWorkEnvNote": "The standing model-change work env (permanent; set up on the API keys + MCP/.env.local/preview ONCE). The versioned workEnvNaming below is the HEAVY-variant naming, used only for big breaking changes that need instant alias-flip rollback (e.g. epic ICR-76 → master-1.0.0).",
+    "mcpNamespace": "mcp__contentful__",
+    "spaceId": "vg9le24yw8hb",
+    "productionAlias": "master",
+    "aliasTarget": "master-0.0.1",
+    "freeTierWorkEnvLimit": 1,
+    "freeTierNote": "Free tier allows production (the master alias target) + exactly ONE other environment. The API enforces a quota of 1 environment beyond the alias target (creating a second fails: 'Quota reached ... 1 out of 1 allotted'). Each cycle: delete the stale idle env to free the slot, then clone CURRENT production into a fresh versioned work env. You can only ever delete the NON-aliased env (Contentful blocks deleting the alias target).",
+    "appEnvVar": "CONTENTFUL_ENVIRONMENT",
+    "appEnvVarNote": "Read by lib/contentful/fetch.ts. Unset/absent => the app targets the `master` alias (production) — production config NEVER sets it. Set it to the current work env (e.g. master-1.0.0) in .env.local AND the branch-scoped Vercel Preview to test model changes before cutover.",
+    "workEnvNaming": {
+      "pattern": "master-<major>.<minor>.<patch>",
+      "current": "master-0.0.1",
+      "bumpFromCurrentProductionVersion": true,
+      "bumpRules": {
+        "major": "Significant / BREAKING model change — content-type deletion, field rename/removal, type merges, or anything that breaks the existing read code.",
+        "minor": "New content models or NON-breaking modifications (additive types/fields the existing code still reads cleanly).",
+        "patch": "Fixing an issue in an existing model (validation, default, help text, small correction)."
+      },
+      "tieBreak": "A change that is both 'new models' and 'breaking' is MAJOR (breaking wins)."
+    },
+    "writePath": {
+      "via": "Contentful MCP (@contentful/mcp-server) + committed contentful-migration scripts under scripts/contentful/",
+      "targetEnv": "the current versioned WORK env (e.g. master-1.0.0) — NEVER the master alias",
+      "protectedEnvironments": "master",
+      "protectedNote": "PROTECTED_ENVIRONMENTS=master blocks writes to the alias. Also add the current PRODUCTION env id when it differs from the alias target, so a just-promoted env can't be written before the next reclone."
+    },
+    "cutover": {
+      "owner": "human",
+      "action": "DEFAULT lane: apply the tested migration to production (Contentful Merge for the model and/or run the committed scripts/contentful/ migrations against the prod env). HEAVY lane: re-point the `master` environment alias to the verified versioned work env (Contentful → Settings → Environments → Environment Aliases). Either way, done at PR-merge time.",
+      "humanGate": true,
+      "humanGateNote": "HUMAN-ONLY, like merge and Done. NO agent or command ever re-points the `master` alias. Agents propose changes in the work env; a human promotes at PR-merge time.",
+      "rollback": "re-point `master` back to the previous production env (kept intact until the next cycle deletes it) and revert/redeploy the PR"
+    },
+    "apiKeyEnvAccess": "Contentful Delivery (CDA) + Preview (CPA) API keys are ENVIRONMENT-SCOPED. The app's existing tokens allow the `master` alias ONLY, so a freshly created work env returns UNKNOWN_ENVIRONMENT until it is added to BOTH keys (Contentful -> Settings -> API keys -> [key] -> Environments). Do this FIRST each cycle, before local/preview testing. After cutover the alias covers the new env automatically, so production never needs a key change. (No MCP tool manages API keys -> human action in the Contentful UI.)",
+    "perCycleConfigTouch": [
+      "Delivery (CDA) + Preview (CPA) API keys -> add new work env (Settings -> API keys -> Environments) [do first; human-only]",
+      "MCP ENVIRONMENT_ID -> new work env (re-register + restart)",
+      ".env.local CONTENTFUL_ENVIRONMENT -> new work env",
+      "Vercel Preview CONTENTFUL_ENVIRONMENT (branch-scoped) -> new work env"
+    ]
+  },
   "playwrightProjectMap": {
     "_note": "ICR uses src/app/[locale]/<segment> (NO route groups) plus src/app/api/<route>. Phase 1 has NO e2e suite — qa-runner authors specs per-ticket on heavy depth. This map tells qa-runner which e2e project/tag to target for a given changed path.",
     "src/app/[locale]/page.tsx": ["e2ePublic"],

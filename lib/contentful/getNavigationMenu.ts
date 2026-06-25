@@ -26,7 +26,7 @@ export async function getNavigationMenu(
     `query {
         navigationMenuCollection(
           locale: "${locale}",
-          where:{internalName: "${name}"}, 
+          where:{machineName: "${name}"},
           limit: 1, 
           preview: ${isDraftMode ? "true" : "false"}
         ) {

@@ -10,29 +10,31 @@
 
 ## 0. Locked decisions
 
-| # | Decision | Choice |
-|---|----------|--------|
-| 1 | Content type | **New dedicated `sermon` Contentful type**, reusing the **existing** `author` + `bibleVerse` types |
-| 2 | Site placement | **Dedicated `/predicas` section** (list + detail), mirroring the blog |
-| 3 | Transcription (V1) | **Local `whisper.cpp` `large-v3-turbo`** (free, private, already installed) |
-| 4 | Automation scope (V1) | **Local, on-demand** via a `/predica` harness command; steps written as portable modules so V2 is a hosting swap |
-| 5 | Likes | **Yes** — reuse the blog like service; **like-key** namespaced (`predicas/<slug>`); **share/URL slug decoupled** from the like-key (see §5.5) |
-| 6 | PDF | **Two PDFs per sermon (es-AR + en-US)**, HTML→headless-Chrome, branded; **required at launch** |
-| 7 | Multilingual | **Full bilingual content** (both locales authored), exactly like blog posts |
-| 8 | SEO | **Blog parity + sermon-specific improvements** (AudioObject, og:audio, Person, per-locale, sitemap) |
-| 9 | Publish/send | **Never automated.** Contentful draft only; WhatsApp compose-only. Two human gates. |
+| #   | Decision              | Choice                                                                                                                                        |
+| --- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Content type          | **New dedicated `sermon` Contentful type**, reusing the **existing** `author` + `bibleVerse` types                                            |
+| 2   | Site placement        | **Dedicated `/predicas` section** (list + detail), mirroring the blog                                                                         |
+| 3   | Transcription (V1)    | **Local `whisper.cpp` `large-v3-turbo`** (free, private, already installed)                                                                   |
+| 4   | Automation scope (V1) | **Local, on-demand** via a `/predica` harness command; steps written as portable modules so V2 is a hosting swap                              |
+| 5   | Likes                 | **Yes** — reuse the blog like service; **like-key** namespaced (`predicas/<slug>`); **share/URL slug decoupled** from the like-key (see §5.5) |
+| 6   | PDF                   | **Two PDFs per sermon (es-AR + en-US)**, HTML→headless-Chrome, branded; **required at launch**                                                |
+| 7   | Multilingual          | **Full bilingual content** (both locales authored), exactly like blog posts                                                                   |
+| 8   | SEO                   | **Blog parity + sermon-specific improvements** (AudioObject, og:audio, Person, per-locale, sitemap)                                           |
+| 9   | Publish/send          | **Never automated.** Contentful draft only; WhatsApp compose-only. Two human gates.                                                           |
 
 ---
 
 ## 1. Goals & non-goals
 
 **Goals**
+
 - One command turns a sermon recording into a review-ready, bilingual website post with an embedded audio player and a downloadable branded PDF summary in each language, plus a ready-to-paste WhatsApp message.
 - Preserve the preacher's voice; surface scripture; structure the teaching into clear sections.
 - Human-in-the-loop: nothing is published or sent automatically.
 - Editor-friendly: the recurring artifact (the post) lives in Contentful like everything else; editors attach media in the UI they already use.
 
 **Non-goals (V1)**
+
 - No cloud automation, no phone-upload trigger (V2 appendix).
 - No new auth surface on the site (it stays auth-free by design).
 - No podcast RSS feed (flagged as a future SEO/distribution win, not built).
@@ -81,6 +83,7 @@
 ```
 
 **Draft-only is enforced on three layers** (verified against the live harness):
+
 1. The `predica-publisher` agent's tool allowlist **omits** `publish_entry` / `publish_asset` (they are discrete MCP tools, so omission is a structural block).
 2. Writes default to the **`agent-sandbox`** environment, never live `master` (`get_initial_context` → `Environment ID: agent-sandbox`).
 3. The MCP server runs with **`PROTECTED_ENVIRONMENTS=master`** — server-side block on any write to `master` (`docs/contentful-mcp.md:42-49`).
@@ -93,12 +96,12 @@
 
 Four sub-projects. Build **A first**, then **B + C** (parallel), then **D**. Each becomes a Trello card under the existing `/work` flow (`feat/ICR-N-<slug>`); this master spec is sliced into the per-card specs.
 
-| Card | Sub-project | Scope | Depends on |
-|------|-------------|-------|------------|
-| A | **`sermon` content type** | Create the Contentful type + relax `author.avatar` (paired with the B-side AuthorInfo fix) | — |
-| B | **`/predicas` site section** | Getter, types, routes, components, audio player, likes (+ Share decoupling), AuthorInfo fallback, CSP, i18n, SEO, sitemap, nav | A |
-| C | **Branded PDF generator** | HTML template + Playwright render script, both locales | A (field shape) |
-| D | **`/predica` harness pipeline** | Command + subagents + config + transcription/transcode | A, B (URLs), C |
+| Card | Sub-project                     | Scope                                                                                                                          | Depends on      |
+| ---- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | --------------- |
+| A    | **`sermon` content type**       | Create the Contentful type + relax `author.avatar` (paired with the B-side AuthorInfo fix)                                     | —               |
+| B    | **`/predicas` site section**    | Getter, types, routes, components, audio player, likes (+ Share decoupling), AuthorInfo fallback, CSP, i18n, SEO, sitemap, nav | A               |
+| C    | **Branded PDF generator**       | HTML template + Playwright render script, both locales                                                                         | A (field shape) |
+| D    | **`/predica` harness pipeline** | Command + subagents + config + transcription/transcode                                                                         | A, B (URLs), C  |
 
 > A is a Contentful change (no app code) done via MCP in `agent-sandbox`, then a human merges to `master`. **Caveat:** A's `author.avatar` relaxation must not ship to `master` until B's AuthorInfo fallback is merged (see §5.x / Blocker-1), else a future avatar-less author would crash blog rendering. B, C, D are code PRs. The website (B) can ship and be tested with a hand-made sermon entry before D automates entry creation.
 
@@ -110,32 +113,34 @@ Four sub-projects. Build **A first**, then **B + C** (parallel), then **D**. Eac
 
 Localization mirrors `blogPostPage`, plus `pdfSummary` is localized (different PDF per language — Contentful localized link fields are verified-supported and resolve per the getter's `locale:` arg).
 
-| field id | type | required | localized | validations / notes |
-|---|---|---|---|---|
-| `internalName` | Symbol | no | no | editor handle (space convention) |
-| `title` | Symbol | **yes** | **yes** | sermon title |
-| `slug` | Symbol | **yes** | no | unique; regex `^[a-z0-9]+(?:-[a-z0-9]+)*$` (this mirrors the `page` type's slug validation; `blogPostPage.slug` is unique-only with no regex — the regex is a deliberate improvement). Route `/predicas/<slug>` |
-| `sermonDate` | Date | **yes** | no | `dateonly`; the Sunday it was **preached** |
-| `preacher` | Link→`author` | **yes** | no | who **preached** (not the publisher). Reuses the **existing** `author` type. |
-| `scriptureReferences` | Array\<Link→`bibleVerse`\> | no | no | the main passage(s); reuses the **existing** `bibleVerse` type (currently used by `contactForm`). Its `book`/`verseContent`/`bibleVersion` are **localized** → per-locale citations come for free (see §5.1). |
-| `thesis` | Text | **yes** | **yes** | one-sentence central idea → drives the PDF |
-| `mainPoints` | Array\<Symbol\> | **yes** | **yes** | 2–5 bullet outline → drives the PDF |
-| `excerpt` | Text | **yes** | **yes** | teaser for list tiles + meta fallback |
-| `content` | RichText | no | **yes** | full body. Validation set: **match what the shared renderer actually handles** (see §5.3) — marks bold/italic; nodes heading-2/3, blockquote, ul/ol/list-item, paragraph. (Do **not** enable nodes the renderer doesn't render — h1/h4-6, table, embeds — unless §5.3 extends the renderer.) Optional so an audio-only sermon is valid. |
-| `featuredImage` | Link→Asset | **yes** | no | `linkMimetypeGroup: image`; top + tile image |
-| `audio` | Link→Asset | no | no | `linkMimetypeGroup: audio`; the recording (web `.mp3`) → player. **New asset kind in this space.** |
-| `pdfSummary` | Link→Asset | no | **yes** | `linkMimetypeGroup: pdfdocument` (verified the correct token; no `application/pdf` group exists). **es-AR link → Spanish PDF, en-US link → English PDF.** **New asset kind.** |
-| `seoTitle` | Symbol | **yes** | **yes** | unique, ≤60 chars |
-| `seoDescription` | Text | **yes** | **yes** | meta description |
-| `keywords` | Array\<Symbol\> | **yes** | **yes** | tag editor |
-| `relatedSermons` | Array\<Link→`sermon`\> | no | no | max 3; mirrors `relatedBlogPosts` |
+| field id              | type                       | required | localized | validations / notes                                                                                                                                                                                                                                                                                                                     |
+| --------------------- | -------------------------- | -------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `internalName`        | Symbol                     | no       | no        | editor handle (space convention)                                                                                                                                                                                                                                                                                                        |
+| `title`               | Symbol                     | **yes**  | **yes**   | sermon title                                                                                                                                                                                                                                                                                                                            |
+| `slug`                | Symbol                     | **yes**  | no        | unique; regex `^[a-z0-9]+(?:-[a-z0-9]+)*$` (this mirrors the `page` type's slug validation; `blogPostPage.slug` is unique-only with no regex — the regex is a deliberate improvement). Route `/predicas/<slug>`                                                                                                                         |
+| `sermonDate`          | Date                       | **yes**  | no        | `dateonly`; the Sunday it was **preached**                                                                                                                                                                                                                                                                                              |
+| `preacher`            | Link→`author`              | **yes**  | no        | who **preached** (not the publisher). Reuses the **existing** `author` type.                                                                                                                                                                                                                                                            |
+| `scriptureReferences` | Array\<Link→`bibleVerse`\> | no       | no        | the main passage(s); reuses the **existing** `bibleVerse` type (currently used by `contactForm`). Its `book`/`verseContent`/`bibleVersion` are **localized** → per-locale citations come for free (see §5.1).                                                                                                                           |
+| `thesis`              | Text                       | **yes**  | **yes**   | one-sentence central idea → drives the PDF                                                                                                                                                                                                                                                                                              |
+| `mainPoints`          | Array\<Symbol\>            | **yes**  | **yes**   | 2–5 bullet outline → drives the PDF                                                                                                                                                                                                                                                                                                     |
+| `excerpt`             | Text                       | **yes**  | **yes**   | teaser for list tiles + meta fallback                                                                                                                                                                                                                                                                                                   |
+| `content`             | RichText                   | no       | **yes**   | full body. Validation set: **match what the shared renderer actually handles** (see §5.3) — marks bold/italic; nodes heading-2/3, blockquote, ul/ol/list-item, paragraph. (Do **not** enable nodes the renderer doesn't render — h1/h4-6, table, embeds — unless §5.3 extends the renderer.) Optional so an audio-only sermon is valid. |
+| `featuredImage`       | Link→Asset                 | **yes**  | no        | `linkMimetypeGroup: image`; top + tile image                                                                                                                                                                                                                                                                                            |
+| `audio`               | Link→Asset                 | no       | no        | `linkMimetypeGroup: audio`; the recording (web `.mp3`) → player. **New asset kind in this space.**                                                                                                                                                                                                                                      |
+| `pdfSummary`          | Link→Asset                 | no       | **yes**   | `linkMimetypeGroup: pdfdocument` (verified the correct token; no `application/pdf` group exists). **es-AR link → Spanish PDF, en-US link → English PDF.** **New asset kind.**                                                                                                                                                           |
+| `seoTitle`            | Symbol                     | **yes**  | **yes**   | unique, ≤60 chars                                                                                                                                                                                                                                                                                                                       |
+| `seoDescription`      | Text                       | **yes**  | **yes**   | meta description                                                                                                                                                                                                                                                                                                                        |
+| `keywords`            | Array\<Symbol\>            | **yes**  | **yes**   | tag editor                                                                                                                                                                                                                                                                                                                              |
+| `relatedSermons`      | Array\<Link→`sermon`\>     | no       | no        | max 3; mirrors `relatedBlogPosts`                                                                                                                                                                                                                                                                                                       |
 
 **Author avatar relaxation — paired with a code fix (Blocker-1).** `author.avatar` is currently **required** (verified). A guest preacher may have no photo, so A relaxes it to optional. **But there is no avatar-fallback in the code today:** `AuthorInfo.tsx:8-17,31-33` types `avatar` as non-optional and unconditionally renders `<Image src={avatar.url}>` — a null avatar **crashes the RSC render** for any blog post or sermon. Therefore:
+
 - **B must** make `AuthorInfo`'s `avatar` prop optional and render a fallback (a **bundled local default image** in `public/assets/img/` or generated initials) when absent.
 - **Do not** hardcode the asset id `5FtKzy1OMwsIKn1c8KH7Oy` as a "default user image" — verification showed it is actually **Jonathan Hanegan's real avatar**, not a generic placeholder.
 - **Sequencing:** A's `author.avatar` relaxation must not reach `master` before B's `AuthorInfo` fallback is live (it's a shared component; the existing two authors both have avatars today, so there's no immediate break, but the guard must land before any avatar-less author entry).
 
 **Creation steps (via Contentful MCP, `agent-sandbox`):**
+
 1. `create_content_type` (`sermon`) with the fields above (validations + `linkMimetypeGroup` + localized flags).
 2. `update_editor_interface` (slug tracks `title`, date picker, asset link editors, tag editor).
 3. `publish_content_type` (the schema must be published for entries to use it — still in `agent-sandbox`).
@@ -151,6 +156,7 @@ Mirror the blog end-to-end. **All new files copy an existing blog counterpart.**
 ### 5.1 Data layer
 
 **New** `lib/contentful/getSermons.ts` — copy `getBlogPostPages.ts` recipe:
+
 - Module-level `GRAPHQL_FIELDS` adding the sermon fields. Asset + ref sub-selections:
   ```graphql
   audio { url title contentType fileName size }
@@ -159,7 +165,7 @@ Mirror the blog end-to-end. **All new files copy an existing blog counterpart.**
   scriptureReferencesCollection { items { ... on BibleVerse {
     book chapter fromVerse toVerse verseContent bibleVersion } } }
   ```
-  **Scripture localization (resolved MAJOR):** because the getter fetches **once per locale** with `locale:`, the **same** `scriptureReferences` links resolve `book`/`verseContent`/`bibleVersion` in the queried locale automatically (e.g. *Mateo*/RVR1960 on es-AR vs *Matthew*/NIV on en-US) — **provided the en-US values are populated** on each `bibleVerse` entry. So there are **two distinct scripture surfaces**: (a) **structured** `scriptureReferences` → Contentful localizes; the `predica-publisher` must fill **both** locales when it creates/links `bibleVerse` entries; (b) **inline** body blockquotes + PDF cover/scripture lines → **writer-supplied** per-locale strings. O2 (English Bible version) applies to both.
+  **Scripture localization (resolved MAJOR):** because the getter fetches **once per locale** with `locale:`, the **same** `scriptureReferences` links resolve `book`/`verseContent`/`bibleVersion` in the queried locale automatically (e.g. _Mateo_/RVR1960 on es-AR vs _Matthew_/NIV on en-US) — **provided the en-US values are populated** on each `bibleVerse` entry. So there are **two distinct scripture surfaces**: (a) **structured** `scriptureReferences` → Contentful localizes; the `predica-publisher` must fill **both** locales when it creates/links `bibleVerse` entries; (b) **inline** body blockquotes + PDF cover/scripture lines → **writer-supplied** per-locale strings. O2 (English Bible version) applies to both.
 - `getLatestSermons(locale, { slug?, isDraftMode? })` — for "related/latest" tiles.
 - **`getAllSermons(locale, { isDraftMode? })`** — the full list page. **Use `limit: 100`** (mirroring `getAllBlogPostSlugs`, which uses `limit:100` — there is no truly "unbounded" getter in the codebase; Contentful GraphQL caps collections at 1000/request). Add cursor pagination only if sermon volume approaches 100. (We still avoid the blog **index**'s `limit:3` cap — sermons get the full list, not latest-3.)
 - `getSermon(slug, locale, isDraftMode)` — single.
@@ -167,23 +173,38 @@ Mirror the blog end-to-end. **All new files copy an existing blog counterpart.**
 - Keep the double `preview:` pass + `fetchGraphQL(query, isDraftMode)` + the inherited `site-content` cache tag.
 
 **New** `src/types/Sermon.ts`. Note `src/types/BlogPost.ts` is a `type` alias with `content.json: any`, an inline `links` shape, `publishedDate`, and **optional** `sys.publishedAt` — it is not a clean template. So define the sermon types explicitly (project convention prefers `interface`; these are **new** types, not a mirror):
+
 ```ts
 import type { Document } from "@contentful/rich-text-types";
 
-export interface RichTextLinks { /* mirror BlogPost.ts's inline links shape: assets.block[], entries.* */ }
+export interface RichTextLinks {
+  /* mirror BlogPost.ts's inline links shape: assets.block[], entries.* */
+}
 
 export interface SermonAudio {
-  url: string; title: string; contentType: string; fileName: string; size: number;
+  url: string;
+  title: string;
+  contentType: string;
+  fileName: string;
+  size: number;
 }
 export interface ScriptureRef {
-  book: string; chapter: string; fromVerse: string; toVerse?: string;
-  verseContent: string; bibleVersion: string;   // already locale-resolved by the getter
+  book: string;
+  chapter: string;
+  fromVerse: string;
+  toVerse?: string;
+  verseContent: string;
+  bibleVersion: string; // already locale-resolved by the getter
 }
 export interface Sermon {
   title: string;
   slug: string;
-  sermonDate: string;                  // ISO date-only
-  preacher: { name: string; avatar?: { url: string; title: string }; email: string }; // avatar optional
+  sermonDate: string; // ISO date-only
+  preacher: {
+    name: string;
+    avatar?: { url: string; title: string };
+    email: string;
+  }; // avatar optional
   scriptureReferences?: ScriptureRef[];
   thesis: string;
   mainPoints: string[];
@@ -192,14 +213,15 @@ export interface Sermon {
   featuredImage: { url: string; title: string };
   audio?: SermonAudio;
   pdfSummary?: { url: string; title: string };
-  durationSec?: number;                // for player total-time + JSON-LD ISO-8601
+  durationSec?: number; // for player total-time + JSON-LD ISO-8601
   seoTitle: string;
   seoDescription: string;
   keywords: string[];
   relatedSermons?: Sermon[];
-  sys: { id: string; publishedAt?: string };   // optional, matching BlogPost
+  sys: { id: string; publishedAt?: string }; // optional, matching BlogPost
 }
 ```
+
 > If `Document`/`RichTextLinks` add friction, fall back to mirroring `BlogPost.ts`'s actual `content.json: any` + inline links shape. Either way, `sys.publishedAt` is optional.
 
 ### 5.2 Routes
@@ -214,6 +236,7 @@ export interface Sermon {
 `src/components/features/sermon-section/` — `SermonSection.tsx` (server; sort by `sermonDate` desc, grid) + `SermonCard.tsx` (client; copy `BlogPostCard`, link `/predicas/<slug>`, show date + preacher + a ▶ "audio" indicator).
 
 `src/components/features/sermon-details/`:
+
 - `SermonDetails.tsx` — layout shell (`max-w-2xl`), order: header → **audio player** → content → scripture refs (optional) → `PostActions` (Like + Share) → related.
 - `SermonHeader.tsx` — date overline + title + thesis + `AuthorInfo`(preacher) labeled via `Sermons.preached-by`.
 - `SermonAudioPlayer.tsx` — see 5.4.
@@ -227,8 +250,13 @@ export interface Sermon {
 `SermonAudioPlayer.tsx` — `"use client"`. Custom controls over a hidden `<audio preload="metadata" className="hidden">`. **No library, no native `controls`, no download affordance.**
 
 ```ts
-interface SermonAudioPlayerProps { readonly src: string; readonly title: string; readonly durationSec?: number; }
+interface SermonAudioPlayerProps {
+  readonly src: string;
+  readonly title: string;
+  readonly durationSec?: number;
+}
 ```
+
 - State: `isPlaying`, `currentTime`, `duration` (seed from `durationSec` prop; refine on `loadedmetadata`), `isReady`, `isBuffering`, `playbackRate` (`[1,1.25,1.5,2]`), `audioRef`.
 - Controls: play/pause (`Button size="icon"`, Heroicons `PlayIcon`/`PauseIcon`, Framer `AnimatePresence` + `whileTap`), scrubber (`<input type="range">`, `accent-primary`), `mm:ss / mm:ss` time (`tabular-nums text-muted-foreground`), speed cycle button.
 - Events (`useEffect`): `loadedmetadata`→duration+ready, `timeupdate`→currentTime, `play`/`pause`, `ended`→reset, `waiting`/`playing`→buffering. Clean up on unmount.
@@ -241,6 +269,7 @@ interface SermonAudioPlayerProps { readonly src: string; readonly title: string;
 The like **read/write path is fully opaque** (verified): `/api/likes` validates only `typeof slug === "string"` (no regex, no `/` rejection); `like.service.ts` uses `slug` as a plain Mongo key. So a **namespaced like-key** `"predicas/<slug>"` produces a distinct `likes` doc with **no schema change, no migration, no blog impact**.
 
 **But `PostActions` is NOT reusable unchanged (Blocker-2).** `ShareButton.tsx:118` **hardcodes** the share URL as `${baseUrl}/${locale}/blog/${slug}`. If we passed `"predicas/<slug>"` to `PostActions`, every share/copy/native-share link would become `…/blog/predicas/<slug>` — **wrong section + leaked prefix → 404**. Fix (a shared-component change → **blog regression check required**):
+
 - Decouple the **like-key** from the **URL slug**. Give `PostActions` separate props: e.g. `likeKey` (the namespaced `"predicas/<slug>"`, passed to `LikeButton`) and a `shareHref`/`basePath` + bare `slug` (passed to `ShareButton`).
 - Make `ShareButton` build its URL from a `basePath` (`"blog"` | `"predicas"`) or accept a full `path`, instead of hardcoding `/blog/`.
 - Blog usage updated to pass `basePath="blog"` + bare slug + `likeKey=slug` (unchanged behavior). Sermon usage passes `basePath="predicas"` + bare slug + `likeKey="predicas/"+slug`.
@@ -249,7 +278,7 @@ The like **read/write path is fully opaque** (verified): `/api/likes` validates 
 
 ### 5.6 CSP / media (hardening — corrected rationale)
 
-**Resolved (MAJOR — rationale was inverted):** the current CSP (`config/headers.js:16`) has **no `default-src`**, so media is **currently unrestricted** (a missing directive with no `default-src` falls back to allow-anything). Audio would actually play today without any change. Adding `media-src` is a **hardening/tightening** step, not an enabler — and a **too-narrow** host list would *break* playback.
+**Resolved (MAJOR — rationale was inverted):** the current CSP (`config/headers.js:16`) has **no `default-src`**, so media is **currently unrestricted** (a missing directive with no `default-src` falls back to allow-anything). Audio would actually play today without any change. Adding `media-src` is a **hardening/tightening** step, not an enabler — and a **too-narrow** host list would _break_ playback.
 
 - **Verify the real asset host first.** Upload one sermon `.mp3` to Contentful and read the published asset `.url`. Contentful non-image assets serve from `assets.ctfassets.net` (delivery) and `downloads.ctfassets.net` (forced-download), with EU/region variants. Include exactly the hosts the real asset uses; default to listing both delivery + download hosts:
   ```
@@ -264,25 +293,26 @@ The like **read/write path is fully opaque** (verified): `/api/likes` validates 
 
 Add a `Sermons` namespace to **both** `public/locales/es-AR.json` and `en-US.json` (keys identical — verified both files exist with identical top-level key sets; es-AR is source). Also add `common.sermons` (nav/footer label). With **full bilingual** content authored, next-intl's per-field fallback simply never triggers (no conflict).
 
-| key | es-AR | en-US |
-|---|---|---|
-| `Sermons.header-title` | Prédicas | Sermons |
-| `Sermons.header-subtitle` | Mensajes de nuestros cultos dominicales | Messages from our Sunday services |
-| `Sermons.preached-by` | Predicado por | Preached by |
-| `Sermons.audio-in-spanish` | El audio de esta prédica está en español. | This sermon's audio is in Spanish. |
-| `Sermons.play` / `pause` / `seek` / `speed` | Reproducir / Pausar / Buscar / Velocidad | Play / Pause / Seek / Speed |
-| `Sermons.scripture` | Pasaje bíblico | Scripture |
-| `Sermons.summary-pdf` | Descargar resumen (PDF) | Download summary (PDF) |
-| `Sermons.more-sermons` | Más prédicas | More sermons |
-| `Sermons.no-sermons` | Aún no hay prédicas publicadas. | No sermons published yet. |
-| `Sermons.view-all` | Ver todas las prédicas | View all sermons |
-| `common.sermons` | Prédicas | Sermons |
+| key                                         | es-AR                                     | en-US                              |
+| ------------------------------------------- | ----------------------------------------- | ---------------------------------- |
+| `Sermons.header-title`                      | Prédicas                                  | Sermons                            |
+| `Sermons.header-subtitle`                   | Mensajes de nuestros cultos dominicales   | Messages from our Sunday services  |
+| `Sermons.preached-by`                       | Predicado por                             | Preached by                        |
+| `Sermons.audio-in-spanish`                  | El audio de esta prédica está en español. | This sermon's audio is in Spanish. |
+| `Sermons.play` / `pause` / `seek` / `speed` | Reproducir / Pausar / Buscar / Velocidad  | Play / Pause / Seek / Speed        |
+| `Sermons.scripture`                         | Pasaje bíblico                            | Scripture                          |
+| `Sermons.summary-pdf`                       | Descargar resumen (PDF)                   | Download summary (PDF)             |
+| `Sermons.more-sermons`                      | Más prédicas                              | More sermons                       |
+| `Sermons.no-sermons`                        | Aún no hay prédicas publicadas.           | No sermons published yet.          |
+| `Sermons.view-all`                          | Ver todas las prédicas                    | View all sermons                   |
+| `common.sermons`                            | Prédicas                                  | Sermons                            |
 
 ### 5.8 SEO (blog parity + sermon-specific improvements)
 
 Mirror the blog's `buildArticleMetadata` (`lib/metadata.ts:81-123`) as **`buildSermonMetadata`** (path `predicas/<slug>`, `authors:[preacher.name]`, `publishedTime: sermonDate`, **`modifiedTime: sermon.sys.publishedAt ?? sermon.sermonDate`** — do **not** copy the blog's unguarded `sys.publishedAt`, which can be undefined for a draft). OG `type:"article"`, Twitter `summary_large_image`, canonical + `buildLocaleAlternates`. Add **`og:audio`** = `audio.url` (+ `og:audio:type`) and `og:locale:alternate`.
 
 **`buildSermonJsonLd(sermon, locale)`** — extend the blog's `Article` JSON-LD with audio + person + language:
+
 ```jsonc
 {
   "@context": "https://schema.org",
@@ -292,18 +322,34 @@ Mirror the blog's `buildArticleMetadata` (`lib/metadata.ts:81-123`) as **`buildS
   "image": "<featuredImage.url>",
   "datePublished": "<sermonDate>",
   "dateModified": "<sys.publishedAt ?? sermonDate>",
-  "author":   { "@type": "Person", "name": "<preacher.name>" },
-  "publisher":{ "@type": "Organization", "name": "Iglesia de Cristo Redentor",
-                "logo": { "@type": "ImageObject", "url": "<baseUrl>/assets/img/redentor_logo.png" } },
-  "mainEntityOfPage": { "@type": "WebPage", "@id": "<baseUrl>/<locale>/predicas/<slug>" },
+  "author": { "@type": "Person", "name": "<preacher.name>" },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Iglesia de Cristo Redentor",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "<baseUrl>/assets/img/redentor_logo.png",
+    },
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "<baseUrl>/<locale>/predicas/<slug>",
+  },
   "inLanguage": "<locale>",
   "keywords": "<keywords joined>",
-  "audio": { "@type": "AudioObject", "contentUrl": "<audio.url>",
-             "encodingFormat": "<audio.contentType>", "duration": "PT…M…S" /* from durationSec */ },
-  "associatedMedia": [{ "@type":"AudioObject", "contentUrl":"<audio.url>" }],
-  "citation": [ /* each scriptureRef as "Efesios 2:11-22 (RVR1960)" — locale-resolved */ ]
+  "audio": {
+    "@type": "AudioObject",
+    "contentUrl": "<audio.url>",
+    "encodingFormat": "<audio.contentType>",
+    "duration": "PT…M…S" /* from durationSec */,
+  },
+  "associatedMedia": [{ "@type": "AudioObject", "contentUrl": "<audio.url>" }],
+  "citation": [
+    /* each scriptureRef as "Efesios 2:11-22 (RVR1960)" — locale-resolved */
+  ],
 }
 ```
+
 > **Do NOT inherit the blog's broken logo path.** Verification confirmed `lib/metadata.ts:22,145` and `layout.tsx:60` reference `og-default.jpeg` (hyphen) but the file on disk is `og_default.jpeg` (underscore) — a real 404. The sermon JSON-LD uses `redentor_logo.png` (exists) + the real `featuredImage.url`. Optionally fix the filename mismatch (rename file or fix the 3 refs) as a small bundled cleanup; otherwise out of scope.
 
 **Sitemap** (`src/app/sitemap.ts`): add `"predicas"` to `staticPages`; append per-sermon entries from `getAllSermonSlugs(i18n.defaultLocale)` (`limit:100`) → `/${locale}/predicas/${slug}` for both locales, `lastModified` from `sermonDate`/`sys.publishedAt`, with `buildLocaleAlternates("predicas/<slug>")`.
@@ -325,16 +371,24 @@ Mirror the blog's `buildArticleMetadata` (`lib/metadata.ts:81-123`) as **`buildS
 **Layout (per locale):** cover (logo · date/service eyebrow · H1 title · key verse · "Predicó/Preached: <preacher>" · rule) → lead → **Tesis/Thesis** (callout) → **Puntos principales/Main points** (bullets) → **Citas clave/Key quotes** (1–2 blockquotes) → **Referencias bíblicas/Scripture** (chips/list) → closing + signature footer.
 
 **Data contract** (one object per locale, from step [2]):
+
 ```ts
 interface SermonPdfData {
   locale: "es-AR" | "en-US";
-  title: string; preacher: string; date: string; serviceLabel: string;
-  scriptureHeadline?: string; lead: string; thesis: string; mainPoints: string[];
-  keyQuotes: string[];        // 1–2, verbatim
-  scriptureRefs: string[];    // per-locale, e.g. "Efesios 2:11-22 (RVR1960)" / "Ephesians 2:11-22 (NIV)"
+  title: string;
+  preacher: string;
+  date: string;
+  serviceLabel: string;
+  scriptureHeadline?: string;
+  lead: string;
+  thesis: string;
+  mainPoints: string[];
+  keyQuotes: string[]; // 1–2, verbatim
+  scriptureRefs: string[]; // per-locale, e.g. "Efesios 2:11-22 (RVR1960)" / "Ephesians 2:11-22 (NIV)"
   closing?: string;
 }
 ```
+
 Output: `predica.es-AR.pdf` + `predica.en-US.pdf` in `tasks/predicas/<slug>/`.
 
 ---
@@ -342,6 +396,7 @@ Output: `predica.es-AR.pdf` + `predica.en-US.pdf` in `tasks/predicas/<slug>/`.
 ## 7. Sub-project D — the `/predica` harness pipeline
 
 **New command** `.claude/commands/predica.md` (format verified: `--- description / argument-hint ---`; orchestrator modeled on `/qa`'s fan-out + `/work`'s gate discipline). **New config block** in `.claude/config.json` (flat top-level object; a `predica` sibling block fits the convention):
+
 ```jsonc
 "predica": {
   "audioInbox": "/Users/.../Predicas",
@@ -358,17 +413,17 @@ Output: `predica.es-AR.pdf` + `predica.en-US.pdf` in `tasks/predicas/<slug>/`.
 
 **Subagents** (`.claude/agents/predica-*.md`; format verified `--- name/description/tools/model ---`; tool allowlist is the safety boundary):
 
-| agent | tools | role |
-|---|---|---|
-| `predica-transcriber` | `Bash, Read, Write` | (1) `ffmpeg` → 16k mono WAV → whisper.cpp → `transcript.{txt,srt,json}`; (2) **transcode source → web `audio.mp3`** (keep original `.m4a` as archive); (3) **capture `durationSec`** (ffprobe). Emits the transcript + mp3 + duration. |
-| `predica-writer` | `Read, Write, Edit, Skill` | transcript → `sermon.json` (both locales, all fields incl. `slug`, `durationSec`, `keyQuotes`, per-locale `scriptureRefs` strings, `whatsappText`). Loads `docs/product/` editorial rules; may invoke `humanizer`. |
-| `predica-publisher` | `Read, Bash` + `mcp__contentful__{get_initial_context, list_content_types, search_entries, create_entry, update_entry, upload_asset, update_asset}` **(NO `publish_*`)** | upload `audio.mp3` + `featuredImage` + 2 PDFs; upsert `bibleVerse` entries with **both-locale** values; create DRAFT `sermon` entry (both locales, link assets + preacher) in `agent-sandbox`; return entry id + edit URL |
-| `predica-whatsapp` | `Read, Write` | compose es-AR WhatsApp text → `whatsapp.txt` using the deterministic canonical URL (see step 6); compose-only, never sends |
+| agent                 | tools                                                                                                                                                                    | role                                                                                                                                                                                                                                   |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `predica-transcriber` | `Bash, Read, Write`                                                                                                                                                      | (1) `ffmpeg` → 16k mono WAV → whisper.cpp → `transcript.{txt,srt,json}`; (2) **transcode source → web `audio.mp3`** (keep original `.m4a` as archive); (3) **capture `durationSec`** (ffprobe). Emits the transcript + mp3 + duration. |
+| `predica-writer`      | `Read, Write, Edit, Skill`                                                                                                                                               | transcript → `sermon.json` (both locales, all fields incl. `slug`, `durationSec`, `keyQuotes`, per-locale `scriptureRefs` strings, `whatsappText`). Loads `docs/product/` editorial rules; may invoke `humanizer`.                     |
+| `predica-publisher`   | `Read, Bash` + `mcp__contentful__{get_initial_context, list_content_types, search_entries, create_entry, update_entry, upload_asset, update_asset}` **(NO `publish_*`)** | upload `audio.mp3` + `featuredImage` + 2 PDFs; upsert `bibleVerse` entries with **both-locale** values; create DRAFT `sermon` entry (both locales, link assets + preacher) in `agent-sandbox`; return entry id + edit URL              |
+| `predica-whatsapp`    | `Read, Write`                                                                                                                                                            | compose es-AR WhatsApp text → `whatsapp.txt` using the deterministic canonical URL (see step 6); compose-only, never sends                                                                                                             |
 
 PDF generation = the helper **script** (not an agent): `node .claude/scripts/predica/build-predica-pdf.mjs tasks/predicas/<slug>/sermon.json`.
 
-**Orchestrator steps** (`predica.md`):
-0. Resolve audio path from `$1` (or newest in `audioInbox`). **Derive a provisional `<slug>`** for the artifacts dir via the normalization in §7.1; create `tasks/predicas/<slug>/`.
+**Orchestrator steps** (`predica.md`): 0. Resolve audio path from `$1` (or newest in `audioInbox`). **Derive a provisional `<slug>`** for the artifacts dir via the normalization in §7.1; create `tasks/predicas/<slug>/`.
+
 1. Dispatch `predica-transcriber` (transcript + `audio.mp3` + `durationSec`).
 2. **★ GATE 1** — print the transcript path; wait for the human to confirm/correct `transcript.txt`.
 3. Dispatch `predica-writer` → `sermon.json` (the **writer's `slug` is canonical**; orchestrator validates it against the slug regex and reconciles the artifacts dir). Show title/thesis/points/quotes for a sanity glance.
@@ -468,6 +523,7 @@ iOS Shortcut → Google Drive /Sermones/_inbox  (church account; you have the Dr
 **Cost:** under **$10/month** at one sermon/week.
 
 **Portable-now modules (write them this way in V1 so V2 is a hosting swap):**
+
 1. `transcribe(audioPath) → { text, durationSec }`
 2. `generateSermonPost(transcript) → SermonJson` (Claude API; default to the latest Claude model — confirm id via the `claude-api` skill at build time)
 3. `buildSermonPdf(SermonPdfData) → Buffer` (Playwright now, Puppeteer-on-worker later)
@@ -494,6 +550,7 @@ iOS Shortcut → Google Drive /Sermones/_inbox  (church account; you have the Dr
 ## Verification log (what the adversarial review changed)
 
 Reviewed by 3 critics against the live Contentful space + codebase; key corrections folded in:
+
 - **Resolved contradiction:** `bibleVerse` **is** an existing structured content type (verified `get_content_type` in `master`: book[L]/chapter/fromVerse/toVerse[opt]/verseContent[L]/bibleVersion[L]), used by `contactForm`. Structured-link design kept; "currently unused" wording removed.
 - **Blocker-1 (avatar):** no avatar fallback exists in `AuthorInfo.tsx`; relaxing `author.avatar` to optional needs a B-side fallback + sequencing guard; the "default user image" asset id was actually a real author's photo.
 - **Blocker-2 (Share):** `ShareButton` hardcodes `/blog/${slug}`; namespaced like-keys would break sharing → decouple like-key from share/URL slug via `PostActions`/`ShareButton` prop changes (shared component → blog regression check).
@@ -503,4 +560,4 @@ Reviewed by 3 critics against the live Contentful space + codebase; key correcti
 - **Major:** scripture has two surfaces — structured `bibleVerse` (Contentful-localized; populate both locales) vs writer-supplied inline/PDF strings.
 - **Minors/nits:** `getAll*` use `limit:100` (not unbounded); `pdfSummary` en-US fallback silently serves the Spanish PDF; `Sermon` types are new (not a `BlogPost` mirror), `sys.publishedAt` optional; explicit transcode-to-mp3 + `durationSec` pipeline step; slug normalization + single-owner reconciliation; `modifiedTime ?? sermonDate`; slug regex mirrors `page` (not `blogPostPage`); don't hardcode the default-avatar asset id; `og-default.jpeg` filename bug confirmed (don't inherit); confirm `tasks/predicas/` `.gitignore` line.
 
-*End of spec.*
+_End of spec._

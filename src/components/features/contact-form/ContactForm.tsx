@@ -103,15 +103,17 @@ export const ContactForm = ({ content }: ContactFormProps) => {
               </div>
             </div>
 
-            {content.image && (
+            {(content.image || content.bibleVerse) && (
               <div className="hidden lg:block">
-                <Image
-                  src={content.image.url}
-                  className="w-full h-auto rounded-2xl shadow-lg"
-                  width={600}
-                  height={800}
-                  alt={content.image.title}
-                />
+                {content.image && (
+                  <Image
+                    src={content.image.url}
+                    className="w-full h-auto rounded-2xl shadow-lg"
+                    width={600}
+                    height={800}
+                    alt={content.image.title}
+                  />
+                )}
                 {content.bibleVerse && (
                   <div className="mt-6">
                     <BibleVerse {...content.bibleVerse} />

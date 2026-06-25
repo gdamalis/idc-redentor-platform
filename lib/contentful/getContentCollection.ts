@@ -8,31 +8,24 @@ const GRAPHQL_FIELDS = `
   }
   contentItemsCollection {
     items {
-      ... on Credo {
+      ... on BeliefItem {
         title
         description {
           json
         }
         bibleVerse {
-          json
+          book
+          chapter
+          fromVerse
+          toVerse
+          verseContent
+          bibleVersion
         }
         image {
           url
           title
         }
-      }
-      ... on ValueItem {
-        title
-        description {
-          json
-        }
-        bibleVerse {
-          json
-        }
-        image {
-          url
-          title
-        }
+        kind
       }
     }
   }

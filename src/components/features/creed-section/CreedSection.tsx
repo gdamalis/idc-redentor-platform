@@ -2,7 +2,6 @@
 
 import { ComponentType } from "react";
 import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
-import { documentToPlainTextString } from "@contentful/rich-text-plain-text-renderer";
 import { Container } from "@src/components/ui/container";
 import { IconCard } from "@src/components/ui/icon-card";
 import { SectionHeader } from "@src/components/ui/section-header";
@@ -70,9 +69,11 @@ export const CreedSection = ({ content }: CreedSectionProps) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {content.creedItems.map((credo, index) => {
             const Icon = CREED_ICON_MAP[credo.title] ?? DEFAULT_ICON;
-            const bibleVerse = credo.bibleVerse
-              ? documentToPlainTextString(credo.bibleVerse.json)
+            const v = credo.bibleVerse;
+            const ref = v
+              ? `${v.book} ${v.chapter}:${v.toVerse && v.toVerse !== v.fromVerse ? `${v.fromVerse}-${v.toVerse}` : v.fromVerse}`
               : null;
+            const bibleVerse = v ? `"${v.verseContent}" (${ref})` : null;
 
             return (
               <IconCard

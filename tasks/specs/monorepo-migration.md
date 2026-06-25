@@ -12,6 +12,7 @@
 Convert the existing, deployed `idc-redentor-website` repo **in place** into a pnpm + Turborepo monorepo, with the current public site moved intact to `apps/web` and shared tooling/brand extracted to `packages/*`, **with zero behavior or deploy regression for the public site.** Leave the repo in a state where `apps/admin` can be added next with no further restructuring.
 
 ### In scope
+
 - pnpm workspace + Turborepo scaffolding at the repo root.
 - Move the public site (today's root app) into `apps/web`, preserving git history (`git mv`).
 - Repoint Vercel (Root Directory → `apps/web`), CI, and semantic-release so the public site builds, deploys, and releases exactly as before.
@@ -19,6 +20,7 @@ Convert the existing, deployed `idc-redentor-website` repo **in place** into a p
 - Update the agent harness (`.claude/config.json` machine-read paths) and the top-level docs so `/work`, `/qa`, `/verify` still resolve the web app's files.
 
 ### Out of scope (explicitly)
+
 - **Scaffolding `apps/admin`** — M1b. The workspace globs `apps/*`, so admin slots in later with no restructure.
 - Auth, People, RBAC, calendar — all M1b+.
 - **Multi-board/multi-tracker harness wiring** (the new "IDCR Ministry Admin Panel" board) — deferred to M1b; this spec only keeps the existing website board/harness working for `apps/web`.
@@ -37,14 +39,14 @@ Convert the existing, deployed `idc-redentor-website` repo **in place** into a p
 
 ## 3. Dependencies check (must hold before starting)
 
-| Requirement | Status / note |
-|---|---|
-| pnpm available, lockfile present | ✅ `pnpm-lock.yaml` present; `.npmrc` sets `auto-install-peers=true`, `strict-peer-dependencies=false`, `shamefully-hoist=false`. |
-| Node version pinned | ✅ `.nvmrc` = `22.14.0`; CI uses `node-version: 22.x`. |
-| No existing workspace files to conflict | ✅ No `pnpm-workspace.yaml` / `turbo.json` today. |
-| Vercel dashboard access | ⚠️ **Required** — the Root Directory change is a dashboard setting, not a repo file. Confirm access before CP2. |
-| Ability to run a Vercel **preview** deploy from a branch | ✅ Per-PR previews are enabled (per `docs`/config). This is the parity gate. |
-| `turbo` dependency to add | New root devDependency `turbo` (latest 2.x). |
+| Requirement                                              | Status / note                                                                                                                     |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| pnpm available, lockfile present                         | ✅ `pnpm-lock.yaml` present; `.npmrc` sets `auto-install-peers=true`, `strict-peer-dependencies=false`, `shamefully-hoist=false`. |
+| Node version pinned                                      | ✅ `.nvmrc` = `22.14.0`; CI uses `node-version: 22.x`.                                                                            |
+| No existing workspace files to conflict                  | ✅ No `pnpm-workspace.yaml` / `turbo.json` today.                                                                                 |
+| Vercel dashboard access                                  | ⚠️ **Required** — the Root Directory change is a dashboard setting, not a repo file. Confirm access before CP2.                   |
+| Ability to run a Vercel **preview** deploy from a branch | ✅ Per-PR previews are enabled (per `docs`/config). This is the parity gate.                                                      |
+| `turbo` dependency to add                                | New root devDependency `turbo` (latest 2.x).                                                                                      |
 
 ---
 
@@ -132,15 +134,19 @@ idc-redentor-website/                 # monorepo root (git history preserved)
 ## 7. Deploy & release strategy (the critical section)
 
 ### 7.1 Vercel (public site)
+
 **Recommended:** keep the existing Vercel project; set **Root Directory = `apps/web`** + enable **"Include source files outside of the Root Directory in the Build Step"** (monorepo). Vercel detects the pnpm workspace and Next.js; install runs at the repo root, build resolves `@idcr/web`.
+
 - If a `vercel.json` is retained, it lives at `apps/web/vercel.json`; otherwise rely on Vercel's auto-detect. The root `vercel.json` is removed or emptied to avoid double-config.
 - **Parity gate:** open the migration PR → confirm the **preview deployment** renders every public route identically (home, who-is-jesus, community, come-meet-us, blog index + a post, both locales), security headers/CSP present, images load from ctfassets/unsplash, contact + subscribe still POST. Only then is merge allowed.
 
 ### 7.2 semantic-release
+
 - Stays at root, single stream. Root `package.json` holds the released version; `CHANGELOG.md` stays at root (asset path unchanged). commit-analyzer reads commits repo-wide. No `.releaserc.json` change required beyond confirming assets resolve at root.
 - **Future (M1b+):** when `apps/admin` needs its own release cadence, revisit (multi-package release / changesets). Out of scope here — documented so it isn't forgotten.
 
 ### 7.3 CI
+
 - `pr.yml`/`release.yml` unchanged except they now exercise Turbo via the root scripts. Optional later: add Turbo remote cache. Keep pnpm v9 / Node 22.x to match local.
 
 ---
@@ -186,7 +192,7 @@ idc-redentor-website/                 # monorepo root (git history preserved)
 2. **Path aliases break in tests** (`vite-tsconfig-paths` not finding the moved `tsconfig.json`) → keep `vitest.config.ts` + `tsconfig.json` co-located in `apps/web`; run `pnpm --filter @idcr/web test` to confirm.
 3. **semantic-release can't find `package.json`/`CHANGELOG.md`** → both kept at root; run release in CI dry-run on the branch if possible.
 4. **Husky hooks stop firing** (git core.hooksPath in a moved layout) → `prepare: husky` runs from root on install; verify a test commit triggers pre-commit + commit-msg.
-5. **lint-staged misses `apps/**` files** → globs are extension-based (`*.{ts,tsx,...}`), so they match nested paths; verify by staging a file under `apps/web`.
+5. **lint-staged misses `apps/**` files** → globs are extension-based (`\*.{ts,tsx,...}`), so they match nested paths; verify by staging a file under `apps/web`.
 6. **`next.config.ts` import of `./config/headers`** → relative import moves with the app (`config/` goes under `apps/web`); CSP unchanged.
 7. **Stale `trial-idcr` exclude / dead `codegen.ts` / `config/plugins.js`** → move as-is; don't fix here (separate cleanup ticket) to keep the diff purely structural.
 8. **Harness `/work` runs against wrong paths** post-move → CP4 updates `.claude/config.json`; until then, agents fall back to Grep/Read. Validate one `/verify` run on `apps/web`.
@@ -212,21 +218,25 @@ idc-redentor-website/                 # monorepo root (git history preserved)
 Each checkpoint is independently verifiable and committed (Conventional Commits, header ≤100). Branch off `main`; **do not merge until CP2's preview gate passes.**
 
 **CP1 — Workspace skeleton + move public site to `apps/web` (atomic).**
+
 - Add `pnpm-workspace.yaml`, `turbo.json`, root `package.json` (Turbo-proxy scripts, `turbo` devDep). `git mv` the app into `apps/web`; rename its `package.json` to `@idcr/web`. Regenerate `pnpm-lock.yaml`.
 - **Verify:** `pnpm install`; `pnpm --filter @idcr/web {type-check,lint,test,build,dev}` all green; site identical locally.
 - **Commit:** `chore(monorepo): convert to pnpm+turbo workspace, move site to apps/web`
 
 **CP2 — Restore deploy + CI + release parity.**
+
 - Set Vercel Root Directory → `apps/web` (dashboard); relocate/remove `vercel.json`. Adjust `pr.yml`/`release.yml` if needed. Confirm `.releaserc.json` assets at root. Declare build env in `turbo.json`.
 - **Verify:** PR preview passes the §11 smoke matrix vs. production; CI green; release dry-run resolves version.
 - **Commit:** `ci(monorepo): point vercel/CI/release at the workspace (apps/web)`
 
 **CP3 — Extract shared packages and consume them in `apps/web`.**
+
 - Create `packages/config` (base tsconfig/eslint/tailwind-preset/postcss/prettier) and `packages/ui` (tokens + logo + `cn`). Refactor `apps/web` to extend the base configs and import `cn`/tokens from `@idcr/ui`.
 - **Verify:** `pnpm --filter @idcr/web {type-check,lint,test,build}` green; no visual diff on a preview.
 - **Commit:** `refactor(monorepo): extract @idcr/config and @idcr/ui; consume in web`
 
 **CP4 — Update harness + docs for the monorepo.**
+
 - Update `.claude/config.json` app-source path refs (→ `apps/web/`); update `CLAUDE.md`/`AGENTS.md`/`docs` path references; note the monorepo layout.
 - **Verify:** a `/verify` run resolves and passes against `apps/web`; explorer/grep paths land.
 - **Commit:** `docs(monorepo): update harness paths + docs for apps/web layout`
@@ -258,5 +268,5 @@ New dedicated board (separate from the website board), captured for when we crea
 
 - **Board:** "IDCR Ministry Admin Panel" — id `6a3a9b31147d58764714d958` — https://trello.com/b/ccQoGY1R
 - **Lists:** Backlog `6a3a9b35ada16d050d70aeed` · To Do `6a3a9b36d4d6c872eba62f13` · In Progress `6a3a9b3981012790caf9252c` · In Review `6a3a9b3bf673c49b1620dd0e` · In Testing `6a3a9b3c5222420616588c01` · Done `6a3a9b3d22e7b978faf647db`
-- **Note:** richer flow than the website board (adds *Backlog* + *In Testing*). When we wire the harness for the admin platform (M1b), this board + these list IDs become the `config.tracker` for `apps/admin` work. The ticket-key prefix for this board is **TBD** (website uses `ICR`).
+- **Note:** richer flow than the website board (adds _Backlog_ + _In Testing_). When we wire the harness for the admin platform (M1b), this board + these list IDs become the `config.tracker` for `apps/admin` work. The ticket-key prefix for this board is **TBD** (website uses `ICR`).
 - **Suggested cards for this migration:** one per checkpoint (CP1–CP4), or a single "Monorepo migration" card with the four checkpoints as a checklist. Not created yet.

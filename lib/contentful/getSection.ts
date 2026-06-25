@@ -1,8 +1,10 @@
 import { fetchGraphQL } from "./fetch";
 
 const GRAPHQL_FIELDS = `
+  layout
   headline
-  bodyText {
+  subHeadline
+  body {
     json
   }
   ctaText
@@ -11,9 +13,18 @@ const GRAPHQL_FIELDS = `
       slug
     }
   }
+  urlParameters
   image {
     url
     title
+  }
+  imagesCollection {
+    items {
+      url
+      title
+      width
+      height
+    }
   }
   sys {
     id
@@ -21,19 +32,19 @@ const GRAPHQL_FIELDS = `
   __typename
 `;
 
-export async function getDuplexComponent(
+export async function getSection(
   name: string,
   locale: string,
   isDraftMode = false,
 ) {
   const data = await fetchGraphQL(
     `query {
-        componentDuplexCollection(
+        sectionCollection(
           locale: "${locale}",
-          where:{
+          where: {
             machineName: "${name}"
-          }, 
-          limit: 1, 
+          },
+          limit: 1,
           preview: ${isDraftMode ? "true" : "false"}
         ) {
           items {
@@ -44,5 +55,5 @@ export async function getDuplexComponent(
     isDraftMode,
   );
 
-  return data?.data?.componentDuplexCollection?.items[0];
+  return data?.data?.sectionCollection?.items[0];
 }
