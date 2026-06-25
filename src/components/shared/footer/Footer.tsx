@@ -1,6 +1,6 @@
 import { Typography } from "@src/components/ui/typography";
 import { Link } from "@src/i18n/routing";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import Image from "next/image";
 import { Mail, MapPin } from "lucide-react";
 
@@ -25,6 +25,9 @@ type FooterProps = {
 
 export const Footer = ({ content }: FooterProps) => {
   const t = useTranslations();
+  const locale = useLocale();
+
+  const privacySlug = locale === "en-US" ? "/privacy" : "/privacidad";
 
   const quickLinks = [
     { href: "/", label: t("common.home") },
@@ -32,6 +35,7 @@ export const Footer = ({ content }: FooterProps) => {
     { href: "/blog", label: t("common.blog") },
     { href: "/predicas", label: t("common.sermons") },
     { href: "/come-meet-us", label: t("common.join-us") },
+    { href: privacySlug, label: t("footer.privacy-policy") },
   ];
 
   return (
