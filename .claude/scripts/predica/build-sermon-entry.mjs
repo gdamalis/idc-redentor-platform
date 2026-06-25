@@ -13,7 +13,7 @@
  * Usage:
  *   node .claude/scripts/predica/build-sermon-entry.mjs <sermon.json>                 # validate + summary (dry-run)
  *   node .claude/scripts/predica/build-sermon-entry.mjs <sermon.json> --bible         # → JSON array of bibleVerse {internalName, fields}
- *   node .claude/scripts/predica/build-sermon-entry.mjs <sermon.json> --entry --links <links.json>   # → sermon `fields` JSON
+ *   node .claude/scripts/predica/build-sermon-entry.mjs <sermon.json> --entry --links <links.json> [--slug <override>]   # → sermon `fields` JSON
  *
  * links.json shape (all ids resolved by the publisher first):
  *   { "preacherId": "...", "scriptureRefIds": ["..."],
@@ -93,11 +93,11 @@ export function buildBibleVerseFields(ref) {
   return fields;
 }
 
-export function buildSermonEntryFields(sermon, links) {
+export function buildSermonEntryFields(sermon, links, options = {}) {
   const fields = {};
 
   fields.internalName = atDefault(sermon.internalName);
-  fields.slug = atDefault(sermon.slug);
+  fields.slug = atDefault(options.slug ?? sermon.slug);
   fields.sermonDate = atDefault(sermon.sermonDate);
   if (typeof sermon.durationSeconds === "number") fields.durationSeconds = atDefault(sermon.durationSeconds);
   fields.preacher = atDefault(entryLink(links.preacherId));
@@ -198,7 +198,7 @@ function usage() {
       "usage:",
       "  node .claude/scripts/predica/build-sermon-entry.mjs <sermon.json>                 validate + summary",
       "  node .claude/scripts/predica/build-sermon-entry.mjs <sermon.json> --bible         print bibleVerse field payloads",
-      "  node .claude/scripts/predica/build-sermon-entry.mjs <sermon.json> --entry --links <links.json>   print sermon fields",
+      "  node .claude/scripts/predica/build-sermon-entry.mjs <sermon.json> --entry --links <links.json> [--slug <override>]   print sermon fields",
       "",
       "Exit codes: 0 success · 2 usage/input/schema error",
       "",
@@ -254,7 +254,16 @@ async function main() {
     if (li === -1 || !args[li + 1]) die(2, "error: --entry requires --links <links.json>");
     const links = await readJson(args[li + 1]);
     if (typeof links?.preacherId !== "string") die(2, "error: links.json must include a preacherId string");
-    process.stdout.write(JSON.stringify(buildSermonEntryFields(sermon, links), null, 2) + "\n");
+    // Optional --slug override: applied by the publisher when a slug collision
+    // bumped the canonical slug, so the entry slug matches the WhatsApp URL.
+    const si = args.indexOf("--slug");
+    const slugOverride = si !== -1 ? args[si + 1] : undefined;
+    if (slugOverride !== undefined && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slugOverride)) {
+      die(2, `error: --slug '${slugOverride}' must match ^[a-z0-9]+(?:-[a-z0-9]+)*$`);
+    }
+    process.stdout.write(
+      JSON.stringify(buildSermonEntryFields(sermon, links, { slug: slugOverride }), null, 2) + "\n",
+    );
     return;
   }
 

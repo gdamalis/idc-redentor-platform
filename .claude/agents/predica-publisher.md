@@ -45,7 +45,8 @@ bilingual **DRAFT** `sermon` entry in Contentful from `sermon.json`. You are **d
    `contentfulEnv`. Abort on mismatch.
 2. **Slug collision.** `search_entries({ content_type:"sermon", "fields.slug": finalSlug, limit:1 })`. If a
    sermon with that slug exists, append `-2` (then `-3`, …) until free; that becomes the **final** slug
-   (note it — the whatsapp URL depends on it). If you bump it, also rebuild the entry fields with the new slug.
+   (note it — the whatsapp URL depends on it). If you bumped it, pass `--slug <finalSlug>` to the builder in
+   step 6 so the entry's slug matches the bumped value (and the WhatsApp URL).
 3. **Preacher.** `search_entries({ content_type:"author", "fields.name": "<preacher>", limit:5 })`. Use the
    matching entry id. If none, write an author fields file `{ internalName:{["es-AR"]:name}, name:{["es-AR"]:name},
 email:{["es-AR"]:email} }` (avatar optional — omit) and create it via
@@ -59,7 +60,8 @@ email:{["es-AR"]:email} }` (avatar optional — omit) and create it via
    Each prints `{ assetId, url }`. Collect the ids.
 6. **Build the entry fields.** Write `links.json` to `slugDir`:
    `{ preacherId, scriptureRefIds:[...], pdfAssetIds:{ "es-AR":…, "en-US":… }, audioAssetId:… }`. Then
-   `node <entryBuilder> <sermonJson> --entry --links <slugDir>/links.json > <slugDir>/contentful-entry.fields.json`.
+   `node <entryBuilder> <sermonJson> --entry --links <slugDir>/links.json > <slugDir>/contentful-entry.fields.json`
+   — append `--slug <finalSlug>` **iff** step 2 bumped the slug, so the entry slug matches the WhatsApp URL.
 7. **Create the DRAFT** sermon: `node <entryCreator> --content-type sermon --fields <slugDir>/contentful-entry.fields.json
 --space <s> --env <e>` → `{ entryId, editUrl }`. Optionally `get_entry` to confirm it is a draft
    (`publishedCounter: 0`) and the links resolved.

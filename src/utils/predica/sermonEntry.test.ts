@@ -198,6 +198,22 @@ describe("buildSermonEntryFields", () => {
     expect(fields.pdfSummary).toBeUndefined();
   });
 
+  it("applies the slug override (collision bump) instead of sermon.slug", () => {
+    const fields = buildSermonEntryFields(sermon, { preacherId: "PRE1" }, { slug: "el-deseo-mas-profundo-de-dios-2" });
+    expect(fields.slug).toEqual({ "es-AR": "el-deseo-mas-profundo-de-dios-2" });
+    // Other non-localized fields are unaffected by the override.
+    expect(fields.sermonDate).toEqual({ "es-AR": "2026-06-07" });
+  });
+
+  it("falls back to sermon.slug when no override is given", () => {
+    expect(buildSermonEntryFields(sermon, { preacherId: "PRE1" }).slug).toEqual({
+      "es-AR": "el-perdon-de-jesus",
+    });
+    expect(buildSermonEntryFields(sermon, { preacherId: "PRE1" }, {}).slug).toEqual({
+      "es-AR": "el-perdon-de-jesus",
+    });
+  });
+
   it("includes audio + featuredImage links when resolved", () => {
     const fields = buildSermonEntryFields(sermon, {
       preacherId: "PRE1",

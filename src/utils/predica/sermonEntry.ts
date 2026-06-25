@@ -244,16 +244,21 @@ export function buildBibleVerseFields(ref: SermonScriptureRef): Record<string, L
  * are included only when their id was resolved, so an audio-only or
  * featuredImage-deferred draft is still valid (required fields are enforced by
  * Contentful only on PUBLISH — the human's Gate-2 step).
+ *
+ * `options.slug` overrides `sermon.slug` for the entry — used when the publisher
+ * detects a slug collision and bumps it (`-2`, `-3`, …), so the entry's slug stays
+ * in sync with the WhatsApp canonical URL that uses the same bumped value.
  */
 export function buildSermonEntryFields(
   sermon: SermonDocument,
   links: ResolvedLinks,
+  options: { slug?: string } = {},
 ): Record<string, LocalizedField> {
   const fields: Record<string, LocalizedField> = {};
 
   // Non-localized (default-locale-keyed)
   fields.internalName = atDefault(sermon.internalName);
-  fields.slug = atDefault(sermon.slug);
+  fields.slug = atDefault(options.slug ?? sermon.slug);
   fields.sermonDate = atDefault(sermon.sermonDate);
   if (typeof sermon.durationSeconds === "number") {
     fields.durationSeconds = atDefault(sermon.durationSeconds);
