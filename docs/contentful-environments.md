@@ -168,20 +168,33 @@ The harness knows this workflow (so `/work` routes model-touching cards through 
 - **Golden rule:** _The cutover is human-only — agents never apply to production or re-point the `master`
   alias (like merge/Done)._
 
-## This epic (ICR-76) — heavy variant
+## This epic (ICR-76) — heavy variant, adapted to the live env state
 
-The `agent-sandbox` env was the pre-scheme work env (a fresh clone of `master-0.0.1`). ICR-76 is a
-**major breaking** change (type deletions, field renames, merges), so it uses the **heavy variant** —
-the work env is **`master-1.0.0`**:
+> **Reality check (2026-06-25):** the originally-planned `master-1.0.0` work env was **deleted** during
+> the sermon epic (ICR-81) to free the free-tier slot for re-creating `agent-sandbox`. Production
+> (`master-0.0.1`, the `master` alias target) now also carries the live **`sermon`** content type. So
+> ICR-76 adapts: **`agent-sandbox` is the work/"staging" env** (it is the only non-prod env, and its
+> models are already synced to prod via Merge), and we do **not** delete it.
 
-1. Delete `agent-sandbox` (frees the slot), clone `master-0.0.1` → `master-1.0.0`.
-2. Point the MCP / `.env.local` / branch Preview at `master-1.0.0`.
+1. **Sermon backup (done).** The sermon DRAFT entries + assets that lived only in `agent-sandbox` were
+   copied into `master-0.0.1` **as drafts** (create-only, same `sys.id`s, never published) — both to
+   land the long-pending ICR-81 Gate-2 and to back them up before mutating `agent-sandbox`.
+2. **Work env = `agent-sandbox`.** Tooling points here: `scripts/contentful/run.mjs` default,
+   `.env.local` `CONTENTFUL_ENVIRONMENT=agent-sandbox`, the MCP `ENVIRONMENT_ID`, and (at Task 12) the
+   branch-scoped Vercel Preview. The Delivery + Preview keys must allow `agent-sandbox` (human-granted).
+   **Pause `/predica` while ICR-76 borrows `agent-sandbox`** — a run would write into the migration env.
 3. Run the epic's migrations + tests there.
-4. **Human cutover:** re-point `master` → `master-1.0.0` at PR-merge time. Rollback = re-point to
-   `master-0.0.1`.
+4. **Human cutover (alias-swap):** re-point `master` → `agent-sandbox` at PR-merge time. **Rollback** =
+   re-point `master` → `master-0.0.1` (untouched old model; it also holds the sermon drafts from step 1).
+5. **Normalize after confidence:** Merge `agent-sandbox` → `master-0.0.1` (sync the optimized
+   model+entries back), re-point the alias → `master-0.0.1`, freeing `agent-sandbox` to be the clean
+   staging/predica sandbox again.
 
-`agent-sandbox` is retired. **After this epic the standing workflow is the permanent `staging` lane**
-(above); the heavy/versioned variant is reserved for future big breaking changes.
+**Future direction (agreed):** move to an unversioned **`master` + `staging`** scheme — two stable envs,
+the `master` alias normally fixed on the `master` env, and small/non-breaking changes promoted
+`staging → master` **in place via the Merge app** (no alias move). Reserve the alias-swap for breaking
+changes (instant rollback). The `0.0.1` suffix on the prod env is cosmetic, dropped in a later
+housekeeping cycle.
 
 ## Quick reference
 
