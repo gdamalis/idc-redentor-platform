@@ -34,7 +34,7 @@ assets (`upload/list/get/update/publish/delete_asset`), spaces & environments
 (`list_spaces`, `list/create/delete_environment`), locales, tags, editor interfaces, taxonomy,
 and AI Actions.
 
-## Safety model: work environment + protected master
+## Safety model: work environment + protected master and production
 
 The agents write to a **non-production Contentful environment**, never to the live site directly.
 Production is the `master` **alias**; agents work in a **work environment** and a human promotes (applies
@@ -58,10 +58,9 @@ harness ethos elsewhere in this repo: agents propose, a human promotes to produc
 
 Model changes (a new/changed/deleted content type or field, or an entry remap) run in a work env, then a
 human promotes. **Default lane:** a permanent **`staging`** env (granted on the API keys once), promoted
-via Contentful **Merge** and/or the committed scripts. **Heavy lane** (big breaking changes): a versioned
-env (`master-<major>.<minor>.<patch>`) + a **human alias re-point** for an atomic, instantly-reversible
-cutover. The free tier allows only **one** work env beyond the `master` alias target, so the two lanes
-share that slot (one at a time).
+via Contentful **Merge** and/or the committed scripts. **Heavy lane** (big breaking changes): also
+developed in the permanent **`staging`** env, but promoted via the stable-name **alias-swap** for an
+atomic, instantly-reversible cutover (see `docs/contentful-environments.md` → Heavy alias-swap runbook).
 
 The full runbook — the cutover/rollback steps, the one-time config touch points (MCP `ENVIRONMENT_ID`,
 `.env.local` `CONTENTFUL_ENVIRONMENT`, branch-scoped Vercel Preview), and the heavy alias-swap

@@ -200,8 +200,7 @@ intentional.
 ## Drift detector
 
 `.github/workflows/contentful-drift.yml` runs **weekly (Mondays 12:00 UTC)** and on
-`workflow_dispatch`. It executes the sync tool in **dry-run both directions** with
-`CONTENTFUL_SYNC_ASSUME_YES=1` (never applies):
+`workflow_dispatch`. It executes the sync tool in **dry-run both directions** (never applies):
 
 ```
 node scripts/contentful/sync-entries.mjs --from production --to staging

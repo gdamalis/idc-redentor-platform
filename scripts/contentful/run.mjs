@@ -1,5 +1,5 @@
 // Usage: node scripts/contentful/run.mjs 01 [--dry-run]
-// Applies scripts/contentful/migrations/<NN>-*.cjs to $CONTENTFUL_ENVIRONMENT (default agent-sandbox).
+// Applies scripts/contentful/migrations/<NN>-*.cjs to $CONTENTFUL_ENVIRONMENT (default staging).
 import { runMigration } from "contentful-migration";
 import { readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -8,11 +8,11 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const [num, ...flags] = process.argv.slice(2);
 const dryRun = flags.includes("--dry-run");
-const environmentId = process.env.CONTENTFUL_ENVIRONMENT ?? "agent-sandbox";
+const environmentId = process.env.CONTENTFUL_ENVIRONMENT ?? "staging";
 
-if (environmentId === "master") {
+if (environmentId === "master" || environmentId === "production") {
   throw new Error(
-    "Refusing to run migrations against master. Set CONTENTFUL_ENVIRONMENT.",
+    "Refusing to run migrations against master or production. Set CONTENTFUL_ENVIRONMENT.",
   );
 }
 const dir = join(here, "migrations");

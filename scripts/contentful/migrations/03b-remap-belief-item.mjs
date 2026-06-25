@@ -13,7 +13,7 @@ const client = createClient(
   { type: "plain" },
 );
 const spaceId = process.env.CONTENTFUL_SPACE_ID;
-const environmentId = process.env.CONTENTFUL_ENVIRONMENT ?? "agent-sandbox";
+const environmentId = process.env.CONTENTFUL_ENVIRONMENT ?? "staging";
 const DRY = process.argv.includes("--dry-run");
 if (environmentId === "master") {
   throw new Error("Refusing to run against the master alias.");
