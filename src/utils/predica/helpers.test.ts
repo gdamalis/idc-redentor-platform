@@ -124,6 +124,11 @@ describe("buildPdfHtml — es-AR", () => {
     expect(html.length).toBeGreaterThan(100);
   });
 
+  it("renders a white page background (no gray content area)", () => {
+    expect(html).toMatch(/--color-bg:\s*#FFFFFF/i);
+    expect(html).not.toContain("#F8FAFB");
+  });
+
   it("includes the escaped sermon title", () => {
     expect(html).toContain("El amor que derriba muros");
   });

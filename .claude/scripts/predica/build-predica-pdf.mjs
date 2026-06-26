@@ -48,7 +48,7 @@
  * ── Branding ─────────────────────────────────────────────────────────────────
  *
  * Fonts:   Playfair Display (headings) + Outfit (body) via Google Fonts.
- * Palette: primary #0070B3 · sand #EBE2D6 · slate #0F1729 · bg #F8FAFB
+ * Palette: primary #0070B3 · sand #EBE2D6 · slate #0F1729 · bg #FFFFFF
  *          muted #647488 · border #E2E8F0 · accent (terracotta) #C05A2A
  * Logo:    public/assets/img/redentor_logo.png inlined as a base64 data URI.
  * Page:    A4, margin 18mm top/bottom × 17mm left/right.
