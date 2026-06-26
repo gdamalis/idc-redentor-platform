@@ -6,16 +6,19 @@ interface ScriptureReferencesProps {
   readonly refs: ScriptureRef[];
 }
 
-function formatRef(ref: ScriptureRef): string {
+function formatRef(ref: ScriptureRef, versionLabel: string): string {
   const verseRange =
     ref.toVerse != null
       ? `${ref.fromVerse}-${ref.toVerse}`
       : `${ref.fromVerse}`;
-  return `${ref.book} ${ref.chapter}:${verseRange} (${ref.bibleVersion})`;
+  return `${ref.book} ${ref.chapter}:${verseRange} (${versionLabel})`;
 }
 
 export function ScriptureReferences({ refs }: ScriptureReferencesProps) {
   const t = useTranslations("Sermons");
+  // Bible version is shown as a fixed, localized abbreviation rather than the
+  // stored per-verse code (e.g. "RVR1960"): es-AR "NVI", en-US "NIV".
+  const versionLabel = t("bibleVersion");
 
   if (!refs.length) return null;
 
@@ -33,7 +36,7 @@ export function ScriptureReferences({ refs }: ScriptureReferencesProps) {
         {refs.map((ref, i) => (
           <li key={i} className="flex flex-col gap-1">
             <span className="text-sm font-medium text-foreground">
-              {formatRef(ref)}
+              {formatRef(ref, versionLabel)}
             </span>
             {ref.verseContent && (
               <blockquote className="border-l-2 border-primary pl-3 text-sm italic text-muted-foreground">

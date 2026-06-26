@@ -185,7 +185,7 @@ export function buildPdfHtml(
       --color-primary:    #0070B3;
       --color-sand:       #EBE2D6;
       --color-slate:      #0F1729;
-      --color-bg:         #F8FAFB;
+      --color-bg:         #FFFFFF;
       --color-muted:      #647488;
       --color-border:     #E2E8F0;
       --color-accent:     #C05A2A; /* warm terracotta for verse / quote accent */

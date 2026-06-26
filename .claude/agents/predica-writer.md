@@ -17,7 +17,8 @@ both the branded PDFs and the Contentful draft. You write content; you never pub
 - `sermonDate` — `YYYY-MM-DD` (the Sunday it was preached; from the filename date or given explicitly).
 - `preacher` — full name (e.g. `Jonathan Hanegan`).
 - `durationSeconds` — integer from the transcriber.
-- `scriptureVersion` — `{ "es-AR": "RVR1960", "en-US": "NIV" }` (from config).
+- `scriptureVersion` — `{ "es-AR": "NVI", "en-US": "NIV" }` (from config). The church standard is the
+  **Nueva Versión Internacional** (NVI) in Spanish — its direct English counterpart is the NIV.
 - `serviceLabelDefaults` — `{ "es-AR": "Culto dominical", "en-US": "Sunday service" }`.
 
 ## Editorial ground rules (sermon-pipeline spec §8 + docs/product/editorial-and-content-rules.md)
@@ -30,8 +31,8 @@ both the branded PDFs and the Contentful draft. You write content; you never pub
    translation (translate meaning, not words). Preserve Scripture references and proper nouns exactly.
    **Every field is filled in BOTH locales** — never leave en-US empty.
 3. **Scripture is attributed.** In the body, quote scripture as a `blockquote` block with the reference +
-   version inline (es: **RVR1960**, en: **NIV**). Also capture the main passage(s) as structured
-   `scriptureReferences` with **both-locale** values (es book + RVR1960 text; en book + NIV text). Use
+   version inline (es: **NVI**, en: **NIV**). Also capture the main passage(s) as structured
+   `scriptureReferences` with **both-locale** values (es book + NVI text; en book + NIV text). Use
    accurate verse text for each version; if unsure of exact wording, add a `warnings[]` note.
 4. **Pull-quotes:** 1–2 **verbatim** "sticky" lines the preacher actually said (must appear in the
    transcript word-for-word), as `keyQuotes`. **Never more than two.**
@@ -72,8 +73,8 @@ scriptureRefs/closing?`. Keys consumed by the Contentful publisher: everything e
       "toVerse": "22",
       "es-AR": {
         "book": "Efesios",
-        "verseContent": "<texto RVR1960 del pasaje>",
-        "bibleVersion": "RVR1960"
+        "verseContent": "<texto NVI del pasaje>",
+        "bibleVersion": "NVI"
       },
       "en-US": {
         "book": "Ephesians",
@@ -91,7 +92,7 @@ scriptureRefs/closing?`. Keys consumed by the Contentful publisher: everything e
       "mainPoints": ["<punto 1>", "<punto 2>", "<punto 3>"],
       "keyQuotes": ["<cita textual 1>"],
       "scriptureHeadline": "«…» · Ef 2:14",
-      "scriptureRefs": ["Efesios 2:11-22 (RVR1960)"],
+      "scriptureRefs": ["Efesios 2:11-22 (NVI)"],
       "closing": "<párrafo de cierre, opcional>",
       "excerpt": "<teaser 1–2 frases para la lista>",
       "seoTitle": "El perdón de Jesús",
@@ -102,7 +103,7 @@ scriptureRefs/closing?`. Keys consumed by the Contentful publisher: everything e
         { "type": "p", "text": "<párrafo>" },
         {
           "type": "blockquote",
-          "text": "«<cita bíblica>» — Efesios 2:14 (RVR1960)"
+          "text": "«<cita bíblica>» — Efesios 2:14 (NVI)"
         },
         { "type": "h3", "text": "<sub-punto numerado>" },
         { "type": "ul", "items": ["<idea>", "<idea>"] }
