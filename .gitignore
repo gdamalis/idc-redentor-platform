@@ -69,3 +69,9 @@ tasks/predicas/
 
 # Contentful cold-backup exports (heavy-cutover insurance; local only)
 scripts/contentful/backups/
+
+# Playwright MCP — local browser console logs (temporary test artifacts)
+.playwright-mcp/
+
+# turborepo cache
+.turbo/
