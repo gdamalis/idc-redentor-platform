@@ -10,7 +10,11 @@
  *
  * Two consumers:
  *  - `buildBibleVerseFields(ref)` → the `fields` payload for one `bibleVerse` entry
- *    (both-locale `book`/`verseContent`/`bibleVersion`; shared `chapter`/verses).
+ *    (both-locale `book`/`verseContent`/`bibleVersion`; shared `chapter`/verses). Its
+ *    `internalName` is DERIVED from the passage + version (`buildBibleVerseInternalName`),
+ *    never the per-sermon slug, so identical passages produce the same key and the
+ *    publisher reuses one entry across sermons (a different translation → a different
+ *    key, never collided). See `docs/predica-bibleverse-reuse.md`.
  *  - `buildSermonEntryFields(sermon, links)` → the localized `fields` payload for the
  *    DRAFT `sermon` entry, given the link ids the publisher already resolved
  *    (preacher, scriptureReferences, pdfSummary, optional audio/featuredImage).
@@ -52,7 +56,12 @@ export interface ScriptureRefLocale {
 
 /** One structured scripture reference → one bilingual `bibleVerse` entry. */
 export interface SermonScriptureRef {
-  internalName: string;
+  /**
+   * Optional/ignored. The dedup key is DERIVED (`buildBibleVerseInternalName`) from
+   * the passage + version, not authored, so it stays stable across sermons. A value
+   * here from older `sermon.json` files is tolerated but never used.
+   */
+  internalName?: string;
   /** Non-localized — shared across locales. */
   chapter: string;
   fromVerse: string;
@@ -217,10 +226,26 @@ function localizedFrom<T>(
   return field;
 }
 
+/**
+ * Derive the canonical, deterministic dedup key for a `bibleVerse` entry.
+ *
+ * Format: `"<book es> <chapter>:<fromVerse>[-<toVerse>] (<bibleVersion es>)"` —
+ * e.g. `"Joel 2:13 (NVI)"`, `"Efesios 2:11-22 (NVI)"`. This single value is both the
+ * entry's `internalName` (the `bibleVerse` displayField) AND the key the publisher
+ * upserts on. Built from the structured passage + es version (never the per-sermon
+ * slug): the SAME passage across sermons yields the SAME key (reuse), and a different
+ * translation (RVR1960 vs NVI) yields a DIFFERENT key (never collided). Use full,
+ * canonical Spanish book names so keys match. See `docs/predica-bibleverse-reuse.md`.
+ */
+export function buildBibleVerseInternalName(ref: SermonScriptureRef): string {
+  const verses = ref.toVerse ? `${ref.fromVerse}-${ref.toVerse}` : ref.fromVerse;
+  return `${ref["es-AR"].book} ${ref.chapter}:${verses} (${ref["es-AR"].bibleVersion})`;
+}
+
 /** Build the `fields` payload for a single bilingual `bibleVerse` entry. */
 export function buildBibleVerseFields(ref: SermonScriptureRef): Record<string, LocalizedField> {
   const fields: Record<string, LocalizedField> = {
-    internalName: atDefault(ref.internalName),
+    internalName: atDefault(buildBibleVerseInternalName(ref)),
     chapter: atDefault(ref.chapter),
     fromVerse: atDefault(ref.fromVerse),
     book: { "es-AR": ref["es-AR"].book, "en-US": ref["en-US"].book },

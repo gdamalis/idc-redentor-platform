@@ -46,18 +46,28 @@ bilingual **DRAFT** `sermon` entry in Contentful from `sermon.json`. You are **d
 
 1. **Init + guard.** `get_initial_context`; confirm Space == `contentfulSpaceId` and Environment ==
    `contentfulEnv`. Abort on mismatch.
-2. **Slug collision.** `search_entries({ content_type:"sermon", "fields.slug": finalSlug, limit:1 })`. If a
-   sermon with that slug exists, append `-2` (then `-3`, …) until free; that becomes the **final** slug
-   (note it — the whatsapp URL depends on it). If you bumped it, pass `--slug <finalSlug>` to the builder in
-   step 6 so the entry's slug matches the bumped value (and the WhatsApp URL).
+2. **Slug collision / re-run guard.** `search_entries({ content_type:"sermon", "fields.slug": finalSlug,
+limit:1, select:"sys.id,sys.publishedCounter" })` (`environmentId:"production"`).
+   - **Existing match that is an unpublished DRAFT** (`publishedCounter` 0) → this is a **re-run of the same
+     sermon**. **Abort** with `{ "ok": false, "error": "draft sermon '<slug>' already exists (<id>) — delete it
+before re-running, or it would create a duplicate", "entryId": "<id>" }`. **Do not bump the slug for a
+     draft.** A human (or the one-time cleanup) deletes the stale draft, then re-runs.
+   - **Existing match that is PUBLISHED** → a genuinely new edition: append `-2` (then `-3`, …) until free;
+     that becomes the **final** slug (note it — the whatsapp URL depends on it), and pass `--slug <finalSlug>`
+     to the builder in step 6 so the entry's slug matches the bumped value (and the WhatsApp URL).
+   - **No match** → proceed with `finalSlug`.
 3. **Preacher.** `search_entries({ content_type:"author", "fields.name": "<preacher>", limit:5 })`. Use the
    matching entry id. If none, write an author fields file `{ internalName:{["es-AR"]:name}, name:{["es-AR"]:name},
 email:{["es-AR"]:email} }` (avatar optional — omit) and create it via
    `node <entryCreator> --content-type author --fields <file> --space <s> --env <e>`.
-4. **bibleVerse refs.** `node <entryBuilder> <sermonJson> --bible` → a JSON array of `{ internalName, fields }`.
-   For each: `search_entries({ content_type:"bibleVerse", "fields.internalName": internalName })` to dedup;
-   reuse the id if found, else write its `fields` to a temp file and
-   `node <entryCreator> --content-type bibleVerse --fields <file> --space <s> --env <e>`. Collect ids in order.
+4. **bibleVerse refs (idempotent upsert).** `node <entryBuilder> <sermonJson> --bible` → a JSON array of
+   `{ internalName, fields }`, where `internalName` is the **derived, version-scoped dedup key**
+   (e.g. `"Joel 2:13 (NVI)"`). For each: write its `fields` to a temp file and
+   `node <entryCreator> --content-type bibleVerse --upsert-by-internal-name --fields <file> --space <s> --env <e>`.
+   The script **upserts**: it reuses the existing entry if one already carries that `internalName`
+   (`reused:true`) or creates a draft otherwise (`reused:false`) — so identical passages across sermons share
+   **one** entry and re-runs never duplicate. Collect the returned `entryId`s **in order**. (No manual
+   `search_entries` dedup needed — the script guarantees it.)
 5. **Upload media** via `node <assetUploader> --file <path> --content-type <mime> --title "<t>" --filename <name>
 --space <s> --env <e> --locale es-AR` for: `audio.mp3` (`audio/mpeg`), each PDF (`application/pdf`), and
    `featured.png` (`image/png`). Each prints `{ assetId, url }`. Collect the ids.

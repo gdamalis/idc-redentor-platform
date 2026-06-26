@@ -8,6 +8,7 @@ import { describe, it, expect } from "vitest";
 import {
   blocksToRichTextDocument,
   buildBibleVerseFields,
+  buildBibleVerseInternalName,
   buildSermonEntryFields,
   type ContentBlock,
   type SermonDocument,
@@ -88,23 +89,67 @@ describe("blocksToRichTextDocument", () => {
   });
 });
 
+// ── buildBibleVerseInternalName ─────────────────────────────────────────────
+
+describe("buildBibleVerseInternalName", () => {
+  const base: SermonScriptureRef = {
+    chapter: "2",
+    fromVerse: "11",
+    toVerse: "22",
+    "es-AR": { book: "Efesios", verseContent: "Por tanto...", bibleVersion: "NVI" },
+    "en-US": { book: "Ephesians", verseContent: "Therefore...", bibleVersion: "NIV" },
+  };
+
+  it("derives '<book es> <chapter>:<from>-<to> (<version es>)' for a verse range", () => {
+    expect(buildBibleVerseInternalName(base)).toBe("Efesios 2:11-22 (NVI)");
+  });
+
+  it("omits the range when the reference is a single verse", () => {
+    const single: SermonScriptureRef = {
+      ...base,
+      chapter: "2",
+      fromVerse: "13",
+      toVerse: undefined,
+      "es-AR": { book: "Joel", verseContent: "...", bibleVersion: "NVI" },
+      "en-US": { book: "Joel", verseContent: "...", bibleVersion: "NIV" },
+    };
+    expect(buildBibleVerseInternalName(single)).toBe("Joel 2:13 (NVI)");
+  });
+
+  it("is version-scoped so the same passage in a different translation never collides", () => {
+    const rvr: SermonScriptureRef = {
+      ...base,
+      "es-AR": { ...base["es-AR"], bibleVersion: "RVR1960" },
+    };
+    expect(buildBibleVerseInternalName(base)).toBe("Efesios 2:11-22 (NVI)");
+    expect(buildBibleVerseInternalName(rvr)).toBe("Efesios 2:11-22 (RVR1960)");
+    expect(buildBibleVerseInternalName(base)).not.toBe(buildBibleVerseInternalName(rvr));
+  });
+});
+
 // ── buildBibleVerseFields ───────────────────────────────────────────────────
 
 describe("buildBibleVerseFields", () => {
   const ref: SermonScriptureRef = {
-    internalName: "Efesios 2:11-22 (Jonathan 2026-06-07)",
+    // A bogus authored value — must be ignored in favour of the derived key.
+    internalName: "Efesios 2:11-22 · some-old-slug",
     chapter: "2",
     fromVerse: "11",
     toVerse: "22",
-    "es-AR": { book: "Efesios", verseContent: "Por tanto...", bibleVersion: "RVR1960" },
+    "es-AR": { book: "Efesios", verseContent: "Por tanto...", bibleVersion: "NVI" },
     "en-US": { book: "Ephesians", verseContent: "Therefore...", bibleVersion: "NIV" },
   };
 
   it("localizes book/verseContent/bibleVersion across both locales", () => {
     const fields = buildBibleVerseFields(ref);
     expect(fields.book).toEqual({ "es-AR": "Efesios", "en-US": "Ephesians" });
-    expect(fields.bibleVersion).toEqual({ "es-AR": "RVR1960", "en-US": "NIV" });
+    expect(fields.bibleVersion).toEqual({ "es-AR": "NVI", "en-US": "NIV" });
     expect(fields.verseContent["en-US"]).toBe("Therefore...");
+  });
+
+  it("sets internalName to the DERIVED dedup key, ignoring any authored value", () => {
+    const fields = buildBibleVerseFields(ref);
+    expect(fields.internalName).toEqual({ "es-AR": "Efesios 2:11-22 (NVI)" });
   });
 
   it("keys non-localized chapter/fromVerse/toVerse by the default locale only", () => {

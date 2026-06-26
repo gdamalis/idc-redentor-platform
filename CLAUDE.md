@@ -213,5 +213,6 @@ A human always merges the PR and closes the card (moves it to **Done**). Scratch
   - `likes-and-mongodb.md` — the cached Mongo client, the `likes`/`contact` collections, visitor de-dup, write safety.
   - `seo-and-metadata.md` — `lib/metadata.ts`, the Contentful `Seo` type, OG/Twitter cards, JSON-LD, locale alternates.
   - `agent-harness.md` — how to use the agents and commands; the human-gated Trello automation.
+  - `predica-bibleverse-reuse.md` — how `/predica` dedups scripture: the derived, version-scoped `bibleVerse` `internalName` (`"Joel 2:13 (NVI)"`) + the `--upsert-by-internal-name` CMA flag; cross-sermon reuse + sermon re-run safety.
   - `contributing.md` — branch/commit/PR conventions, semantic-release, husky/CI gates, the worktree flow.
   - `gtm-ga4-setup.md` — _(existing)_ GTM/GA4 analytics + consent setup.
