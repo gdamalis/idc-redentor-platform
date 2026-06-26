@@ -1,3 +1,9 @@
+## [1.15.1](https://github.com/gdamalis/idc-redentor-web/compare/v1.15.0...v1.15.1) (2026-06-26)
+
+### Bug Fixes
+
+- draft sermon preview — featured-image 500 + /predicas archive query complexity ([#56](https://github.com/gdamalis/idc-redentor-web/issues/56)) ([cf237a2](https://github.com/gdamalis/idc-redentor-web/commit/cf237a2e6a12084f79a5a06f591ad12d5e58bc50))
+
 # [1.15.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.14.1...v1.15.0) (2026-06-26)
 
 ### Features
