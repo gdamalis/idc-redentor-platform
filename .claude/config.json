@@ -384,7 +384,7 @@
     "whatsappLocale": "es-AR",
     "siteBaseUrl": "https://www.idcredentor.com",
     "siteBaseUrlNote": "Production canonical used to build the deterministic share URL ${siteBaseUrl}/es-AR/predicas/<slug>. NOT the local .env.local NEXT_PUBLIC_BASE_URL (which is http://localhost:3000 in dev). The human verifies/corrects this URL at Gate 2 if the live domain differs.",
-    "scriptureVersion": { "es-AR": "RVR1960", "en-US": "NIV" },
+    "scriptureVersion": { "es-AR": "NVI", "en-US": "NIV" },
     "whisper": {
       "bin": "/Users/gabriel/repos/whisper.cpp/build/bin/whisper-cli",
       "model": "/Users/gabriel/repos/whisper.cpp/models/ggml-large-v3-turbo.bin",
