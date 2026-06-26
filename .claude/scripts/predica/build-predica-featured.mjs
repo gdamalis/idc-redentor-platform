@@ -382,7 +382,18 @@ async function generateBackgroundGemini(brief, apiKey, model) {
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-    body: JSON.stringify({ contents: [{ parts: [{ text: brief }] }] }),
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: brief }] }],
+      // Without an explicit aspect ratio, text-only image generation defaults to
+      // 1:1 (square), which would then be center-cropped behind the 1200×630 card
+      // and lose composition. 16:9 (1.78) is the closest supported ratio to the
+      // card's 1.90 — CSS `cover` trims the small remainder. Field path is
+      // generationConfig.imageConfig.aspectRatio (REST), not responseFormat.*.
+      generationConfig: {
+        responseModalities: ["IMAGE"],
+        imageConfig: { aspectRatio: "16:9" },
+      },
+    }),
   });
   if (!res.ok) {
     const body = await res.text();
