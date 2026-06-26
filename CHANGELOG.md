@@ -1,3 +1,9 @@
+## [1.14.1](https://github.com/gdamalis/idc-redentor-web/compare/v1.14.0...v1.14.1) (2026-06-26)
+
+### Bug Fixes
+
+- **sermons:** white PDF bg, full-month post date, NVI scripture version ([#57](https://github.com/gdamalis/idc-redentor-web/issues/57)) ([cd081e5](https://github.com/gdamalis/idc-redentor-web/commit/cd081e50f63a26d801df915f3a9a2021197577d9))
+
 # [1.14.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.13.0...v1.14.0) (2026-06-25)
 
 ### Features
