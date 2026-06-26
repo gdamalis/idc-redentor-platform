@@ -231,7 +231,7 @@ async function fetchContentTypes(client, base) {
   return getAll((a) => client.contentType.getMany(a), base);
 }
 
-async function upsertAsset(client, base, source, action) {
+async function upsertAsset(client, base, source) {
   const fields = JSON.parse(JSON.stringify(source.fields));
   for (const f of Object.values(fields.file ?? {})) {
     if (f?.url) {
@@ -259,28 +259,30 @@ async function upsertAsset(client, base, source, action) {
       target,
     );
   }
-  saved = await client.asset.processForAllLocales(base, saved);
-  if (action === "publish") {
-    let fresh = await client.asset.get({ ...base, assetId: saved.sys.id });
-    const fileLocales = Object.keys(fresh.fields.file ?? {});
-    const isProcessed = (a) =>
-      fileLocales.length === 0 ||
-      Object.values(a.fields.file ?? {}).every((f) => f?.url);
-    for (let i = 0; i < 30 && !isProcessed(fresh); i += 1) {
-      await new Promise((r) => setTimeout(r, 1000));
-      fresh = await client.asset.get({ ...base, assetId: saved.sys.id });
-    }
-    if (!isProcessed(fresh)) {
-      throw new Error(
-        `asset ${saved.sys.id} did not finish processing in time (30s timeout)`,
-      );
-    }
-    await client.asset.publish({ ...base, assetId: saved.sys.id }, fresh);
-  }
-  return saved;
+  await client.asset.processForAllLocales(base, saved);
+  return target ? "updated" : "created";
 }
 
-async function upsertEntry(client, base, source, action) {
+// Publish an already-upserted asset, waiting for processing to finish first.
+async function publishAsset(client, base, assetId) {
+  let fresh = await client.asset.get({ ...base, assetId });
+  const fileLocales = Object.keys(fresh.fields.file ?? {});
+  const isProcessed = (a) =>
+    fileLocales.length === 0 ||
+    Object.values(a.fields.file ?? {}).every((f) => f?.url);
+  for (let i = 0; i < 30 && !isProcessed(fresh); i += 1) {
+    await new Promise((r) => setTimeout(r, 1000));
+    fresh = await client.asset.get({ ...base, assetId });
+  }
+  if (!isProcessed(fresh)) {
+    throw new Error(
+      `asset ${assetId} did not finish processing in time (30s timeout)`,
+    );
+  }
+  await client.asset.publish({ ...base, assetId }, fresh);
+}
+
+async function upsertEntry(client, base, source) {
   const contentTypeId = ctOf(source);
   let target = null;
   try {
@@ -288,23 +290,22 @@ async function upsertEntry(client, base, source, action) {
   } catch {
     target = null;
   }
-  let saved;
   if (!target) {
-    saved = await client.entry.createWithId(
+    await client.entry.createWithId(
       { ...base, entryId: source.sys.id, contentTypeId },
       { fields: source.fields },
     );
-  } else {
-    target.fields = source.fields;
-    saved = await client.entry.update(
-      { ...base, entryId: source.sys.id },
-      target,
-    );
+    return "created";
   }
-  if (action === "publish") {
-    await client.entry.publish({ ...base, entryId: saved.sys.id }, saved);
-  }
-  return saved;
+  target.fields = source.fields;
+  await client.entry.update({ ...base, entryId: source.sys.id }, target);
+  return "updated";
+}
+
+// Publish an already-upserted entry (re-fetch for the current version).
+async function publishEntry(client, base, entryId) {
+  const fresh = await client.entry.get({ ...base, entryId });
+  await client.entry.publish({ ...base, entryId }, fresh);
 }
 
 async function confirmProd(opts) {
@@ -467,8 +468,14 @@ async function main() {
     return apply;
   };
 
-  // 4. Apply — assets first (entries link to them), then entries.
+  // 4. Apply in two passes so a published entry never references a target that
+  //    doesn't exist yet: (A) upsert every asset+entry as a draft, then
+  //    (B) publish — with one retry sweep so cross-entry link targets published
+  //    in the first sweep become resolvable on the second.
   let counts = { created: 0, updated: 0, published: 0, deleted: 0, errors: 0 };
+  const toPublish = { asset: [], entry: [] };
+
+  // Pass A — upsert (no publish).
   if (opts.assets) {
     for (const a of [...assetDiff.created, ...pickChanged(assetDiff)]) {
       const action = resolvePublishAction({
@@ -477,10 +484,10 @@ async function main() {
         publishFlag: opts.publish,
       });
       try {
-        await upsertAsset(client, dst, a.raw, action);
-        counts[assetDiff.created.includes(a) ? "created" : "updated"] += 1;
-        if (action === "publish") counts.published += 1;
-        console.log(`  [asset ${action}] ${a.id}`);
+        const kind = await upsertAsset(client, dst, a.raw);
+        counts[kind] += 1;
+        console.log(`  [asset ${kind}] ${a.id}`);
+        if (action === "publish") toPublish.asset.push(a.id);
       } catch (e) {
         counts.errors += 1;
         console.error(`  [asset ERR] ${a.id}: ${e.message}`);
@@ -494,15 +501,40 @@ async function main() {
       publishFlag: opts.publish,
     });
     try {
-      await upsertEntry(client, dst, en.raw, action);
-      counts[entryDiff.created.includes(en) ? "created" : "updated"] += 1;
-      if (action === "publish") counts.published += 1;
-      console.log(`  [entry ${action}] ${en.id} (${en.contentType})`);
+      const kind = await upsertEntry(client, dst, en.raw);
+      counts[kind] += 1;
+      console.log(`  [entry ${kind}] ${en.id} (${en.contentType})`);
+      if (action === "publish") toPublish.entry.push(en.id);
     } catch (e) {
       counts.errors += 1;
       console.error(`  [entry ERR] ${en.id}: ${e.message}`);
     }
   }
+
+  // Pass B — publish (two attempts: targets published in the first sweep
+  // resolve on the second).
+  const publishAll = async (ids, kind, publishFn) => {
+    let pending = ids;
+    for (let attempt = 0; attempt < 2 && pending.length; attempt += 1) {
+      const failed = [];
+      for (const id of pending) {
+        try {
+          await publishFn(client, dst, id);
+          counts.published += 1;
+          console.log(`  [${kind} publish] ${id}`);
+        } catch (e) {
+          if (attempt === 0) failed.push(id);
+          else {
+            counts.errors += 1;
+            console.error(`  [${kind} publish ERR] ${id}: ${e.message}`);
+          }
+        }
+      }
+      pending = failed;
+    }
+  };
+  await publishAll(toPublish.asset, "asset", publishAsset);
+  await publishAll(toPublish.entry, "entry", publishEntry);
 
   // 5. Deletions (opt-in).
   if (opts.assets) {
