@@ -1,5 +1,5 @@
 ---
-description: Turn a sermon recording into a review-ready bilingual website post. Runs the local /predica pipeline — transcribe (whisper.cpp) → ★ correct transcript → write a bilingual sermon.json → two branded PDFs (Card C) → a Contentful DRAFT in agent-sandbox → a WhatsApp share text → ★ human review. Draft-only and send-only: nothing is ever auto-published or auto-sent. Two human gates.
+description: Turn a sermon recording into a review-ready bilingual website post. Runs the local /predica pipeline — transcribe (whisper.cpp) → ★ correct transcript → write a bilingual sermon.json → two branded PDFs (Card C) → a Contentful DRAFT in production → a WhatsApp share text → ★ human review. Draft-only and send-only: nothing is ever auto-published or auto-sent. Two human gates.
 argument-hint: "[<audio-path>] [--dry-run]"
 ---
 
@@ -14,12 +14,12 @@ or auto-skip them. See `tasks/specs/sermon-pipeline.md` §7–§9.
 ## Hard rules (all steps)
 
 - **Draft-only.** Nothing is ever published. The `predica-publisher`'s allowlist omits every `publish_*`,
-  and it writes **only** to `agent-sandbox`. A human promotes `agent-sandbox → master` and publishes at Gate 2.
+  and it writes only a **DRAFT** to `production`. A human reviews and Publishes at Gate 2.
 - **Send-only-by-human.** The WhatsApp message is composed, never sent.
 - **Two gates are mandatory.** Gate 1 (human corrects the transcript) and Gate 2 (human reviews the draft +
-  promotes) both stop and wait in this conversation.
-- **Never touch `master`.** All Contentful writes target `agent-sandbox` (server backstop:
-  `PROTECTED_ENVIRONMENTS=master`).
+  publishes) both stop and wait in this conversation.
+- **Never write the `master` alias.** All Contentful writes target the `production` env as a DRAFT (server
+  backstop: `PROTECTED_ENVIRONMENTS=master,production`).
 - **Secret hygiene.** Never print the CMA token, Mongo URI, or any secret — reference variable names only.
   Per-sermon working files live under `tasks/predicas/<slug>/` (gitignored); temp files use `600` perms.
 - **`--dry-run`** stops after the PDFs (step 4) — **no Contentful writes, no WhatsApp finalize**. It prints
@@ -42,10 +42,7 @@ or auto-skip them. See `tasks/specs/sermon-pipeline.md` §7–§9.
    Chromium for the PDF (`pnpm exec playwright install chromium` if `renderPdfs` later errors with a missing
    browser). Stop with a precise message if a hard dependency is missing.
 4. **Contentful env check** (skip on `--dry-run`). `mcp__contentful__list_environments(spaceId)` and confirm
-   `config.predica.contentfulEnv` (`agent-sandbox`) exists. If it is **missing** (a prior merge consumed it),
-   **STOP** and tell the human to re-create it from `master` (`create_environment`) — freeing the single
-   work-env quota slot first if needed (delete the non-aliased spare). This is destructive, so it is a human
-   decision, not an auto-step.
+   `config.predica.contentfulEnv` (`production`) exists and is accessible.
 5. **Provisional slug + artifacts dir.** Derive a provisional slug from the filename (transliterate, lowercase,
    dash-collapse) — used only for the temp dir. `mkdir -p <artifactsDir>/<provisional-slug>/`. (The writer's
    title-derived slug is canonical; reconcile in step 3.)
@@ -111,16 +108,16 @@ Print a single summary block and **stop** (no further action):
 - **Transcript:** `<…>/transcript.txt`
 - **sermon.json:** `<…>/sermon.json`
 - **PDFs:** `<…>/predica.es-AR.pdf`, `<…>/predica.en-US.pdf`
-- **Contentful DRAFT (agent-sandbox):** `<editUrl>` — status **draft, not published** (audio + both PDFs
+- **Contentful DRAFT (production):** `<editUrl>` — status **draft, not published** (audio + both PDFs
   already attached)
 - **Deferred media to attach before publishing:** a `featuredImage` (required on publish; none is generated)
 - **WhatsApp (es-AR):** `<…>/whatsapp.txt` — canonical URL `<…>` (verify the production domain)
 
 Then tell the user, verbatim intent:
 
-> "Done — everything is a **draft**. To go live: in Contentful (agent-sandbox) attach a **featuredImage** to
-> the draft, review both locales, **merge agent-sandbox → master**, and **Publish** (the publish webhook
-> revalidates the site). Then paste the WhatsApp text. **No agent publishes or sends.**"
+> "Done — everything is a **draft**. To go live: review both locales in Contentful (production), attach a
+> **featuredImage** if deferred, and **Publish** (the publish webhook revalidates the site). Then paste the
+> WhatsApp text. **No agent publishes or sends.**"
 
 **Never move any Trello card to Done. Never publish. Never send.**
 

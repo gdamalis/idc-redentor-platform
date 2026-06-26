@@ -263,7 +263,7 @@ Write the spec to `${config.paths.specs}/ICR-N-<slug>.md`. Required sections (IC
 
 1. **Dependencies Check** — what must exist before starting
 2. **Requirements** — numbered, code-level detail
-3. **Data Model Changes** — TypeScript interfaces; **Contentful GraphQL fragments** (hand-written in `lib/contentful/*`, NOT codegen — ignore `codegen.ts`); MongoDB indexes only if the **likes** feature is touched. **If this changes the Contentful content _model_** (a new/changed/deleted content type or field, or an entry remap — not just a read fragment), this section MUST include the **env-cutover plan** (the versioned work env + semver bump, how `.env.local`/the branch Vercel Preview point at it, and the human cutover/rollback) per `docs/contentful-environments.md`. The step 8.2 gate enforces it.
+3. **Data Model Changes** — TypeScript interfaces; **Contentful GraphQL fragments** (hand-written in `lib/contentful/*`, NOT codegen — ignore `codegen.ts`); MongoDB indexes only if the **likes** feature is touched. **If this changes the Contentful content _model_** (a new/changed/deleted content type or field, or an entry remap — not just a read fragment), this section MUST include the **env-cutover plan** (the `staging` work env, how `.env.local`/the branch Vercel Preview point at it, and the human cutover — default lane: Merge/scripts; heavy lane: alias-swap — plus rollback) per `docs/contentful-environments.md`. The step 8.2 gate enforces it.
 4. **API Changes** — Zod schemas + request/response contracts for `src/app/api/*` routes
 5. **New Files / Modified Files** — tables with purpose or change description
 6. **Component Hierarchy** — ASCII tree (`src/components/{features,shared,ui}`), responsive variants if UI
@@ -307,7 +307,7 @@ After the plan is written, determine whether it changes the **Contentful content
 > `ICR-N` changes the Contentful content model. Which lane?
 >
 > - **Default — permanent `staging`** _(recommended)_: develop in the standing `staging` env, promote to prod at cutover via Contentful Merge and/or the committed `scripts/contentful/` migrations. Low setup; rollback = reverse migration.
-> - **Heavy — versioned env + alias re-point**: for a big **breaking** change (type deletions, field renames, merges) that needs instant flip-back rollback. Clone prod into `master-<bumped>`; the human re-points the alias at cutover.
+> - **Heavy — alias-swap cutover**: for a big **breaking** change (type deletions, field renames, merges) that needs instant flip-back rollback. Build in the permanent `staging` env; the human performs the stable-name alias-swap at cutover (see `docs/contentful-environments.md` → Heavy alias-swap runbook).
 
 **Default (`staging`) lane:**
 
@@ -315,12 +315,12 @@ After the plan is written, determine whether it changes the **Contentful content
 2. The spec's "Data Model Changes" section must include the cutover plan: the migration to apply to prod + the reverse/rollback step.
 3. **Cutover is HUMAN-ONLY and deferred** — at PR-merge time the human applies the tested migration to production (Merge and/or the scripts). `/work` never writes to prod or the alias.
 
-**Heavy (alias re-point) lane** — confirm the version bump (`config.contentful.workEnvNaming.bumpRules`): **Major** (breaking), **Minor** (additive), **Patch** (fix). Then:
+**Heavy (alias-swap) lane** — the breaking change is developed in `staging`, the same permanent work env as the default lane. The only difference is the **cutover mechanism**: the human performs the stable-name alias-swap instead of applying a forward migration. Refer to `config.contentful.heavyCutover` for the step-by-step procedure. Then:
 
-1. **Work env.** Clone current production (`config.contentful.aliasTarget`) → `master-<bumped>`. The free tier allows production + **one** work env (`config.contentful.freeTierWorkEnvLimit` = 1), so **free the slot first** — delete the idle env (needs explicit user OK; you can only delete the non-aliased env). Then every `config.contentful.perCycleConfigTouch` step: **grant the Delivery + Preview API keys access to the new env FIRST** (human-only, Contentful UI — else `UNKNOWN_ENVIRONMENT`; see `config.contentful.apiKeyEnvAccess`), then point the MCP `ENVIRONMENT_ID`, `.env.local`, and the **branch-scoped** Vercel Preview at it.
-2. **Implementer writes to the work env ONLY** — via the Contentful MCP + committed `scripts/contentful/` migrations. **Never** the `master` alias.
-3. **The spec must carry an env-cutover plan** in its "Data Model Changes" section: work env + bump, how local/preview point at it, the human cutover + flip-back rollback.
-4. **Cutover is HUMAN-ONLY and deferred** — `/work` NEVER re-points the `master` alias. At PR-merge time the human re-points `master` → the work env (rollback = re-point back). A **Done-class human gate**: like merge and Done, no agent or command performs it.
+1. **Work env is `staging`** — the one-time setup (`config.contentful.oneTimeConfigTouch`: API keys granted, MCP `ENVIRONMENT_ID` set, `.env.local` + branch-scoped Vercel Preview pointed at `staging`) is already done. The implementer writes to `staging` only; never `master` or `production`.
+2. **Implementer writes to `staging` ONLY** — via the Contentful MCP + committed `scripts/contentful/` migrations. **Never** `master` or `production`.
+3. **The spec must carry the alias-swap cutover plan** in its "Data Model Changes" section: what changes land in `staging`, the alias-swap steps (reference `config.contentful.heavyCutover`), and the flip-back rollback (re-point `master` → cold-backup of old production).
+4. **Cutover is HUMAN-ONLY and deferred** — `/work` NEVER re-points the `master` alias or touches `production`. At PR-merge time the human executes the alias-swap. A **Done-class human gate**: like merge and Done, no agent or command performs it.
 
 One-time gate; once the lane is chosen, later checkpoints in the same run don't re-trigger.
 

@@ -7,10 +7,10 @@
  * for a ~20 MB sermon mp3. This uses the CMA binary-upload endpoint
  * (upload.contentful.com) → create asset → process → poll, so any size works.
  *
- * DRAFT-ONLY + SANDBOX-ONLY by construction:
+ * DRAFT-ONLY by construction:
  *   - It has NO publish call. It creates and processes a draft asset and stops.
- *   - It HARD-REFUSES the `master` environment (and any `master*` alias/target).
- *     A human promotes agent-sandbox → master and publishes (Gate 2).
+ *   - It HARD-REFUSES the `master` alias (and any `master*` env). It writes the
+ *     `production` ENV directly; a human reviews + Publishes at Gate 2.
  *
  * Auth: reads CONTENTFUL_MANAGEMENT_ACCESS_TOKEN from the environment; if absent,
  * it parses `.env.local` at the repo root. The token NAME only is referenced —
@@ -91,7 +91,10 @@ async function main() {
   const env = a.env;
   // Guard: never touch master (the live alias target or any master* env).
   if (env === "master" || /^master(-|$)/.test(env)) {
-    die(2, `error: refusing to write to protected environment '${env}'. Use agent-sandbox.`);
+    die(
+      2,
+      `error: refusing to write to protected environment '${env}'. Use 'production' or 'staging' (never the master alias).`,
+    );
   }
 
   const token = await loadToken();

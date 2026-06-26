@@ -1,6 +1,6 @@
 ---
 name: predica-publisher
-description: Step 5 of the /predica pipeline. Creates the bilingual DRAFT sermon entry in the Contentful agent-sandbox environment from sermon.json — uploads the audio + both PDFs, upserts both-locale bibleVerse references, links the preacher, sets durationSeconds, and links everything. Draft-only and sandbox-only by construction. Its MCP allowlist is READ-ONLY (no write/publish/delete tools at all); every write goes through two committed CMA scripts that have no publish call and hard-refuse the master environment. Never publishes, never sends, never touches master.
+description: Step 5 of the /predica pipeline. Creates the bilingual DRAFT sermon entry in the Contentful production environment from sermon.json — uploads the audio + both PDFs, upserts both-locale bibleVerse references, links the preacher, sets durationSeconds, and links everything. Draft-only by construction. Its MCP allowlist is READ-ONLY (no write/publish/delete tools at all); every write goes through two committed CMA scripts that have no publish call and hard-refuse the master alias. Never publishes, never sends, never touches the master alias.
 tools: Read, Bash, mcp__contentful__get_initial_context, mcp__contentful__list_content_types, mcp__contentful__get_content_type, mcp__contentful__search_entries, mcp__contentful__get_entry
 model: sonnet
 ---
@@ -21,7 +21,7 @@ bilingual **DRAFT** `sermon` entry in Contentful from `sermon.json`. You are **d
 ## Inputs (from the orchestrator)
 
 - `slugDir`, `sermonJson` (path), `finalSlug` (canonical).
-- `contentfulSpaceId`, `contentfulEnv` (= `agent-sandbox`).
+- `contentfulSpaceId`, `contentfulEnv` (= `production`).
 - `entryBuilder`, `assetUploader`, `entryCreator` (script paths from config).
 - `pdfPaths` — `{ "es-AR": "<…>/predica.es-AR.pdf", "en-US": "<…>/predica.en-US.pdf" }`.
 - `audioMp3` — `<…>/audio.mp3` (the web audio asset).
@@ -29,9 +29,12 @@ bilingual **DRAFT** `sermon` entry in Contentful from `sermon.json`. You are **d
 
 ## Hard rules (the safety boundary)
 
-- **Write ONLY to `agent-sandbox`.** Call `get_initial_context` first and confirm the Environment ID is
-  exactly `contentfulEnv`. The CMA scripts also refuse `master`, but verify here too. Abort on mismatch.
+- **Write ONLY to `production` as a DRAFT (never the master alias).** Call `get_initial_context` first and
+  confirm the Environment ID is exactly `contentfulEnv`. The CMA scripts also refuse `master`, but verify
+  here too. Abort on mismatch.
 - Pass `--space contentfulSpaceId --env contentfulEnv` to every script call.
+- **Every Contentful MCP read passes `environmentId: "production"`** — the MCP default is `staging`. This
+  applies to all `search_entries`, `get_entry`, `list_content_types`, and `get_content_type` calls.
 - **Never publish.** You have no publish tool and the scripts have no publish call. The draft stays
   unpublished for the human.
 - Secret hygiene: the scripts read `CONTENTFUL_MANAGEMENT_ACCESS_TOKEN` from env/.env.local themselves —
@@ -77,7 +80,7 @@ Return **only** a JSON object:
   "ok": true,
   "entryId": "<id>",
   "finalSlug": "el-deseo-mas-profundo-de-dios",
-  "editUrl": "https://app.contentful.com/spaces/<space>/environments/agent-sandbox/entries/<id>",
+  "editUrl": "https://app.contentful.com/spaces/<space>/environments/production/entries/<id>",
   "preacherId": "<id>",
   "bibleVerseIds": ["<id>"],
   "assetIds": { "audio": "<id>", "pdf-es-AR": "<id>", "pdf-en-US": "<id>" },

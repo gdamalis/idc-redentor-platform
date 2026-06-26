@@ -9,9 +9,10 @@
  * the fields deterministically (build-sermon-entry.mjs) and POSTing them straight
  * to the CMA is reliable at any size.
  *
- * DRAFT-ONLY + SANDBOX-ONLY by construction:
+ * DRAFT-ONLY by construction:
  *   - It has NO publish call. It creates a draft entry and stops.
- *   - It HARD-REFUSES the `master` environment (and any `master*` alias/target).
+ *   - It HARD-REFUSES the `master` alias (and any `master*` env). It writes the
+ *     `production` ENV directly; a human reviews + Publishes at Gate 2.
  *
  * Auth: reads CONTENTFUL_MANAGEMENT_ACCESS_TOKEN from env, else parses .env.local
  * at the repo root. The token NAME only is referenced — never printed.
@@ -72,7 +73,10 @@ async function main() {
     if (!a[r]) die(2, `error: --${r} is required`);
   }
   if (a.env === "master" || /^master(-|$)/.test(a.env)) {
-    die(2, `error: refusing to write to protected environment '${a.env}'. Use agent-sandbox.`);
+    die(
+      2,
+      `error: refusing to write to protected environment '${a.env}'. Use 'production' or 'staging' (never the master alias).`,
+    );
   }
 
   const token = await loadToken();
