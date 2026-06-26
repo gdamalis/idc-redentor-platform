@@ -18,7 +18,11 @@
  * links.json shape (all ids resolved by the publisher first):
  *   { "preacherId": "...", "scriptureRefIds": ["..."],
  *     "pdfAssetIds": { "es-AR": "...", "en-US": "..." },
- *     "audioAssetId": "...", "featuredImageAssetId": "..." }
+ *     "audioAssetId": "...", "featuredImageAssetId": "...",
+ *     "sermonEntryId": "...", "sourceSha256": "..." }
+ *   This builder consumes only the id fields above; `sermonEntryId` (written after
+ *   create/update) and `sourceSha256` are the re-run MANIFEST — used by Gate 0 /
+ *   pre-flight to update-in-place and to match the recording, not by the builder.
  *
  * Exit codes:
  *   0  success (payload printed to stdout)

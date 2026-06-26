@@ -67,7 +67,7 @@ scriptureRefs/closing?`. Keys consumed by the Contentful publisher: everything e
   "serviceLabel": { "es-AR": "Culto dominical", "en-US": "Sunday service" },
   "scriptureReferences": [
     {
-      "internalName": "Efesios 2:11-22 · el-perdon-de-jesus",
+      "internalName": "Efesios 2:11-22",
       "chapter": "2",
       "fromVerse": "11",
       "toVerse": "22",
@@ -122,6 +122,10 @@ scriptureRefs/closing?`. Keys consumed by the Contentful publisher: everything e
 - `mainPoints` and `keywords` are arrays of plain strings, both locales.
 - `scriptureReferences`: `chapter`/`fromVerse`/`toVerse` are **shared** strings (numbers as strings);
   `book`/`verseContent`/`bibleVersion` are **per-locale**. Omit `toVerse` for a single verse.
+- `scriptureReferences[].internalName` is the **scripture-coordinate label only** — the es book + chapter
+  and verse(s): `"Joel 2:13"`, `"Mateo 9:12-13"`. **Never namespace it per sermon** (no `· <slug>` suffix).
+  Bible verses are deduped **site-wide by coordinate** (book + chapter + verse range), so one passage is a
+  single shared entry reused across sermons (and the Creed) — a per-sermon name would defeat that reuse.
 - `lead`, `closing`, `keyQuotes`, `scriptureHeadline`, `scriptureRefs` are PDF-facing; still author them well.
 - `whatsappText` is es-AR, warm, ends with the `{{URL}}` placeholder (the whatsapp step substitutes the
   real canonical URL after publish).

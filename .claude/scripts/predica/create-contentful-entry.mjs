@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * create-contentful-entry.mjs — Create ONE Contentful entry as a DRAFT from a
- * fields JSON file, via the CMA.
+ * create-contentful-entry.mjs — Create OR update ONE Contentful entry as a DRAFT
+ * from a fields JSON file, via the CMA.
  *
  * Why a script (not the MCP create_entry tool): a sermon's `fields` payload is
  * tens of KB (a 40+ node Rich Text document in two locales). Round-tripping that
@@ -9,8 +9,16 @@
  * the fields deterministically (build-sermon-entry.mjs) and POSTing them straight
  * to the CMA is reliable at any size.
  *
- * DRAFT-ONLY by construction:
- *   - It has NO publish call. It creates a draft entry and stops.
+ * Two modes:
+ *   - CREATE (default): POST a new draft entry. Requires --content-type.
+ *   - UPDATE-IN-PLACE (--id <entryId>): GET the entry's current version, then PUT
+ *     the full `fields` payload back under the SAME id. Used when /predica
+ *     regenerates an existing sermon — no duplicate entry, the editUrl is stable.
+ *     PUT replaces the whole `fields` object, so the regenerated content fully
+ *     supersedes the prior content (this is what the Gate-0 approval consents to).
+ *
+ * DRAFT-ONLY by construction (both modes):
+ *   - It has NO publish call. It creates/updates a draft entry and stops.
  *   - It HARD-REFUSES the `master` alias (and any `master*` env). It writes the
  *     `production` ENV directly; a human reviews + Publishes at Gate 2.
  *
@@ -18,11 +26,15 @@
  * at the repo root. The token NAME only is referenced — never printed.
  *
  * Usage:
+ *   # create
  *   node .claude/scripts/predica/create-contentful-entry.mjs \
  *     --content-type <contentTypeId> --fields <fields.json> --space <spaceId> --env <environmentId>
+ *   # update in place
+ *   node .claude/scripts/predica/create-contentful-entry.mjs \
+ *     --id <entryId> --fields <fields.json> --space <spaceId> --env <environmentId>
  *
- * Output (stdout): { "ok": true, "entryId": "...", "editUrl": "..." }
- * Exit codes: 0 success · 2 usage/auth/guard error · 1 create failure
+ * Output (stdout): { "ok": true, "entryId": "...", "editUrl": "...", "updated"?: true }
+ * Exit codes: 0 success · 2 usage/auth/guard error · 1 create/update failure
  */
 
 import { readFile } from "node:fs/promises";
@@ -69,8 +81,14 @@ async function loadToken() {
 
 async function main() {
   const a = parseArgs(process.argv.slice(2));
-  for (const r of ["content-type", "fields", "space", "env"]) {
+  const isUpdate = Boolean(a.id);
+  for (const r of ["fields", "space", "env"]) {
     if (!a[r]) die(2, `error: --${r} is required`);
+  }
+  // --content-type is required to CREATE; for an update the entry already has a
+  // type, so it is optional (and ignored) when --id is given.
+  if (!isUpdate && !a["content-type"]) {
+    die(2, "error: --content-type is required when creating (pass --id <entryId> to update in place)");
   }
   if (a.env === "master" || /^master(-|$)/.test(a.env)) {
     die(
@@ -89,9 +107,40 @@ async function main() {
     die(2, `error: cannot read/parse ${a.fields}: ${e.message}`);
   }
 
-  const url = `${CMA}/spaces/${a.space}/environments/${a.env}/entries`;
+  const base = `${CMA}/spaces/${a.space}/environments/${a.env}`;
+  const editUrl = (id) =>
+    `https://app.contentful.com/spaces/${a.space}/environments/${a.env}/entries/${id}`;
+
   try {
-    const res = await fetch(url, {
+    if (isUpdate) {
+      // UPDATE-IN-PLACE: GET current version, then PUT the full fields payload.
+      // No publish call — the entry stays a draft (or, if it was published, the
+      // new content lands as a draft change the human re-publishes at Gate 2).
+      const getRes = await fetch(`${base}/entries/${a.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const getText = await getRes.text();
+      if (!getRes.ok) throw new Error(`GET entries/${a.id} → ${getRes.status} ${getRes.statusText}\n${getText}`);
+      const version = JSON.parse(getText)?.sys?.version;
+      if (version == null) throw new Error(`entry ${a.id} returned no sys.version`);
+
+      const putRes = await fetch(`${base}/entries/${a.id}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": JSON_CT,
+          "X-Contentful-Version": String(version),
+        },
+        body: JSON.stringify({ fields }),
+      });
+      const putText = await putRes.text();
+      if (!putRes.ok) throw new Error(`PUT entries/${a.id} → ${putRes.status} ${putRes.statusText}\n${putText}`);
+      const entryId = JSON.parse(putText)?.sys?.id ?? a.id;
+      process.stdout.write(JSON.stringify({ ok: true, entryId, editUrl: editUrl(entryId), updated: true }) + "\n");
+      return;
+    }
+
+    const res = await fetch(`${base}/entries`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -102,11 +151,9 @@ async function main() {
     });
     const text = await res.text();
     if (!res.ok) throw new Error(`POST entries → ${res.status} ${res.statusText}\n${text}`);
-    const entry = JSON.parse(text);
-    const entryId = entry?.sys?.id;
+    const entryId = JSON.parse(text)?.sys?.id;
     if (!entryId) throw new Error("create returned no sys.id");
-    const editUrl = `https://app.contentful.com/spaces/${a.space}/environments/${a.env}/entries/${entryId}`;
-    process.stdout.write(JSON.stringify({ ok: true, entryId, editUrl }) + "\n");
+    process.stdout.write(JSON.stringify({ ok: true, entryId, editUrl: editUrl(entryId) }) + "\n");
   } catch (e) {
     die(1, `error: ${e.message}`);
   }
