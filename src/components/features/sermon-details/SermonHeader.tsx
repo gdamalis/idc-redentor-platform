@@ -4,7 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Typography } from "@src/components/ui/typography";
 import { Divider } from "@src/components/ui/divider";
 import { AuthorInfo } from "@src/components/features/blog-post-details/AuthorInfo";
-import { formatDate } from "@src/utils/formatDate";
+import { formatDateLong } from "@src/utils/formatDate";
 import type { Sermon } from "@src/types/Sermon";
 
 interface SermonHeaderProps {
@@ -17,7 +17,7 @@ interface SermonHeaderProps {
 export function SermonHeader({ sermon }: SermonHeaderProps) {
   const t = useTranslations("Sermons");
   const locale = useLocale();
-  const formattedDate = formatDate(sermon.sermonDate, locale);
+  const formattedDate = formatDateLong(sermon.sermonDate, locale);
 
   return (
     <div className="flex flex-col gap-y-3">
