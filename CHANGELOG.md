@@ -1,3 +1,9 @@
+# [1.16.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.15.1...v1.16.0) (2026-06-26)
+
+### Features
+
+- **ICR-84:** generate a branded AI featured image for each sermon in /predica ([#58](https://github.com/gdamalis/idc-redentor-web/issues/58)) ([81d5907](https://github.com/gdamalis/idc-redentor-web/commit/81d5907ba3e71e7cd98926a025a1664abb4cb121))
+
 ## [1.15.1](https://github.com/gdamalis/idc-redentor-web/compare/v1.15.0...v1.15.1) (2026-06-26)
 
 ### Bug Fixes
