@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { Sermon } from "@src/types/Sermon";
 import { buildLocaleAlternates } from "@src/i18n/config";
+import { DEFAULT_OG_IMAGE } from "./metadata";
 
 interface BuildSermonMetadataOptions {
   sermon: Sermon;
@@ -31,12 +32,17 @@ export function buildSermonMetadata({
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
   const pageUrl = `${baseUrl}/${locale}/${path}`;
 
-  const ogImage = {
-    url: sermon.featuredImage.url,
-    width: 1200,
-    height: 630,
-    alt: sermon.featuredImage.title,
-  };
+  // featuredImage is optional in Contentful and is often empty on drafts, so
+  // fall back to the site-wide default OG image rather than dereferencing a
+  // missing asset (which previously 500'd the live preview).
+  const ogImage = sermon.featuredImage
+    ? {
+        url: sermon.featuredImage.url,
+        width: 1200,
+        height: 630,
+        alt: sermon.featuredImage.title,
+      }
+    : DEFAULT_OG_IMAGE;
 
   const audioEntry = sermon.audio
     ? { url: sermon.audio.url, type: sermon.audio.contentType }
@@ -99,7 +105,7 @@ export function buildSermonJsonLd(sermon: Sermon, locale: string) {
     "@type": "Article" as const,
     headline: sermon.seoTitle,
     description: sermon.seoDescription,
-    image: sermon.featuredImage.url,
+    image: sermon.featuredImage?.url ?? `${baseUrl}${DEFAULT_OG_IMAGE.url}`,
     datePublished: sermon.sermonDate,
     dateModified: sermon.sys.publishedAt ?? sermon.sermonDate,
     author: {

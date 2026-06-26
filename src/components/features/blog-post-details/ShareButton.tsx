@@ -242,14 +242,16 @@ export function ShareButton({ slug, basePath, likeKey, title, featuredImageUrl }
             </div>
 
             {/* Post preview card */}
-            <div className="relative mb-5 overflow-hidden rounded-xl aspect-video">
-              <Image
-                src={featuredImageUrl}
-                alt={title}
-                fill
-                className="object-cover"
-                sizes="(max-width: 384px) 100vw, 384px"
-              />
+            <div className="relative mb-5 overflow-hidden rounded-xl aspect-video bg-muted">
+              {featuredImageUrl && (
+                <Image
+                  src={featuredImageUrl}
+                  alt={title}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 384px) 100vw, 384px"
+                />
+              )}
               <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-4">
                 <p className="text-sm font-semibold text-white line-clamp-2">

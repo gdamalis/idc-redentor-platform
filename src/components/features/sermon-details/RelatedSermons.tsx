@@ -38,15 +38,17 @@ export function RelatedSermons({ sermons, locale }: RelatedSermonsProps) {
                       </time>
                     </div>
                   </div>
-                  <div>
-                    <Image
-                      alt={sermon.featuredImage.title}
-                      src={sermon.featuredImage.url}
-                      width={780}
-                      height={780}
-                      className="h-auto md:h-full md:w-full rounded-md"
-                    />
-                  </div>
+                  {sermon.featuredImage && (
+                    <div>
+                      <Image
+                        alt={sermon.featuredImage.title}
+                        src={sermon.featuredImage.url}
+                        width={780}
+                        height={780}
+                        className="h-auto md:h-full md:w-full rounded-md"
+                      />
+                    </div>
+                  )}
                 </article>
               </Link>
             </div>

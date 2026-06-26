@@ -255,6 +255,24 @@ describe("getAllSermons", () => {
     expect(result).toHaveLength(150);
     expect(mockFetchGraphQL.mock.calls[1][0]).toContain("skip: 100");
   });
+
+  it("uses a lightweight field set to stay under Contentful's query-complexity ceiling", async () => {
+    mockFetchGraphQL.mockResolvedValueOnce(makeCollectionResponse([SERMON_ITEM]));
+
+    await getAllSermons("es-AR");
+
+    const query = mockFetchGraphQL.mock.calls[0][0] as string;
+    // At limit:100 these nested structures push the cost past 11000
+    // (TOO_COMPLEX_QUERY), which silently blanked the archive. The list query
+    // must not request them.
+    expect(query).not.toContain("scriptureReferencesCollection");
+    expect(query).not.toContain("relatedSermonsCollection");
+    expect(query).not.toMatch(/content\s*\{/);
+    // ...but it must still request what SermonCard renders.
+    expect(query).toContain("featuredImage");
+    expect(query).toContain("preacher");
+    expect(query).toContain("sermonDate");
+  });
 });
 
 describe("getAllSermonSlugs", () => {

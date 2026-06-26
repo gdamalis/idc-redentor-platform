@@ -64,6 +64,13 @@ const SERMON_NO_AUDIO: Sermon = {
   scriptureReferences: undefined,
 };
 
+// A draft sermon where the editor has not yet uploaded a featured image.
+// This is the exact shape that crashed the live preview (featuredImage: null).
+const SERMON_NO_IMAGE: Sermon = {
+  ...FULL_SERMON,
+  featuredImage: undefined,
+};
+
 describe("formatIsoDuration", () => {
   it("formats whole minutes correctly", () => {
     expect(formatIsoDuration(60)).toBe("PT1M0S");
@@ -142,6 +149,26 @@ describe("buildSermonMetadata", () => {
   it("includes keywords", () => {
     const meta = buildSermonMetadata({ sermon: FULL_SERMON, locale: "es-AR", path: "predicas/la-gracia-de-dios" });
     expect(meta.keywords).toEqual(["gracia", "fe", "salvación"]);
+  });
+
+  it("does not throw when featuredImage is absent (draft preview)", () => {
+    expect(() =>
+      buildSermonMetadata({ sermon: SERMON_NO_IMAGE, locale: "es-AR", path: "predicas/la-gracia-de-dios" }),
+    ).not.toThrow();
+  });
+
+  it("falls back to the default OG image when featuredImage is absent", () => {
+    const meta = buildSermonMetadata({ sermon: SERMON_NO_IMAGE, locale: "es-AR", path: "predicas/la-gracia-de-dios" });
+    const ogImages = (meta.openGraph as Record<string, unknown>)?.images as Array<{ url: string }>;
+    const twImages = (meta.twitter as Record<string, unknown>)?.images as Array<{ url: string }>;
+    expect(ogImages?.[0]?.url).toContain("og_default.jpeg");
+    expect(twImages?.[0]?.url).toContain("og_default.jpeg");
+  });
+
+  it("uses the sermon's featuredImage for OG when present", () => {
+    const meta = buildSermonMetadata({ sermon: FULL_SERMON, locale: "es-AR", path: "predicas/la-gracia-de-dios" });
+    const ogImages = (meta.openGraph as Record<string, unknown>)?.images as Array<{ url: string }>;
+    expect(ogImages?.[0]?.url).toBe("https://images.ctfassets.net/hero.jpg");
   });
 });
 
@@ -235,5 +262,13 @@ describe("buildSermonJsonLd", () => {
   it("omits citation when scriptureReferences absent", () => {
     const ld = buildSermonJsonLd(SERMON_NO_AUDIO, "es-AR");
     expect(ld.citation).toBeUndefined();
+  });
+
+  it("does not throw and falls back to the default OG image when featuredImage is absent (draft preview)", () => {
+    let ld: ReturnType<typeof buildSermonJsonLd> | undefined;
+    expect(() => {
+      ld = buildSermonJsonLd(SERMON_NO_IMAGE, "es-AR");
+    }).not.toThrow();
+    expect(ld?.image).toBe(`${BASE_URL}/assets/img/og_default.jpeg`);
   });
 });

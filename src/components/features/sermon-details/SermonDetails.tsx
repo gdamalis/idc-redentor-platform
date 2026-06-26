@@ -70,7 +70,7 @@ export default async function SermonDetails({
           basePath="predicas"
           likeKey={`predicas/${sermon.slug}`}
           title={sermon.title}
-          featuredImageUrl={sermon.featuredImage.url}
+          featuredImageUrl={sermon.featuredImage?.url ?? ""}
           initialLikeCount={initialLikeCount}
           initialHasLiked={initialHasLiked}
         />
