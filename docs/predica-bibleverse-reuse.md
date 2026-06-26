@@ -46,9 +46,11 @@ the `master` alias**. The publisher's MCP allowlist remains **read-only**.
 The same passage is reused, but the **sermon** entry must not silently duplicate either. On a slug collision
 the publisher (step 2):
 
-- **Existing same-slug DRAFT** (`publishedCounter` 0) → **abort with guidance** (delete the stale draft, then
-  re-run). It does **not** bump to `<slug>-2`.
-- **Existing same-slug PUBLISHED** → treat as a new edition and bump (`-2`, `-3`, …).
+- **Existing same-slug DRAFT** (no `sys.publishedVersion` — Contentful's canonical "never published"
+  marker; not `publishedCounter`) → **abort with guidance** (delete the stale draft, then re-run). It does
+  **not** bump to `<slug>-2`.
+- **Existing same-slug PUBLISHED** (`sys.publishedVersion` present) → treat as a new edition and bump (`-2`,
+  `-3`, …).
 
 ## Files
 

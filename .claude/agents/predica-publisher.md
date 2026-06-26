@@ -47,14 +47,18 @@ bilingual **DRAFT** `sermon` entry in Contentful from `sermon.json`. You are **d
 1. **Init + guard.** `get_initial_context`; confirm Space == `contentfulSpaceId` and Environment ==
    `contentfulEnv`. Abort on mismatch.
 2. **Slug collision / re-run guard.** `search_entries({ content_type:"sermon", "fields.slug": finalSlug,
-limit:1, select:"sys.id,sys.publishedCounter" })` (`environmentId:"production"`).
-   - **Existing match that is an unpublished DRAFT** (`publishedCounter` 0) → this is a **re-run of the same
-     sermon**. **Abort** with `{ "ok": false, "error": "draft sermon '<slug>' already exists (<id>) — delete it
-before re-running, or it would create a duplicate", "entryId": "<id>" }`. **Do not bump the slug for a
-     draft.** A human (or the one-time cleanup) deletes the stale draft, then re-runs.
-   - **Existing match that is PUBLISHED** → a genuinely new edition: append `-2` (then `-3`, …) until free;
-     that becomes the **final** slug (note it — the whatsapp URL depends on it), and pass `--slug <finalSlug>`
-     to the builder in step 6 so the entry's slug matches the bumped value (and the WhatsApp URL).
+limit:1, select:"sys.id,sys.publishedVersion,sys.version" })` (`environmentId:"production"`). Determine state
+   by Contentful's CMA model: **a never-published DRAFT has no `sys.publishedVersion`** (it is absent — do
+   NOT rely on `publishedCounter`, which may be omitted from the response or be non-zero on an
+   already-unpublished entry).
+   - **Existing match with NO `sys.publishedVersion`** (a draft) → this is a **re-run of the same sermon**.
+     **Abort** with `{ "ok": false, "error": "draft sermon '<slug>' already exists (<id>) — delete it before
+re-running, or it would create a duplicate", "entryId": "<id>" }`. **Do not bump the slug for a draft.**
+     A human (or the one-time cleanup) deletes the stale draft, then re-runs.
+   - **Existing match WITH `sys.publishedVersion`** (published at least once) → a genuinely new edition:
+     append `-2` (then `-3`, …) until free; that becomes the **final** slug (note it — the whatsapp URL
+     depends on it), and pass `--slug <finalSlug>` to the builder in step 6 so the entry's slug matches the
+     bumped value (and the WhatsApp URL).
    - **No match** → proceed with `finalSlug`.
 3. **Preacher.** `search_entries({ content_type:"author", "fields.name": "<preacher>", limit:5 })`. Use the
    matching entry id. If none, write an author fields file `{ internalName:{["es-AR"]:name}, name:{["es-AR"]:name},
@@ -78,7 +82,7 @@ email:{["es-AR"]:email} }` (avatar optional — omit) and create it via
    — append `--slug <finalSlug>` **iff** step 2 bumped the slug, so the entry slug matches the WhatsApp URL.
 7. **Create the DRAFT** sermon: `node <entryCreator> --content-type sermon --fields <slugDir>/contentful-entry.fields.json
 --space <s> --env <e>` → `{ entryId, editUrl }`. Optionally `get_entry` to confirm it is a draft
-   (`publishedCounter: 0`) and the links resolved.
+   (no `sys.publishedVersion`) and the links resolved.
 8. **Featured image is attached.** audio, both PDFs, and the generated `featured.png` are all linked on the
    draft. The featured image is a **draft default** — note in the output that the human can review/replace it
    at Gate 2. Nothing is deferred.
