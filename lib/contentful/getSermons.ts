@@ -90,6 +90,57 @@ const GRAPHQL_FIELDS = `
   __typename
 `;
 
+/**
+ * Lightweight field set for the archive/list view (rendered by SermonCard).
+ *
+ * The full GRAPHQL_FIELDS set is too expensive at `limit: 100`: requesting the
+ * rich-text `content` (+ asset links) plus the `scriptureReferences` and
+ * `relatedSermons` collections for every item pushes the Contentful query cost
+ * past its 11000 ceiling (TOO_COMPLEX_QUERY). Contentful computes cost from the
+ * query shape × `limit`, not the actual result count, so that query 400s
+ * regardless of how many sermons exist — and `fetchGraphQL` then returns
+ * `data: null`, which previously made `getAllSermons` silently return `[]`
+ * (an empty archive). Cards only need the fields below, so fetch just those.
+ */
+const SERMON_CARD_FIELDS = `
+  title
+  slug
+  sermonDate
+  thesis
+  excerpt
+  mainPoints
+  durationSeconds
+  seoTitle
+  seoDescription
+  keywords
+  featuredImage {
+    url
+    title
+  }
+  audio {
+    url
+    title
+    contentType
+    fileName
+    size
+  }
+  preacher {
+    ... on Author {
+      name
+      avatar {
+        url
+        title
+      }
+      email
+    }
+  }
+  sys {
+    id
+    publishedAt
+  }
+  __typename
+`;
+
 function mapSermon(item: Record<string, unknown>): Sermon {
   const scriptureItems = (
     (item.scriptureReferencesCollection as Record<string, unknown>)?.items as unknown[]
@@ -142,6 +193,14 @@ async function fetchAllSermonItems<T>(
       buildQuery(skip, ARCHIVE_PAGE_SIZE),
       isDraftMode,
     );
+    // Surface GraphQL errors (e.g. TOO_COMPLEX_QUERY) instead of silently
+    // treating an errored response as an empty archive.
+    if (Array.isArray(data?.errors) && data.errors.length > 0) {
+      console.error(
+        "[getSermons] Contentful GraphQL error fetching sermon archive:",
+        JSON.stringify(data.errors),
+      );
+    }
     const collection = data?.data?.sermonCollection as
       | { total?: number; items?: T[] }
       | undefined;
@@ -237,7 +296,7 @@ export async function getAllSermons(
       ) {
         total
         items {
-          ${GRAPHQL_FIELDS}
+          ${SERMON_CARD_FIELDS}
         }
       }
     }`,
