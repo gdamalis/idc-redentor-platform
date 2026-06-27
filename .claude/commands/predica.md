@@ -49,8 +49,10 @@ or auto-skip them. See `tasks/specs/sermon-pipeline.md` §7–§9.
 4. **Contentful env check** (skip on `--dry-run`). `mcp__contentful__list_environments(spaceId)` and confirm
    `config.predica.contentfulEnv` (`production`) exists and is accessible.
 5. **Transcript reuse vs. fresh dir.** Compute `audioSha256 = shasum -a 256 "<audioPath>"` (leading hex digest).
-   Scan prior runs — for each `<artifactsDir>/*/`, compare `audioSha256` to that dir's
-   `links.json.sourceSha256` (else `shasum -a 256` its `source.*`).
+   Scan prior runs — for each `<artifactsDir>/*/` **that is an actual sermon run** (it has a `links.json`
+   or a `source.*`). **Skip `_`-prefixed dirs such as `_voices/` and any dir with no run artifacts** — they
+   are not recordings and have nothing to hash (the voice profiles live in `_voices/`). For each remaining
+   run dir, compare `audioSha256` to that dir's `links.json.sourceSha256` (else `shasum -a 256` its `source.*`).
    - **Match + a non-empty `transcript.txt`** → this exact recording was already transcribed (and corrected).
      Set `slugDir` to that dir, `reuseTranscript = true`, `audioMp3 = <slugDir>/audio.mp3` (transcode it from
      `source.*` with ffmpeg if missing), and resolve `durationSeconds` from that dir's `sermon.json` (else
