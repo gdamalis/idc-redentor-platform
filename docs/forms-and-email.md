@@ -87,7 +87,7 @@ src/service/mailing.service.ts          sendEmail(content) + FROM_EMAIL default
 ```
 
 - **`mailing.service.ts`** lazily constructs and caches the adapter on first `sendEmail`. If `MAIL_PROVIDER` is unset, or set to anything other than `sendgrid` / `resend`, it throws — fail loud rather than silently dropping mail.
-- The `from` address defaults to `process.env.FROM_EMAIL` (falling back to the hard-coded `no-reply@notifications.idcredentor.com` constant). Set `FROM_EMAIL` to a domain you've authenticated with the chosen provider (SPF/DKIM) or delivery will suffer.
+- The `from` address defaults to `process.env.FROM_EMAIL` (falling back to the hard-coded `no-reply@notifications.idcredentor.org` constant). Set `FROM_EMAIL` to a domain you've authenticated with the chosen provider (SPF/DKIM) or delivery will suffer.
 - Each adapter (`createSendGridAdapter` / `createResendAdapter`) throws on construction if its API key (`SENDGRID_API_KEY` / `RESEND_API_KEY`) is missing, and returns `false` from `sendEmail` on send failure (logged, never thrown back to the action).
 - The shared contract is `EmailContent { to, from?, subject, text, html }` and `EmailAdapter { sendEmail(content): Promise<boolean> }` (`src/service/mailing/types.ts`). To add a provider, write one more adapter implementing `EmailAdapter` and add a `case` in `getEmailAdapter`.
 

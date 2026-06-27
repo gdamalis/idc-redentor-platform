@@ -8,7 +8,7 @@ argument-hint: "[ICR-123] [--preview] [--mode report] [--dry-run] [--max N]"
 Runs **acceptance QA** on a Trello card by reading its acceptance criteria (ACs) and driving a real
 browser (and APIs where relevant) against the **resolved env target**, then posting a consistent,
 structured result comment on the card. By **default** the target is the dedicated **staging** deployment
-(`staging.idcredentor.com`); pass **`--preview`** to re-target the PR's **Vercel preview** deployment
+(`staging.idcredentor.org`); pass **`--preview`** to re-target the PR's **Vercel preview** deployment
 (the original pre-merge path). With no card it batches the **env-appropriate** list — **In Testing**
 for the default staging target (post-merge cards awaiting staging verification), or **In Review** with
 `--preview` (pre-merge cards on their PR preview) — one fresh `qa-acceptance` (tester) →
@@ -20,6 +20,7 @@ for the default staging target (post-merge cards awaiting staging verification),
 > notice and runs the testing portion in `report` mode.
 
 ## Hard rules (all phases)
+
 - **Never** edit/commit on `main`. Every change that will be merged happens on a feature branch in a
   dedicated worktree and ships as a PR.
 - **Never** print or post secrets (Trello token, Mongo URIs, Mailchimp/SendGrid/Resend keys). The agent
@@ -34,10 +35,11 @@ for the default staging target (post-merge cards awaiting staging verification),
   `/api/subscribe` or `/api/contact` (live Mailchimp/SendGrid/Resend); test forms up to the network
   boundary only. The prod `website` DB is never read/written (staging may read `website-staging`).
 - **`--dry-run`** performs **no** writes — no Trello move, no comment, no PR. It prints every action it
-  *would* take.
+  _would_ take.
 - **Never move a card to Done — humans merge & close** (`config.qaLoop.humanGate.neverMoveTo`).
 
 ## 0. Pre-flight
+
 1. Read `.claude/config.json` → `config.tracker`, `config.qaLoop`, `config.qaDepth`, `config.paths`,
    `config.commands`, `config.playwrightProjectMap`, and **`config.qaLoop.reviewAgents.acceptance`** (the
    judge agent name → `acceptance-judge`). Resolve `MAIN_REPO_ROOT` (`git rev-parse --show-toplevel`).
@@ -64,6 +66,7 @@ for the default staging target (post-merge cards awaiting staging verification),
    load via ToolSearch `select:<name>` if a call errors as unavailable.)
 
 ## 1. Resolve the card list
+
 - **Card given** (`ICR-N`): translate `N` → Trello card. The Trello MCP `get_card` /
   `update_card_details` / `move_card` operate on Trello card ids/shortLinks, while `ICR-N` is the card's
   `idShort`. So: `mcp__trello__get_cards_by_list_id` across lists (or `get_my_cards`) and match
@@ -79,6 +82,7 @@ for the default staging target (post-merge cards awaiting staging verification),
   end (no silent truncation). Process **sequentially** (`config.qaLoop.batch.sequential`).
 
 ## 2. Per card (sequential)
+
 For each card:
 
 1. **Read** the card: `mcp__trello__get_card`. Capture `name` (summary), `desc`, current list, `labels`,
@@ -98,14 +102,14 @@ For each card:
    **STAGING (`qaEnvName === "staging"`, the default):**
    - Read the base URL from `qa-env.json` → `staging.baseUrl` (`envBlock.baseUrlFrom`).
    - Validate the host (two gates, both required):
-     1. **Host allowlist**: host matches `envBlock.baseUrlHostAllow` (`^staging\.idcredentor\.com$`).
+     1. **Host allowlist**: host matches `envBlock.baseUrlHostAllow` (`^staging\.idcredentor\.org$`).
      2. **Host denylist**: host is NOT in `envBlock.productionHostDeny` (prod hard-deny — custom domains AND
         prod `*.vercel.app` aliases).
    - **SKIP the Vercel preview-environment check** — staging is NOT a Vercel preview
      (`envBlock.requirePreviewEnvironment === false`), so there is no `target !== "production"` gate. The
      production hard-deny above keeps staging safe.
    - If the URL is missing or fails a gate, mark the card **BLOCKED** with a precise reason
-     (`no allowlisted staging URL — expected a host matching ^staging\.idcredentor\.com$ that is not in productionHostDeny`)
+     (`no allowlisted staging URL — expected a host matching ^staging\.idcredentor\.org$ that is not in productionHostDeny`)
      and continue.
 
    **PREVIEW (`qaEnvName === "preview"`, only with `--preview`):** the original three-gate path.
@@ -128,14 +132,15 @@ For each card:
         `target !== "production"` (or the GitHub deployment `environment === "Preview"`). Reject a Production
         deployment even if its host ends in `.vercel.app`. Prefer the per-PR branch preview (host contains
         `-git-<branch>-` or a unique deployment hash).
-     If any check fails, **stop this card immediately**: "`/qa` refuses to run against `<host>` — not a Vercel
-     Preview deployment for this PR. Expected a `*.vercel.app` preview with target=preview." This enforces
-     "never touch production" before any browser/API action.
+        If any check fails, **stop this card immediately**: "`/qa` refuses to run against `<host>` — not a Vercel
+        Preview deployment for this PR. Expected a `*.vercel.app` preview with target=preview." This enforces
+        "never touch production" before any browser/API action.
    - If no READY preview exists (deploy pending/failed), mark the card BLOCKED with "no READY Vercel
      preview for ICR-N — wait for the deploy or check build logs
      (`mcp__claude_ai_Vercel__get_deployment_build_logs`)" and continue.
 
    In both branches: if the URL stays unresolved → mark the card **BLOCKED** and continue.
+
 4. **Move the card to In Review — `--preview` runs ONLY (human-gate-aware).** This move applies only to the
    **preview** path (pre-merge QA). If `qaEnvName === "preview"` and the card is currently in `To Do` or
    `In Progress`, `mcp__trello__move_card(cardId, listId = config.tracker.lists.inReview.id)`; if already
@@ -148,9 +153,9 @@ For each card:
    - `depth`, `mode` (effective `report` in Phase 1), `dryRun`
    - `env`: `{ name: qaEnvName, baseUrl: <resolved URL>, target: qaEnvName, isPreview: (qaEnvName === "preview"), baseUrlHostAllow: envBlock.baseUrlHostAllow, productionHostDeny: envBlock.productionHostDeny, requirePreviewEnvironment: envBlock.requirePreviewEnvironment, mongoMcp: envBlock.mongoMcp, dbNameAllow: envBlock.dbNameAllow, liveIntegrationPolicy: (envBlock.liveIntegrationPolicy ?? "no-POST") }` — all fields read off `envBlock` by name; never hardcode preview literals. For preview, `isPreview/target` reflect the Preview-environment check you already passed in step 3; for staging, `requirePreviewEnvironment` is `false` and the tester skips that check while keeping the prod hard-deny.
    - `mainRepoRoot`, `runId`
-   The tester re-validates the target host defensively against the passed `env`, reads any URIs from
-   `qa-env.json` itself, and returns its **evidence bundle**: a fenced JSON block (block 1) + a
-   ready-to-post Trello Markdown fallback comment (block 2).
+     The tester re-validates the target host defensively against the passed `env`, reads any URIs from
+     `qa-env.json` itself, and returns its **evidence bundle**: a fenced JSON block (block 1) + a
+     ready-to-post Trello Markdown fallback comment (block 2).
 
    **Then dispatch the `acceptance-judge`** (agent name from `config.qaLoop.reviewAgents.acceptance` →
    `acceptance-judge`, a fresh Task) with the tester's **evidence bundle**, the card's
@@ -160,6 +165,7 @@ For each card:
    does; the judge decides whether it meets the card — never fuse them.** The posted result uses the
    **judge's** verdict + the tester's evidence; a `no-POST` happy-path AC the tester correctly skipped is
    **BLOCKED/deferred**, not FAIL.
+
 6. **Post the result via the Trello script** (with screenshots attached). Build a payload
    `{ cardId, cardShortLink, ticketKey:"ICR-N", qaEnvPath, configPath, dryRun, meta, result, evidence }` —
    `meta` = `{ title, testedAt: $(date +'%Y-%m-%d %H:%M'), envName: qaEnvName, host, targetUrl: <resolved URL>, previewUrl: (qaEnvName === "preview" ? <resolved URL> : undefined), testType, buildUnderTest, mode, runId, postedBy: "/qa" }`.
@@ -194,6 +200,7 @@ For each card:
    agents); note the count in the final summary. Do not triage here.
 
 ## 3. Final summary (to the user)
+
 Lead with **which env was targeted** — `staging` (default) or `preview` (`--preview`) — so it is never
 ambiguous which deployment was QA'd (the default flipped to staging; `--preview` is required for the PR
 preview). Then print a compact table:
@@ -203,6 +210,7 @@ List any cards deferred because the batch cap was hit, and any cards left for hu
 (`no-POST`). Never claim success you didn't verify — report exactly the **judge's** verdict per card.
 
 ## Remediation loop (Phase 2/3 — specified, not yet enabled)
+
 When enabled, on an in-scope FAIL the command will author a fix in a remediation worktree and loop
 `implementer → verifier → feature-dev:code-reviewer → security-reviewer` until clean. Transitions resolve
 by **Trello list move** by id from config (In Review → In Progress when a remediation PR opens, back to

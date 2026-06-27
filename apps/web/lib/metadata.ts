@@ -163,7 +163,7 @@ export function buildOrganizationJsonLd(locale: string) {
     url: `${baseUrl}/${locale}`,
     logo: `${baseUrl}/assets/img/redentor_logo.png`,
     image: `${baseUrl}/assets/img/og_default.jpeg`,
-    email: "info@idcredentor.com",
+    email: "info@idcredentor.org",
     address: {
       "@type": "PostalAddress" as const,
       streetAddress: "Tte. Gral. Juan Domingo Perón 4385",

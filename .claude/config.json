@@ -126,7 +126,7 @@
     "sourceNote": "Trello has no native 'QA Depth' field. Resolve in priority order: (1) a custom field 'QA Depth' if get_board_custom_fields exposes one; (2) a label or a 'QA: <depth>' token in the card description/checklist; (3) fall back to qaDepth.default. Reject values not in qaDepth.allowed."
   },
   "qaLoop": {
-    "_note": "Drives /qa + qa-acceptance + the embedded /work and /merge QA steps. Reads the top-level tracker block for board/list ids. QA targets are env-by-name (qaLoop.env.<name>): 'preview' = the per-PR Vercel preview deployment (pre-merge QA), 'staging' = the dedicated staging env at staging.idcredentor.com / website-staging DB (post-merge QA). Production is hard-denied in EVERY env. autoMerge disabled (kill switch); merge is user-triggered via /merge.",
+    "_note": "Drives /qa + qa-acceptance + the embedded /work and /merge QA steps. Reads the top-level tracker block for board/list ids. QA targets are env-by-name (qaLoop.env.<name>): 'preview' = the per-PR Vercel preview deployment (pre-merge QA), 'staging' = the dedicated staging env at staging.idcredentor.org / website-staging DB (post-merge QA). Production is hard-denied in EVERY env. autoMerge disabled (kill switch); merge is user-triggered via /merge.",
     "ticketSource": "trello",
     "defaultMode": "report",
     "modes": ["report", "seed", "fix", "auto"],
@@ -143,6 +143,7 @@
           "idcredentor.com",
           "www.idcredentor.com",
           "idcredentor.org",
+          "www.idcredentor.org",
           "idc-redentor-website.vercel.app",
           "idc-redentor-web.vercel.app"
         ],
@@ -156,22 +157,23 @@
       "staging": {
         "target": "staging",
         "baseUrlFrom": "qa-env.staging.baseUrl",
-        "baseUrlHostAllow": "^staging\\.idcredentor\\.com$",
+        "baseUrlHostAllow": "^staging\\.idcredentor\\.org$",
         "productionHostDeny": [
           "idcredentor.com",
           "www.idcredentor.com",
           "idcredentor.org",
+          "www.idcredentor.org",
           "idc-redentor-website.vercel.app",
           "idc-redentor-web.vercel.app"
         ],
         "requirePreviewEnvironment": false,
-        "requirePreviewEnvironmentNote": "Staging is NOT a Vercel preview — it has its OWN host allowlist (^staging\\.idcredentor\\.com$). It MUST NOT inherit the preview's 'must be a Vercel preview deployment (target!==production)' check. But it MUST still hard-deny every productionHostDeny host. Net: the only sanctioned non-preview QA target is exactly staging.idcredentor.com.",
+        "requirePreviewEnvironmentNote": "Staging is NOT a Vercel preview — it has its OWN host allowlist (^staging\\.idcredentor\\.org$). It MUST NOT inherit the preview's 'must be a Vercel preview deployment (target!==production)' check. But it MUST still hard-deny every productionHostDeny host. Net: the only sanctioned non-preview QA target is exactly staging.idcredentor.org.",
         "liveIntegrationPolicy": "no-POST",
         "liveIntegrationNote": "Staging has its OWN 'website-staging' Mongo DB (created + wired in Vercel), so Mongo reads/writes against website-staging are allowed. BUT Mailchimp/SendGrid/Resend are presumed LIVE on staging unless sandbox creds exist — so QA must NOT happy-path POST /api/subscribe or /api/contact (it would email a real recipient / hit the live audience). Form submit/validation can be exercised up to the network boundary; full end-to-end form POST is DEFERRED until staging has sandbox mail creds or a test recipient.",
         "mongoMcp": "mcp__mongodb-localhost__",
         "dbNameAllow": "^website-(test|qa|e2e|staging)$",
         "dbNameAllowNote": "Now INCLUDES 'website-staging' (the real staging DB). Prod 'website' stays excluded — never read/write it.",
-        "baseUrlHostAllowNote": "Default-deny allowlist for the staging QA base URL host. Two gates, both required: (1) host matches baseUrlHostAllow (^staging\\.idcredentor\\.com$); (2) host is NOT in productionHostDeny. requirePreviewEnvironment is false here (staging is not a Vercel preview), so the preview-only third gate does not apply — but production is still rejected by gate (2)."
+        "baseUrlHostAllowNote": "Default-deny allowlist for the staging QA base URL host. Two gates, both required: (1) host matches baseUrlHostAllow (^staging\\.idcredentor\\.org$); (2) host is NOT in productionHostDeny. requirePreviewEnvironment is false here (staging is not a Vercel preview), so the preview-only third gate does not apply — but production is still rejected by gate (2)."
       }
     },
     "transitions": {
@@ -386,7 +388,7 @@
     "locales": ["es-AR", "en-US"],
     "defaultLocale": "es-AR",
     "whatsappLocale": "es-AR",
-    "siteBaseUrl": "https://www.idcredentor.com",
+    "siteBaseUrl": "https://idcredentor.org",
     "siteBaseUrlNote": "Production canonical used to build the deterministic share URL ${siteBaseUrl}/es-AR/predicas/<slug>. NOT the local .env.local NEXT_PUBLIC_BASE_URL (which is http://localhost:3000 in dev). The human verifies/corrects this URL at Gate 2 if the live domain differs.",
     "scriptureVersion": { "es-AR": "NVI", "en-US": "NIV" },
     "whisper": {
