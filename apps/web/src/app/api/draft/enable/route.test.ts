@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const enable = vi.fn();
+// vi.mock factories are hoisted above the module body, so the shared mock fn must be created
+// via vi.hoisted to be defined when the factory runs.
+const { enable } = vi.hoisted(() => ({ enable: vi.fn() }));
 
 vi.mock("next/headers", () => ({
   draftMode: vi.fn(async () => ({ enable })),
