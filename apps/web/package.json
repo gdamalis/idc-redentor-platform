@@ -15,6 +15,10 @@
     "format:check": "prettier --check .",
     "contentful:migrate": "node scripts/contentful/run.mjs"
   },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": "eslint --fix",
+    "*.{json,md,css}": "prettier --write"
+  },
   "dependencies": {
     "@contentful/rich-text-plain-text-renderer": "^17.1.6",
     "@contentful/rich-text-react-renderer": "^16.1.6",
