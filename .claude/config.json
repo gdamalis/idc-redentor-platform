@@ -388,7 +388,7 @@
     "locales": ["es-AR", "en-US"],
     "defaultLocale": "es-AR",
     "whatsappLocale": "es-AR",
-    "siteBaseUrl": "https://idcredentor.org",
+    "siteBaseUrl": "https://www.idcredentor.org",
     "siteBaseUrlNote": "Production canonical used to build the deterministic share URL ${siteBaseUrl}/es-AR/predicas/<slug>. NOT the local .env.local NEXT_PUBLIC_BASE_URL (which is http://localhost:3000 in dev). The human verifies/corrects this URL at Gate 2 if the live domain differs.",
     "scriptureVersion": { "es-AR": "NVI", "en-US": "NIV" },
     "whisper": {

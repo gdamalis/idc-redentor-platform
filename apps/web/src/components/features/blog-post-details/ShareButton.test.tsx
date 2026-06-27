@@ -5,31 +5,31 @@ import { buildShareUrl } from "./ShareButton";
 describe("buildShareUrl", () => {
   it('produces /predicas/<slug> path when basePath is "predicas"', () => {
     const url = buildShareUrl({
-      baseUrl: "https://idcredentor.org",
+      baseUrl: "https://www.idcredentor.org",
       locale: "es-AR",
       basePath: "predicas",
       slug: "gracia-suficiente",
     });
-    expect(url).toBe("https://idcredentor.org/es-AR/predicas/gracia-suficiente");
+    expect(url).toBe("https://www.idcredentor.org/es-AR/predicas/gracia-suficiente");
   });
 
   it('produces /blog/<slug> path when basePath is "blog"', () => {
     const url = buildShareUrl({
-      baseUrl: "https://idcredentor.org",
+      baseUrl: "https://www.idcredentor.org",
       locale: "es-AR",
       basePath: "blog",
       slug: "mi-primer-post",
     });
-    expect(url).toBe("https://idcredentor.org/es-AR/blog/mi-primer-post");
+    expect(url).toBe("https://www.idcredentor.org/es-AR/blog/mi-primer-post");
   });
 
   it("works with the en-US locale", () => {
     const url = buildShareUrl({
-      baseUrl: "https://idcredentor.org",
+      baseUrl: "https://www.idcredentor.org",
       locale: "en-US",
       basePath: "blog",
       slug: "my-first-post",
     });
-    expect(url).toBe("https://idcredentor.org/en-US/blog/my-first-post");
+    expect(url).toBe("https://www.idcredentor.org/en-US/blog/my-first-post");
   });
 });

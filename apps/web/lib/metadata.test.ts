@@ -21,7 +21,7 @@ import {
   buildEventJsonLd,
 } from "./metadata";
 
-const BASE_URL = "https://idcredentor.org";
+const BASE_URL = "https://www.idcredentor.org";
 
 beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_BASE_URL", BASE_URL);

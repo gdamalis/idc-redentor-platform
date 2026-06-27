@@ -14,7 +14,7 @@ send anything (you have no messaging tools by design). The human pastes the text
 ## Inputs (from the orchestrator)
 
 - `slugDir`, `sermonJson` (path), `finalSlug` (the publisher's final, collision-checked slug).
-- `siteBaseUrl` — the production canonical (e.g. `https://idcredentor.org`) from `config.predica.siteBaseUrl`.
+- `siteBaseUrl` — the production canonical (e.g. `https://www.idcredentor.org`) from `config.predica.siteBaseUrl`.
 - `whatsappLocale` — `es-AR`.
 
 ## Steps
@@ -44,7 +44,7 @@ Return **only** a JSON object:
 {
   "ok": true,
   "whatsappTxt": "<abs path>/whatsapp.txt",
-  "canonicalUrl": "https://idcredentor.org/es-AR/predicas/el-perdon-de-jesus",
+  "canonicalUrl": "https://www.idcredentor.org/es-AR/predicas/el-perdon-de-jesus",
   "waMeLink": "https://wa.me/?text=...",
   "message": "<the full composed es-AR text>",
   "note": "URL resolves live only after the human publishes at Gate 2; verify the production domain."
