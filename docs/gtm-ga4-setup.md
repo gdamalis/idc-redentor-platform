@@ -1,5 +1,7 @@
 # GTM & GA4 Setup Guide
 
+> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+
 This document covers the full configuration of Google Tag Manager (GTM) and Google Analytics 4 (GA4) for the IDC Redentor website, including custom events, reports, explorations, and dashboards.
 
 ---
@@ -92,12 +94,12 @@ React Components push events via:
 
 These are the 4 custom events implemented in the codebase. Each event is pushed to the dataLayer only when the specific user action succeeds.
 
-| Event Name | When It Fires | Parameters | Source Components |
-|---|---|---|---|
-| `newsletter_subscribe` | After subscribe API returns success | `subscribe_location` (`"banner"` or `"footer_form"`), `page_path` | `SubscribeBanner.tsx`, `SubscribeForm.tsx` |
-| `contact_form_submit` | After contact form server action returns `success: true` | `form_subject` (the selected dropdown value) | `ContactForm.tsx` |
-| `join_us_click` | When user clicks any "Join Us" CTA button | `click_location` (`"navbar"`, `"navbar_mobile"`, or `"hero_cta"`), `page_path` | `Navbar.tsx`, `OurMissionCta.tsx` |
-| `related_article_click` | When user clicks a related article link from a blog post | `source_article` (current slug), `target_article` (clicked slug), `target_article_title` | `RelatedArticleLink.tsx` |
+| Event Name              | When It Fires                                            | Parameters                                                                               | Source Components                          |
+| ----------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `newsletter_subscribe`  | After subscribe API returns success                      | `subscribe_location` (`"banner"` or `"footer_form"`), `page_path`                        | `SubscribeBanner.tsx`, `SubscribeForm.tsx` |
+| `contact_form_submit`   | After contact form server action returns `success: true` | `form_subject` (the selected dropdown value)                                             | `ContactForm.tsx`                          |
+| `join_us_click`         | When user clicks any "Join Us" CTA button                | `click_location` (`"navbar"`, `"navbar_mobile"`, or `"hero_cta"`), `page_path`           | `Navbar.tsx`, `OurMissionCta.tsx`          |
+| `related_article_click` | When user clicks a related article link from a blog post | `source_article` (current slug), `target_article` (clicked slug), `target_article_title` | `RelatedArticleLink.tsx`                   |
 
 ---
 
@@ -139,15 +141,15 @@ Before creating event tags, define the Data Layer Variables that extract custom 
 2. Choose **"Data Layer Variable"** as the variable type
 3. Create the following variables (one variable per row):
 
-| Variable Name | Data Layer Variable Name |
-|---|---|
-| `dlv - subscribe_location` | `subscribe_location` |
-| `dlv - page_path` | `page_path` |
-| `dlv - click_location` | `click_location` |
-| `dlv - form_subject` | `form_subject` |
-| `dlv - source_article` | `source_article` |
-| `dlv - target_article` | `target_article` |
-| `dlv - target_article_title` | `target_article_title` |
+| Variable Name                | Data Layer Variable Name |
+| ---------------------------- | ------------------------ |
+| `dlv - subscribe_location`   | `subscribe_location`     |
+| `dlv - page_path`            | `page_path`              |
+| `dlv - click_location`       | `click_location`         |
+| `dlv - form_subject`         | `form_subject`           |
+| `dlv - source_article`       | `source_article`         |
+| `dlv - target_article`       | `target_article`         |
+| `dlv - target_article_title` | `target_article_title`   |
 
 For each variable, set **Data Layer Version** to **"Version 2"** (this is the default).
 
@@ -155,12 +157,12 @@ For each variable, set **Data Layer Version** to **"Version 2"** (this is the de
 
 Go to **Triggers > New** and create these triggers, all of type **"Custom Event"**:
 
-| Trigger Name | Event name (exact match) |
-|---|---|
-| `CE - newsletter_subscribe` | `newsletter_subscribe` |
-| `CE - contact_form_submit` | `contact_form_submit` |
-| `CE - join_us_click` | `join_us_click` |
-| `CE - related_article_click` | `related_article_click` |
+| Trigger Name                 | Event name (exact match) |
+| ---------------------------- | ------------------------ |
+| `CE - newsletter_subscribe`  | `newsletter_subscribe`   |
+| `CE - contact_form_submit`   | `contact_form_submit`    |
+| `CE - join_us_click`         | `join_us_click`          |
+| `CE - related_article_click` | `related_article_click`  |
 
 Leave "Use regex matching" **unchecked**. Each trigger fires when the `dataLayer` receives a push with the matching `event` key.
 
@@ -247,14 +249,14 @@ Custom dimensions must be registered in GA4 before they appear in reports. Witho
 1. Go to **Admin > Custom definitions > Create custom dimension**
 2. Create the following dimensions (all **Event-scoped**):
 
-| Event Parameter Name | Display Name | Scope |
-|---|---|---|
-| `subscribe_location` | Subscribe Location | Event |
-| `click_location` | Click Location | Event |
-| `source_article` | Source Article | Event |
-| `target_article` | Target Article | Event |
+| Event Parameter Name   | Display Name         | Scope |
+| ---------------------- | -------------------- | ----- |
+| `subscribe_location`   | Subscribe Location   | Event |
+| `click_location`       | Click Location       | Event |
+| `source_article`       | Source Article       | Event |
+| `target_article`       | Target Article       | Event |
 | `target_article_title` | Target Article Title | Event |
-| `form_subject` | Form Subject | Event |
+| `form_subject`         | Form Subject         | Event |
 
 > It can take up to 24-48 hours for new custom dimensions to start appearing in reports after creation.
 
@@ -438,16 +440,16 @@ For a consolidated, shareable view, create a **Looker Studio** dashboard connect
 
 Recommended layout:
 
-| Section | Chart Type | Data |
-|---|---|---|
-| **Scorecard row** | Scorecards (4) | Total Sessions, Total Subscribers (`newsletter_subscribe` event count), Total Contact Form Submissions, Total Join Us Clicks |
-| **Sessions over time** | Line chart | Sessions by date, last 30 days |
-| **Top blog articles** | Bar chart | Blog page paths by views and average engagement time |
-| **Subscriber sources** | Pie chart | `subscribe_location` breakdown (banner vs footer_form) |
-| **Visitor geography** | Geo chart | Sessions by country/city |
-| **Article-to-article flow** | Table | Source Article, Target Article, Event count |
-| **Join Us clicks by location** | Bar chart | `click_location` breakdown (navbar, hero_cta, navbar_mobile) |
-| **Contact form funnel** | Scorecard pair | Page views on `/come-meet-us` vs `contact_form_submit` count, with calculated conversion rate |
+| Section                        | Chart Type     | Data                                                                                                                         |
+| ------------------------------ | -------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **Scorecard row**              | Scorecards (4) | Total Sessions, Total Subscribers (`newsletter_subscribe` event count), Total Contact Form Submissions, Total Join Us Clicks |
+| **Sessions over time**         | Line chart     | Sessions by date, last 30 days                                                                                               |
+| **Top blog articles**          | Bar chart      | Blog page paths by views and average engagement time                                                                         |
+| **Subscriber sources**         | Pie chart      | `subscribe_location` breakdown (banner vs footer_form)                                                                       |
+| **Visitor geography**          | Geo chart      | Sessions by country/city                                                                                                     |
+| **Article-to-article flow**    | Table          | Source Article, Target Article, Event count                                                                                  |
+| **Join Us clicks by location** | Bar chart      | `click_location` breakdown (navbar, hero_cta, navbar_mobile)                                                                 |
+| **Contact form funnel**        | Scorecard pair | Page views on `/come-meet-us` vs `contact_form_submit` count, with calculated conversion rate                                |
 
 ---
 
@@ -486,7 +488,7 @@ Open DevTools console and inspect the dataLayer:
 console.log(window.dataLayer);
 
 // Filter for custom events only
-window.dataLayer.filter(e => e.event && !e.event.startsWith('gtm.'));
+window.dataLayer.filter((e) => e.event && !e.event.startsWith("gtm."));
 ```
 
 ### Post-Launch Monitoring
@@ -515,12 +517,12 @@ The implementation has two parts:
 
 This site uses the following consent categories:
 
-| Category | Default | Can user change? | Purpose |
-|---|---|---|---|
-| `analytics_storage` | `denied` | Yes (via banner) | Controls GA4 cookies (`_ga`, `_ga_*`) |
-| `ad_storage` | `denied` | No (always denied) | Not applicable -- this is a church, no ads |
-| `ad_user_data` | `denied` | No (always denied) | Not applicable |
-| `ad_personalization` | `denied` | No (always denied) | Not applicable |
+| Category             | Default  | Can user change?   | Purpose                                    |
+| -------------------- | -------- | ------------------ | ------------------------------------------ |
+| `analytics_storage`  | `denied` | Yes (via banner)   | Controls GA4 cookies (`_ga`, `_ga_*`)      |
+| `ad_storage`         | `denied` | No (always denied) | Not applicable -- this is a church, no ads |
+| `ad_user_data`       | `denied` | No (always denied) | Not applicable                             |
+| `ad_personalization` | `denied` | No (always denied) | Not applicable                             |
 
 Only `analytics_storage` is presented to visitors. The ad-related categories are permanently denied since this is a church website with no advertising.
 
@@ -528,10 +530,10 @@ Only `analytics_storage` is presented to visitors. The ad-related categories are
 
 **Files involved:**
 
-- `src/app/[locale]/layout.tsx` -- Contains the inline consent default script in `<head>` (before GTM) and renders the `<ConsentBanner />` component
-- `src/lib/consent.ts` -- Utility functions: `getConsentPreference()`, `setConsentPreference()`, `updateGtagConsent()`
-- `src/components/shared/consent-banner/ConsentBanner.tsx` -- The banner UI component
-- `public/locales/es-AR.json` and `en-US.json` -- Translations under the `"Consent"` key
+- `apps/web/src/app/[locale]/layout.tsx` -- Contains the inline consent default script in `<head>` (before GTM) and renders the `<ConsentBanner />` component
+- `apps/web/src/lib/consent.ts` -- Utility functions: `getConsentPreference()`, `setConsentPreference()`, `updateGtagConsent()`
+- `apps/web/src/components/shared/consent-banner/ConsentBanner.tsx` -- The banner UI component
+- `apps/web/public/locales/es-AR.json` and `en-US.json` -- Translations under the `"Consent"` key
 
 **Flow:**
 
@@ -581,8 +583,8 @@ In GTM, consent checking is mostly automatic for Google tags, but you should ver
 // (The consent state is internal to GTM, but you can verify the dataLayer pushes)
 
 // See all consent-related pushes
-window.dataLayer.filter(e =>
-  e[0] === 'consent' || (e.event && e.event.includes('consent'))
+window.dataLayer.filter(
+  (e) => e[0] === "consent" || (e.event && e.event.includes("consent")),
 );
 
 // Verify the default consent was set

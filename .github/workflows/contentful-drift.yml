@@ -26,16 +26,24 @@ jobs:
       - name: Detect drift (read-only, both directions)
         id: drift
         run: |
+          ok=true
           {
             echo "## production -> staging (refresh candidates)"
             echo '```'
-            node scripts/contentful/sync-entries.mjs --from production --to staging || true
+            node apps/web/scripts/contentful/sync-entries.mjs --from production --to staging || ok=false
             echo '```'
             echo "## staging -> production (promotion candidates)"
             echo '```'
-            node scripts/contentful/sync-entries.mjs --from staging --to production || true
+            node apps/web/scripts/contentful/sync-entries.mjs --from staging --to production || ok=false
             echo '```'
           } > drift.md
+          # Fail loudly on a script error instead of reporting a false "in sync"
+          # (an empty report would otherwise auto-close the open drift issue).
+          if [ "$ok" != "true" ]; then
+            echo "::error::sync-entries.mjs failed — refusing to report drift status" >&2
+            cat drift.md
+            exit 1
+          fi
           # "drift present" = any [new]/[changed]/[target] line in the report
           if grep -qE '\[(new|changed|target)\]' drift.md; then
             echo "present=true" >> "$GITHUB_OUTPUT"

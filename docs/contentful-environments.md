@@ -1,5 +1,7 @@
 # Contentful environments — content & model workflow
 
+> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+
 > **Purpose:** The canonical playbook for all Contentful work — daily content edits, model changes,
 > and heavy-cutover deployments. Read this before any work that creates, changes, or deletes a
 > content type or field, or syncs / remaps entries.
@@ -46,7 +48,7 @@ MCP blocks writes to `master` and `production`.
    always before starting model work, run:
 
    ```
-   node scripts/contentful/sync-entries.mjs --from production --to staging --apply
+   node apps/web/scripts/contentful/sync-entries.mjs --from production --to staging --apply
    ```
 
    This is also the **immediate fix for staging drift** (prod has published entries staging lacks).
@@ -69,7 +71,7 @@ MCP blocks writes to `master` and `production`.
 1. **Refresh staging ← production first** so you build against current content:
 
    ```
-   node scripts/contentful/sync-entries.mjs --from production --to staging --apply
+   node apps/web/scripts/contentful/sync-entries.mjs --from production --to staging --apply
    ```
 
 2. Build the model **and** the content in `staging`. Test.
@@ -77,7 +79,7 @@ MCP blocks writes to `master` and `production`.
    - **Small** → Merge the model up, then promote the specific new entries:
 
      ```
-     node scripts/contentful/sync-entries.mjs --from staging --to production --ids <id,id,...> --apply
+     node apps/web/scripts/contentful/sync-entries.mjs --from staging --to production --ids <id,id,...> --apply
      ```
 
      (Drafts by default; you publish.) Or run the committed entry-remap migration against `production`.
@@ -99,7 +101,7 @@ confident, then delete:
 ```
 npx contentful space export --space-id vg9le24yw8hb --environment-id production \
   --management-token "$CONTENTFUL_MANAGEMENT_ACCESS_TOKEN" \
-  --content-file scripts/contentful/backups/production-YYYY-MM-DD.json
+  --content-file apps/web/scripts/contentful/backups/production-YYYY-MM-DD.json
 ```
 
 **Step 1 — Re-point `master` alias → `staging`.**
@@ -119,7 +121,7 @@ recreate dropped it (Settings → API keys → Environments).
 **Step 5 — Re-establish staging for the next cycle:**
 
 ```
-node scripts/contentful/sync-entries.mjs --from production --to staging --apply
+node apps/web/scripts/contentful/sync-entries.mjs --from production --to staging --apply
 ```
 
 (Or re-clone.) Delete the cold backup once the site is verified healthy.
@@ -163,7 +165,7 @@ replacement for Contentful Launch and Merge's model-only limitation.
 ### CLI flags
 
 ```
-node scripts/contentful/sync-entries.mjs [options]
+node apps/web/scripts/contentful/sync-entries.mjs [options]
 
   --from <env>          source env id          (default: production)
   --to <env>            target env id          (default: staging)
@@ -203,8 +205,8 @@ intentional.
 `workflow_dispatch`. It executes the sync tool in **dry-run both directions** (never applies):
 
 ```
-node scripts/contentful/sync-entries.mjs --from production --to staging
-node scripts/contentful/sync-entries.mjs --from staging --to production
+node apps/web/scripts/contentful/sync-entries.mjs --from production --to staging
+node apps/web/scripts/contentful/sync-entries.mjs --from staging --to production
 ```
 
 If either run reports non-zero drift it opens or updates a single GitHub issue (stable title:

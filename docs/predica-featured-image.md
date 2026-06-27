@@ -1,5 +1,7 @@
 # Predica featured-image generator
 
+> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+
 How the `/predica` pipeline auto-generates a branded **featured image** (a 1200×630 title card) for
 each sermon and attaches it to the Contentful **draft** entry. This is the sermon's `featuredImage`
 field — which is also its Open Graph / social-share card.
@@ -90,6 +92,6 @@ Exit:    0 card written · 2 usage/input error · 1 render failure
 
 ## Requirements
 
-Same Chromium dependency as the PDF generator: `pnpm exec playwright install chromium` on a fresh
+Same Chromium dependency as the PDF generator: `pnpm -C apps/web exec playwright install chromium` on a fresh
 checkout. The fonts (Playfair Display, Outfit) load from Google Fonts at render time; the script waits
 for `document.fonts.ready` before snapshotting.

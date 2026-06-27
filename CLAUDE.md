@@ -8,6 +8,8 @@ It is a **content-managed informational site**, not an app: there is **no authen
 
 **Version**: 1.10.0 (read from `package.json`) | **Node**: 22.14.0 (`.nvmrc`) | **Package Manager**: pnpm | **Host**: Vercel (production + per-PR preview deploys)
 
+> **Monorepo layout (since the admin-platform migration):** this repo is a **pnpm + Turborepo workspace**. The public website now lives entirely under **`apps/web/`** — every app path in this doc (`src/`, `lib/`, `public/`, `config/`, `next.config.ts`, `tsconfig.json`, …) is **under `apps/web/`** unless stated otherwise. The repo root holds the workspace files (`pnpm-workspace.yaml`, `turbo.json`, root `package.json` with Turbo-proxy scripts + the released version + `pnpm.overrides`), the `.claude/` harness, `docs/`, and `tasks/`. Run commands at root (they proxy through Turbo across the workspace) or scope to the site with `pnpm --filter @idcr/web <task>`. Vercel builds the site with **Root Directory = `apps/web`**. The future admin app will be `apps/admin/`.
+
 ## Commands
 
 > Run everything with **pnpm**. Note `type-check` is **hyphenated** (unlike some sibling projects' `typecheck`). The verifier and QA agents call `pnpm type-check`.

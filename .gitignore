@@ -68,10 +68,21 @@ graphify-out/
 tasks/predicas/
 
 # Contentful cold-backup exports (heavy-cutover insurance; local only)
-scripts/contentful/backups/
+apps/web/scripts/contentful/backups/
 
 # Playwright MCP — local browser console logs (temporary test artifacts)
 .playwright-mcp/
 
 # turborepo cache
 .turbo/
+
+# monorepo (apps/*, packages/*) — de-anchored build/dep/cache dirs
+**/node_modules/
+**/.next/
+**/out/
+**/build/
+**/coverage/
+**/test-results/
+**/playwright-report/
+**/blob-report/
+**/.playwright/

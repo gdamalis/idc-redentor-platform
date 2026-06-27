@@ -1,5 +1,7 @@
 # IDC Redentor — Editorial & Content Rules
 
+> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+
 > **Purpose:** The rules that govern content — how the site is written, translated, and published, the voice it must hold, the doctrinal guardrail, and the bar for "done." These are the rules editors and agents follow when touching content.
 > **Last reviewed:** 2026-06-21
 > **Status:** DRAFT — voice and editorial defaults for church leadership ([@gdamalis](https://github.com/gdamalis) + leadership) to confirm/refine. Doctrinal content is **leadership-owned**.

@@ -1,5 +1,7 @@
 # Contentful MCP server
 
+> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+
 Claude Code agents talk to Contentful through the **official Contentful MCP server**, so they
 can read the content model and (safely) make content changes. On this setup it's registered
 **inline in the developer's local Claude Code config** (`~/.claude.json`), the same way the

@@ -80,12 +80,15 @@ async function loadToken() {
     return process.env.CONTENTFUL_MANAGEMENT_ACCESS_TOKEN;
   let dir = process.cwd();
   for (let i = 0; i < 8; i += 1) {
-    const p = path.join(dir, ".env.local");
-    if (existsSync(p)) {
-      const text = await readFile(p, "utf8");
-      for (const line of text.split("\n")) {
-        const m = line.match(/^\s*CONTENTFUL_MANAGEMENT_ACCESS_TOKEN\s*=\s*(.+)\s*$/);
-        if (m) return m[1].replace(/^["']|["']$/g, "").trim();
+    // Probe the repo root and the monorepo app dir (.env.local moved to apps/web/).
+    for (const rel of [".env.local", path.join("apps", "web", ".env.local")]) {
+      const p = path.join(dir, rel);
+      if (existsSync(p)) {
+        const text = await readFile(p, "utf8");
+        for (const line of text.split("\n")) {
+          const m = line.match(/^\s*CONTENTFUL_MANAGEMENT_ACCESS_TOKEN\s*=\s*(.+)\s*$/);
+          if (m) return m[1].replace(/^["']|["']$/g, "").trim();
+        }
       }
     }
     const parent = path.dirname(dir);

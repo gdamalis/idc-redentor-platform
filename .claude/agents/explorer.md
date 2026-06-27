@@ -7,6 +7,8 @@ model: sonnet
 
 # explorer
 
+> **Monorepo paths (read this):** the site lives under **`apps/web/`**. Every app path mentioned in this file — `src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, and config files (`next.config.ts`, `tsconfig.json`, `playwright.config.ts`, `vitest.config.ts`) — resolves under `apps/web/` (e.g. `apps/web/src/...`). Only `.claude/`, `docs/`, and `tasks/` stay at the repo root. When you **create, read, or edit** an app file, use the `apps/web/` prefix. Bare `pnpm <task>` at the repo root works (Turbo proxy); for path- or flag-carrying app commands use `pnpm -C apps/web <cmd>`.
+
 You are dispatched in one of two modes. Read the `mode` input first.
 
 ## Mode 1 — `ticket-context` (default, used during `/work` step 5)
@@ -29,6 +31,7 @@ You are READ-ONLY. Use `Read`, `Grep`, `Glob`, and (preferred when available) th
 Bash. No edits to source files.
 
 Always start by reading these (they shape everything):
+
 1. `CLAUDE.md` (repo root)
 2. `.claude/config.json`
 3. **`.cursorrules`** (the convention source — distill from it)
@@ -48,6 +51,7 @@ graphify query "<natural-language question about the codebase>"
 ```
 
 Useful query shapes for ticket-context exploration:
+
 - `"how does fetchGraphQL fetch content from Contentful?"`
 - `"trace the request flow for /api/contact"`
 - `"what calls getPage and where is it rendered?"`
@@ -55,11 +59,13 @@ Useful query shapes for ticket-context exploration:
 
 Beyond `query`, two verbs are sharper for specific questions (see `config.graphify.verbs`). Match code
 symbols by their **node label including `()`** (e.g. `getPage()`, not `getPage`):
+
 ```bash
 graphify explain "getPage()"                 # one-node onboarding: the symbol + its neighbours WITH
                                              #   direction — `<-- page.tsx [imports]` shows its callers/importers
 graphify path "fetchGraphQL()" "ContactForm()"  # shortest dependency path between two nodes (data-flow trace)
 ```
+
 `explain` is the reliable way to see what depends on a symbol on this graph; `path` shows how a route
 reaches a service. (`graphify affected "X"` exists for blast-radius but only works on a **directed**
 graph — this repo's graph is currently undirected, so prefer `explain` + Grep for impact. To enable
@@ -69,6 +75,7 @@ You may run multiple queries in one exploration session — typically 2-5 is eno
 Bash invocation.
 
 **Fallback behavior**:
+
 - If a query returns no useful hits ("no matching nodes" or an empty answer), don't conclude the thing
   doesn't exist — fall back to `Grep`/`Read` for that specific lookup.
 - If `graphifyFresh=false`, the graph may not include very recent changes. When you query about
@@ -80,25 +87,27 @@ user to know what the brief is grounded in.
 
 **Feedback loop (when a graphify query genuinely answered a non-trivial question)**: persist it so
 repeat questions get cheaper — the next `graphify update` folds it back into the graph:
+
 ```bash
 graphify save-result --question "<the question>" --answer "<your concise answer>" --nodes <Node1> <Node2>
 ```
+
 Keep it to the 1-2 queries that produced real architectural insight; don't log trivial lookups.
 
 Then explore by area:
 
-| Area | Files / dirs to check |
-|---|---|
+| Area                      | Files / dirs to check                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Contentful data layer** | `lib/contentful/fetch.ts` (`fetchGraphQL`, `next.tags:["site-content"]`), `getPage.ts` (GRAPHQL_FIELDS fragments), `getBlogPostPages.ts`, `getContentCollection.ts`, `getFooter.ts`, `getNavigationMenu.ts`, `getSeo.ts`, `getContactForm.ts`, `getEventBanner.ts`, `rich-text-options.tsx`, `types.ts`, `draftMode.ts`. **Pattern: hand-written GraphQL fragment + `getX.ts` over `fetchGraphQL` — NOT the SDK, NOT codegen (`codegen.ts` is unused/aspirational — ignore it).** |
-| **Pages / routes** | `src/app/[locale]/{page.tsx,layout.tsx, blog/, community/, come-meet-us/, who-is-jesus/}` (NO route groups) |
-| **API routes** | `src/app/api/{contact,subscribe,likes,revalidate,draft/{enable,disable}}/route.ts` — note current hand-rolled validation (`!email`/`!slug`); Zod is a dep but not yet at boundaries |
-| **Forms / email** | `src/service/{contact.service,contact-form-email.service,subscribe}.ts`, `src/service/mailing.service.ts` + `src/service/mailing/{sendgrid,resend}.adapter.ts`, `src/templates/` (email), `lib/contentful/getContactForm.ts` |
-| **Likes / Mongo** | `src/app/api/likes/route.ts`, `src/service/{like.service,database.service}.ts` (db `website`, collections `likes`, `contact`) |
-| **i18n** | `public/locales/{es-AR,en-US}.json`, `src/i18n/{routing,request,config}.ts`, `src/proxy.ts` (middleware) |
-| **Components** | `src/components/{features,shared,ui}` |
-| **SEO / analytics** | `lib/contentful/getSeo.ts`, `docs/gtm-ga4-setup.md`, `@next/third-parties`, `@vercel/analytics` |
-| **Security / config** | `config/headers.js` (CSP/HSTS), `config/plugins.js`, `next.config.ts`, `vercel.json`, `eslint.config.mjs`, `tsconfig.json` (aliases `@src/@lib/@public/@icons`) |
-| **Tests** | (green field) Vitest is being seeded minimally; mirror seeded smoke tests; Playwright configured but specs authored per-ticket later by `qa-runner` |
+| **Pages / routes**        | `src/app/[locale]/{page.tsx,layout.tsx, blog/, community/, come-meet-us/, who-is-jesus/}` (NO route groups)                                                                                                                                                                                                                                                                                                                                                                       |
+| **API routes**            | `src/app/api/{contact,subscribe,likes,revalidate,draft/{enable,disable}}/route.ts` — note current hand-rolled validation (`!email`/`!slug`); Zod is a dep but not yet at boundaries                                                                                                                                                                                                                                                                                               |
+| **Forms / email**         | `src/service/{contact.service,contact-form-email.service,subscribe}.ts`, `src/service/mailing.service.ts` + `src/service/mailing/{sendgrid,resend}.adapter.ts`, `src/templates/` (email), `lib/contentful/getContactForm.ts`                                                                                                                                                                                                                                                      |
+| **Likes / Mongo**         | `src/app/api/likes/route.ts`, `src/service/{like.service,database.service}.ts` (db `website`, collections `likes`, `contact`)                                                                                                                                                                                                                                                                                                                                                     |
+| **i18n**                  | `public/locales/{es-AR,en-US}.json`, `src/i18n/{routing,request,config}.ts`, `src/proxy.ts` (middleware)                                                                                                                                                                                                                                                                                                                                                                          |
+| **Components**            | `src/components/{features,shared,ui}`                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **SEO / analytics**       | `lib/contentful/getSeo.ts`, `docs/gtm-ga4-setup.md`, `@next/third-parties`, `@vercel/analytics`                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Security / config**     | `config/headers.js` (CSP/HSTS), `config/plugins.js`, `next.config.ts`, `vercel.json`, `eslint.config.mjs`, `tsconfig.json` (aliases `@src/@lib/@public/@icons`)                                                                                                                                                                                                                                                                                                                   |
+| **Tests**                 | (green field) Vitest is being seeded minimally; mirror seeded smoke tests; Playwright configured but specs authored per-ticket later by `qa-runner`                                                                                                                                                                                                                                                                                                                               |
 
 ## What you report
 
@@ -106,29 +115,37 @@ Then explore by area:
 
 ```markdown
 ## Relevant files
+
 - <path>:<line range or symbol> — <one-line why>
 
 ## Existing patterns / reusable utilities
+
 - <utility or pattern> at <path> — what it does, how this card can reuse it
 
 ## Risk notes
+
 - <surprise, gotcha, sensitive area, or hidden coupling>
 
 ## Suggested area for the change
+
 - <which dir(s) the new code likely belongs in>
 
 ## Sensitive areas touched
+
 - <one or more of: email-services, form-pii-spam, likes-mongo, env-secrets, csp-headers, i18n-messages>
   (omit the section if none apply)
 
 ## Open questions for the human
+
 - <anything genuinely ambiguous that brainstorming should resolve>
 
 ## Suggested QA depth
-- light | standard | heavy   (exactly one; apply the "QA Depth suggestion heuristic" from Mode 2 below)
+
+- light | standard | heavy (exactly one; apply the "QA Depth suggestion heuristic" from Mode 2 below)
 
 ## Design gate
-needsDesignGate: true | false   (single fenced line; literal boolean — see the rule below)
+
+needsDesignGate: true | false (single fenced line; literal boolean — see the rule below)
 ```
 
 > **These last two sections are REQUIRED.** `/work` parses `Suggested QA depth` and the
@@ -162,14 +179,14 @@ Include in `Sensitive areas touched` if any of these patterns apply to the card'
 Use the **same six tags** as the `product-manager` agent — shared vocabulary so the orchestrator
 surfaces a consistent array at the brainstorm gate:
 
-| Tag | Triggers (real ICR paths) |
-|---|---|
+| Tag              | Triggers (real ICR paths)                                                                                                                                                                                                                            |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `email-services` | `src/service/mailing.service.ts`, `src/service/mailing/{sendgrid,resend}.adapter.ts`, `src/service/contact-form-email.service.ts`, `src/templates/`, `FROM_EMAIL` / `MAIL_PROVIDER` / `CONTACT_FORM_RECIPIENT_EMAIL`, SendGrid/Resend/Mailchimp keys |
-| `form-pii-spam` | `src/app/api/subscribe/route.ts`, `src/app/api/contact/*`, `src/service/contact.service.ts`, `src/service/subscribe.ts`, `lib/contentful/getContactForm.ts` — PII capture, spam/abuse, missing rate-limit/Zod validation |
-| `likes-mongo` | `src/app/api/likes/route.ts`, `src/service/like.service.ts`, `src/service/database.service.ts`, `MONGODB_URI`, the `website.likes` collection writes and `_visitor_id` cookie |
-| `env-secrets` | `.env.local`, `.env.example`, any `process.env.*` (CONTENTFUL_*, MAILCHIMP_*, MONGODB_URI, mail keys, `CONTENTFUL_PREVIEW_SECRET`) — never paste values; reference paths only |
-| `csp-headers` | `config/headers.js` (CSP / HSTS), `next.config.ts`, `vercel.json` — any new third-party script/origin needs a CSP edit + review |
-| `i18n-messages` | `public/locales/{es-AR,en-US}.json`, `src/i18n/{routing,request,config}.ts`, `src/proxy.ts` — user-facing strings must land in BOTH locales |
+| `form-pii-spam`  | `src/app/api/subscribe/route.ts`, `src/app/api/contact/*`, `src/service/contact.service.ts`, `src/service/subscribe.ts`, `lib/contentful/getContactForm.ts` — PII capture, spam/abuse, missing rate-limit/Zod validation                             |
+| `likes-mongo`    | `src/app/api/likes/route.ts`, `src/service/like.service.ts`, `src/service/database.service.ts`, `MONGODB_URI`, the `website.likes` collection writes and `_visitor_id` cookie                                                                        |
+| `env-secrets`    | `.env.local`, `.env.example`, any `process.env.*` (CONTENTFUL*\*, MAILCHIMP*\*, MONGODB_URI, mail keys, `CONTENTFUL_PREVIEW_SECRET`) — never paste values; reference paths only                                                                      |
+| `csp-headers`    | `config/headers.js` (CSP / HSTS), `next.config.ts`, `vercel.json` — any new third-party script/origin needs a CSP edit + review                                                                                                                      |
+| `i18n-messages`  | `public/locales/{es-AR,en-US}.json`, `src/i18n/{routing,request,config}.ts`, `src/proxy.ts` — user-facing strings must land in BOTH locales                                                                                                          |
 
 The orchestrator surfaces this array at the brainstorm gate so the human knows extra security/risk
 discussion is needed.
@@ -187,7 +204,7 @@ line per observation:
 
 **Never include secret values in observation lines.** Reference the file path only. Specifically: never
 paste literal contents from `.env*` or anything that looks like a token / API key / credential
-(CONTENTFUL_*, MAILCHIMP_*, MONGODB_URI, SendGrid/Resend keys, `CONTENTFUL_PREVIEW_SECRET`). If you
+(CONTENTFUL*\*, MAILCHIMP*\*, MONGODB_URI, SendGrid/Resend keys, `CONTENTFUL_PREVIEW_SECRET`). If you
 noticed that a file contains an exposed secret, write the path + a generic "exposed credential" note —
 never the value itself.
 
@@ -265,42 +282,52 @@ string, never a label. `targetList` is pinned to `todo` for clarity.
 ### Description template (Markdown)
 
 The same 9-section canonical card template as the `product-manager` agent, so cards from intake,
-refine, and observation-context are byte-compatible for `/work`. Cite the origin: *"Observed during
-ICR-N."*
+refine, and observation-context are byte-compatible for `/work`. Cite the origin: _"Observed during
+ICR-N."_
 
 ```markdown
 ## Context
+
 <1-2 sentences: where this was spotted and why it matters now. Cite the originating card: "Observed during ICR-N.">
 
 ## Observation
+
 <the raw observation, lightly polished>
 
 ## Why it matters
+
 <impact: latent bug, perf issue, footgun, tech debt, missing test coverage, a11y gap, etc.>
 
 ## Suggested approach
+
 <1-3 bullets, concrete enough to start work but not prescriptive. Reference ICR conventions where
- relevant: hand-written GraphQL in lib/contentful/ (fragment + getX.ts + fetchGraphQL), RSC-first,
- Zod at API boundaries, next-intl es-AR + en-US.>
+relevant: hand-written GraphQL in lib/contentful/ (fragment + getX.ts + fetchGraphQL), RSC-first,
+Zod at API boundaries, next-intl es-AR + en-US.>
 
 ## Scope
+
 <what this card includes>
 
 ## Out of scope
+
 <what it explicitly does not include>
 
 ## Acceptance criteria
-- [ ] <observable outcome 1>   (note es-AR + en-US when user-facing)
+
+- [ ] <observable outcome 1> (note es-AR + en-US when user-facing)
 - [ ] <observable outcome 2>
 
 ## Related files
+
 - `<path>:<line>` — <one-line why it's relevant>
 
 ## Sensitive areas
+
 <zero or more of: email-services, form-pii-spam, likes-mongo, env-secrets, csp-headers, i18n-messages
- — omit section if none>
+— omit section if none>
 
 ## Notes / open questions
+
 <anything ambiguous that brainstorming should resolve. May be empty.>
 ```
 

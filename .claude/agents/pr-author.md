@@ -61,7 +61,7 @@ The PR body is assembled from upstream subagent outputs (`explorerSummary`, `ver
 5. **Contentful CDA/CPA tokens & generic bearer** — `CFPAT-[A-Za-z0-9_-]{20,}`; and `(?<=Authorization:\s?Bearer\s)[A-Za-z0-9._-]{20,}` / `Bearer\s+[A-Za-z0-9._-]{20,}`; and a 40+ char opaque token when adjacent to a known Contentful var name.
 6. **Env-var assignments for known ICR secrets** (multi-line):
    `^(?:export\s+)?(MONGODB_URI|CONTENTFUL_ACCESS_TOKEN|CONTENTFUL_PREVIEW_ACCESS_TOKEN|CONTENTFUL_PREVIEW_SECRET|CONTENTFUL_REVALIDATE_SECRET|CONTENTFUL_SPACE_ID|SENDGRID_API_KEY|RESEND_API_KEY|MAILCHIMP_API_KEY|MAILCHIMP_API_SERVER|MAILCHIMP_AUDIENCE_ID|MAIL_PROVIDER|FROM_EMAIL|CONTACT_FORM_RECIPIENT_EMAIL)\s*=\s*\S.*$`
-7. **`.env.local` value blacklist** — if a `.env.local` exists at `worktreePath`, read its scalar values into an in-memory blacklist and strip every occurrence from the body (catches a configured token echoed verbatim by a subagent). **Never** pin `.env.local` content into your report.
+7. **`.env.local` value blacklist** — if a `.env.local` exists at `worktreePath` **or at `worktreePath/apps/web`** (the monorepo app dir, where the site's `.env.local` now lives), read its scalar values into an in-memory blacklist and strip every occurrence from the body (catches a configured token echoed verbatim by a subagent). **Never** pin `.env.local` content into your report.
 
 ### Behavior
 
@@ -72,8 +72,8 @@ The PR body is assembled from upstream subagent outputs (`explorerSummary`, `ver
 
 ### What NOT to scrub
 
-- Example/dummy tokens inside fenced ```` ```example ```` / ```` ```markdown ```` blocks.
-- The literal env-var *key names* (`MONGODB_URI`, `CONTENTFUL_ACCESS_TOKEN`) when not followed by a value.
+- Example/dummy tokens inside fenced ` ```example ` / ` ```markdown ` blocks.
+- The literal env-var _key names_ (`MONGODB_URI`, `CONTENTFUL_ACCESS_TOKEN`) when not followed by a value.
 
 ## `open_draft` procedure
 
@@ -84,26 +84,32 @@ The PR body is assembled from upstream subagent outputs (`explorerSummary`, `ver
 
    ```markdown
    # Description
+
    <spec opening paragraph, scrubbed>
 
-   Ticket: [ICR-N](<cardUrl>)
+   Ticket: [ICR-N](cardUrl)
    Type: <commitType>
 
    # Changes
+
    - <bullets from explorerSummary + spec New/Modified Files>
 
    ## Test plan
+
    - [x] type-check (`pnpm type-check`) — <from verifierLastReport>
    - [x] lint (`pnpm lint`) — <from verifierLastReport>
    - [ ] Vitest unit smoke (`pnpm test`) — <ticked if verifier ran it>
    - [ ] Manual smoke on Vercel preview <!-- needs human -->
 
    ## i18n
+
    - [ ] es-AR + en-US message keys present for any new copy <!-- tick if verified -->
 
    ## Risk & rollback
+
    <spec Risk if present, else "Low — revert PR">
    ```
+
 5. **Secret scrub** the assembled body. Write the scrubbed body to a temp file (`mktemp` under `$TMPDIR`).
 6. **Open the draft PR** (title MUST be conventional, with the `(ICR-N)` scope):
    ```
@@ -135,7 +141,7 @@ The PR body is assembled from upstream subagent outputs (`explorerSummary`, `ver
    - Tests added: <count>")
    ```
 4. **Move the card To Do/In Progress → In Review** (the ONLY move pr-author owns):
-   `mcp__trello__move_card(cardId=<cardId>, listId="67a7a74df6bfc532c70a06c8")`  ← In Review, hardcoded by ID.
+   `mcp__trello__move_card(cardId=<cardId>, listId="67a7a74df6bfc532c70a06c8")` ← In Review, hardcoded by ID.
    - This is a tracker WRITE and happens only at `mark_ready` (post-human-gate per project policy). Never move to Done `67a7a758f2da48a6482634a2`.
 5. Return the PR URL and `cardUrl` to the orchestrator.
 
@@ -143,6 +149,7 @@ The PR body is assembled from upstream subagent outputs (`explorerSummary`, `ver
 
 ```markdown
 ## pr-author — action: <open_draft | mark_ready>
+
 - PR: <URL>
 - Branch: <branch>
 - Trello card: <cardUrl>

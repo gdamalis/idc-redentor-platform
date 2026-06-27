@@ -1,5 +1,7 @@
 # IDC Redentor — Content Types
 
+> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+
 > **Purpose:** Define the real Contentful content types behind the site — their purpose, key fields, the getter that reads each, and the route/component that renders it. This is the shared vocabulary for tickets, content edits, and the structured-data roadmap.
 > **Last reviewed:** 2026-06-21
 
@@ -53,7 +55,7 @@ The doctrinal heart of the community page: a titled collection whose items are *
 - **Key fields:** `title`, `description` (rich text), `machineName` (lookup key), and `contentItemsCollection` whose items are one of:
   - **Credo** — `title`, `description` (rich text), `bibleVerse` (rich text), `image`.
   - **ValueItem** — `title`, `description` (rich text), `bibleVerse` (rich text), `image`.
-  - *(Both share the same shape — see `ContentItem` in `lib/contentful/types.ts`.)*
+  - _(Both share the same shape — see `ContentItem` in `lib/contentful/types.ts`.)_
 - **Getter:** `lib/contentful/getContentCollection.ts#getContentCollection(name, locale, isDraftMode)` — looks up by `machineName`, returns `{ title, description, creedItems, image }` (note: the items array is returned as `creedItems` regardless of whether items are Credo or ValueItem).
 - **Rendered by:** the community page (and any `Page` that includes a `ContentCollection` in `pageContent`).
 - **Editorial note:** this is **doctrinal, leadership-owned content** — agents and editors may fix typos/formatting/translation but must not alter doctrinal meaning. See [editorial-and-content-rules.md](./editorial-and-content-rules.md).
@@ -68,7 +70,7 @@ A banner that pairs an **Event** with a **Location**, used for the worship servi
   - `location` → **LocationComponent**: `addressLine1`, `neighborhood`, `city`, `country`, `mapEmbedUrl`, `googleMapsUrl`, and `location { lat, lon }` (geo coordinates).
   - `image`.
   - `machineName` (lookup key).
-- **Getter:** `lib/contentful/getEventBanner.ts#getEventBanner(name, locale, isDraftMode)` — looks up by `machineName`. *(Note: the standalone getter requests `name`, `dayOfWeek`, `date`, `time`, `note` and the full location incl. `googleMapsUrl`; the inline EventBanner fragment inside `getPage` requests a subset — `date`, `time`, `note`, and location without `googleMapsUrl`.)*
+- **Getter:** `lib/contentful/getEventBanner.ts#getEventBanner(name, locale, isDraftMode)` — looks up by `machineName`. _(Note: the standalone getter requests `name`, `dayOfWeek`, `date`, `time`, `note` and the full location incl. `googleMapsUrl`; the inline EventBanner fragment inside `getPage` requests a subset — `date`, `time`, `note`, and location without `googleMapsUrl`.)_
 - **Rendered by:** come-meet-us (worship service) and any `Page` that embeds an `EventBanner` in `pageContent`.
 - **Structured-data note:** the **highest-value JSON-LD target** — `Event` (services, conferences) and `Place`/geo from `LocationComponent` feed local discovery and "service times near me" answers. See [ai-era-strategy.md](./ai-era-strategy.md).
 
@@ -77,7 +79,7 @@ A banner that pairs an **Event** with a **Location**, used for the worship servi
 The one content-rich, frequently-updated type, with the only interactive reader feature (anonymous likes).
 
 - **Purpose:** publish teaching, devotionals, and church news; surface related posts; let readers leave an anonymous "like."
-- **Key fields:** `title`, `subtitle`, `category`, `slug`, `featuredImage`, `content` (rich text with embedded `links.assets` and `links.entries`, including links to other `BlogPostPage`), `author` (→ **Author**: `name`, `avatar`, `email`), `publishedDate`, SEO fields (`seoTitle`, `seoDescription`, `keywords`), `relatedBlogPostsCollection`, and `sys.publishedAt`. *(Full shape: `src/types/BlogPost.ts`.)*
+- **Key fields:** `title`, `subtitle`, `category`, `slug`, `featuredImage`, `content` (rich text with embedded `links.assets` and `links.entries`, including links to other `BlogPostPage`), `author` (→ **Author**: `name`, `avatar`, `email`), `publishedDate`, SEO fields (`seoTitle`, `seoDescription`, `keywords`), `relatedBlogPostsCollection`, and `sys.publishedAt`. _(Full shape: `src/types/BlogPost.ts`.)_
 - **Getters (`lib/contentful/getBlogPostPages.ts`):**
   - `getLatestBlogPostPages(locale, { slug?, isDraftMode? })` — latest 3 (optionally excluding one slug, for "related/more").
   - `getAllBlogPostSlugs(locale)` — slugs + `publishedAt` for `generateStaticParams` / sitemap.
@@ -105,7 +107,7 @@ The one content-rich, frequently-updated type, with the only interactive reader 
 Most pages carry SEO inline via `Page.seo`, but there is also a standalone `Seo` content type for reusable/shared metadata.
 
 - **Purpose:** reusable SEO metadata for routes that look one up by name (e.g. the blog index, or any page that references a shared Seo entry).
-- **Key fields:** `title`, `description`, `keywords`, `image` (`url`, `title`, `width`, `height`), `siteName`, `type`, and `machineName` (lookup key). *(Type: `src/types/Seo.ts`.)*
+- **Key fields:** `title`, `description`, `keywords`, `image` (`url`, `title`, `width`, `height`), `siteName`, `type`, and `machineName` (lookup key). _(Type: `src/types/Seo.ts`.)_
 - **Getter:** `lib/contentful/getSeo.ts#getSeo(name, locale, isDraftMode)` — looks up by `machineName`.
 - **Rendered by:** metadata builders (`lib/metadata.ts`) that emit `<title>`, meta description, keywords, and OG/Twitter tags. See [ai-era-strategy.md](./ai-era-strategy.md) and `docs/seo-and-metadata.md`.
 
@@ -113,14 +115,14 @@ Most pages carry SEO inline via `Page.seo`, but there is also a standalone `Seo`
 
 ## Quick reference
 
-| Content type | Getter (`lib/contentful/…`) | Lookup key | Rendered on |
-|---|---|---|---|
-| **Page** (+ Hero/Cta/Duplex/TextBlock) | `getPage.ts` | `machineName` | `[locale]` informational routes |
-| **ContentCollection** (Credo + ValueItem) | `getContentCollection.ts` | `machineName` | community (Creed/Credo + values) |
-| **EventBanner** (→ Event + LocationComponent) | `getEventBanner.ts` | `machineName` | come-meet-us, event pages |
-| **Blog post** (BlogPostPage → Author) | `getBlogPostPages.ts` | `slug` | `/blog`, `/blog/[slug]` |
-| **Footer** (→ SocialLink, LocationComponent) | `getFooter.ts` | (singleton) | global footer |
-| **NavigationMenu** (→ MenuGroup) | `getNavigationMenu.ts` | `internalName` | global nav |
-| **Seo** | `getSeo.ts` | `machineName` | metadata/`<head>` |
+| Content type                                  | Getter (`lib/contentful/…`) | Lookup key     | Rendered on                      |
+| --------------------------------------------- | --------------------------- | -------------- | -------------------------------- |
+| **Page** (+ Hero/Cta/Duplex/TextBlock)        | `getPage.ts`                | `machineName`  | `[locale]` informational routes  |
+| **ContentCollection** (Credo + ValueItem)     | `getContentCollection.ts`   | `machineName`  | community (Creed/Credo + values) |
+| **EventBanner** (→ Event + LocationComponent) | `getEventBanner.ts`         | `machineName`  | come-meet-us, event pages        |
+| **Blog post** (BlogPostPage → Author)         | `getBlogPostPages.ts`       | `slug`         | `/blog`, `/blog/[slug]`          |
+| **Footer** (→ SocialLink, LocationComponent)  | `getFooter.ts`              | (singleton)    | global footer                    |
+| **NavigationMenu** (→ MenuGroup)              | `getNavigationMenu.ts`      | `internalName` | global nav                       |
+| **Seo**                                       | `getSeo.ts`                 | `machineName`  | metadata/`<head>`                |
 
 > **Reminder:** every getter takes `locale` and passes it to the query. es-AR is the source of truth; keep en-US in sync. Sensitive (doctrinal) content lives in **ContentCollection** (Credo/ValueItem) and the who-is-jesus/community `Page` sections — edit those with the guardrails in [editorial-and-content-rules.md](./editorial-and-content-rules.md).

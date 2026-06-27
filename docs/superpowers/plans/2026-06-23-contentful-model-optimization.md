@@ -1,5 +1,7 @@
 # Contentful Model Optimization Implementation Plan
 
+> **Historical artifact** — paths and commands below predate the `apps/web/` monorepo migration (app code and `scripts/contentful/` are now under `apps/web/`). Kept as a record; do not run verbatim.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Consolidate the Contentful content model from ~29 → ~14 types (delete dead types, retire the vestigial page-builder, merge overlapping types) and land the cross-cutting fixes (env-override, contact-form, JSON-LD, privacy page) as one atomic epic PR + one Contentful alias cutover, with the rendered site unchanged except three approved surfaces.

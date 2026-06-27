@@ -1,5 +1,7 @@
 # /predica — bibleVerse reuse (dedup)
 
+> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+
 How the `/predica` pipeline avoids creating duplicate `bibleVerse` Contentful entries: the **same passage
 in the same translation is stored once and reused across sermons**, and re-running a sermon never piles up
 duplicates.
