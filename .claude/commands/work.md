@@ -5,6 +5,8 @@ argument-hint: ICR-N
 
 # /work — Ticket-Driven Pipeline Orchestrator
 
+> **Monorepo paths (read this):** the site lives under **`apps/web/`**. Every app path mentioned in this file — `src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, and config files (`next.config.ts`, `tsconfig.json`, `playwright.config.ts`, `vitest.config.ts`) — resolves under `apps/web/` (e.g. `apps/web/src/...`). Only `.claude/`, `docs/`, and `tasks/` stay at the repo root. When you **create, read, or edit** an app file, use the `apps/web/` prefix. Bare `pnpm <task>` at the repo root works (Turbo proxy); for path- or flag-carrying app commands use `pnpm -C apps/web <cmd>`.
+
 This command is the orchestrator playbook. **You (the main thread) follow it step by step.** Spawn subagents only at the points marked `(subagent: …)`. Human gates (★) stay in this conversation — never delegate them.
 
 The ticket key is in `$1` (e.g., `ICR-45`). If empty, ask the user.

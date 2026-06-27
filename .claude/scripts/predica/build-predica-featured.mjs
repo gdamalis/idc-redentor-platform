@@ -301,12 +301,15 @@ async function loadEnvVar(name) {
   if (process.env[name]) return process.env[name];
   let dir = process.cwd();
   for (let i = 0; i < 8; i += 1) {
-    const p = path.join(dir, ".env.local");
-    if (existsSync(p)) {
-      const text = await readFile(p, "utf8");
-      for (const line of text.split("\n")) {
-        const m = line.match(new RegExp(`^\\s*${name}\\s*=\\s*(.+)\\s*$`));
-        if (m) return m[1].replace(/^["']|["']$/g, "").trim();
+    // Probe the repo root and the monorepo app dir (.env.local moved to apps/web/).
+    for (const rel of [".env.local", path.join("apps", "web", ".env.local")]) {
+      const p = path.join(dir, rel);
+      if (existsSync(p)) {
+        const text = await readFile(p, "utf8");
+        for (const line of text.split("\n")) {
+          const m = line.match(new RegExp(`^\\s*${name}\\s*=\\s*(.+)\\s*$`));
+          if (m) return m[1].replace(/^["']|["']$/g, "").trim();
+        }
       }
     }
     const parent = path.dirname(dir);

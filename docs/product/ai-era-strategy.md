@@ -1,5 +1,7 @@
 # IDC Redentor — AI-Era Strategy (Discoverability)
 
+> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+
 > **Purpose:** The opinionated thesis for how the IDC Redentor website should be found and understood in the AI era — by people, search engines, and AI assistants. This is the lens the `product-manager` agent uses to rank discovery/SEO ideas.
 > **Last reviewed:** 2026-06-21
 
@@ -7,11 +9,11 @@
 
 ## The thesis (for a church, not a corpus play)
 
-When someone — or their AI assistant — searches for a church in the area, asks *"¿qué cree la Iglesia de Cristo Redentor?"*, or looks up *"a qué hora son los cultos"* / *"church service times near me,"* the answer should be **accurate and trace back to this site.**
+When someone — or their AI assistant — searches for a church in the area, asks _"¿qué cree la Iglesia de Cristo Redentor?"_, or looks up _"a qué hora son los cultos"_ / _"church service times near me,"_ the answer should be **accurate and trace back to this site.**
 
 The leverage is **structured data + clean metadata**, not an on-site bot. We are explicitly **not** building an AI chatbot (see [scope-and-boundaries.md](./scope-and-boundaries.md)). Instead, we make the church's beliefs, service times, and location so legible to crawlers and assistants that, when asked, they get the church right — its name, what it believes, when it gathers, and how to find it.
 
-In other words: the AI-era job of a church website isn't to *talk* to visitors with AI; it's to be the **trustworthy, machine-readable source** that the AI tools people already use will read and repeat correctly.
+In other words: the AI-era job of a church website isn't to _talk_ to visitors with AI; it's to be the **trustworthy, machine-readable source** that the AI tools people already use will read and repeat correctly.
 
 ## What we already have to work with
 
@@ -33,7 +35,7 @@ The gap is mostly **serialization**: turning this structured content into JSON-L
    - `Event` for the worship services and special events (e.g. the ladies conference) — fed by `EventBanner` → `Event`.
    - `BlogPosting` per blog article — fed by `BlogPostPage`.
    - `BreadcrumbList` on nested routes.
-   *(These are the DEFERRED "do soon" items in [scope-and-boundaries.md](./scope-and-boundaries.md). Tie the implementation cards to this section.)*
+     _(These are the DEFERRED "do soon" items in [scope-and-boundaries.md](./scope-and-boundaries.md). Tie the implementation cards to this section.)_
 2. **OG / Twitter cards on every page.** Extend `lib/metadata.ts` so every route emits complete OpenGraph + Twitter tags with a real per-page image (default 1200×630). Shared links should look right in WhatsApp, Instagram, and search previews — the channels a church actually uses.
 3. **Crawlability.** A correct `sitemap.xml` (blog slugs come from `getAllBlogPostSlugs`), a sensible `robots.txt`, stable **canonical** URLs, and correct **hreflang** alternates for es-AR / en-US so the right language surfaces for the right person.
 4. **`llms.txt`.** Publish a plain-language `llms.txt` describing the church — who it is, what it believes (summary + link to the Creed/Credo), service day/time and address, and how to make contact — so assistants have a clean, authoritative summary to read.
@@ -47,7 +49,7 @@ The gap is mostly **serialization**: turning this structured content into JSON-L
 
 ## KPIs
 
-- **Accurate AI answers** about the church — when an assistant is asked who IDC Redentor is, what it believes, and when/where it gathers, the answer is correct and points here. *(Spot-check periodically across assistants.)*
+- **Accurate AI answers** about the church — when an assistant is asked who IDC Redentor is, what it believes, and when/where it gathers, the answer is correct and points here. _(Spot-check periodically across assistants.)_
 - **Local / "near me" and branded search presence** — the church appears for relevant local and name searches, with correct service times and address.
 - **Organic discovery** — new visitors arriving from search, and growth in shared-link reach (OG previews) on the channels the church uses.
 - **Structured-data coverage** — share of key pages emitting valid JSON-LD (services, location, beliefs, blog posts) with no validation errors.
@@ -56,4 +58,4 @@ The gap is mostly **serialization**: turning this structured content into JSON-L
 
 ## How the `product-manager` agent uses this
 
-Rank discovery ideas against these priorities. A "let's add an AI chatbot" idea is **out of scope** — reframe it as "make our structured data and metadata so good that the assistants people already use answer *about* us accurately." Tie structured-data and OG-card cards back to the DEFERRED list in [scope-and-boundaries.md](./scope-and-boundaries.md).
+Rank discovery ideas against these priorities. A "let's add an AI chatbot" idea is **out of scope** — reframe it as "make our structured data and metadata so good that the assistants people already use answer _about_ us accurately." Tie structured-data and OG-card cards back to the DEFERRED list in [scope-and-boundaries.md](./scope-and-boundaries.md).

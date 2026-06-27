@@ -44,7 +44,7 @@ or auto-skip them. See `tasks/specs/sermon-pipeline.md` §7–§9.
      (gitignored). If `preacher` is first-name-only, note that this slug may differ from a later full-name
      run (the human can rename/merge the profile file — it's low volume).
 3. **Tooling check** (Bash): `ffmpeg`, `ffprobe`, `config.predica.whisper.bin` + `.model` all exist; and
-   Chromium for the PDF (`pnpm exec playwright install chromium` if `renderPdfs` later errors with a missing
+   Chromium for the PDF (`pnpm -C apps/web exec playwright install chromium` if `renderPdfs` later errors with a missing
    browser). Stop with a precise message if a hard dependency is missing.
 4. **Contentful env check** (skip on `--dry-run`). `mcp__contentful__list_environments(spaceId)` and confirm
    `config.predica.contentfulEnv` (`production`) exists and is accessible.
@@ -152,7 +152,7 @@ Now that the **canonical slug** exists, check whether this sermon was already pu
 
 1. **PDFs.** Bash: `node <config.predica.pdf.script> <slugDir>/sermon.json` → `predica.es-AR.pdf` +
    `predica.en-US.pdf` in `slugDir`. If it fails for a missing browser, run
-   `pnpm exec playwright install chromium` once and retry. Confirm both PDFs exist with non-zero size.
+   `pnpm -C apps/web exec playwright install chromium` once and retry. Confirm both PDFs exist with non-zero size.
 2. **Featured image.** Bash: `node <config.predica.featured.script> <slugDir>/sermon.json` → `featured.png`
    (1200×630) in `slugDir`. This generates an AI background (Google Gemini) themed to the sermon, with the
    branded title/date overlaid. **It degrades gracefully:** with no `GEMINI_API_KEY` (or on any API failure)

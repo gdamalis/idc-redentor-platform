@@ -52,15 +52,17 @@ function parseArgs(argv) {
 async function loadToken() {
   if (process.env.CONTENTFUL_MANAGEMENT_ACCESS_TOKEN)
     return process.env.CONTENTFUL_MANAGEMENT_ACCESS_TOKEN;
-  // Walk up from cwd looking for .env.local.
+  // Walk up from cwd looking for .env.local (also the monorepo app dir apps/web/).
   let dir = process.cwd();
   for (let i = 0; i < 8; i += 1) {
-    const p = path.join(dir, ".env.local");
-    if (existsSync(p)) {
-      const text = await readFile(p, "utf8");
-      for (const line of text.split("\n")) {
-        const m = line.match(/^\s*CONTENTFUL_MANAGEMENT_ACCESS_TOKEN\s*=\s*(.+)\s*$/);
-        if (m) return m[1].replace(/^["']|["']$/g, "").trim();
+    for (const rel of [".env.local", path.join("apps", "web", ".env.local")]) {
+      const p = path.join(dir, rel);
+      if (existsSync(p)) {
+        const text = await readFile(p, "utf8");
+        for (const line of text.split("\n")) {
+          const m = line.match(/^\s*CONTENTFUL_MANAGEMENT_ACCESS_TOKEN\s*=\s*(.+)\s*$/);
+          if (m) return m[1].replace(/^["']|["']$/g, "").trim();
+        }
       }
     }
     const parent = path.dirname(dir);

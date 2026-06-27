@@ -1,5 +1,7 @@
 # Contentful Workflow v2 Implementation Plan
 
+> **Historical artifact** — paths and commands below predate the `apps/web/` monorepo migration (app code and `scripts/contentful/` are now under `apps/web/`). Kept as a record; do not run verbatim.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Tool + document + re-point the Contentful workflow on the final `master`→`production` + `staging` topology: build `scripts/contentful/sync-entries.mjs` (free-tier entry/asset promotion), re-point `/predica` to production (draft-only), add a report-only drift detector, and rewrite `docs/contentful-environments.md` as the canonical doc.

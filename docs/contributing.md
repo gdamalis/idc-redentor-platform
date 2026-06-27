@@ -1,5 +1,7 @@
 # Contributing
 
+> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+
 > **Purpose:** The day-to-day contributor flow — prerequisites, branch naming (`<type>/ICR-N-<slug>`), conventional commits, the PR-title rule and CI gates, semantic-release behavior, and the git-worktree workflow the agent harness uses.
 > **Last reviewed:** 2026-06-21
 
@@ -11,9 +13,9 @@
 
 ```bash
 nvm use
-pnpm install            # runs husky via the prepare script
-cp .env.example .env    # then fill in the MISSING required vars (see CLAUDE.md)
-pnpm dev
+pnpm install            # at the repo root — runs husky via the prepare script (whole workspace)
+cp apps/web/.env.example apps/web/.env    # then fill in the MISSING required vars (see CLAUDE.md)
+pnpm dev                # at the repo root (Turbo proxies) — or scope with: pnpm --filter @idcr/web dev
 ```
 
 > ⚠️ **`.env.example` is incomplete.** It omits several runtime-required variables (`CONTENTFUL_REVALIDATE_SECRET`, `MONGODB_URI`, `MAIL_PROVIDER`, `CONTACT_FORM_RECIPIENT_EMAIL`, `FROM_EMAIL`, `SENDGRID_API_KEY`/`RESEND_API_KEY`). Bringing `.env.example` in line with `src/types/environment.d.ts` is a good starter ticket. **Never commit real secret values.**
@@ -54,13 +56,13 @@ pnpm format:check  # prettier --check .
 
 `semantic-release` runs on **`main`** (`.releaserc.json`). On each push to main it analyzes the merged commits and cuts a version + changelog automatically. The release rules are **customized** — note the non-defaults:
 
-| Commit type | Release |
-|-------------|---------|
-| `feat` | **minor** |
-| `fix` | **patch** |
-| `perf` | **patch** |
-| `docs` | **patch** ← non-standard: docs cut a patch release here |
-| `chore` | **none** |
+| Commit type | Release                                                 |
+| ----------- | ------------------------------------------------------- |
+| `feat`      | **minor**                                               |
+| `fix`       | **patch**                                               |
+| `perf`      | **patch**                                               |
+| `docs`      | **patch** ← non-standard: docs cut a patch release here |
+| `chore`     | **none**                                                |
 
 So a `docs:` or `perf:` commit on main **will** produce a release. Be deliberate with commit types. The release commit is `chore(release): <version> [skip ci]`; it updates `CHANGELOG.md` and `package.json`, tags the version, and creates a GitHub release. npm publishing is disabled (`npmPublish: false`). Types not listed (`refactor`, `test`, `ci`) don't trigger a release.
 

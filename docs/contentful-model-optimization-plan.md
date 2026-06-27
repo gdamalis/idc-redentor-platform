@@ -1,5 +1,7 @@
 # Contentful Model Optimization — Implementation Plan
 
+> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+
 > **Status:** Approved design · **Epic:** ICR-76 · **Branch:** `refactor/ICR-76-contentful-model-optimization`
 > **Companion to:** [`docs/contentful-model-audit.md`](./contentful-model-audit.md) — read the audit first; this doc turns its ranked tiers (T1–T12) and cross-cutting suggestions (S1–S4) into an executable, sequenced plan.
 > **Space:** `vg9le24yw8hb` · **Authored:** 2026-06-23
@@ -94,7 +96,7 @@ Between steps 2 and 3 there is a brief window where production runs **old code a
 ## 4. Migration tooling conventions (D2)
 
 - **Add** `contentful-migration` (devDep). Add `contentful-management` only if an entry transform needs the raw CMA.
-- **Layout:** `scripts/contentful/migrations/NN-<slug>.cjs` (one per tier), an idempotent `scripts/contentful/run.mjs` runner, and `npm run contentful:migrate` wired in `package.json`.
+- **Layout:** `scripts/contentful/migrations/NN-<slug>.cjs` (one per tier), an idempotent `scripts/contentful/run.mjs` runner, and `pnpm -C apps/web contentful:migrate` wired in `package.json`.
 - **Target env:** runner reads `CONTENTFUL_ENVIRONMENT` (default `master-1.0.0`) + `CONTENTFUL_MANAGEMENT_ACCESS_TOKEN` + `CONTENTFUL_SPACE_ID`. **Never targets `master`.**
 - **Idempotency:** each script guards against re-application (check field/type existence before create/delete) so re-running on a re-cloned sandbox is safe.
 - **Reviewability:** every schema + entry change is a diffable script in the PR. The MCP is used for inspection and spot edits, not as the source of truth.
@@ -146,7 +148,7 @@ Cheapest/safest first; T8 (invasive) late; T9 after T7. Each commit = model migr
 
 ### Commit 0 — Enabler · S1 · ICR-72 · ⬜
 
-- **Code:** `fetch.ts` env-var support (§3.2); `environment.d.ts` + `.env.example`; add `contentful-migration` devDep; scaffold `scripts/contentful/` + `npm run contentful:migrate`.
+- **Code:** `fetch.ts` env-var support (§3.2); `environment.d.ts` + `.env.example`; add `contentful-migration` devDep; scaffold `scripts/contentful/` + `pnpm -C apps/web contentful:migrate`.
 - **Verify:** `CONTENTFUL_ENVIRONMENT` unset → identical prod behavior; set to `master-1.0.0` → site renders from sandbox locally; runner connects to sandbox.
 - **Commit:** `chore(ICR-72): support CONTENTFUL_ENVIRONMENT override + migration tooling scaffold`
 

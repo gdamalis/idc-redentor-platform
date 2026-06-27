@@ -1,5 +1,7 @@
 # Architecture
 
+> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+
 > **Purpose:** The big picture of how the IDC Redentor website is put together — the App Router structure, the two data paths, the request lifecycle, where each concern lives, and the security posture. Read this first; the other engineering docs drill into one area each.
 > **Last reviewed:** 2026-06-21
 
@@ -112,14 +114,14 @@ next-intl drives both routing and message lookup. Default locale **`es-AR`**, se
 
 ## Path aliases
 
-From `tsconfig.json`:
+From `apps/web/tsconfig.json`:
 
-| Alias | Resolves to |
-|-------|-------------|
-| `@src/*` | `src/*` |
-| `@lib/*` | `lib/*` |
-| `@public/*` | `public/*` |
-| `@icons/*` | `public/assets/svg/*` |
+| Alias       | Resolves to           |
+| ----------- | --------------------- |
+| `@src/*`    | `src/*`               |
+| `@lib/*`    | `lib/*`               |
+| `@public/*` | `public/*`            |
+| `@icons/*`  | `public/assets/svg/*` |
 
 Use them instead of long relative paths. `vite-tsconfig-paths` makes them work under Vitest too.
 

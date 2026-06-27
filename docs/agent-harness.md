@@ -1,5 +1,7 @@
 # Agent Harness
 
+> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+
 > **Purpose:** How to use the Claude Code agent harness on this repo — the agents and slash commands, the
 > human-gated Trello automation (Backlog → To Do → In Progress → In Review → **In Testing** → Done, with
 > **Done human-only**), the branch/PR/merge conventions, the always-on type-aware QA on both the Vercel

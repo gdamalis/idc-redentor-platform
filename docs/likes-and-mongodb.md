@@ -1,5 +1,7 @@
 # Likes & MongoDB
 
+> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+
 > **Purpose:** The only stateful part of the app. How the cached MongoDB client works, the two collections it backs (`likes`, `contact`), the anonymous like toggle and its visitor de-dup, and the write-safety considerations.
 > **Last reviewed:** 2026-06-21
 
@@ -7,10 +9,10 @@
 
 MongoDB is **not** the content store — Contentful is. Mongo exists only for the two things Contentful can't do: an anonymous blog **like** counter and **saved contact-form messages**. Both live in a database literally named **`website`**:
 
-| Collection | Written by | Read by | Doc shape |
-|------------|-----------|---------|-----------|
-| `likes` | `POST /api/likes` → `like.service.ts#toggleLike` | `GET /api/likes` → `getLikes`; the blog UI | `{ slug, count, visitors: string[], updatedAt }` |
-| `contact` | contact Server Action → `contact.service.ts#sendContactForm` | `getContactMessages` (internal, no public route) | `{ name, email, subject, message, createdAt }` |
+| Collection | Written by                                                   | Read by                                          | Doc shape                                        |
+| ---------- | ------------------------------------------------------------ | ------------------------------------------------ | ------------------------------------------------ |
+| `likes`    | `POST /api/likes` → `like.service.ts#toggleLike`             | `GET /api/likes` → `getLikes`; the blog UI       | `{ slug, count, visitors: string[], updatedAt }` |
+| `contact`  | contact Server Action → `contact.service.ts#sendContactForm` | `getContactMessages` (internal, no public route) | `{ name, email, subject, message, createdAt }`   |
 
 If a task mentions "the database" on this project, it means these two collections — nothing else.
 
@@ -35,8 +37,12 @@ function getClient(): MongoClient {
   return client;
 }
 
-export async function connect()  { /* getClient().connect() + ping admin */ }
-export async function disconnect() { /* client.close() */ }
+export async function connect() {
+  /* getClient().connect() + ping admin */
+}
+export async function disconnect() {
+  /* client.close() */
+}
 ```
 
 Key points:
@@ -52,9 +58,9 @@ Key points:
 
 ```ts
 interface LikesDocument {
-  slug: string;        // blog post slug — the key
-  count: number;       // current like total (kept ≥ 0)
-  visitors: string[];  // anonymous visitor ids that liked this post
+  slug: string; // blog post slug — the key
+  count: number; // current like total (kept ≥ 0)
+  visitors: string[]; // anonymous visitor ids that liked this post
   updatedAt: Date;
 }
 ```

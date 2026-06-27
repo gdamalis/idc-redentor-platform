@@ -1,5 +1,7 @@
 # SEO & Metadata
 
+> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+
 > **Purpose:** How per-page metadata is built — `lib/metadata.ts`, the Contentful `Seo` content type, OpenGraph/Twitter cards, the default OG image, locale alternates (hreflang), and the JSON-LD structured-data story (current + roadmap). This matters as much for AI assistants as for classic search; see also `docs/product/ai-era-strategy.md`.
 > **Last reviewed:** 2026-06-21
 
@@ -41,7 +43,8 @@ The module exports three functions:
 ```ts
 const DEFAULT_OG_IMAGE = {
   url: "/assets/img/og-default.jpeg",
-  width: 1200, height: 630,
+  width: 1200,
+  height: 630,
   alt: "Iglesia de Cristo Redentor",
 };
 ```
@@ -52,14 +55,14 @@ const DEFAULT_OG_IMAGE = {
 
 Fetched by `getSeo.ts`; typed as `SeoContent` in `src/types/Seo.ts`:
 
-| Field | Type | Use |
-|-------|------|-----|
-| `title` | string | `<title>` + OG/Twitter title |
-| `description` | string | meta description + OG/Twitter description |
-| `keywords` | string[] | `keywords` meta |
-| `image` | `{ url, title, width, height }` | OG/Twitter image (falls back to default) |
-| `siteName` | string | available on the entry (note: OG `siteName` currently comes from the `Metadata.site-name` translation, not this field) |
-| `type` | string | content-type hint on the entry |
+| Field         | Type                            | Use                                                                                                                    |
+| ------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `title`       | string                          | `<title>` + OG/Twitter title                                                                                           |
+| `description` | string                          | meta description + OG/Twitter description                                                                              |
+| `keywords`    | string[]                        | `keywords` meta                                                                                                        |
+| `image`       | `{ url, title, width, height }` | OG/Twitter image (falls back to default)                                                                               |
+| `siteName`    | string                          | available on the entry (note: OG `siteName` currently comes from the `Metadata.site-name` translation, not this field) |
+| `type`        | string                          | content-type hint on the entry                                                                                         |
 
 `Seo` entries are matched by `machineName` and are **per-locale**, so each page gets locale-correct title/description. A page without an `Seo` entry will fail in `buildPageMetadata` (it dereferences `seoContent.title`) — every content page must have one.
 
@@ -70,12 +73,14 @@ Fetched by `getSeo.ts`; typed as `SeoContent` in `src/types/Seo.ts`:
 ## Current state vs. roadmap
 
 **Working today:**
+
 - Per-page title/description/keywords from Contentful `Seo` (pages) or `BlogPost` fields (articles).
 - OG + Twitter `summary_large_image` cards with a sensible default image.
 - Canonical URLs and es-AR/en-US hreflang alternates on every page.
 - `Article` JSON-LD available for blog posts via `buildArticleJsonLd`.
 
 **Roadmap (see `docs/product/ai-era-strategy.md`, prioritized):**
+
 1. **More structured data.** `Organization`/`Church` (name, address, geo from `LocationComponent`, service times from `Event`), `Event` for services and conferences, `BlogPosting`, and `BreadcrumbList`. The `Article` JSON-LD is the template to follow.
 2. **`sitemap.xml` and `robots.txt`** with correct per-locale URLs. (`getAllBlogPostSlugs(locale)` in `getBlogPostPages.ts` already returns `{ slug, updatedAt }` pairs ready for a sitemap.)
 3. **Real per-page OG images** instead of the single default, for richer link/AI cards.

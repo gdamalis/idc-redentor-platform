@@ -1,5 +1,7 @@
 # Contentful workflow v2 — design spec (ICR-83)
 
+> **Historical artifact** — paths and commands below predate the `apps/web/` monorepo migration (app code and `scripts/contentful/` are now under `apps/web/`). Kept as a record; do not run verbatim.
+
 > **Status:** approved design, ready for implementation planning.
 > **Card:** [ICR-83](https://trello.com/c/6Wh0vPg9) (In Progress).
 > **Supersedes:** the PR #54 handoff brief (`docs/superpowers/plans/2026-06-25-contentful-entry-sync-handoff.md`) and the obsolete card **ICR-72** (old `agent-sandbox`/`master-0.0.1` env-hygiene).

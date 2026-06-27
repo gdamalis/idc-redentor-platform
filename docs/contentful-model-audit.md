@@ -1,5 +1,7 @@
 # Contentful Content-Model Audit & Optimization Plan
 
+> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+
 > **Purpose:** A full audit of the Contentful content model (space `vg9le24yw8hb`) against the codebase and the `docs/` engineering + product docs, with a ranked, sequenced plan to simplify it. This is the source-of-truth reference for the model-cleanup backlog (the "Contentful model optimization" Trello epic). Read this before touching any content type, getter, or migration.
 >
 > **Method:** content types pulled live via the Contentful MCP from `master`; entry counts queried per type; code wiring mapped from `lib/contentful/get*.ts`, the section resolver, and the `[locale]` routes. Read-only — no model or code was changed to produce this.
@@ -35,32 +37,32 @@ So `getPage` over-fetches a large `pageContent` fragment for `ContentCollection`
 
 Entry counts from `master`. **Read?** = a `lib/contentful/get*.ts` getter queries it. **Rendered?** = it reaches the DOM. Verdict legend: ✅ keep · ⚠️ change · ❌ remove.
 
-| # | Content type | Entries | Read by code | Rendered on | Verdict |
-|---|---|---:|---|---|---|
-| 1 | `page` | 3 | `getPage` | blog index `extraSection` only | ⚠️ Slim to route/SEO registry |
-| 2 | `componentHeroBanner` | 1 | `getHeroBanner` | home (`OurMissionCta`) | ⚠️ Merge → `section` |
-| 3 | `componentCta` | 1 | `getCta` | home, community, blog post | ⚠️ Merge → `section` |
-| 4 | `componentDuplex` | 1 | `getDuplex` **(never called)** | **nowhere** | ⚠️ Merge → `section` / retire |
-| 5 | `componentTextBlock` | 2 | `getTextBlock` | community, come-meet-us | ⚠️ Merge → `section` |
-| 6 | `componentQuote` | **0** | none — named `[UNUSED]` | nowhere | ❌ **Delete** |
-| 7 | `contentCollection` | 2 | `getContentCollection` | home, community | ✅ Keep |
-| 8 | `credo` | 7 | inline fragment | community (`CreedSection`) | ⚠️ Merge with `valueItem` |
-| 9 | `valueItem` | 3 | inline fragment | home / community | ⚠️ **Duplicate of `credo`** |
-| 10 | `eventBanner` | 1 | `getEventBanner` | come-meet-us | ✅ Keep |
-| 11 | `event` | 1 | inline (via eventBanner) | come-meet-us | ✅ Keep (JSON-LD value) |
-| 12 | `locationComponent` | 1 | inline (eventBanner + footer) | come-meet-us, footer | ✅ Keep (reused) |
-| 13 | `blogPostPage` | 3 | `getBlogPostPages` | blog | ✅ Keep |
-| 14 | `author` | 2 | inline | blog | ✅ Keep |
-| 15 | `footer` | 1 | `getFooter` | layout | ✅ Keep (singleton) |
-| 16 | `socialLink` | 2 | inline (via footer) | footer | ✅ Keep |
-| 17 | `navigationMenu` | 1 | `getNavigationMenu` | layout | ✅ Keep (singleton) |
-| 18 | `menuGroup` | 3 | inline (via nav) | navbar | ✅ Keep (1 dead field) |
-| 19 | `seo` | 5 | `getSeo` | metadata | ✅ Keep |
-| 20 | `contactForm` | 1 | `getContactForm` | come-meet-us | ✅ Keep (singleton) |
-| 21 | `formField` | 4 | inline (via contactForm) | come-meet-us | ✅ Keep |
-| 22 | `singleEmailForm` | 1 | `getSingleEmailForm` | layout (`SubscribeBanner`) | ✅ Keep (singleton) |
-| 23 | `bibleVerse` | 1 | inline (contactForm only) | come-meet-us | ⚠️ Modeled twice — standardize |
-| 24 | `churchInfoTopic` | 1 | none | **nowhere** | ❌ Build it or delete |
+| #   | Content type          | Entries | Read by code                   | Rendered on                    | Verdict                        |
+| --- | --------------------- | ------: | ------------------------------ | ------------------------------ | ------------------------------ |
+| 1   | `page`                |       3 | `getPage`                      | blog index `extraSection` only | ⚠️ Slim to route/SEO registry  |
+| 2   | `componentHeroBanner` |       1 | `getHeroBanner`                | home (`OurMissionCta`)         | ⚠️ Merge → `section`           |
+| 3   | `componentCta`        |       1 | `getCta`                       | home, community, blog post     | ⚠️ Merge → `section`           |
+| 4   | `componentDuplex`     |       1 | `getDuplex` **(never called)** | **nowhere**                    | ⚠️ Merge → `section` / retire  |
+| 5   | `componentTextBlock`  |       2 | `getTextBlock`                 | community, come-meet-us        | ⚠️ Merge → `section`           |
+| 6   | `componentQuote`      |   **0** | none — named `[UNUSED]`        | nowhere                        | ❌ **Delete**                  |
+| 7   | `contentCollection`   |       2 | `getContentCollection`         | home, community                | ✅ Keep                        |
+| 8   | `credo`               |       7 | inline fragment                | community (`CreedSection`)     | ⚠️ Merge with `valueItem`      |
+| 9   | `valueItem`           |       3 | inline fragment                | home / community               | ⚠️ **Duplicate of `credo`**    |
+| 10  | `eventBanner`         |       1 | `getEventBanner`               | come-meet-us                   | ✅ Keep                        |
+| 11  | `event`               |       1 | inline (via eventBanner)       | come-meet-us                   | ✅ Keep (JSON-LD value)        |
+| 12  | `locationComponent`   |       1 | inline (eventBanner + footer)  | come-meet-us, footer           | ✅ Keep (reused)               |
+| 13  | `blogPostPage`        |       3 | `getBlogPostPages`             | blog                           | ✅ Keep                        |
+| 14  | `author`              |       2 | inline                         | blog                           | ✅ Keep                        |
+| 15  | `footer`              |       1 | `getFooter`                    | layout                         | ✅ Keep (singleton)            |
+| 16  | `socialLink`          |       2 | inline (via footer)            | footer                         | ✅ Keep                        |
+| 17  | `navigationMenu`      |       1 | `getNavigationMenu`            | layout                         | ✅ Keep (singleton)            |
+| 18  | `menuGroup`           |       3 | inline (via nav)               | navbar                         | ✅ Keep (1 dead field)         |
+| 19  | `seo`                 |       5 | `getSeo`                       | metadata                       | ✅ Keep                        |
+| 20  | `contactForm`         |       1 | `getContactForm`               | come-meet-us                   | ✅ Keep (singleton)            |
+| 21  | `formField`           |       4 | inline (via contactForm)       | come-meet-us                   | ✅ Keep                        |
+| 22  | `singleEmailForm`     |       1 | `getSingleEmailForm`           | layout (`SubscribeBanner`)     | ✅ Keep (singleton)            |
+| 23  | `bibleVerse`          |       1 | inline (contactForm only)      | come-meet-us                   | ⚠️ Modeled twice — standardize |
+| 24  | `churchInfoTopic`     |       1 | none                           | **nowhere**                    | ❌ Build it or delete          |
 
 **Phantom types** — referenced in validations but **not present** in the space (template residue, all safe to strip): `topicPerson` (← `componentQuote`), `post` (← `componentDuplex.targetPage` + bodyText), `nt_mergetag` (← Hero/Cta/Duplex/Quote rich text; Ninetailed app not in use).
 
@@ -84,11 +86,11 @@ Each tier is independently shippable and verifiable on a Vercel preview. Tier or
 
 ### Tier 3 — Merge the overlaps
 
-- **T7 · Merge `credo` + `valueItem` into one type.** They are **field-for-field identical** (`title`, `description` RT, `bibleVerse`, `image`, `machineName`/`internalName`). `valueItem` was added 2025-11-30 as a duplicate; the getter already returns both as `creedItems` interchangeably. Merge to a single `beliefItem` with an optional `kind` enum (`Creed` | `Value`) if filtering is ever needed. **Doctrinal content is untouched — the *type* merges, the words don't.** 10 entries to remap. ⚠️ Sensitive (doctrinal) — leadership-owned per `docs/product/editorial-and-content-rules.md`.
-- **T8 · Merge the promo blocks (`Hero` / `Cta` / `TextBlock`; `Duplex` is deleted in T6) into one `section` type with a `layout` enum.** They share a **common core** — `headline`, a rich-text body, `internalName`, `machineName` — but **not** the rest. "Layout is a *field*, not a *type*," **but the layout-specific fields are real and must survive the migration as optionals** — do **not** treat these as "differ only by layout" or the merge will drop content / mark the wrong fields required. Per-layout optional fields:
+- **T7 · Merge `credo` + `valueItem` into one type.** They are **field-for-field identical** (`title`, `description` RT, `bibleVerse`, `image`, `machineName`/`internalName`). `valueItem` was added 2025-11-30 as a duplicate; the getter already returns both as `creedItems` interchangeably. Merge to a single `beliefItem` with an optional `kind` enum (`Creed` | `Value`) if filtering is ever needed. **Doctrinal content is untouched — the _type_ merges, the words don't.** 10 entries to remap. ⚠️ Sensitive (doctrinal) — leadership-owned per `docs/product/editorial-and-content-rules.md`.
+- **T8 · Merge the promo blocks (`Hero` / `Cta` / `TextBlock`; `Duplex` is deleted in T6) into one `section` type with a `layout` enum.** They share a **common core** — `headline`, a rich-text body, `internalName`, `machineName` — but **not** the rest. "Layout is a _field_, not a _type_," **but the layout-specific fields are real and must survive the migration as optionals** — do **not** treat these as "differ only by layout" or the merge will drop content / mark the wrong fields required. Per-layout optional fields:
   - **hero** → `subHeadline`, `image`, `additionalImages` (gallery), `ctaText`, `targetPage`
-  - **cta** → `subline` (rich text), `ctaText`, `targetPage`, `urlParameters` *(no image)*
-  - **textBlock** → `subtitle`, `body` (rich text), **`images`** (gallery, max 5) *(no ctaText/targetPage/image)*
+  - **cta** → `subline` (rich text), `ctaText`, `targetPage`, `urlParameters` _(no image)_
+  - **textBlock** → `subtitle`, `body` (rich text), **`images`** (gallery, max 5) _(no ctaText/targetPage/image)_
 
   ⚠️ **`componentTextBlock.images` feeds the community `PhotoGrid`** — `getTextBlockComponent.ts` requests `imagesCollection`, rendered via `InfoCommunity` + `PhotoGrid` on the community page. The merge **must preserve it** or the community page loses its image grid. Also reconcile the **differing rich-text field names** across blocks (`bodyText` on hero, `subline` on cta, `body` on textBlock) into the one shared body field. Net: the `section` type = core + a union of the optional fields above, **none made required** beyond `layout`/`internalName`/`machineName`. Only **~5 entries** to remap, but it's the **only item with real code churn** (unifies the React components + getters), so it lands last / on its own.
 
@@ -104,7 +106,7 @@ Each tier is independently shippable and verifiable on a Vercel preview. Tier or
 
 ### Keep as-is — correctly modeled (do not "optimize")
 
-- **`event` + `eventBanner` + `locationComponent`** look over-normalized for one weekly service, but this is the *right* place to normalize: it maps cleanly to schema.org `Event` + `Place`, `locationComponent` is reused by the footer, and it directly serves the "service times near me" / AI-era goals in `docs/product/ai-era-strategy.md`. (`eventBanner` is a thin wrapper you *could* flatten, but the payoff is marginal — leave it.)
+- **`event` + `eventBanner` + `locationComponent`** look over-normalized for one weekly service, but this is the _right_ place to normalize: it maps cleanly to schema.org `Event` + `Place`, `locationComponent` is reused by the footer, and it directly serves the "service times near me" / AI-era goals in `docs/product/ai-era-strategy.md`. (`eventBanner` is a thin wrapper you _could_ flatten, but the payoff is marginal — leave it.)
 - **`contactForm` + `formField`**, **`footer` + `socialLink`**, **`navigationMenu` + `menuGroup`**, **`singleEmailForm`** — appropriately modeled singletons/records. Keep.
 
 ---
@@ -127,19 +129,19 @@ From **24 → ~14** content types.
 - **Domain:** `contentCollection`, `beliefItem` (merged credo/value), `blogPostPage`, `author`, `eventBanner`, `event`, `locationComponent`, `seo`, `bibleVerse`, `socialLink`, `formField`, `menuGroup`
 - **Removed:** `componentQuote`, `componentHeroBanner`, `componentCta`, `componentDuplex`, `componentTextBlock` (→ `section`), `valueItem` (→ `beliefItem`), and `churchInfoTopic` (unless built)
 
-*(Exact count depends on the `churchInfoTopic` and `section`-vs-keep-separate decisions; ~14 is the target if both consolidations land.)*
+_(Exact count depends on the `churchInfoTopic` and `section`-vs-keep-separate decisions; ~14 is the target if both consolidations land.)_
 
 ---
 
 ## 6. Sequencing & risk
 
-| Step | Cards | Migration | Code churn | Risk |
-|---|---|---|---|---|
-| Tier 1 | T1–T3 | none | minimal | very low |
-| Tier 2 | T4–T6 | drop fields on `page` | resolver + `getPage` | low (renders identically) |
-| Tier 3 | T7 | remap 10 entries | one inline fragment | low (⚠️ doctrinal) |
-| Tier 3 | T8 | remap 5 entries | unify getters + components | medium (only invasive step) |
-| Tier 4 | T9–T12 | per-item | small | low |
+| Step   | Cards  | Migration             | Code churn                 | Risk                        |
+| ------ | ------ | --------------------- | -------------------------- | --------------------------- |
+| Tier 1 | T1–T3  | none                  | minimal                    | very low                    |
+| Tier 2 | T4–T6  | drop fields on `page` | resolver + `getPage`       | low (renders identically)   |
+| Tier 3 | T7     | remap 10 entries      | one inline fragment        | low (⚠️ doctrinal)          |
+| Tier 3 | T8     | remap 5 entries       | unify getters + components | medium (only invasive step) |
+| Tier 4 | T9–T12 | per-item              | small                      | low                         |
 
 **Why the risk is acceptable:** ~48 entries total across the whole space; every consolidation touches single-digit entry counts. The owner has explicitly accepted the cascade-of-edits risk in exchange for a clean model. Do model edits in `agent-sandbox`, diff a Vercel preview against `master`, then merge.
 

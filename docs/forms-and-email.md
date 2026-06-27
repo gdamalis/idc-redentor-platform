@@ -1,5 +1,7 @@
 # Forms & Email
 
+> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+
 > **Purpose:** End-to-end map of the two public form flows — the **contact form** (persist + notify by email) and the **newsletter subscribe** (Mailchimp) — plus the SendGrid/Resend email adapter, the template engine, and the spam/PII discipline that applies because these are the only paths that handle personal data.
 > **Last reviewed:** 2026-06-21
 
