@@ -5,7 +5,7 @@
 Claude Code agents talk to Contentful through the **official Contentful MCP server**, so they
 can read the content model and (safely) make content changes. On this setup it's registered
 **inline in the developer's local Claude Code config** (`~/.claude.json`), the same way the
-other MCP servers on this machine (trello, mongodb, …) are registered — no env-var ritual,
+other MCP servers on this machine (atlassian, mongodb, …) are registered — no env-var ritual,
 works in every directory including git worktrees.
 
 > This is a **tooling/agent capability**, not part of the Next.js app. The website itself

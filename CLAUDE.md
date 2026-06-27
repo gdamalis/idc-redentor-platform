@@ -139,7 +139,7 @@ Distilled from `.cursorrules` (which `AGENTS.md` supersedes). Apply these by def
 
 ## Session naming (ticket-aware)
 
-Sessions are named after the active Trello ticket automatically.
+Sessions are named after the active Jira ticket automatically.
 
 - **The naming is automatic; you don't (and can't) run `/rename` yourself.** `.claude/hooks/session-namer.sh` derives the ticket from the git branch (`<type>/ICR-N-<slug>`) or worktree dir (`.claude/worktrees/ICR-N`) and sets the session title via the `sessionTitle` hook field on `SessionStart` and each `UserPromptSubmit`. Title = `ICR-N-<first ~4 kebab words of the slug>`.
 - The hook is idempotent and backs off once the live name carries the ticket, so a manual `/rename` is respected.
@@ -195,12 +195,12 @@ Sessions are named after the active Trello ticket automatically.
 
 This repo ships a Claude Code agent harness driven by four slash commands. See `docs/agent-harness.md` for the full guide.
 
-- **`/pm`** — `product-manager`: intakes ideas, refines and grooms Trello cards against `docs/product/`. Hands off at **To Do**; never implements, never branches, never moves a card past To Do.
-- **`/work [ICR-N]`** — explorer → implementer → verifier loop: creates a worktree, branches `<type>/ICR-N-<slug>`, moves the card **To Do → In Progress**, opens a PR, comments the PR link, and moves the card **→ In Review**. **Never moves a card to Done.**
+- **`/pm`** — `product-manager`: intakes ideas, refines and grooms Jira issues against `docs/product/`. Hands off at **To Do**; never implements, never branches, never transitions an issue past To Do.
+- **`/work [ICR-N]`** — explorer → implementer → verifier loop: creates a worktree, branches `<type>/ICR-N-<slug>`, transitions the issue **To Do → In Progress**, opens a PR, comments the PR link, and transitions the issue **→ In Review**. **Never moves an issue to Done.**
 - **`/qa [ICR-N]`** — `qa-runner` + `qa-acceptance` against the PR's **Vercel preview URL**; posts a structured result comment. **Phase 1 is report-only; auto-merge is disabled.**
 - **`/verify`** — runs `pnpm type-check && pnpm lint && pnpm test && pnpm build` plus security checks.
 
-A human always merges the PR and closes the card (moves it to **Done**). Scratchpads live in `tasks/{todo.md,lessons.md}` (gitignored); specs in `tasks/specs/`.
+A human always merges the PR and closes the issue (transitions it to **Done**). Scratchpads live in `tasks/{todo.md,lessons.md}` (gitignored); specs in `tasks/specs/`.
 
 ## Documentation
 
@@ -214,7 +214,7 @@ A human always merges the PR and closes the card (moves it to **Done**). Scratch
   - `forms-and-email.md` — contact + subscribe flows, the SendGrid/Resend adapter, templates, spam/PII handling.
   - `likes-and-mongodb.md` — the cached Mongo client, the `likes`/`contact` collections, visitor de-dup, write safety.
   - `seo-and-metadata.md` — `lib/metadata.ts`, the Contentful `Seo` type, OG/Twitter cards, JSON-LD, locale alternates.
-  - `agent-harness.md` — how to use the agents and commands; the human-gated Trello automation.
+  - `agent-harness.md` — how to use the agents and commands; the human-gated Jira automation.
   - `predica-bibleverse-reuse.md` — how `/predica` dedups scripture: the derived, version-scoped `bibleVerse` `internalName` (`"Joel 2:13 (NVI)"`) + the `--upsert-by-internal-name` CMA flag; cross-sermon reuse + sermon re-run safety.
   - `predica-rerun-idempotency.md` — re-running `/predica` safely: pre-flight transcript reuse by audio hash, **Gate 0** existing-sermon detection, regenerate by **update-in-place** (`--id`) instead of duplicating, and the guarded `delete-contentful.mjs` cleanup of superseded assets + orphaned legacy verses.
   - `predica-voice-profiles.md` — the per-preacher voice-coach learning loop: `predica-voice-coach` (step 2.5) learns the preacher's style from the **corrected transcript only** and maintains a local-only (gitignored), human-curatable two-zone profile (`tasks/predicas/_voices/<preacher-slug>.md`: Zone A human-curated + Zone B append-only log) that the writer reads to compound voice quality. Idempotent, non-blocking, style-only.

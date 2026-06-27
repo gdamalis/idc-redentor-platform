@@ -2,7 +2,7 @@
 
 > **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
 
-> **Purpose:** The hard filter for what the IDC Redentor website is and is not. Every new idea or Trello card is checked against this. When in doubt, this document wins.
+> **Purpose:** The hard filter for what the IDC Redentor website is and is not. Every new idea or Jira issue is checked against this. When in doubt, this document wins.
 > **Last reviewed:** 2026-06-21
 > **Status:** DRAFT — sensible defaults for the maintainer ([@gdamalis](https://github.com/gdamalis)) and church leadership to confirm/refine.
 
@@ -61,6 +61,6 @@ Ticketable but tagged roadmap; revisit deliberately. Tie each to the discoverabi
 
 The `product-manager` agent loads this file on every run and applies it as a filter:
 
-- An idea inside **IN scope** → draft a Trello card.
+- An idea inside **IN scope** → draft a Jira issue.
 - An idea in **OUT of scope** → reject it or offer the reframe above, citing the specific boundary.
-- An idea in **DEFERRED** → card it, tag it roadmap/deferred, and tie it to the discoverability/structured-data thesis.
+- An idea in **DEFERRED** → create an issue, tag it roadmap/deferred, and tie it to the discoverability/structured-data thesis.
