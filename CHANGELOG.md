@@ -1,3 +1,9 @@
+# [1.18.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.17.0...v1.18.0) (2026-06-27)
+
+### Features
+
+- **predica:** re-run idempotency — Gate 0 detect, update-in-place, transcript reuse, guarded cleanup ([#61](https://github.com/gdamalis/idc-redentor-web/issues/61)) ([41e5f2b](https://github.com/gdamalis/idc-redentor-web/commit/41e5f2b98614caaf839ae97086e897dc7134fbd9))
+
 # [1.17.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.16.0...v1.17.0) (2026-06-27)
 
 ### Features
