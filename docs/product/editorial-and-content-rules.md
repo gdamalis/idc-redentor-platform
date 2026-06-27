@@ -19,9 +19,9 @@ Carry the voice from [overview.md](./overview.md) into every piece of copy:
 
 - **Warm, welcoming, hospitable.** Write to a real person who may be visiting a church for the first time. Lead with welcome, then logistics.
 - **Reverent but plain.** Respect the subject; drop the jargon. Avoid denominational insider shorthand and assumed knowledge on public pages — explain gently instead.
-- **Second person, inclusive.** Speak *to* the reader ("vos/usted" per the church's preference — confirm with leadership). Include newcomers and seekers; never make them feel like outsiders.
+- **Second person, inclusive.** Speak _to_ the reader ("vos/usted" per the church's preference — confirm with leadership). Include newcomers and seekers; never make them feel like outsiders.
 - **Honest and unpushy.** No salesy language, no manufactured urgency, no fear-based appeals. Invite; don't pressure.
-- **Scripture is attributed.** Quote with book, chapter, and verse, and keep the Bible version consistent across the site (confirm the church's preferred translation with leadership). The `bibleVerse` field on Credo/ValueItem entries is the place for these.
+- **Scripture is attributed.** Quote with book, chapter, and verse, and keep the Bible version consistent across the site. The church's confirmed translations are **NVI (Nueva Versión Internacional)** in Spanish and **NIV** in English. The `bibleVerse` field on Credo/ValueItem entries is the place for these; sermon scripture is stored as structured `bibleVerse` entries reused across sermons (see `docs/predica-bibleverse-reuse.md`).
 
 ## Doctrinal content guardrail (leadership-owned)
 
@@ -32,7 +32,7 @@ This is the most important content rule on a church site.
 - **Agents and editors must NOT alter doctrinal meaning** — wording of beliefs, theological claims, Scripture selection, or the framing of the gospel. Do not paraphrase doctrine "for clarity," do not invent beliefs, do not soften or sharpen claims.
 - **Surface, don't silently change.** If a doctrinal edit seems warranted (e.g. an awkward sentence in the Creed), propose the change to leadership ([@gdamalis](https://github.com/gdamalis) + leadership) for confirmation rather than editing it directly. When in doubt, treat the text as fixed.
 
-*(This mirrors the general "improve, don't overwrite" editorial standard, recast for theology: improve the presentation, never the meaning.)*
+_(This mirrors the general "improve, don't overwrite" editorial standard, recast for theology: improve the presentation, never the meaning.)_
 
 ## Image guidelines
 

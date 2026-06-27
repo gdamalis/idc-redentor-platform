@@ -67,7 +67,6 @@ scriptureRefs/closing?`. Keys consumed by the Contentful publisher: everything e
   "serviceLabel": { "es-AR": "Culto dominical", "en-US": "Sunday service" },
   "scriptureReferences": [
     {
-      "internalName": "Efesios 2:11-22 · el-perdon-de-jesus",
       "chapter": "2",
       "fromVerse": "11",
       "toVerse": "22",
@@ -121,7 +120,11 @@ scriptureRefs/closing?`. Keys consumed by the Contentful publisher: everything e
   blockquotes, paragraphs). Do not invent other block types. Plain text only inside blocks (no markdown).
 - `mainPoints` and `keywords` are arrays of plain strings, both locales.
 - `scriptureReferences`: `chapter`/`fromVerse`/`toVerse` are **shared** strings (numbers as strings);
-  `book`/`verseContent`/`bibleVersion` are **per-locale**. Omit `toVerse` for a single verse.
+  `book`/`verseContent`/`bibleVersion` are **per-locale**. Omit `toVerse` for a single verse. **Do NOT author
+  an `internalName`** — the publisher derives a stable, version-scoped dedup key from the passage
+  (`"Joel 2:13 (NVI)"`) so identical passages are reused across sermons. Use **full canonical Spanish book
+  names** (`Efesios`, `Mateo`, `1 Corintios`) consistently so those keys match. See
+  `docs/predica-bibleverse-reuse.md`.
 - `lead`, `closing`, `keyQuotes`, `scriptureHeadline`, `scriptureRefs` are PDF-facing; still author them well.
 - `whatsappText` is es-AR, warm, ends with the `{{URL}}` placeholder (the whatsapp step substitutes the
   real canonical URL after publish).

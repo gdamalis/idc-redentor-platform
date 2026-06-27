@@ -10,6 +10,10 @@
  * Duplicated here so this file runs directly under Node ESM with no build step
  * (mirrors build-predica-pdf.mjs).
  *
+ * Each bibleVerse `internalName` is DERIVED from the passage + version
+ * (`buildBibleVerseInternalName`), never the per-sermon slug, so identical passages
+ * share one entry (the publisher upserts on this key). See docs/predica-bibleverse-reuse.md.
+ *
  * Usage:
  *   node .claude/scripts/predica/build-sermon-entry.mjs <sermon.json>                 # validate + summary (dry-run)
  *   node .claude/scripts/predica/build-sermon-entry.mjs <sermon.json> --bible         # → JSON array of bibleVerse {internalName, fields}
@@ -80,9 +84,16 @@ function localizedFrom(sermon, getter) {
   return field;
 }
 
+// Canonical, deterministic dedup key — mirrors src/utils/predica/sermonEntry.ts.
+// "<book es> <chapter>:<fromVerse>[-<toVerse>] (<bibleVersion es>)" e.g. "Joel 2:13 (NVI)".
+export function buildBibleVerseInternalName(ref) {
+  const verses = ref.toVerse ? `${ref.fromVerse}-${ref.toVerse}` : ref.fromVerse;
+  return `${ref["es-AR"].book} ${ref.chapter}:${verses} (${ref["es-AR"].bibleVersion})`;
+}
+
 export function buildBibleVerseFields(ref) {
   const fields = {
-    internalName: atDefault(ref.internalName),
+    internalName: atDefault(buildBibleVerseInternalName(ref)),
     chapter: atDefault(ref.chapter),
     fromVerse: atDefault(ref.fromVerse),
     book: { "es-AR": ref["es-AR"].book, "en-US": ref["en-US"].book },
@@ -146,7 +157,10 @@ export function validateSermonForEntry(raw) {
 
   if (Array.isArray(s.scriptureReferences)) {
     s.scriptureReferences.forEach((r, i) => {
-      if (typeof r?.internalName !== "string") errs.push(`scriptureReferences[${i}].internalName: required string`);
+      // internalName is DERIVED (buildBibleVerseInternalName), so it is optional here;
+      // a stray value from an older sermon.json is tolerated and ignored.
+      if (r?.internalName != null && typeof r.internalName !== "string")
+        errs.push(`scriptureReferences[${i}].internalName: must be a string when present`);
       if (typeof r?.chapter !== "string") errs.push(`scriptureReferences[${i}].chapter: required string`);
       if (typeof r?.fromVerse !== "string") errs.push(`scriptureReferences[${i}].fromVerse: required string`);
       for (const loc of PREDICA_LOCALES) {
@@ -244,7 +258,11 @@ async function main() {
 
   if (wantBible) {
     const refs = Array.isArray(sermon.scriptureReferences) ? sermon.scriptureReferences : [];
-    const out = refs.map((ref) => ({ internalName: ref.internalName, fields: buildBibleVerseFields(ref) }));
+    // internalName is the DERIVED dedup/upsert key — never the writer's (now ignored) value.
+    const out = refs.map((ref) => ({
+      internalName: buildBibleVerseInternalName(ref),
+      fields: buildBibleVerseFields(ref),
+    }));
     process.stdout.write(JSON.stringify(out, null, 2) + "\n");
     return;
   }

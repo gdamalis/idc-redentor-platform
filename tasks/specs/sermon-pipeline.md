@@ -70,7 +70,9 @@
 [4] PUBLISH-DRAFT  Contentful MCP (agent-sandbox, NO publish_*):
                  - upload assets: audio.mp3 (1, non-localized), featuredImage (1),
                    pdf es-AR + pdf en-US (linked into the localized pdfSummary field)
-                 - upsert scriptureReferences as bibleVerse entries with BOTH-locale values
+                 - upsert scriptureReferences as bibleVerse entries with BOTH-locale values,
+                   reused across sermons via a derived, version-scoped `internalName`
+                   ("Joel 2:13 (NVI)") — see docs/predica-bibleverse-reuse.md
                  - create `sermon` entry as DRAFT, both locales, link assets + preacher (author)
                  → returns Contentful entry id + edit URL
      │
@@ -167,7 +169,7 @@ Mirror the blog end-to-end. **All new files copy an existing blog counterpart.**
   scriptureReferencesCollection { items { ... on BibleVerse {
     book chapter fromVerse toVerse verseContent bibleVersion } } }
   ```
-  **Scripture localization (resolved MAJOR):** because the getter fetches **once per locale** with `locale:`, the **same** `scriptureReferences` links resolve `book`/`verseContent`/`bibleVersion` in the queried locale automatically (e.g. _Mateo_/RVR1960 on es-AR vs _Matthew_/NIV on en-US) — **provided the en-US values are populated** on each `bibleVerse` entry. So there are **two distinct scripture surfaces**: (a) **structured** `scriptureReferences` → Contentful localizes; the `predica-publisher` must fill **both** locales when it creates/links `bibleVerse` entries; (b) **inline** body blockquotes + PDF cover/scripture lines → **writer-supplied** per-locale strings. O2 (English Bible version) applies to both.
+  **Scripture localization (resolved MAJOR):** because the getter fetches **once per locale** with `locale:`, the **same** `scriptureReferences` links resolve `book`/`verseContent`/`bibleVersion` in the queried locale automatically (e.g. _Mateo_/NVI on es-AR vs _Matthew_/NIV on en-US) — **provided the en-US values are populated** on each `bibleVerse` entry. So there are **two distinct scripture surfaces**: (a) **structured** `scriptureReferences` → Contentful localizes; the `predica-publisher` must fill **both** locales when it creates/links `bibleVerse` entries; (b) **inline** body blockquotes + PDF cover/scripture lines → **writer-supplied** per-locale strings. O2 (English Bible version) applies to both.
 - `getLatestSermons(locale, { slug?, isDraftMode? })` — for "related/latest" tiles.
 - **`getAllSermons(locale, { isDraftMode? })`** — the full list page. **Use `limit: 100`** (mirroring `getAllBlogPostSlugs`, which uses `limit:100` — there is no truly "unbounded" getter in the codebase; Contentful GraphQL caps collections at 1000/request). Add cursor pagination only if sermon volume approaches 100. (We still avoid the blog **index**'s `limit:3` cap — sermons get the full list, not latest-3.)
 - `getSermon(slug, locale, isDraftMode)` — single.
@@ -347,7 +349,7 @@ Mirror the blog's `buildArticleMetadata` (`lib/metadata.ts:81-123`) as **`buildS
   },
   "associatedMedia": [{ "@type": "AudioObject", "contentUrl": "<audio.url>" }],
   "citation": [
-    /* each scriptureRef as "Efesios 2:11-22 (RVR1960)" — locale-resolved */
+    /* each scriptureRef as "Efesios 2:11-22 (NVI)" — locale-resolved */
   ],
 }
 ```
@@ -386,7 +388,7 @@ interface SermonPdfData {
   thesis: string;
   mainPoints: string[];
   keyQuotes: string[]; // 1–2, verbatim
-  scriptureRefs: string[]; // per-locale, e.g. "Efesios 2:11-22 (RVR1960)" / "Ephesians 2:11-22 (NIV)"
+  scriptureRefs: string[]; // per-locale, e.g. "Efesios 2:11-22 (NVI)" / "Ephesians 2:11-22 (NIV)"
   closing?: string;
 }
 ```
@@ -450,7 +452,7 @@ Source filenames have spaces, accents, caps, and a leading date (e.g. `20260607 
 
 1. **Preserve the preacher's voice.** First person, their phrasing and emphasis. Restructure for readability; do **not** rewrite into generic prose or add doctrine the preacher didn't say.
 2. **Sections** via `heading-2` (major movements), `heading-3` (numbered sub-points), following the sermon's own structure.
-3. **Scripture** as `blockquote` with reference + version inline (es: **RVR1960**; en: **NIV**). Plus structured `scriptureReferences` (`bibleVerse` entries) for the main passage(s), populated in **both** locales.
+3. **Scripture** as `blockquote` with reference + version inline (es: **NVI**; en: **NIV**). Plus structured `scriptureReferences` (`bibleVerse` entries) for the main passage(s), populated in **both** locales.
 4. **1–2 exact pull-quotes** — verbatim "sticky" lines the preacher actually said, as blockquotes. **No more than two.** Must appear in the transcript word-for-word.
 5. **Thesis + 2–5 main points** captured explicitly (they drive the PDF and the SEO description).
 6. **Both locales authored.** English is a faithful, natural translation (meaning-preserving; the audio stays Spanish). Every localized field filled in both — **including** the en-US `bibleVerse` values (NIV) and the en-US PDF.
@@ -500,7 +502,8 @@ Source filenames have spaces, accents, caps, and a leading date (e.g. `20260607 
 All open questions are resolved — the spec is build-ready.
 
 - **O1 — RESOLVED.** PDF asset uses `linkMimetypeGroup: pdfdocument` (verified the valid token; no `application/pdf` group exists).
-- **O2 — RESOLVED.** English Bible version = **NIV** (es stays **RVR1960**). Applies to the en PDF, en `bibleVerse.bibleVersion`, and inline en citations.
+- **O2 — RESOLVED.** Spanish Bible version = **NVI**, English = **NIV** (updated from the original RVR1960
+  decision; see PR #57). Applies to both PDFs, both-locale `bibleVerse.bibleVersion`, and inline citations.
 - **O3 — RESOLVED.** Preview = **option (a)**: review the draft in Contentful's UI → merge `agent-sandbox→master` → use the site's existing draft mode to preview → Publish. **No `fetch.ts` / data-layer change in V1.** (Option (b), wiring on-site preview to `agent-sandbox`, is explicitly deferred.)
 - **O4 — RESOLVED.** Likes use the **namespaced like-key** (`predicas/<slug>`) — zero migration. (The §5.5 Share decoupling is required regardless.)
 - **O5 — RESOLVED.** Upload a transcoded **`.mp3`** web asset; keep the `.m4a` as archive (§9).
