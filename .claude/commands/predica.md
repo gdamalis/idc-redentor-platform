@@ -21,7 +21,7 @@ or auto-skip them. See `tasks/specs/sermon-pipeline.md` §7–§9.
 - **Never write the `master` alias.** All Contentful writes target the `production` env as a DRAFT (server
   backstop: `PROTECTED_ENVIRONMENTS=master,production`).
 - **Secret hygiene.** Never print the CMA token, Mongo URI, or any secret — reference variable names only.
-  Per-sermon working files live under `tasks/predicas/<slug>/` (gitignored); temp files use `600` perms.
+  Per-sermon working files live under `tasks/predicas/<sermonDate>_<slug>/` (gitignored); temp files use `600` perms.
 - **`--dry-run`** stops after the PDFs (step 4) — **no Contentful writes, no WhatsApp finalize**. It prints
   every action it would take.
 
@@ -52,19 +52,20 @@ or auto-skip them. See `tasks/specs/sermon-pipeline.md` §7–§9.
      `ffprobe`). You will **skip step 1 (transcribe) and Gate 1** — tell the user you are reusing their
      corrected transcript, only regenerating the downstream content (title, summaries, scripture, PDFs,
      featured image, draft).
-   - **No match** (a new recording, or a *different* file for the same Sunday → treat as fresh) →
+   - **No match** (a new recording, or a _different_ file for the same Sunday → treat as fresh) →
      `reuseTranscript = false`. Derive a provisional slug from the filename (transliterate, lowercase,
-     dash-collapse) and `mkdir -p <artifactsDir>/<provisional-slug>/` (temp dir; the writer's title-derived
-     slug is canonical — reconcile in step 3). Run steps 1–2 normally.
+     dash-collapse) and `mkdir -p <artifactsDir>/<sermonDate>_<provisional-slug>/` (temp dir, date-prefixed
+     with the `sermonDate` resolved in step 2; the writer's title-derived slug is canonical — reconcile the
+     dir name in step 3). Run steps 1–2 normally.
 
-## 1. Transcribe — (subagent: `config.predica.agents.transcriber`) — *skip when `reuseTranscript`*
+## 1. Transcribe — (subagent: `config.predica.agents.transcriber`) — _skip when `reuseTranscript`_
 
 If `reuseTranscript` (pre-flight step 5), **skip this step entirely** — the corrected transcript already
 exists in `slugDir`. Otherwise dispatch `predica-transcriber` with `audioPath`, `slugDir`, and
 `config.predica.{whisper,audio}`. It returns `{ durationSeconds, transcriptTxt, audioMp3, archive,
 sourceSha256, … }`. Surface the transcript path and duration; keep `sourceSha256` to record in `links.json`.
 
-## 2. ★ HUMAN GATE 1 — correct the transcript ★ — *skip when `reuseTranscript`*
+## 2. ★ HUMAN GATE 1 — correct the transcript ★ — _skip when `reuseTranscript`_
 
 If `reuseTranscript`, **skip this gate** — the human already corrected this transcript on the prior run (the
 recording is byte-identical). Otherwise print the absolute path to `transcript.txt` and ask the user
@@ -86,8 +87,11 @@ Then **validate + reconcile** (Bash):
 
 - `node <config.predica.entryBuilder> <slugDir>/sermon.json` — must exit 0 (schema valid). On errors, show
   them and re-dispatch the writer to fix (max 2 attempts) before stopping.
-- If the writer's canonical slug differs from the provisional dir name, rename the dir to the canonical slug
-  and update `slugDir`. Re-run the PDF/publisher against the canonical paths.
+- Reconcile the artifacts dir name to **`<sermonDate>_<canonicalSlug>`** (date-prefixed so
+  `tasks/predicas/` self-sorts chronologically by name). If `basename(slugDir)` differs from that, `mv` the
+  dir to it and update `slugDir`; re-run the PDF/publisher against the canonical paths. The date prefix is
+  **only** for local folder organization — `sermon.json.slug` stays the **bare** canonical slug (no date),
+  and that bare slug alone drives the Contentful `fields.slug` and the public URL `/es-AR/predicas/<slug>`.
 - Show the user a one-glance sanity line: title (es/en), thesis, main points, key quotes, scripture refs.
 
 ## 3.5 ★ HUMAN GATE 0 — already in Contentful? (regenerate-in-place) ★
@@ -107,7 +111,6 @@ Now that the **canonical slug** exists, check whether this sermon was already pu
    > you made at Gate 2 — corrected text, a replaced featured photo, the publish — **will be overwritten**
    > (if it was published, you'll need to **Publish again** to push the new content live). Proceed?
    > And the **featured image**: regenerate it, or keep the one currently on the entry?"
-
    - **Proceed** → `mode = "update"`, `entryId = <the chosen entry>`. Set `replaceFeatured` from the answer
      (default regenerate; `false` keeps the entry's current image). If the human flags duplicates for cleanup,
      collect those `-N` entry ids to delete after the update succeeds (via `config.predica.entryDeleter`).

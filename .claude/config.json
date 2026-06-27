@@ -372,7 +372,7 @@
     "audioInbox": "/Users/gabriel/Documents/Church/Redentor/02 - Vida en Comunidad/Cultos/Predicas",
     "audioInboxNote": "Where Sunday recordings land. `/predica` with no path picks the NEWEST audio file here. Spaces/accents in filenames are expected; the slug is derived from the TITLE, not the filename (§7.1).",
     "artifactsDir": "tasks/predicas",
-    "artifactsDirNote": "Per-sermon working dir tasks/predicas/<slug>/ holds the WAV (throwaway), transcript.{txt,srt,json}, audio.mp3, the original .m4a archive copy, sermon.json, both PDFs, contentful-entry artifacts, and whatsapp.txt. gitignored (large, not source).",
+    "artifactsDirNote": "Per-sermon working dir tasks/predicas/<sermonDate>_<slug>/ holds the WAV (throwaway), transcript.{txt,srt,json}, audio.mp3, the original .m4a archive copy, sermon.json, both PDFs, contentful-entry artifacts, and whatsapp.txt. The dir is date-prefixed (YYYY-MM-DD_slug) for chronological self-sorting; the public slug/URL stays bare — only the folder carries the date. gitignored (large, not source).",
     "contentType": "sermon",
     "contentfulSpaceId": "vg9le24yw8hb",
     "contentfulEnv": "production",
