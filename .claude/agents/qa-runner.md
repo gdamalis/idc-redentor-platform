@@ -89,7 +89,7 @@ The Playwright projects (`e2ePublic`, `e2eBlog`, `apiLikes`, `apiForms`) are def
 Resolve the target from the passed `env` (or the `previewUrl` deprecated alias, which maps to `env.name=preview`). Read every threshold from `env`, never a hardcoded literal:
 
 - If `env.baseUrl` is supplied: extract its hostname and validate it with the **passed** `env` fields.
-  1. Require the host to match `env.baseUrlHostAllow` — `preview`: `^[a-z0-9-]+\.vercel\.app$`; `staging`: `^staging\.idcredentor\.com$` (read from `env`, do not hardcode).
+  1. Require the host to match `env.baseUrlHostAllow` — `preview`: `^[a-z0-9-]+\.vercel\.app$`; `staging`: `^staging\.idcredentor\.org$` (read from `env`, do not hardcode).
   2. **Production hard-deny (every env):** reject any host in `env.productionHostDeny` — the production `*.vercel.app` aliases (`idc-redentor-website.vercel.app`, `idc-redentor-web.vercel.app`) AND the `idcredentor` custom domains. This applies for BOTH preview and staging.
   3. **Preview-environment check — only when `env.requirePreviewEnvironment === true`** (preview): treat a bare `<project>.vercel.app` host as production and require a confirmed Preview deployment (target=preview). For `staging`, `env.requirePreviewEnvironment` is `false` — staging is NOT a Vercel preview, so SKIP this check (the prod hard-deny in step 2 still applies).
 
@@ -262,7 +262,7 @@ Keep entries terse. Triage gathers context.
 - Never pass any secret/token as a CLI argv (it leaks into `ps`). Never enable `set -x` or any shell tracing.
 - Never call `drop-collection`, `drop-database`, `rename-collection`, `update-many`, `delete-many`, or `insert-many`. If you think you need one, surface to the user.
 - **No Mongo writes in Phase 1.** Never read a DB whose name is `website` or doesn't match the active `env.dbNameAllow` (`^website-(test|qa|e2e)$` for preview; `^website-(test|qa|e2e|staging)$` for staging, which includes `website-staging`). The MongoDB safety section above is mandatory before any read.
-- Only run against an allowlisted target per the active `env`: a `*.vercel.app` **preview**, `staging.idcredentor.com` (**staging**), or **local dev**. The prod hard-deny (`env.productionHostDeny`: custom domains AND production `*.vercel.app` aliases) applies in EVERY env; run the preview-environment check ONLY when `env.requirePreviewEnvironment === true` (staging skips it). Never run against a production `idcredentor` host or a production Vercel alias.
+- Only run against an allowlisted target per the active `env`: a `*.vercel.app` **preview**, `staging.idcredentor.org` (**staging**), or **local dev**. The prod hard-deny (`env.productionHostDeny`: custom domains AND production `*.vercel.app` aliases) applies in EVERY env; run the preview-environment check ONLY when `env.requirePreviewEnvironment === true` (staging skips it). Never run against a production `idcredentor` host or a production Vercel alias.
 - Depth NEVER skips — it is an effort dial. There is no `light = skip` tier; every run produces evidence.
 - Never modify `apps/web/playwright.config.ts` or existing specs. Only ADD new specs.
 - Never push directly to `main`. You run inside the feature branch's worktree.

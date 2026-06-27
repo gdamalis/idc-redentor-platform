@@ -21,7 +21,7 @@ import {
   buildEventJsonLd,
 } from "./metadata";
 
-const BASE_URL = "https://idcredentor.org";
+const BASE_URL = "https://www.idcredentor.org";
 
 beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_BASE_URL", BASE_URL);
@@ -130,9 +130,9 @@ describe("buildOrganizationJsonLd", () => {
     expect(ld.image).toBe(`${BASE_URL}/assets/img/og_default.jpeg`);
   });
 
-  it("sets email to info@idcredentor.com", () => {
+  it("sets email to info@idcredentor.org", () => {
     const ld = buildOrganizationJsonLd("es-AR");
-    expect(ld.email).toBe("info@idcredentor.com");
+    expect(ld.email).toBe("info@idcredentor.org");
   });
 
   it('sets address @type to "PostalAddress"', () => {

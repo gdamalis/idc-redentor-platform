@@ -15,7 +15,7 @@ The ticket key is in `$1` (e.g., `ICR-45`). If empty, ask the user. `ICR-N` is a
 ## Hard rules (read first)
 
 - **Merge is user-triggered ONLY** (`config.merge.requireUserTrigger`). Nothing here is autonomous;
-  `config.qaLoop.autoMerge.enabled` stays `false`. This command *is* the human trigger.
+  `config.qaLoop.autoMerge.enabled` stays `false`. This command _is_ the human trigger.
 - **Squash ONLY** (`config.merge.method === "squash"`, `config.merge.squashOnly === true`). Never a
   merge-commit, never a rebase-merge.
 - **Refuse to merge on red CI** when `config.merge.requireCiGreen` is `true` (the default). Pending CI is
@@ -39,10 +39,10 @@ The ticket key is in `$1` (e.g., `ICR-45`). If empty, ask the user. `ICR-N` is a
      `requirePreviewEnvironment`, `liveIntegrationPolicy`, `mongoMcp`, `dbNameAllow`.
    - `config.qaLoop.reviewAgents.acceptance` — the judge agent name (`acceptance-judge`).
    - `config.paths` — `qaEnv` (`qa-env.json`), `specs`, etc.
-   **Hard-stop** with `Phase 0 config missing — add config.merge / tracker.lists.inTesting / config.qaLoop.env.staging first`
-   if any of `config.merge`, `config.tracker.lists.inTesting`, or `config.qaLoop.env.staging` is absent.
-   **Hard-stop** if `config.merge.requireUserTrigger !== true` (a safety assertion — this command must only
-   exist as a user-gated path).
+     **Hard-stop** with `Phase 0 config missing — add config.merge / tracker.lists.inTesting / config.qaLoop.env.staging first`
+     if any of `config.merge`, `config.tracker.lists.inTesting`, or `config.qaLoop.env.staging` is absent.
+     **Hard-stop** if `config.merge.requireUserTrigger !== true` (a safety assertion — this command must only
+     exist as a user-gated path).
 2. Validate `$1` matches `ICR-\d+` (case-insensitive → upper-case). Extract `N` (the numeric `idShort`).
    If it doesn't match, stop and ask the user.
 3. **Resolve `MAIN_REPO_ROOT`** — `git rev-parse --git-common-dir` then take its `dirname`. This returns
@@ -110,7 +110,7 @@ step 4 cleans those up.
 
 > **Why this is delicate:** the local feature branch cannot be deleted while a worktree has it checked
 > out, and you must **not** delete the worktree you are currently running inside. So: anchor every git op
-> to `MAIN_REPO_ROOT` (pinned in pre-flight), and if `/merge` is running *inside* the target ticket's
+> to `MAIN_REPO_ROOT` (pinned in pre-flight), and if `/merge` is running _inside_ the target ticket's
 > worktree, leave it first. `--delete-branch` already removed the remote branch; this step clears the
 > local worktree + local branch.
 
@@ -119,7 +119,7 @@ When `config.merge.deleteWorktreeAndBranch` is `true`:
 1. The target worktree path is `${MAIN_REPO_ROOT}/.claude/worktrees/ICR-N`.
 2. **If the current session is running INSIDE that worktree** (compare the current `git rev-parse --show-toplevel`
    to the target worktree path): leave it first — call `ExitWorktree(action: "remove")` (load via ToolSearch
-   `select:ExitWorktree`). `ExitWorktree` switches the session's cwd back to the main repo *before* removing
+   `select:ExitWorktree`). `ExitWorktree` switches the session's cwd back to the main repo _before_ removing
    the worktree, so the shell is never stranded in a deleted directory. If `ExitWorktree` is unavailable,
    **instruct the user** to leave the worktree (or re-run `/merge` from the main checkout) and stop — do
    **not** try to `rm` the cwd out from under the running shell.
@@ -130,6 +130,7 @@ When `config.merge.deleteWorktreeAndBranch` is `true`:
    git -C "${MAIN_REPO_ROOT}" branch -D "<branch>"
    git -C "${MAIN_REPO_ROOT}" worktree prune
    ```
+
    - `worktree remove --force` is safe here because the squash-merge already consumed the branch's work
      (it's on `main`); there is no unmerged content to lose.
    - `branch -D <branch>` clears the **local** branch (the remote one is already gone via `--delete-branch`).
@@ -137,7 +138,7 @@ When `config.merge.deleteWorktreeAndBranch` is `true`:
 4. **Tolerate "already gone" non-fatally.** If the worktree or branch was already removed (e.g. a prior
    partial run), log it and continue — cleanup is idempotent and must not abort the rest of the flow.
 
-## 5. Move In Review → In Testing  (AUTOMATED MOVE #3)
+## 5. Move In Review → In Testing (AUTOMATED MOVE #3)
 
 This is the **only** automated Trello move `/merge` owns, and it happens **only after a verified
 squash-merge** (steps 3–4 succeeded).
@@ -156,13 +157,13 @@ mcp__trello__move_card(
 
 ## 6. Post-merge staging QA
 
-Staging QA proves the merged change on `staging.idcredentor.com`. **Staging is NOT a Vercel preview** — it
+Staging QA proves the merged change on `staging.idcredentor.org`. **Staging is NOT a Vercel preview** — it
 has its own host allowlist and **skips** the `requirePreviewEnvironment` check, but the production hard-deny
 still applies.
 
 1. **Resolve + validate the staging URL.** Read the base URL from `qa-env.json` →
    `config.qaLoop.env.staging.baseUrlFrom` (`staging.baseUrl`). Validate the host:
-   - host **matches** `config.qaLoop.env.staging.baseUrlHostAllow` (`^staging\.idcredentor\.com$`), **and**
+   - host **matches** `config.qaLoop.env.staging.baseUrlHostAllow` (`^staging\.idcredentor\.org$`), **and**
    - host is **NOT** in `config.qaLoop.env.staging.productionHostDeny` (custom domains AND prod
      `*.vercel.app` aliases).
    - **Do NOT run the `requirePreviewEnvironment` check** — for staging it is `false` (staging is not a
@@ -172,14 +173,14 @@ still applies.
 2. **Parse the ACs** — `mcp__trello__get_acceptance_criteria(cardId)` (and `get_card` desc for context).
 3. **Dispatch a fresh `qa-acceptance` tester** (Task tool — one agent, fresh context) with:
    - `env = { name: "staging", baseUrl: <stagingUrl>, target: "staging", isPreview: false,
-     baseUrlHostAllow: envStaging.baseUrlHostAllow, productionHostDeny: envStaging.productionHostDeny,
-     requirePreviewEnvironment: false, mongoMcp: envStaging.mongoMcp,
-     dbNameAllow: envStaging.dbNameAllow /* ^website-(test|qa|e2e|staging)$ */,
-     liveIntegrationPolicy: "no-POST" }`
+baseUrlHostAllow: envStaging.baseUrlHostAllow, productionHostDeny: envStaging.productionHostDeny,
+requirePreviewEnvironment: false, mongoMcp: envStaging.mongoMcp,
+dbNameAllow: envStaging.dbNameAllow /* ^website-(test|qa|e2e|staging)$ */,
+liveIntegrationPolicy: "no-POST" }`
    - `ticketId: "ICR-N"`, `summary` (card title), `acceptanceCriteria`, `depth` (from the card's QA Depth
      or `config.qaDepth.default`), `mode: "report"`, `dryRun: false`, `mainRepoRoot: MAIN_REPO_ROOT`, `runId`.
-   The tester re-validates the staging host defensively, reads any URIs from `qa-env.json` itself, and
-   returns its **evidence bundle** (block-1 JSON + a Markdown fallback comment).
+     The tester re-validates the staging host defensively, reads any URIs from `qa-env.json` itself, and
+     returns its **evidence bundle** (block-1 JSON + a Markdown fallback comment).
 4. **Dispatch the acceptance-judge** — `config.qaLoop.reviewAgents.acceptance` (`acceptance-judge`, fresh
    Task) with the tester's **evidence bundle**, the card's `acceptanceCriteria`, `cardId`, `ticketId: "ICR-N"`,
    and `envName: "staging"`. It returns the **authoritative** `overall: pass | partial | fail` verdict + a
@@ -196,23 +197,25 @@ Build the payload (same renderer as `/qa` and `/work`):
   "cardId": "<trello card id>",
   "cardShortLink": "<shortLink>",
   "ticketKey": "ICR-N",
-  "qaEnvPath": "<config.paths.qaEnv>",      // "qa-env.json"
+  "qaEnvPath": "<config.paths.qaEnv>", // "qa-env.json"
   "configPath": ".claude/config.json",
   "dryRun": false,
   "meta": {
     "title": "<card title>",
     "testedAt": "<iso, e.g. $(date +'%Y-%m-%d %H:%M')>",
-    "envName": "staging",                    // REQUIRED — drives the "Staging:" label; script exits 2 if absent
+    "envName": "staging", // REQUIRED — drives the "Staging:" label; script exits 2 if absent
     "host": "<staging host>",
-    "targetUrl": "<stagingUrl>",             // the "Staging:" link (previewUrl is the back-compat alias)
+    "targetUrl": "<stagingUrl>", // the "Staging:" link (previewUrl is the back-compat alias)
     "testType": "<from the tester>",
     "buildUnderTest": "staging <merged sha>",
     "mode": "report",
     "runId": "<run id>",
-    "postedBy": "/merge"                      // provenance footer — not mislabeled as /qa
+    "postedBy": "/merge", // provenance footer — not mislabeled as /qa
   },
-  "result": { /* judge overall→status + perAC mapped to {n,text,type,result,notes} + summary + blockers + observations */ },
-  "evidence": [ { "path": "<abs screenshot>", "caption": "…", "ac": 1 } ]
+  "result": {
+    /* judge overall→status + perAC mapped to {n,text,type,result,notes} + summary + blockers + observations */
+  },
+  "evidence": [{ "path": "<abs screenshot>", "caption": "…", "ac": 1 }],
 }
 ```
 
@@ -224,8 +227,8 @@ Build the payload (same renderer as `/qa` and `/work`):
 - `node .claude/scripts/qa/post-trello-result.mjs <payloadFile>`:
   - **Exit 0** → posted (screenshots attached + comment).
   - **Exit 3 (`CREDS_ABSENT`)** or **any non-zero** → fall back to `mcp__trello__add_comment(cardId, text=<block 2>)`
-    + `mcp__trello__attach_image_to_card` per screenshot. Note in the summary that REST posting needs
-    `qa-env.json → trello.{apiKey,token}`.
+    - `mcp__trello__attach_image_to_card` per screenshot. Note in the summary that REST posting needs
+      `qa-env.json → trello.{apiKey,token}`.
   - Always delete the temp payload file in a `finally`-style step.
 
 > If Phase 3's `post-trello-result.mjs` parameterization were absent at runtime (it ships in Phase 3), the
@@ -235,6 +238,7 @@ Build the payload (same renderer as `/qa` and `/work`):
 ## 8. Final summary (to the user)
 
 Report:
+
 - PR #`<n>` **squash-merged**; remote + local branch and the worktree removed.
 - Card moved **In Review → In Testing** (Trello comment link).
 - Staging QA verdict: **PASS / PARTIAL / FAIL / BLOCKED** (+ the posted Trello comment link). Note that

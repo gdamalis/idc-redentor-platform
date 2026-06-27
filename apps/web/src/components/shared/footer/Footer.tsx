@@ -117,10 +117,10 @@ export const Footer = ({ content }: FooterProps) => {
               <li className="flex items-center gap-3">
                 <Mail className="w-5 h-5 text-primary shrink-0" />
                 <a
-                  href="mailto:info@idcredentor.com"
+                  href="mailto:info@idcredentor.org"
                   className="hover:text-primary transition-colors"
                 >
-                  info@idcredentor.com
+                  info@idcredentor.org
                 </a>
               </li>
             </ul>

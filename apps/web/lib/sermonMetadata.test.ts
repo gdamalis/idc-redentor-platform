@@ -16,7 +16,7 @@ vi.mock("./contentful/draftMode", () => ({
 
 import { buildSermonMetadata, buildSermonJsonLd, formatIsoDuration } from "./sermonMetadata";
 
-const BASE_URL = "https://idcredentor.org";
+const BASE_URL = "https://www.idcredentor.org";
 
 // Inject NEXT_PUBLIC_BASE_URL into process.env for tests
 beforeEach(() => {
