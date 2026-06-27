@@ -7,8 +7,10 @@
 IDC Redentor is the official bilingual (es-AR / en-US) website of Iglesia de Cristo Redentor: a content-managed informational church site with a blog, community/Creed content, a worship-service location page, a newsletter signup, and a contact form. It is the church's first custom website.
 
 - Stack: **Next.js 16** (App Router) + **React 19** + **Contentful** (CMS) + **Tailwind CSS 4** + **next-intl**
-- Version: 1.10.0 (from `package.json`)
+- Version: 1.20.0 (from the root `package.json`)
 - Node: 22.14.0 (`.nvmrc`) · Package manager: **pnpm** · Host: **Vercel** (production + per-PR preview deploys)
+
+> **Monorepo layout:** this repo is a **pnpm + Turborepo** workspace. The website lives entirely under **`apps/web/`** — every app path in this guide (`src/`, `lib/`, `public/`, `config/`, `next.config.ts`, `tsconfig.json`, `vitest.config.ts`, `playwright.config.ts`, …) resolves **under `apps/web/`** unless stated otherwise. The repo root holds the workspace files (`pnpm-workspace.yaml`, `turbo.json`, root `package.json` with the released version + Turbo-proxy scripts), the `.claude/` harness, `docs/`, and `tasks/`. Bare `pnpm <task>` at root proxies through Turbo across the workspace; scope to the site with `pnpm --filter @idcr/web <task>`. Vercel builds with **Root Directory = `apps/web`**.
 
 ## No Auth / No AI / No Payments
 
