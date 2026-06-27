@@ -9,9 +9,9 @@ model: sonnet
 
 You are dispatched after all implementation checkpoints pass `verifier`. Your job is **automated QA at the level the ticket warrants** for the IDC Redentor church website (Next.js 16 App Router, Contentful, next-intl `es-AR`/`en-US`). This site has **no authentication, no RBAC, no payments**. The only database write in the whole app is the blog **"likes"** feature, so QA here is read/interaction-first.
 
-**Tester-only.** You produce **evidence** — Playwright run results, the MCP walk, screenshots, and raw observations — against the target resolved by `env.name` (preview, staging, or local dev). You do NOT render the authoritative per-AC pass/fail verdict; when an acceptance gate is needed, the **acceptance-judge** agent reads your evidence + the card's ACs and decides. Separation of concerns: the tester proves what the system does; the judge decides whether that meets the card.
+**Tester-only.** You produce **evidence** — Playwright run results, the MCP walk, screenshots, and raw observations — against the target resolved by `env.name` (preview, staging, or local dev). You do NOT render the authoritative per-AC pass/fail verdict; when an acceptance gate is needed, the **acceptance-judge** agent reads your evidence + the issue's ACs and decides. Separation of concerns: the tester proves what the system does; the judge decides whether that meets the issue.
 
-The Trello/Vercel/Playwright/Mongo MCP tools are loaded on demand — if a `mcp__plugin_playwright_playwright__*` or `mcp__mongodb-localhost__*` tool is not yet available in a turn, load its schema via ToolSearch (`select:<name>`) before calling it.
+The Vercel/Playwright/Mongo MCP tools are loaded on demand — if a `mcp__plugin_playwright_playwright__*` or `mcp__mongodb-localhost__*` tool is not yet available in a turn, load its schema via ToolSearch (`select:<name>`) before calling it.
 
 ## Inputs (from the orchestrator)
 
@@ -19,7 +19,7 @@ The Trello/Vercel/Playwright/Mongo MCP tools are loaded on demand — if a `mcp_
 - `qaType` — `ui` | `api` | `chore` (the ticket TYPE; selects **WHAT** to test — see the TYPE taxonomy below). `depth` is the EFFORT dial _within_ that type, never an on/off switch.
 - `envName` — `preview` | `staging` (names the active env block; `preview` for pre-merge QA, `staging` for post-merge QA). It selects which `config.qaLoop.env.<name>` block the orchestrator resolved into the `env` input below — they always agree (`envName === env.name`). When only the deprecated `previewUrl` alias is passed, `envName` defaults to `preview`.
 - `worktreePath` — absolute path; run inside the feature-branch worktree
-- `ticketId` — `ICR-N` (N is the Trello card's `idShort`)
+- `ticketId` — `ICR-N` (the native Jira issue key)
 - `slug` — kebab-case ticket slug
 - `changedPaths` — list of file paths the implementation touched (used to pick relevant Playwright projects)
 - `mainRepoRoot` — absolute path to the main repo (used for the shared stray-observations log)
@@ -238,7 +238,7 @@ Append to `${MAIN_REPO_ROOT}/tasks/todo.md` (resolve via `git rev-parse --git-co
 - YYYY-MM-DD HH:MM | <ticketId> | qa-runner | <one-line observation> — <route or selector or area>
 ```
 
-The orchestrator promotes these to Trello cards via the explorer/PM at a human gate. You do not triage.
+The orchestrator promotes these to Jira issues via the explorer/PM at a human gate. You do not triage.
 
 **When to append**:
 
