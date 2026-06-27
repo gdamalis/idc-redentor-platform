@@ -1,4 +1,6 @@
 import { fetchGraphQL } from "./fetch";
+import { isValidSlug } from "./slug";
+import { isValidLocale } from "@src/i18n/config";
 
 const GRAPHQL_FIELDS = `
   title
@@ -94,9 +96,10 @@ export async function getLatestBlogPostPages(
     isDraftMode?: boolean;
   },
 ) {
-  const whereClause = options?.slug
-    ? `where: { slug_not: "${options.slug}" },`
-    : "";
+  const whereClause =
+    options?.slug && isValidSlug(options.slug)
+      ? `where: { slug_not: "${options.slug}" },`
+      : "";
 
   const data = await fetchGraphQL(
     `query {
@@ -153,6 +156,8 @@ export async function getBlogPostPage(
   locale: string,
   isDraftMode = false,
 ) {
+  if (!isValidSlug(slug) || !isValidLocale(locale)) return undefined;
+
   const data = await fetchGraphQL(
     `query {
         blogPostPageCollection(

@@ -188,6 +188,16 @@ describe("getSermon", () => {
 
     expect(result).toBeUndefined();
   });
+
+  it("rejects malformed slugs and locales without querying (injection guard)", async () => {
+    for (const badSlug of ['a" }) { __typename } #', "Bad Slug", "../x", '"']) {
+      expect(await getSermon(badSlug, "es-AR")).toBeUndefined();
+    }
+    for (const badLocale of ["fr-FR", "/evil.com", '" }']) {
+      expect(await getSermon("la-gracia-de-dios", badLocale)).toBeUndefined();
+    }
+    expect(mockFetchGraphQL).not.toHaveBeenCalled();
+  });
 });
 
 describe("getLatestSermons", () => {

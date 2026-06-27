@@ -1,4 +1,6 @@
 import { fetchGraphQL } from "./fetch";
+import { isValidSlug } from "./slug";
+import { isValidLocale } from "@src/i18n/config";
 import type { Sermon } from "@src/types/Sermon";
 
 const GRAPHQL_FIELDS = `
@@ -219,6 +221,8 @@ export async function getSermon(
   locale: string,
   isDraftMode = false,
 ): Promise<Sermon | undefined> {
+  if (!isValidSlug(slug) || !isValidLocale(locale)) return undefined;
+
   const data = await fetchGraphQL(
     `query {
       sermonCollection(
@@ -252,9 +256,10 @@ export async function getLatestSermons(
     isDraftMode?: boolean;
   } = {},
 ): Promise<Sermon[]> {
-  const whereClause = options?.slug
-    ? `where: { slug_not: "${options.slug}" },`
-    : "";
+  const whereClause =
+    options?.slug && isValidSlug(options.slug)
+      ? `where: { slug_not: "${options.slug}" },`
+      : "";
 
   const data = await fetchGraphQL(
     `query {

@@ -1,9 +1,6 @@
 import { fetchGraphQL } from "./fetch";
-
-// `slug` is a user-controlled route param interpolated into the hand-written GraphQL query, so
-// validate it against the same kebab-case shape the Contentful slug field enforces before use.
-// Anything else (incl. characters that could break out of the string) resolves to "not found".
-const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+import { isValidSlug } from "./slug";
+import { isValidLocale } from "@src/i18n/config";
 
 const GRAPHQL_FIELDS = `
   name
@@ -110,7 +107,7 @@ export async function getChurchInfoTopic(
   locale: string,
   isDraftMode = false,
 ): Promise<ChurchInfoTopic | undefined> {
-  if (!SLUG_PATTERN.test(slug)) return undefined;
+  if (!isValidSlug(slug) || !isValidLocale(locale)) return undefined;
 
   const data = await fetchGraphQL(
     `query {
