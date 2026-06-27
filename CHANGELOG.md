@@ -1,3 +1,9 @@
+# [1.19.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.18.0...v1.19.0) (2026-06-27)
+
+### Features
+
+- **predica:** date-prefix artifact folders (YYYY-MM-DD_slug), decoupled from public slug ([#62](https://github.com/gdamalis/idc-redentor-web/issues/62)) ([4397c81](https://github.com/gdamalis/idc-redentor-web/commit/4397c819ef595b0dcd6caec56942f8f63a70a59b))
+
 # [1.18.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.17.0...v1.18.0) (2026-06-27)
 
 ### Features
