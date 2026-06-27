@@ -29,11 +29,11 @@ jobs:
           {
             echo "## production -> staging (refresh candidates)"
             echo '```'
-            node scripts/contentful/sync-entries.mjs --from production --to staging || true
+            node apps/web/scripts/contentful/sync-entries.mjs --from production --to staging || true
             echo '```'
             echo "## staging -> production (promotion candidates)"
             echo '```'
-            node scripts/contentful/sync-entries.mjs --from staging --to production || true
+            node apps/web/scripts/contentful/sync-entries.mjs --from staging --to production || true
             echo '```'
           } > drift.md
           # "drift present" = any [new]/[changed]/[target] line in the report
