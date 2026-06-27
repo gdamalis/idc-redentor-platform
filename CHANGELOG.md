@@ -1,3 +1,9 @@
+# [1.17.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.16.0...v1.17.0) (2026-06-27)
+
+### Features
+
+- **predica:** reuse identical bibleVerse entries via derived internalName + CMA upsert ([#60](https://github.com/gdamalis/idc-redentor-web/issues/60)) ([b906e57](https://github.com/gdamalis/idc-redentor-web/commit/b906e57655e421783050adf2cd81fe7ca0944836))
+
 # [1.16.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.15.1...v1.16.0) (2026-06-26)
 
 ### Features
