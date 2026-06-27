@@ -18,7 +18,7 @@ detection happens in two places:
 1. **Transcript reuse — pre-flight, by audio hash.** The orchestrator computes `sha256` of the incoming audio
    and scans `tasks/predicas/*/` (comparing `links.json.sourceSha256`, else hashing each `source.*`). On a
    match with a non-empty `transcript.txt`, it **reuses that corrected transcript and skips transcription +
-   Gate 1**, regenerating only the downstream content. A *different* recording for the same Sunday won't match
+   Gate 1**, regenerating only the downstream content. A _different_ recording for the same Sunday won't match
    and is treated as fresh (re-transcribe + Gate 1). The transcriber also refuses to overwrite an existing
    `transcript.txt` as a backstop.
 2. **Sermon detection — ★ Gate 0, after the writer.** With the canonical slug known, the orchestrator looks the
@@ -57,7 +57,11 @@ The publisher's MCP allowlist is read-only; all deletes go through this one comm
   (`links_to_entry` / `links_to_asset`). This is what keeps a **shared** verse (cited by another sermon or the
   Creed) safe — guarded ids are skipped, not fatal.
 
-## The manifest — `tasks/predicas/<slug>/links.json`
+## The manifest — `tasks/predicas/<sermonDate>_<slug>/links.json`
+
+> The per-sermon dir is date-prefixed (`<sermonDate>_<slug>`, e.g. `2026-06-07_el-deseo-mas-profundo-de-dios`)
+> so `tasks/predicas/` self-sorts chronologically; the public slug/URL stays bare. Re-run detection matches by
+> `sourceSha256`, not by folder name, so the prefix never affects idempotency.
 
 Records `preacherId`, `scriptureRefIds[]`, `pdfAssetIds{es-AR,en-US}`, `audioAssetId`, `featuredImageAssetId`,
 plus the re-run fields `sermonEntryId` and `sourceSha256`. Cleanup treats it as a **hint** — when fields are

@@ -48,7 +48,9 @@ both the branded PDFs and the Contentful draft. You write content; you never pub
 Derive the slug from the **title** (not the filename): transliterate accents (`Prédica→predica`,
 `perdón→perdon`), lowercase, replace every non-alphanumeric run with `-`, collapse repeats, trim leading/
 trailing `-`. The date is **not** part of the slug. Must match `^[a-z0-9]+(?:-[a-z0-9]+)*$`. Your slug is
-**canonical** — the orchestrator reconciles the artifacts dir to it.
+**canonical** — the orchestrator reconciles the artifacts dir to it. (The orchestrator names the on-disk
+**folder** `<sermonDate>_<slug>` for chronological organization, but the `slug` field you write stays **bare**,
+no date — it drives the Contentful slug and the public URL.)
 
 ## sermon.json contract (write EXACTLY this shape)
 
