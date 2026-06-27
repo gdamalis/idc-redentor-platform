@@ -21,4 +21,4 @@ Steps:
    `pnpm build` for `standard`/`heavy` (commands resolved from `config.commands`; note ICR's `type-check`
    hyphen).
 
-Do NOT touch git, the PR, or Trello. This is **read-only** validation.
+Do NOT touch git, the PR, or Jira. This is **read-only** validation.

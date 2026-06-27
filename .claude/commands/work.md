@@ -1,5 +1,5 @@
 ---
-description: Pull a Trello card and drive it through spec → plan → implement → verify → QA → PR. Two human gates (brainstorm + spec review). Two automated Trello moves; never Done.
+description: Pull a Jira issue and drive it through spec → plan → implement → verify → QA → PR. Two human gates (brainstorm + spec review). Two automated Jira transitions; never Done.
 argument-hint: ICR-N
 ---
 
@@ -9,40 +9,40 @@ argument-hint: ICR-N
 
 This command is the orchestrator playbook. **You (the main thread) follow it step by step.** Spawn subagents only at the points marked `(subagent: …)`. Human gates (★) stay in this conversation — never delegate them.
 
-The ticket key is in `$1` (e.g., `ICR-45`). If empty, ask the user.
+The issue key is in `$1` (e.g., `ICR-45`). If empty, ask the user.
 
-Task tracking lives in **Trello board "IDCR Website"** (`boardId 67a7a743186065f07e87bbe9`, shortLink `sxuUAeck`), accessed via the **Trello MCP** (`mcp__trello__*`; many tools are deferred — load them via ToolSearch `select:mcp__trello__get_card,mcp__trello__get_cards_by_list_id,mcp__trello__move_card,mcp__trello__add_comment,...` before first use). **`ICR-N` is a derived display key: `N` is the Trello card's `idShort`.** There is no native key field — resolve the card by `idShort`, then use its Trello `id` for every write.
+Task tracking lives in **Jira project "IDC Redentor"** (key **`ICR`**, `divinelab.atlassian.net`), accessed via the **Atlassian MCP** (`mcp__atlassian-divinelab__*`; tools may be deferred — load them via ToolSearch `select:mcp__atlassian-divinelab__getJiraIssue,mcp__atlassian-divinelab__getTransitionsForJiraIssue,mcp__atlassian-divinelab__transitionJiraIssue,mcp__atlassian-divinelab__addCommentToJiraIssue,mcp__atlassian-divinelab__createJiraIssue` before first use). Every Atlassian call takes the Jira `cloudId` (`config.tracker.cloudId` = `0228eaa6-e8fa-4746-b2ac-6c58f1478e42`) and, when creating issues, the `projectKey` `ICR`. **`ICR-N` is the native Jira issue key — `N` is the issue number.** Resolve the issue directly via `getJiraIssue(cloudId, issueIdOrKey="ICR-N")` — no board/list scan — and use the `ICR-N` key string for every write.
 
-Always read `.claude/config.json` first — every command, path, list id/name, and the `config.tracker.workflow` order comes from there. Do not hardcode commands/paths. **Trello cards move between lists by `listId`** (from `config.tracker.lists`), not by status name — never invent a listId.
+Always read `.claude/config.json` first — every command, path, status name, and the `config.tracker.workflow` order comes from there. Do not hardcode commands/paths or numeric transition IDs. **Jira issues move between statuses by workflow transition resolved by name** (`config.tracker.statusResolution: by-name`; match `transition.to.name` against `config.tracker.statuses`), never by a hardcoded id — see "Status workflow & human gate" below.
 
-## List workflow & human gate
+## Status workflow & human gate
 
-The board flow (`config.tracker.workflow`, in order) is:
+The workflow (`config.tracker.workflow`, in order) is:
 
 `Backlog → To Do → In Progress → In Review → In Testing → Done`
 
-**`/work` owns exactly two Trello moves:**
+**`/work` owns exactly two Jira transitions:**
 
-1. **To Do → In Progress** (step 3) — `move_card` to `config.tracker.lists.inProgress.id`, right after the worktree exists.
-2. **In Progress → In Review** (step 14, via `pr-author` at PR-ready) — `move_card` to `config.tracker.lists.inReview.id`, paired with a PR-link comment.
+1. **To Do → In Progress** (step 3) — transition to `config.tracker.statuses.inProgress`, right after the worktree exists.
+2. **In Progress → In Review** (step 14, via `pr-author` at PR-ready) — transition to `config.tracker.statuses.inReview`, paired with a PR-link comment.
 
-The next move, **In Review → In Testing**, is owned by **`/merge`** (move #3, after the user-triggered squash-merge) — never by `/work`.
+The next transition, **In Review → In Testing**, is owned by **`/merge`** (transition #3, after the user-triggered squash-merge) — never by `/work`.
 
-**`/work` must NEVER move a card to Done.** `Done` is **human-only** — set by the human after they deploy to production and close the card (the card sits in **In Testing** until then). There is intentionally no Done move anywhere in this pipeline, in any subagent, or in the failure handler. `Backlog` and `To Do` are also human/PM-owned (grooming) — `/work` only reads them.
+**`/work` must NEVER transition an issue to Done.** `Done` is **human-only** — set by the human after they deploy to production and close the issue (the issue sits in **In Testing** until then). There is intentionally no Done transition anywhere in this pipeline, in any subagent, or in the failure handler. `Backlog` and `To Do` are also human/PM-owned (grooming) — `/work` only reads them.
 
-Every Trello **write** (`move_card`, `add_comment`, `update_card_details`) happens at or after a human gate, mirroring our discipline: the two moves above occur after the worktree exists and after the PR is ready, respectively; the PR-link comment is posted with the In Review move.
+Every Jira **write** (`transitionJiraIssue`, `addCommentToJiraIssue`, `editJiraIssue`) happens at or after a human gate, mirroring our discipline: the two transitions above occur after the worktree exists and after the PR is ready, respectively; the PR-link comment is posted with the In Review transition.
 
 ---
 
 ## 0. Pre-flight
 
-1. Read `.claude/config.json`. Pin to local variables: `config.commands`, `config.paths`, `config.worktree`, `config.playwrightProjectMap`, `config.graphify`, and the whole `config.tracker` block — `boardId`, `lists` (id+name for `todo`/`inProgress`/`inReview`/`inTesting`/`done`), `workflow`, `labelToCommitType`, `ticketKeyPrefix`. **Do not pin or hardcode anything Done-related as a move target.** (`inTesting` is pinned for reference only — `/work` never moves there; `/merge` owns that move.)
+1. Read `.claude/config.json`. Pin to local variables: `config.commands`, `config.paths`, `config.worktree`, `config.playwrightProjectMap`, `config.graphify`, and the whole `config.tracker` block — `cloudId`, `projectKey`, `statuses` (status names for `todo`/`inProgress`/`inReview`/`inTesting`/`done`), the ordered `workflow`, `statusResolution` (`by-name`), `issueTypeToCommitType`, `ticketKeyPrefix`. Transitions resolve by status **name** at runtime via `getTransitionsForJiraIssue` — **do not pin or hardcode numeric transition IDs.** (`inTesting` is pinned for reference only — `/work` never transitions there; `/merge` owns that transition.)
 2. Read `${config.paths.lessons}` (`tasks/lessons.md`) — internalize prior corrections before working.
-3. Validate `$1` matches `ICR-\d+` (case-insensitive; normalize to uppercase). Extract `N` (the numeric `idShort`). If it doesn't match, stop and ask the user.
+3. Validate `$1` matches `ICR-\d+` (case-insensitive; normalize to uppercase). The full key (e.g. `ICR-45`) is what every Atlassian call uses as `issueIdOrKey`. If it doesn't match, stop and ask the user.
 4. **Resume check** — see "Resume-from-state hook" at the end of this file; run it here, before pulling the card. If a state file exists for this ticket, branch to resume / start-over.
-5. Verify `${config.paths.qaEnv}` (`qa-env.json`) exists at `MAIN_REPO_ROOT`. Pre-merge QA is always-on (step 13): `ui`/`api` tickets test against the PR's Vercel **preview** deploy and need `qa-env.json` (preview baseUrl + Trello creds for evidence posting). If missing, warn: "Create `qa-env.json` (Vercel preview baseUrl + Trello creds) before UI/API QA." Do **not** hard-stop — `chore` QA (vitest/local) needs no deployed target, and the Trello post degrades to the MCP fallback — but record that deployed-target QA / REST evidence posting is degraded.
+5. Verify `${config.paths.qaEnv}` (`qa-env.json`) exists at `MAIN_REPO_ROOT`. Pre-merge QA is always-on (step 13): `ui`/`api` tickets test against the PR's Vercel **preview** deploy and need `qa-env.json` (preview baseUrl + Jira creds for evidence posting). If missing, warn: "Create `qa-env.json` (Vercel preview baseUrl + Jira creds) before UI/API QA." Do **not** hard-stop — `chore` QA (vitest/local) needs no deployed target, and the Jira post degrades to the MCP fallback — but record that deployed-target QA / REST evidence posting is degraded.
 6. Resolve `MAIN_REPO_ROOT` early: `git rev-parse --git-common-dir` then `dirname`. Pin it — every later step that needs the main repo path uses this.
-7. **Activate the Trello board**: `mcp__trello__set_active_board(boardId="67a7a743186065f07e87bbe9")` so later list/card calls resolve on the right board.
+7. **No board to activate** — Jira issues resolve by key (`getJiraIssue(cloudId, issueIdOrKey="ICR-N")`); there is no board-activation step. (Atlassian tools are namespaced `mcp__atlassian-divinelab__*` and may be deferred — load them via ToolSearch if a call errors as unavailable.)
 8. **Graphify update (with lock)** — see the "Graphify refresh" section below. Pin `GRAPHIFY_AVAILABLE` (boolean) and `GRAPHIFY_FRESH` (boolean) for use when dispatching subagents.
 
 ### Graphify refresh
@@ -101,47 +101,44 @@ If `config.graphify.enabled` is `false`, set both flags to false and skip this s
 
 **Relationship to the git post-commit hook**: `graphify hook install` keeps the _code_ side of the graph fresh continuously (AST re-extract on every commit, no LLM). This per-session `graphify update` is still worth running because it also re-extracts _doc/content_ (semantic) changes the AST hook ignores, and folds in any `graphify save-result` memory entries from prior sessions. So: commits keep code fresh for free; `/work` catches semantic drift once per session.
 
-## 1. Pull the Trello card
+## 1. Pull the Jira issue
 
-`ICR-N` is a derived display key — there is no native key lookup. Resolve the card by `idShort = N`:
+`ICR-N` is the native Jira issue key — fetch the issue directly (no board/list scan):
 
-1. Preferred path — `mcp__trello__get_lists(boardId)` then `mcp__trello__get_cards_by_list_id` across the active lists (`todo`, `inProgress`, `inReview`; also `discovery`/`done` for the "already-past" check), matching the card whose `idShort === N`. If a faster `get_my_cards` or a direct card id is available, use it. Pin the resolved Trello **`id`** (`cardId`) — every write uses it; pin `idShort` for the display key `ICR-N`.
-2. From the card capture: `id`, `idShort`, `name` (title), `desc` (description), the list it currently sits in, `labels`, `due`/`shortUrl` (the `https://trello.com/c/<shortLink>` URL), and any custom fields.
+1. `mcp__atlassian-divinelab__getJiraIssue(cloudId, issueIdOrKey="ICR-N")`. Jira resolves by key. Pin the `key` (use it as `issueIdOrKey` for every subsequent Atlassian call).
+2. From the returned issue capture: `key`, `summary` (title), `description`, current `status`, `labels`, `issuetype`, `priority`, the browse URL (`https://divinelab.atlassian.net/browse/ICR-N`), and any custom fields.
 3. Read field values:
-   - **QA Depth** — resolve per `config.qaDepth.sourceNote` (custom field → label/desc token → default `standard`). Reject if not in `config.qaDepth.allowed`.
-   - **Priority** — Trello has no native priority; if a `Priority` label or `Priority: <x>` token exists, record it for the brainstorm; otherwise prompt once during refinement (step 6).
-   - **Current list** — log only; you transition it later.
-4. **Commit-type inference** from labels via `config.tracker.labelToCommitType`: `Bug`→`fix`, `Feature`→`feat`, `Integration`→`feat`|`chore` (pick after brainstorm), `NFR`→`chore` (or `refactor`/`perf`). Override if `card.name` explicitly starts with `chore:`/`docs:`/etc.
+   - **QA Depth** — resolve per `config.qaDepth.sourceNote` (a `qa-<depth>` label → a `QA: <depth>` token in the description → default `standard`). Reject if not in `config.qaDepth.allowed`.
+   - **Priority** — read Jira's native `priority` value; if meaningful, record it for the brainstorm; if unset, prompt once during refinement (step 6).
+   - **Current status** — log only; you transition it later.
+4. **Commit-type inference** from the **issue type** via `config.tracker.issueTypeToCommitType`: `Bug`→`fix`, `Story`→`feat`, `Task`→`chore` (use `refactor`/`perf` when the work is purely that, or when a `perf`/`refactor` label overrides). Override if `summary` explicitly starts with `chore:`/`docs:`/etc.
 5. **QA TYPE inference** — derive `qaType` (`ui` | `api` | `chore`), **independent of depth** (depth is the effort dial; TYPE is what to test):
    - `api` — when the change touches API/route logic only: `src/app/api/*` or `src/service/*` route/handler logic.
    - `ui` — when it touches rendered UI: `src/app/[locale]/*` pages or `src/components/*`.
    - `chore` — pure config/docs/tooling/test-only changes (no UI, no API): `.claude/*`, `docs/*`, `*.config.*`, `e2e/*`, `src/utils/*` unit-only, etc.
    - A ticket touching **both** UI and API runs as `ui` with the API request-level checks folded in (or runs both type baselines).
-   - At this point `changedPaths` may not exist yet (no code written); infer from the card's described areas / explorer findings, then **reconcile against the real `git diff` `changedPaths` at the QA step (13)** and correct `qaType` if the diff disagrees. Record `qaType`; the pre-merge QA step uses it.
-6. **Already-past guard**: if the card currently sits in `In Review` or `Done` (any `config.tracker.workflow` entry with `order > inProgress.order`), stop and ask the user whether to continue. If it sits in `Backlog`/`To Do`, proceed. If its list isn't in `config.tracker.lists`, surface the drift rather than proceeding silently.
+   - At this point `changedPaths` may not exist yet (no code written); infer from the issue's described areas / explorer findings, then **reconcile against the real `git diff` `changedPaths` at the QA step (13)** and correct `qaType` if the diff disagrees. Record `qaType`; the pre-merge QA step uses it.
+6. **Already-past guard**: if the issue is currently in `In Review`, `In Testing`, or `Done` (any `config.tracker.workflow` entry with `order > inProgress.order`), stop and ask the user whether to continue. If it sits in `Backlog`/`To Do`, proceed. If its status isn't in `config.tracker.workflow`, surface the drift rather than proceeding silently.
 
 ## 1.5 Entry gate — needs-refinement ★ HUMAN GATE ★
 
 This gate runs **after the card is resolved** (right after the already-past guard bullet above) and **BEFORE any side effect** — no worktree, no branch, and no `To Do → In Progress` move yet. Its job: refuse to start work on an un-refined card.
 
-> **Invariant:** This gate runs BEFORE Move #1. A card that fails the gate is never moved `To Do → In Progress`, never gets a worktree, and never gets a state file.
+> **Invariant:** This gate runs BEFORE Transition #1. An issue that fails the gate is never transitioned `To Do → In Progress`, never gets a worktree, and never gets a state file.
 
-1. **Resolve the matchers from config** (pinned in pre-flight): `config.tracker.needsRefinementChecklistName` (e.g. `"Refinement"`) and `config.tracker.needsRefinementItemText` (e.g. `"needs-refinement"`). Read the values from config — do **not** hardcode the literals.
-2. **Read the card's refinement checklist** via the Trello MCP. Load the deferred tools first: ToolSearch `select:mcp__trello__get_checklist_by_name,mcp__trello__get_checklist_items,mcp__trello__find_checklist_items_by_description`. Then:
-   - `mcp__trello__get_checklist_by_name(cardId, name=<needsRefinementChecklistName>)`.
-   - If found, `mcp__trello__get_checklist_items` on it and look for an item whose text matches `<needsRefinementItemText>` and whose state is **OPEN** (treat ANY non-complete state as open — `state: "incomplete"` / `checked: false` / not `"complete"`).
-   - Fallback: `mcp__trello__find_checklist_items_by_description(cardId, description=<needsRefinementItemText>)`.
+1. **Resolve the matcher from config** (pinned in pre-flight): `config.tracker.needsRefinementLabel` (`"needs-refinement"`). Refinement state is a Jira **label** (`config.tracker.needsRefinementMechanism: "label"`). Read the value from config — do **not** hardcode the literal.
+2. **Read the issue's labels.** From the issue already fetched in section 1 (`getJiraIssue` → `fields.labels`), check whether `config.tracker.needsRefinementLabel` is present. (If you need a fresh read, re-fetch via `mcp__atlassian-divinelab__getJiraIssue(cloudId, issueIdOrKey="ICR-N")`.)
 3. **Gate decision:**
-   - **PASS** — if there is no Refinement checklist, OR no matching item, OR the matching item is checked/complete → the card is `/work`-ready. Proceed to section 2.
-   - **STOP + carrail** — if an **OPEN** needs-refinement item exists → STOP before any worktree/move and present a carrail via `AskUserQuestion` (same mechanism as the step-8.1 / step-15 prompts):
+   - **PASS** — if the `needs-refinement` label is **absent** → the issue is `/work`-ready. Proceed to section 2. (A To Do issue without the label is the ready signal; treat absence on a legacy issue as ready.)
+   - **STOP + carrail** — if the `needs-refinement` label is **present** → STOP before any worktree/transition and present a carrail via `AskUserQuestion` (same mechanism as the step-8.1 / step-15 prompts):
 
-     > Card `ICR-N` still has an open `needs-refinement` item — it is not `/work`-ready. What now?
+     > Issue `ICR-N` still carries the `needs-refinement` label — it is not `/work`-ready. What now?
 
      Two single-select options:
-     - **(a) Refine now** — dispatch the `product-manager` subagent with `mode: refine` and the `ICR-N` card. Wait for it to return (it clears the `needs-refinement` checklist item per its own lifecycle when the card meets the ready bar). Then **RE-READ the checklist** (repeat step 2):
-       - if the item is now cleared → proceed to section 2;
-       - if `product-manager` left it open (still not ready) → report what it said is missing and **STOP cleanly** (no worktree, no move, no state file).
-     - **(b) Pick another ticket** — abort cleanly: **NO** worktree, **NO** Trello move, **NO** state file. Print: "Stopped: `ICR-N` is not refined. Run `/pm` to refine it, or `/work <other-ICR>`." and end.
+     - **(a) Refine now** — dispatch the `product-manager` subagent with `mode: refine` and the `ICR-N` issue. Wait for it to return (it removes the `needs-refinement` label via `editJiraIssue` per its own lifecycle when the issue meets the ready bar). Then **RE-READ the labels** (repeat step 2):
+       - if the label is now gone → proceed to section 2;
+       - if `product-manager` left it on (still not ready) → report what it said is missing and **STOP cleanly** (no worktree, no transition, no state file).
+     - **(b) Pick another ticket** — abort cleanly: **NO** worktree, **NO** Jira transition, **NO** state file. Print: "Stopped: `ICR-N` is not refined. Run `/pm` to refine it, or `/work <other-ICR>`." and end.
 
 ## 2. Create worktree + branch ★ MANDATORY
 
@@ -175,11 +172,15 @@ Then set the session name now: `/rename ICR-N-<slug>` (same kebab slug as the br
 
 > The `.claude/worktrees/` directory is gitignored at the main checkout, so the worktree directories don't pollute `git status` on the main branch. Each worktree's working tree is a normal checkout of the feature branch and behaves independently.
 
-## 3. Move card → In Progress (AUTOMATED MOVE #1)
+## 3. Transition issue → In Progress (AUTOMATED TRANSITION #1)
 
-1. `mcp__trello__move_card(cardId=<id>, listId=config.tracker.lists.inProgress.id /* "67a7a74bc9dd606c2e41cea2" */)`.
-2. Verify by re-reading the card or trusting the move result. If the move fails, stop and report (do not proceed silently).
-3. (Optional, gated) post a short start comment via `add_comment` — only if the team wants it; default is no comment until PR-ready to keep writes minimal.
+Resolve the transition **by target status name** — never a hardcoded numeric ID:
+
+1. `mcp__atlassian-divinelab__getTransitionsForJiraIssue(cloudId, issueIdOrKey="ICR-N")` → a list of `{ id, name, to: { name } }`.
+2. Pick the transition whose **`to.name`** equals `config.tracker.statuses.inProgress` ("In Progress"), compared case-insensitively/trimmed.
+3. `mcp__atlassian-divinelab__transitionJiraIssue(cloudId, issueIdOrKey="ICR-N", transition={ id: <matched.id> })`.
+4. If **zero** transitions match, stop and report the current status + the available `to.name`s — never invent an ID. If the transition call fails, stop and report (do not proceed silently).
+5. (Optional, gated) post a short start comment via `mcp__atlassian-divinelab__addCommentToJiraIssue` — only if the team wants it; default is no comment until PR-ready to keep writes minimal.
 
 > Rule for the rest of the pipeline: `/work` drives only **In Progress** (here) and **In Review** (step 14). Never `Done`. Never `Backlog`/`To Do`.
 
@@ -190,7 +191,7 @@ Then set the session name now: `/rename ICR-N-<slug>` (same kebab slug as the br
 ````markdown
 # tasks/todo.md — Stray Observations Log
 
-**This file is gitignored.** Append-only scratchpad for things agents (and you) notice while working but that don't belong in the current ticket. At the end of each `/work` run, the orchestrator triages entries tagged with the current ticket and promotes them to Trello cards in **To Do** (board IDCR Website).
+**This file is gitignored.** Append-only scratchpad for things agents (and you) notice while working but that don't belong in the current ticket. At the end of each `/work` run, the orchestrator triages entries tagged with the current ticket and promotes them to Jira issues in **To Do** (project ICR).
 
 ## Entry format
 
@@ -255,7 +256,7 @@ The brainstorming skill's normal Socratic flow then handles the rest.
 
 ### Priority handling during refinement
 
-Trello has no native priority. If unset and the team wants one, optionally add a `Priority: <x>` token via `update_card_details` once — a single touch, never re-touched. (Lower-stakes than a Jira priority field; the team may skip this entirely.)
+The Jira **Priority** field is set ONCE during refinement and never updated by agents again. If it's already set, surface it in the brainstorm intro; if unset and the team wants one, ask once and set it via `mcp__atlassian-divinelab__editJiraIssue(cloudId, issueIdOrKey="ICR-N", fields={ priority: { name: "<choice>" } })` — a single touch, never re-touched. The team may skip this entirely.
 
 ## 7. Write the spec (conditional)
 
@@ -289,12 +290,12 @@ Invoke the `superpowers:writing-plans` skill. Output goes to `${config.paths.spe
 
 After the plan is written, count the **Implementation Checkpoints** in it (each numbered checkpoint = 1). If the count is **> 8**, surface to the user with `AskUserQuestion`:
 
-> The plan has `<N>` checkpoints. Tickets with more than 8 are usually better split into multiple Trello cards (smaller scope = faster PRs + easier review). Continue with this ticket as-is, or stop and split?
+> The plan has `<N>` checkpoints. Tickets with more than 8 are usually better split into multiple Jira issues (smaller scope = faster PRs + easier review). Continue with this ticket as-is, or stop and split?
 
 Options:
 
 - **Continue anyway** — proceed to step 9 (you've decided the size is justified).
-- **Stop and split** — abort the pipeline cleanly. The spec + plan files stay; the worktree stays; the card stays **In Progress**. Print: "Pipeline paused at step 8.1. Spec is at `<path>`. Suggest splitting into N follow-up Trello cards in To Do, then `/work` each separately."
+- **Stop and split** — abort the pipeline cleanly. The spec + plan files stay; the worktree stays; the issue stays **In Progress**. Print: "Pipeline paused at step 8.1. Spec is at `<path>`. Suggest splitting into N follow-up Jira issues in To Do, then `/work` each separately."
 
 This guard is a one-time gate; once the user picks "Continue anyway," subsequent checkpoints inside the same `/work` run don't re-trigger.
 
@@ -335,7 +336,7 @@ Dispatch the `implementer` subagent with:
 - `checkpointNumber: 1`
 - `branch` — current feature branch name
 - `worktreePath` — absolute path to the worktree
-- `commitType` — conventional-commit prefix derived from the Trello label
+- `commitType` — conventional-commit prefix derived from the Jira issue type
 - `ticketId` — `ICR-N`
 - `graphifyAvailable: <GRAPHIFY_AVAILABLE>`
 - `graphifyFresh: <GRAPHIFY_FRESH>`
@@ -371,17 +372,17 @@ Dispatch the `pr-author` subagent with `action: "open_draft"`. Inputs:
 
 - `action: "open_draft"`
 - `ticketId` — `ICR-N`
-- `ticketTitle` — the Trello card name
-- `ticketUrl` — `https://trello.com/c/<shortLink>` (or the card `shortUrl`)
+- `ticketTitle` — the Jira issue summary
+- `ticketUrl` — `https://divinelab.atlassian.net/browse/ICR-N` (the issue browse URL)
 - `branch` — feature branch
 - `worktreePath` — absolute path
-- `commitType` — derived from the Trello label
+- `commitType` — derived from the Jira issue type
 - `explorerSummary` — output from the explorer subagent (used for the Changes section)
 - `specPath` — for pulling the Summary
 - `verifierLastReport` — used to pre-tick Test-plan checkboxes
 - `prTemplatePath` — `.github/PULL_REQUEST_TEMPLATE.md`
 
-pr-author runs `git push -u origin <branch>`, `gh pr create --draft` with a **conventional title `<type>(ICR-N): <description>`** (satisfies `pr.yml`'s `amannn/action-semantic-pull-request`), fills the near-empty `# Description` / `# Changes` template, then posts a Trello comment with the PR URL via `add_comment(cardId, ...)`. **Card stays In Progress.**
+pr-author runs `git push -u origin <branch>`, `gh pr create --draft` with a **conventional title `<type>(ICR-N): <description>`** (satisfies `pr.yml`'s `amannn/action-semantic-pull-request`), fills the near-empty `# Description` / `# Changes` template, then posts a comment on the Jira issue with the PR URL via `addCommentToJiraIssue(cloudId, issueIdOrKey="ICR-N", ...)`. **Issue stays In Progress.**
 
 After this point, **every subsequent checkpoint commit-and-pushes to this open PR**, so cloud review agents can review iteratively.
 
@@ -424,7 +425,7 @@ Dispatch `qa-runner` with:
 - `changedPaths` — array from the `git diff` above
 - `mainRepoRoot: <MAIN_REPO_ROOT>`
 
-The orchestrator (not the runner) owns preview-URL resolution + validation above; `qa-env.json` only supplies the Trello REST creds for posting. The prod hard-deny applies in every env.
+The orchestrator (not the runner) owns preview-URL resolution + validation above; `qa-env.json` only supplies the Jira REST creds for posting. The prod hard-deny applies in every env.
 
 **TYPE → what the runner tests** (depth scales effort within each):
 
@@ -437,26 +438,26 @@ The orchestrator (not the runner) owns preview-URL resolution + validation above
 After the tester (`qa-runner`) returns its **EVIDENCE bundle** (written report + screenshot paths + raw per-AC observations), dispatch the **acceptance-judge** subagent (agent name from `config.qaLoop.reviewAgents.acceptance` → `acceptance-judge`) with:
 
 - the tester's evidence (written report + screenshot paths + the block-1 JSON)
-- the card's acceptance criteria — `mcp__trello__get_acceptance_criteria(cardId)`
-- `cardId`, `ticketId: "ICR-N"`, `envName: "preview"`
+- the issue's acceptance criteria — parsed from the issue **description** (`getJiraIssue(cloudId, issueIdOrKey="ICR-N")` → `fields.description`)
+- `ticketId: "ICR-N"`, `envName: "preview"`
 
-It returns the **authoritative** `overall: pass | partial | fail` verdict plus a `perAC` array (`{n, text, type, verdict, rationale, evidenceRef}`) shaped for the trello-result table. **The tester proves what the system does; the judge decides whether it meets the card — never fuse them.** The QA-loop guard's pass/fail decision keys off the **judge's** verdict, not the tester's raw output.
+It returns the **authoritative** `overall: pass | partial | fail` verdict plus a `perAC` array (`{n, text, type, verdict, rationale, evidenceRef}`) shaped for the jira-result table. **The tester proves what the system does; the judge decides whether it meets the issue — never fuse them.** The QA-loop guard's pass/fail decision keys off the **judge's** verdict, not the tester's raw output.
 
-> Map the judge's verdict onto the trello-result `perAC` table: `verdict → result`, `rationale (+evidenceRef) → notes`, `overall → status` (pass→PASS, partial→PARTIAL, fail→FAIL, blocked-present→BLOCKED).
+> Map the judge's verdict onto the jira-result `perAC` table: `verdict → result`, `rationale (+evidenceRef) → notes`, `overall → status` (pass→PASS, partial→PARTIAL, fail→FAIL, blocked-present→BLOCKED).
 
-### 13.2 Dual-post evidence (PR + Trello)
+### 13.2 Dual-post evidence (PR + Jira)
 
-Post the SAME evidence + judge verdict to **BOTH** the Trello card and the PR. Build both from the one bundle. **Secret-scrub before every write** (security invariant #4 — the script scrubs; the PR path must scrub too).
+Post the SAME evidence + judge verdict to **BOTH** the Jira issue and the PR. Build both from the one bundle. **Secret-scrub before every write** (security invariant #4 — the script scrubs; the PR path must scrub too).
 
-**Trello (screenshots as attachments):** write a `0600` temp payload JSON:
+**Jira (screenshots as issue attachments):** write a `0600` temp payload JSON:
 
 ```jsonc
 {
-  "cardId": "<trello card id>",
-  "ticketKey": "ICR-N",
+  "ticketKey": "ICR-N", // the Jira issue key — every REST call uses it
   "qaEnvPath": "<config.paths.qaEnv>", // "qa-env.json"
+  "configPath": ".claude/config.json",
   "meta": {
-    "title": "<card title>",
+    "title": "<issue summary>",
     "testedAt": "<iso>",
     "envName": "preview",
     "host": "<preview host>",
@@ -472,21 +473,21 @@ Post the SAME evidence + judge verdict to **BOTH** the Trello card and the PR. B
 }
 ```
 
-Run `node .claude/scripts/qa/post-trello-result.mjs <payload>`. The script attaches each screenshot to the card then posts the Markdown comment. **`meta.envName` is now REQUIRED** (it exits 2 if absent) and **`meta.postedBy: "/work"`** so the comment isn't mislabeled as `/qa`. On exit code 3 (creds absent) fall back to `mcp__trello__add_comment` + `mcp__trello__attach_image_to_card`.
+Run `node .claude/scripts/qa/post-jira-result.mjs <payload>` (it uploads each screenshot as an issue attachment via the Jira REST API, then posts a comment whose body renders the per-AC table + each shot inline; reads `jira.{email,apiToken}` from `qa-env.json` and `jira.site` from `.claude/config.json`). **`meta.envName` is REQUIRED** (it exits 2 if absent) and **`meta.postedBy: "/work"`** so the comment isn't mislabeled as `/qa`. On exit code 3 (creds absent) fall back to a text-only `mcp__atlassian-divinelab__addCommentToJiraIssue(cloudId, issueIdOrKey="ICR-N", commentBody=...)` (no inline images).
 
-**PR (report + verdict table + link — screenshots live on Trello):** GitHub has **no simple CLI to upload local image files into a PR comment**, so do NOT invent a `gh` image upload. Post the WRITTEN acceptance report + the per-AC verdict table + a **link to the Trello card** (which carries the screenshots as attachments) via:
+**PR (report + verdict table + link — screenshots live on the Jira issue):** GitHub has **no simple CLI to upload local image files into a PR comment**, so do NOT invent a `gh` image upload. Post the WRITTEN acceptance report + the per-AC verdict table + a **link to the Jira issue** (which carries the screenshots as attachments) via:
 
 ```bash
 gh pr comment <pr-url> --body-file <scrubbed-report.md>
 ```
 
-The report body contains: overall status, the per-AC verdict table (`# | Criterion | Type | Result | Notes`), the blockers list, and a line `Screenshots: see the Trello card <https://trello.com/c/<shortLink>> (attachments).` If you want inline images on the PR, the ONLY sane mechanism is to reference the **Trello attachment URLs** returned by the attach step in `post-trello-result.mjs` — there is no native `gh` image upload. Screenshots live on Trello; the PR carries the report + verdict + link.
+The report body contains: overall status, the per-AC verdict table (`# | Criterion | Type | Result | Notes`), the blockers list, and a line `Screenshots: see the Jira issue <https://divinelab.atlassian.net/browse/ICR-N> (attachments).` There is no native `gh` image upload, so screenshots live on the Jira issue; the PR carries the report + verdict + link.
 
 ### QA-loop guard ★ MAX 3 ATTEMPTS
 
 Same shape as the Verify-loop guard. Maintain `qaAttemptCount` and `lastTwoQaFailures`. After 3 attempts, **STOP** and trigger the Failure handler. If the failure output is identical to the prior attempt, surface before re-dispatching. The pass/fail decision keys off the **acceptance-judge's** verdict (13.1), not the tester's raw output.
 
-If QA fails (and we have attempts left), route back to the implementer with the failures. Re-run the verifier after, then re-dispatch qa-runner → acceptance-judge → dual-post. **QA is always-on and evidence is dual-posted (PR + Trello).** The loop still auto-remediates up to the 3-attempt cap and **NEVER auto-merges**; the merge gate remains human-only (handed to `/merge` in a later phase).
+If QA fails (and we have attempts left), route back to the implementer with the failures. Re-run the verifier after, then re-dispatch qa-runner → acceptance-judge → dual-post. **QA is always-on and evidence is dual-posted (PR + Jira).** The loop still auto-remediates up to the 3-attempt cap and **NEVER auto-merges**; the merge gate remains human-only (handed to `/merge` in a later phase).
 
 ## 13.5 Docs evaluation
 
@@ -508,15 +509,15 @@ Process:
 
 **Don't** auto-update docs without surfacing — doc edits are higher-judgment than code edits and the user should see the proposed delta before it lands.
 
-## 14. Mark PR ready + Trello (AUTOMATED MOVE #2) (subagent: pr-author)
+## 14. Mark PR ready + Jira (AUTOMATED TRANSITION #2) (subagent: pr-author)
 
-Dispatch `pr-author` with `action: "mark_ready"`. It runs `gh pr ready`, posts a final Trello comment summarizing what shipped (PR URL + screenshot links if heavy) via `add_comment(cardId, ...)`, and **moves the card `In Progress → In Review`** via `move_card(cardId, listId=config.tracker.lists.inReview.id /* "67a7a74df6bfc532c70a06c8" */)`. **This is the second and final automated move. It does NOT touch Done.**
+Dispatch `pr-author` with `action: "mark_ready"`. It runs `gh pr ready`, posts a final comment on the Jira issue summarizing what shipped (PR URL + screenshot links if heavy) via `addCommentToJiraIssue(cloudId, issueIdOrKey="ICR-N", ...)`, and **transitions the issue `In Progress → In Review`** — resolving the transition by status name (`getTransitionsForJiraIssue` → match `transition.to.name` against `config.tracker.statuses.inReview` → `transitionJiraIssue`), not a hardcoded ID. **This is the second and final automated transition. It does NOT touch Done.**
 
 ## 14.5 Post-PR review + CI loop (detached — ScheduleWakeup)
 
-After the PR is **ready** and the card is **In Review**, `/work` enters a **detached, dynamic-paced loop** that watches the PR's **code-review comments** (including the **Codex review bot**, which posts a few minutes after PR-ready) **and CI**, auto-remediates via the `implementer`, and notifies you when the PR is ready for your eyes. The loop **NEVER merges and NEVER moves a card** — it only fixes, replies, and notifies. Merge stays human-only (`/merge`, a later phase).
+After the PR is **ready** and the issue is **In Review**, `/work` enters a **detached, dynamic-paced loop** that watches the PR's **code-review comments** (including the **Codex review bot**, which posts a few minutes after PR-ready) **and CI**, auto-remediates via the `implementer`, and notifies you when the PR is ready for your eyes. The loop **NEVER merges and NEVER transitions an issue** — it only fixes, replies, and notifies. Merge stays human-only (`/merge`, a later phase).
 
-> **Invariant (unchanged):** this section adds **no** Trello move and **no** merge. `/work` still owns exactly two automated moves (steps 3 and 14) and never touches Done. The loop is read-fix-reply-notify only.
+> **Invariant (unchanged):** this section adds **no** Jira transition and **no** merge. `/work` still owns exactly two automated transitions (steps 3 and 14) and never touches Done. The loop is read-fix-reply-notify only.
 
 ### Pre-flight: pin config + decide whether the loop runs
 
@@ -601,7 +602,7 @@ PushNotification(
 )
 ```
 
-Set `loopActive=false`; persist. Then **continue to step 15 (triage)** in the same resumed turn. The card stays **In Review** — the loop never merges, never moves.
+Set `loopActive=false`; persist. Then **continue to step 15 (triage)** in the same resumed turn. The issue stays **In Review** — the loop never merges, never transitions.
 
 ### CAP exit (maxIterations or totalTimeoutSeconds hit)
 
@@ -614,23 +615,23 @@ PushNotification(
 )
 ```
 
-Do **NOT** keep scheduling. Leave the card **In Review** and the PR as-is. Set `loopActive=false`; persist. Then proceed to **step 15** — the human takes over.
+Do **NOT** keep scheduling. Leave the issue **In Review** and the PR as-is. Set `loopActive=false`; persist. Then proceed to **step 15** — the human takes over.
 
-> **This loop NEVER merges and NEVER moves the card.** It only fixes / replies / notifies. Merge is owned by `/merge` (a later phase) on an explicit human trigger; `Done` stays human-only.
+> **This loop NEVER merges and NEVER transitions the issue.** It only fixes / replies / notifies. Merge is owned by `/merge` (a later phase) on an explicit human trigger; `Done` stays human-only.
 
 ## 14.6 In-session merge hand-off (HUMAN-GATED)
 
 After the post-PR loop (14.5) has reached its **CLEAN** or **CAP** exit and you (the human) have reviewed the PR, you may, **in this same `/work` conversation, explicitly say "merge"**. Only then — merge is **NEVER autonomous**; `config.qaLoop.autoMerge.enabled` stays `false` — `/work` **hands off to the `/merge` logic**.
 
-> **Do NOT reimplement merge here.** The real owner is `.claude/commands/merge.md`. This subsection only routes the live session into that logic; the squash-merge, worktree/branch cleanup, the `In Review → In Testing` move, and the post-merge staging QA all live there.
+> **Do NOT reimplement merge here.** The real owner is `.claude/commands/merge.md`. This subsection only routes the live session into that logic; the squash-merge, worktree/branch cleanup, the `In Review → In Testing` transition, and the post-merge staging QA all live there.
 
 On an explicit in-session "merge", run the **`/merge ICR-N`** logic, passing the already-resolved state from this `/work` run so `/merge` does not re-resolve from scratch:
 
-- `cardId` / `idShort` (the `ICR-N` key), `prUrl` / PR number, `branch`, and `worktreePath` (all pinned in the state file / orchestrator state).
+- the `ICR-N` key, `prUrl` / PR number, `branch`, and `worktreePath` (all pinned in the state file / orchestrator state).
 
-`/merge` then, per `merge.md`: enforces `config.merge.requireCiGreen` (**refuses on red/pending CI**), **squash-merges** + deletes the remote branch, removes the local **worktree + branch** (anchored to `MAIN_REPO_ROOT`; if this session is inside the target worktree, it leaves it first via `ExitWorktree`), moves the card **In Review → In Testing** (automated move #3, owned by `/merge`), and runs **post-merge staging QA** (tester → `acceptance-judge` → post to Trello). It **never** moves the card to **Done**.
+`/merge` then, per `merge.md`: enforces `config.merge.requireCiGreen` (**refuses on red/pending CI**), **squash-merges** + deletes the remote branch, removes the local **worktree + branch** (anchored to `MAIN_REPO_ROOT`; if this session is inside the target worktree, it leaves it first via `ExitWorktree`), transitions the issue **In Review → In Testing** (automated transition #3, owned by `/merge`), and runs **post-merge staging QA** (tester → `acceptance-judge` → post to Jira). It **never** transitions the issue to **Done**.
 
-> **`/work`'s contract is unchanged.** `/work` itself still **NEVER merges** and **NEVER moves a card to Done**. The third automated move (`In Review → In Testing`) is owned by **`/merge`**, not `/work` — so `/work` keeps its **exactly-two-moves** contract (steps 3 and 14). The hand-off is a human-gated delegation, not a new `/work` transition.
+> **`/work`'s contract is unchanged.** `/work` itself still **NEVER merges** and **NEVER transitions an issue to Done**. The third automated transition (`In Review → In Testing`) is owned by **`/merge`**, not `/work` — so `/work` keeps its **exactly-two-transitions** contract (steps 3 and 14). The hand-off is a human-gated delegation, not a new `/work` transition.
 
 ## 15. Triage stray observations
 
@@ -648,12 +649,12 @@ For each entry tagged with the current ticket, ask the user with `AskUserQuestio
 
 Options (one per question, single-select):
 
-- **Promote to Trello** — create a To Do card. Recommended for anything that's its own piece of work.
+- **Promote to Jira** — create a To Do issue. Recommended for anything that's its own piece of work.
 - **Fix now** — small enough to address before closing this `/work`. You'll loop back to the implementer with a focused mini-spec.
 - **Discard** — was noise, won't track.
 - **Keep in todo.md** — leave for later (a different ticket may pick it up; the human will revisit).
 
-### For each "Promote to Trello"
+### For each "Promote to Jira"
 
 Spawn the `explorer` subagent with `mode: observation-context`. Inputs:
 
@@ -663,17 +664,20 @@ Spawn the `explorer` subagent with `mode: observation-context`. Inputs:
 - `graphifyFresh: <GRAPHIFY_FRESH>`
 - `mainRepoRoot: <MAIN_REPO_ROOT>`
 
-The explorer returns a structured card draft (fields: `title`, `description`, `relatedFiles`, `acceptanceCriteria`, `suggestedLabels`). Create the card in **To Do**:
+The explorer returns a structured issue draft (fields: `title`, `description`, `relatedFiles`, `acceptanceCriteria`, `suggestedIssueType`, `suggestedLabels`). Create the issue in **To Do**:
 
 ```
-mcp__trello__add_card_to_list(
-  listId: "67b500c7c65a4d3edf11e180",   // config.tracker.lists.todo.id
-  name:   <draft.title>,
-  description: <draft.description>
+mcp__atlassian-divinelab__createJiraIssue(
+  cloudId: config.tracker.cloudId,
+  projectKey: "ICR",
+  issueTypeName: <draft.suggestedIssueType ?? "Task">,   // Bug | Story | Task
+  summary: <draft.title>,
+  description: <draft.description>,
+  additional_fields: { labels: <draft.suggestedLabels as free-form strings, optional> }
 )
 ```
 
-Apply labels (Feature/Bug/Integration/NFR) per `suggestedLabels` via `update_card_details` / `get_board_labels`. New cards land in **To Do** by virtue of the target listId. Capture the new card's `shortUrl`; show the user: _"Promoted: `<observation>` → `<card URL>`"_.
+New issues land in **To Do** (the default status at creation) — no transition needed. Do NOT set Priority or QA Depth (human-set during refinement). Capture the new issue's browse URL (`https://divinelab.atlassian.net/browse/<key>`); show the user: _"Promoted: `<observation>` → `<issue URL>`"_.
 
 ### For each "Fix now"
 
@@ -691,7 +695,7 @@ After processing, rewrite `tasks/todo.md` with all the entries that were NOT dis
 
 Summarize to the user:
 
-- Promoted to Trello: `<count>` cards (URLs)
+- Promoted to Jira: `<count>` issues (URLs)
 - Fixed now: `<count>` (commits)
 - Discarded: `<count>`
 - Kept for later: `<count>`
@@ -702,7 +706,7 @@ Summarize to the user:
 
 Optional (but encouraged) if no corrections came up but you spotted a useful pattern worth carrying forward.
 
-Report the final summary to the user: PR URL, Trello card URL, files touched, QA results, promoted-from-observations count. Stop. **You do not merge and you do not move the card to Done — the human does both.** Delete the state file on successful completion.
+Report the final summary to the user: PR URL, Jira issue URL, files touched, QA results, promoted-from-observations count. Stop. **You do not merge and you do not transition the issue to Done — the human does both.** Delete the state file on successful completion.
 
 ---
 
@@ -719,8 +723,6 @@ To survive aborted runs (user `Ctrl-C`, machine sleep, network drop), the orches
 ```json
 {
   "ticketId": "ICR-N",
-  "cardId": "<trello-card-id>",
-  "idShort": 0,
   "branch": "feat/ICR-N-...",
   "worktreePath": "/abs/.../.claude/worktrees/ICR-N",
   "prUrl": "https://github.com/.../pull/M",
@@ -746,7 +748,7 @@ At the start of `/work ICR-N`, after pre-flight (step 0) and before pulling the 
 
 1. Read it. Surface to the user with `AskUserQuestion`:
    > Prior `/work ICR-N` run found, last completed step `<N>`. Resume or start over?
-   - **Resume from step `<N+1>`** — load `cardId`, `branch`, `worktreePath`, `prUrl`, `qaDepth` into orchestrator state and skip ahead. Verify the worktree still exists and is on the right branch; if not, fall back to "start over."
+   - **Resume from step `<N+1>`** — load `ticketId` (the `ICR-N` key), `branch`, `worktreePath`, `prUrl`, `qaDepth` into orchestrator state and skip ahead. Verify the worktree still exists and is on the right branch; if not, fall back to "start over."
      - **Loop resume:** if `loopActive === true`, the prior run was inside the post-PR loop (step 14.5). Re-load `addressedThreadIds`, `loopIteration`, `loopStartedAt`, and `lastPushAt`, then re-enter the TICK procedure. Do **NOT** re-reply to any thread already in `addressedThreadIds`; before posting any reply, cross-check that the thread's latest reply author is **not** self (guards the crash-after-reply-before-persist window). Re-evaluate the kill switches against the persisted `loopStartedAt` / `loopIteration` — a resume does not reset the caps.
    - **Start over** — delete the state file, clean up the existing worktree + branch (print the commands; don't auto-execute), then run the pipeline from step 0.
 2. If the user picks Resume but verification fails (worktree gone, branch deleted), fall back to "Start over" with a warning.
@@ -765,8 +767,8 @@ Triggered when the pipeline aborts for any reason after step 11 (the draft PR ex
    ```
    gh pr comment <pr-url> --body "🛑 Pipeline halted at step <N>. Reason: <one-line>. Attempts: <N>. Last error excerpt below. The branch is left as-is for human review."
    ```
-2. **Comment the Trello card** with the same summary + PR URL via `mcp__trello__add_comment(cardId, ...)`.
-3. **Leave the card in In Progress.** Do NOT move to In Review. **Do NOT move to Done.**
+2. **Comment the Jira issue** with the same summary + PR URL via `mcp__atlassian-divinelab__addCommentToJiraIssue(cloudId, issueIdOrKey="ICR-N", ...)`.
+3. **Leave the issue In Progress.** Do NOT transition to In Review. **Do NOT transition to Done.**
 4. **Do NOT delete the worktree.** The user inspects it. Print the cleanup commands they can run when ready:
    ```
    git worktree remove .claude/worktrees/ICR-N
@@ -780,10 +782,10 @@ Triggered when the pipeline aborts for any reason after step 11 (the draft PR ex
 
 ## The EXACTLY-two transitions /work owns
 
-- **OWNS — Move #1:** `To Do → In Progress` at **step 3**, via `mcp__trello__move_card(cardId, listId="67a7a74bc9dd606c2e41cea2")`, immediately after the mandatory worktree exists.
-- **OWNS — Move #2:** `In Progress → In Review` at **step 14** (delegated to `pr-author`), via `mcp__trello__move_card(cardId, listId="67a7a74df6bfc532c70a06c8")`, paired with the PR-link `add_comment`, only after `gh pr ready`.
-- **MUST NOT do:** move any card to **Done** (`67a7a758f2da48a6482634a2`) — ever, in any step, subagent, or the failure handler. Also does not move cards into `Backlog` or `To Do` (PM/human-owned grooming lists; `/work` only reads them). The failure handler explicitly leaves the card in **In Progress**.
-- **NOT `/work`'s — Move #3 is owned by `/merge`:** the third automated move, `In Review → In Testing` (`config.tracker.lists.inTesting.id` / `6a3a7f99c43d9b731c47fe61`), is dispatched **only** on an explicit in-session human "merge" (the **14.6** hand-off to `merge.md`) — `/work` itself never performs it. So `/work` still owns exactly Moves #1 and #2 and never touches Done; `/merge` owns Move #3 after a verified squash-merge.
+- **OWNS — Transition #1:** `To Do → In Progress` at **step 3**, via `getTransitionsForJiraIssue` → `transitionJiraIssue` matched **by status name** to `config.tracker.statuses.inProgress`, immediately after the mandatory worktree exists.
+- **OWNS — Transition #2:** `In Progress → In Review` at **step 14** (delegated to `pr-author`), via `getTransitionsForJiraIssue` → `transitionJiraIssue` matched **by status name** to `config.tracker.statuses.inReview`, paired with the PR-link `addCommentToJiraIssue`, only after `gh pr ready`.
+- **MUST NOT do:** transition any issue to **Done** — ever, in any step, subagent, or the failure handler. Also does not transition issues into `Backlog` or `To Do` (PM/human-owned grooming; `/work` only reads them). The failure handler explicitly leaves the issue in **In Progress**.
+- **NOT `/work`'s — Transition #3 is owned by `/merge`:** the third automated transition, `In Review → In Testing` (`config.tracker.statuses.inTesting`), is dispatched **only** on an explicit in-session human "merge" (the **14.6** hand-off to `merge.md`) — `/work` itself never performs it. So `/work` still owns exactly Transitions #1 and #2 and never touches Done; `/merge` owns Transition #3 after a verified squash-merge.
 
 ## Notes for the main thread
 
@@ -792,4 +794,4 @@ Triggered when the pipeline aborts for any reason after step 11 (the draft PR ex
 - **Cost discipline**: depth scales QA EFFORT, not whether QA runs. Every testable ticket gets at least its TYPE's baseline QA (ui/api/chore); reserve `heavy` (authored e2e + both-locale walk) for high-risk tickets.
 - **Self-correction**: if any subagent returns "I don't know how to proceed", stop the pipeline and surface to the user rather than guessing.
 - **Failure modes**: the verify-loop and QA-loop guards (steps 10, 12, 13) enforce a 3-attempt cap with prior-error diff. Both routes call the Failure handler above.
-- **The two automated Trello moves are the only tracker state changes `/work` makes; Done is exclusively human.**
+- **The two automated Jira transitions are the only tracker state changes `/work` makes; Done is exclusively human.**
