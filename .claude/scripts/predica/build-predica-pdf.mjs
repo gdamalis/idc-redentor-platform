@@ -523,7 +523,7 @@ function validateSermon(raw) {
 async function loadLogoDataUri() {
   try {
     const logoPath = new URL(
-      "../../../public/assets/img/redentor_logo.png",
+      "../../../apps/web/public/assets/img/redentor_logo.png",
       import.meta.url,
     );
     const buf = await readFile(logoPath);

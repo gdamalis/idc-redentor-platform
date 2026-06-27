@@ -355,8 +355,8 @@ function deriveScripture(sermon) {
 /** Read the light church logo as a base64 data URI (falls back to the primary logo, then null). */
 async function loadLogoDataUri() {
   const candidates = [
-    "../../../public/assets/img/redentor_logo_light.png",
-    "../../../public/assets/img/redentor_logo.png",
+    "../../../apps/web/public/assets/img/redentor_logo_light.png",
+    "../../../apps/web/public/assets/img/redentor_logo.png",
   ];
   for (const rel of candidates) {
     try {
