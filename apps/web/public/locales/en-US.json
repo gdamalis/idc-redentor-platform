@@ -101,13 +101,13 @@
     "error-unexpected": "An unexpected error occurred. Please try again later."
   },
   "BlogPostActions": {
-    "share-this-post": "Share this post",
+    "share": "Share",
     "copy-link": "Copy link",
     "email": "Email",
     "link-copied": "Link copied to clipboard",
     "close": "Close",
-    "like-this-post": "Like this post",
-    "unlike-this-post": "Unlike this post",
+    "like": "Like",
+    "unlike": "Unlike",
     "tags": "Tags"
   }
 }

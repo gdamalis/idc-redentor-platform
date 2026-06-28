@@ -86,7 +86,7 @@ export function LikeButton({
       disabled={isPending}
       className="group flex items-center gap-2 rounded-full border border-border px-4 py-2 cursor-pointer transition-colors hover:border-red-300 hover:bg-red-50 dark:hover:border-red-800 dark:hover:bg-red-950/30 disabled:opacity-70 disabled:cursor-not-allowed"
       whileTap={{ scale: 0.95 }}
-      aria-label={hasLiked ? t("unlike-this-post") : t("like-this-post")}
+      aria-label={hasLiked ? t("unlike") : t("like")}
     >
       <AnimatePresence mode="wait" initial={false}>
         {hasLiked ? (

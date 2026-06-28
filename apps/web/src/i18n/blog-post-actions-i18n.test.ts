@@ -3,13 +3,13 @@ import esAR from "../../public/locales/es-AR.json";
 import enUS from "../../public/locales/en-US.json";
 
 const EXPECTED_KEYS = [
-  "share-this-post",
+  "share",
   "copy-link",
   "email",
   "link-copied",
   "close",
-  "like-this-post",
-  "unlike-this-post",
+  "like",
+  "unlike",
   "tags",
 ] as const;
 

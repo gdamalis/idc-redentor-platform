@@ -206,7 +206,7 @@ export function ShareButton({ slug, basePath, likeKey, title, featuredImageUrl }
       type="button"
       onClick={canNativeShare ? handleNativeShare : () => setIsOpen(true)}
       className="group flex items-center gap-2 rounded-full border border-border px-4 py-2 cursor-pointer transition-colors hover:border-foreground/30 hover:bg-muted"
-      aria-label={t("share-this-post")}
+      aria-label={t("share")}
     >
       <ArrowUpFromLine className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
     </button>
@@ -240,7 +240,7 @@ export function ShareButton({ slug, basePath, likeKey, title, featuredImageUrl }
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <DialogTitle className="text-base font-semibold text-foreground">
-                {t("share-this-post")}
+                {t("share")}
               </DialogTitle>
               <button
                 type="button"
