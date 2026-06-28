@@ -30,15 +30,18 @@ export async function sendBroadcast(input: BroadcastInput): Promise<BroadcastRes
     return { status: "failed", reason: "resend-not-configured" };
   }
 
+  const postalAddress = process.env.BROADCAST_POSTAL_ADDRESS?.trim();
+  if (!postalAddress) {
+    console.error(`[broadcast] postal-address-missing for ${broadcastId}`);
+    return { status: "failed", reason: "postal-address-missing" };
+  }
+
   const claim = await claimBroadcast(broadcastId);
   if (claim === "already-sent") return { status: "skipped", reason: "already-sent" };
   if (claim === "error") return { status: "failed", reason: "dedupe-unavailable" };
 
   try {
     const chrome = BROADCAST_CHROME[locale];
-    const postalAddress =
-      process.env.BROADCAST_POSTAL_ADDRESS ??
-      "Iglesia de Cristo Redentor — Buenos Aires, Argentina";
     const wrappedHtml = renderTemplate("broadcast", {
       lang: locale,
       body: html,

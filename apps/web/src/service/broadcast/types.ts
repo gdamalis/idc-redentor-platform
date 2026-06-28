@@ -21,6 +21,6 @@ export type BroadcastStatus = "sent" | "skipped" | "failed";
 export interface BroadcastResult {
   status: BroadcastStatus;
   campaignId?: string;
-  /** Non-secret token: already-sent | invalid-input | dedupe-unavailable | mailchimp-not-configured | send-failed */
+  /** Non-secret token: already-sent | invalid-input | dedupe-unavailable | resend-not-configured | postal-address-missing | send-failed */
   reason?: string;
 }

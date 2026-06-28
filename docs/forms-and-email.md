@@ -151,8 +151,9 @@ and bounce tracking are delegated to ICR-28.
 - Required env: `RESEND_API_KEY`, `RESEND_AUDIENCE_ID`. If either is missing the function returns
   `{ status: "failed", reason: "resend-not-configured" }` without claiming or sending.
 - The one manual CAN-SPAM piece is `BROADCAST_POSTAL_ADDRESS` (set in Vercel to the church's real
-  postal address; required by law — city + country alone is insufficient). If unset, the template
-  falls back to a minimal fallback string; this is logged as a human prerequisite before a live send.
+  postal address; required by law — city + country alone is insufficient). If unset, the engine
+  **fails closed**: it returns `{ status: "failed", reason: "postal-address-missing" }` before
+  claiming or sending — no broadcast proceeds without a valid address.
 
 ### Idempotency (dedupe)
 
@@ -196,7 +197,7 @@ The engine logs only `broadcastId`, `locale`, `campaignId`, `status`, and `error
 **never API keys, never subscriber data** (the broadcast transport means subscriber emails are
 never in process memory; they live only in the managed Resend Audience). The `reason` values
 returned by `sendBroadcast` are non-secret tokens (`already-sent`, `invalid-input`,
-`dedupe-unavailable`, `resend-not-configured`, `send-failed`).
+`dedupe-unavailable`, `resend-not-configured`, `postal-address-missing`, `send-failed`).
 
 ## Spam & PII discipline
 

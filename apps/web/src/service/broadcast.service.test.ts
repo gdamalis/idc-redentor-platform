@@ -26,6 +26,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   process.env.NEXT_PUBLIC_BASE_URL = "https://www.idcredentor.org";
   process.env.RESEND_API_KEY = "SECRET_KEY_123";
+  process.env.BROADCAST_POSTAL_ADDRESS = "Calle Falsa 123, Buenos Aires, Argentina";
   vi.mocked(isResendBroadcastConfigured).mockReturnValue(true);
   vi.mocked(claimBroadcast).mockResolvedValue("claimed");
   vi.mocked(createAndSendBroadcast).mockResolvedValue("bcast_1");
@@ -72,6 +73,14 @@ describe("sendBroadcast", () => {
     const result = await sendBroadcast(input);
     expect(result).toEqual({ status: "failed", reason: "resend-not-configured" });
     expect(claimBroadcast).not.toHaveBeenCalled();
+  });
+
+  it("returns postal-address-missing without claiming or sending when BROADCAST_POSTAL_ADDRESS is unset", async () => {
+    delete (process.env as Record<string, string | undefined>).BROADCAST_POSTAL_ADDRESS;
+    const result = await sendBroadcast(input);
+    expect(result).toEqual({ status: "failed", reason: "postal-address-missing" });
+    expect(claimBroadcast).not.toHaveBeenCalled();
+    expect(createAndSendBroadcast).not.toHaveBeenCalled();
   });
 
   it("never leaks the API key to the console", async () => {
