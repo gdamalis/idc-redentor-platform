@@ -128,7 +128,7 @@ const result = await sendBroadcast({
   broadcastId: "blog:mi-articulo:es-AR", // stable, caller-supplied idempotency key
   subject: "Nuevo artículo en el blog",
   html: "<p>Cuerpo del mensaje</p>", // inner body; the service wraps it in the template
-  text: "Cuerpo del mensaje", // plain-text alternative (Mailchimp plain_text)
+  text: "Cuerpo del mensaje", // plain-text alternative
   locale: "es-AR", // "es-AR" | "en-US"
 });
 // result: { status: "sent"|"skipped"|"failed", campaignId?, reason? }
@@ -137,23 +137,27 @@ const result = await sendBroadcast({
 `sendBroadcast` **never throws**. All operational and validation failures are caught and returned
 as a typed `BroadcastResult`, so callers cannot be broken by a send failure.
 
-### Transport: Mailchimp campaign
+### Transport: Resend Broadcasts
 
-Under the hood the engine creates a **Mailchimp campaign** (`campaigns.create → setContent → send`)
-against `MAILCHIMP_AUDIENCE_ID`. Because the campaign is addressed to the Mailchimp list,
-**subscriber emails and PII never touch our server**. Mailchimp handles the list, the unsubscribe
-link, and the CAN-SPAM footer. Delivery and bounce tracking are delegated to ICR-28.
+Under the hood the engine calls the **Resend Broadcasts** API (`resend.broadcasts.create → send`
+— both return `{ data, error }` and do NOT throw) against `RESEND_AUDIENCE_ID`. The subscriber
+list is a managed **Resend Audience**, so **subscriber emails and PII never touch our server**.
+Resend handles the unsubscribe link (injected via the `{{{RESEND_UNSUBSCRIBE_URL}}}` placeholder
+Resend substitutes per-recipient), one-click `List-Unsubscribe` header, and suppression. Delivery
+and bounce tracking are delegated to ICR-28.
 
-- `from_name` = `MAILCHIMP_FROM_NAME` (set in Vercel for all envs)
-- `reply_to` = `"info@idcredentor.org"` (constant `BROADCAST_REPLY_TO` in `mailchimpCampaign.ts`)
-- Required env: `MAILCHIMP_API_KEY`, `MAILCHIMP_API_SERVER`, `MAILCHIMP_AUDIENCE_ID`,
-  `MAILCHIMP_FROM_NAME`. If any are missing the function returns
-  `{ status: "failed", reason: "mailchimp-not-configured" }` without sending.
+- `from` = `"Iglesia de Cristo Redentor <FROM_EMAIL>"` (reuses the verified notifications address)
+- `replyTo` = `"info@idcredentor.org"` (constant `BROADCAST_REPLY_TO` in `resendBroadcast.ts`)
+- Required env: `RESEND_API_KEY`, `RESEND_AUDIENCE_ID`. If either is missing the function returns
+  `{ status: "failed", reason: "resend-not-configured" }` without claiming or sending.
+- The one manual CAN-SPAM piece is `BROADCAST_POSTAL_ADDRESS` (set in Vercel to the church's real
+  postal address; required by law — city + country alone is insufficient). If unset, the template
+  falls back to a minimal fallback string; this is logged as a human prerequisite before a live send.
 
 ### Idempotency (dedupe)
 
-Before calling Mailchimp, the engine atomically claims `broadcastId` in the **`broadcast_log`**
-MongoDB collection (`website` DB) via an insert-first upsert + unique index:
+Before sending, the engine atomically claims `broadcastId` in the **`broadcast_log`** MongoDB
+collection (`website` DB) via an insert-first upsert + unique index:
 
 - First call with a new `broadcastId` → claim succeeds → send → mark `sent` → `{ status: "sent" }`.
 - Re-call with the same `broadcastId` that was already sent → duplicate-key error → skip without
@@ -168,15 +172,31 @@ See [`likes-and-mongodb.md`](./likes-and-mongodb.md) for the `broadcast_log` col
 
 `input.html` is the **inner body**. The engine wraps it in the locale-aware `broadcast` template
 (`apps/web/src/templates/broadcast.template.ts`): branded chrome, `<html lang="…">`, responsive
-layout. Both `es-AR` and `en-US` produce correct chrome copy. `input.text` is sent as Mailchimp
-`plain_text` unchanged.
+layout, and a footer containing the copyright line, `BROADCAST_POSTAL_ADDRESS` (CAN-SPAM), and
+the Resend-managed unsubscribe link (`{{{RESEND_UNSUBSCRIBE_URL}}}` — passed through untouched by
+`renderTemplate`; Resend substitutes the per-recipient URL at delivery time). Both `es-AR` and
+`en-US` produce correct chrome copy and locale-appropriate unsubscribe label. `input.text` is sent
+as Resend `text` unchanged.
+
+### Human prerequisites before a live send
+
+These are Vercel/Resend setup steps — the engine and its tests work without them (transport mocked):
+
+1. **Verify the sending domain** in Resend (DKIM/SPF for `notifications.idcredentor.org` or the
+   primary domain) — free tier allows 1 domain.
+2. **Create a Resend Audience** and set **`RESEND_AUDIENCE_ID`** in Vercel (all envs).
+3. **Set `BROADCAST_POSTAL_ADDRESS`** to the church's real CAN-SPAM postal address.
+4. (ICR-44 / follow-up) Repoint the newsletter signup (`/api/subscribe`) from Mailchimp → Resend
+   Contacts, and migrate existing Mailchimp subscribers into the Resend audience. `MAILCHIMP_FROM_NAME`
+   (previously set in Vercel) can be removed once the migration is complete.
 
 ### PII / secret discipline
 
 The engine logs only `broadcastId`, `locale`, `campaignId`, `status`, and `error.message` —
-**never API keys, never subscriber data** (the campaign transport means subscriber emails are
-never in process memory). The `reason` values returned by `sendBroadcast` are non-secret tokens
-(`already-sent`, `invalid-input`, `dedupe-unavailable`, `mailchimp-not-configured`, `send-failed`).
+**never API keys, never subscriber data** (the broadcast transport means subscriber emails are
+never in process memory; they live only in the managed Resend Audience). The `reason` values
+returned by `sendBroadcast` are non-secret tokens (`already-sent`, `invalid-input`,
+`dedupe-unavailable`, `resend-not-configured`, `send-failed`).
 
 ## Spam & PII discipline
 
