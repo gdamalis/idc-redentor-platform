@@ -13,7 +13,7 @@ import {
   Mail,
 } from "lucide-react";
 import Image from "next/image";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useState, useSyncExternalStore } from "react";
 import { toast } from "@src/hooks/use-toast";
 import { trackEvent } from "@src/lib/analytics";
@@ -118,8 +118,19 @@ const SHARE_OPTIONS = [
   },
 ] as const;
 
+function shareOptionLabel(
+  id: string,
+  fallback: string,
+  t: (key: string) => string,
+): string {
+  if (id === "copy_link") return t("copy-link");
+  if (id === "email") return t("email");
+  return fallback; // Facebook / WhatsApp / X — brand names, not translated
+}
+
 export function ShareButton({ slug, basePath, likeKey, title, featuredImageUrl }: ShareButtonProps) {
   const locale = useLocale();
+  const t = useTranslations("BlogPostActions");
   const [isOpen, setIsOpen] = useState(false);
 
   const canNativeShare = useSyncExternalStore(
@@ -163,7 +174,7 @@ export function ShareButton({ slug, basePath, likeKey, title, featuredImageUrl }
   const handleCopyLink = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
-      toast({ title: "Link copied to clipboard" });
+      toast({ title: t("link-copied") });
       trackEvent("blog_post_share", { slug: likeKey, method: "copy_link" });
     } catch {
       // Fallback for older browsers
@@ -173,11 +184,11 @@ export function ShareButton({ slug, basePath, likeKey, title, featuredImageUrl }
       textArea.select();
       document.execCommand("copy");
       textArea.remove();
-      toast({ title: "Link copied to clipboard" });
+      toast({ title: t("link-copied") });
       trackEvent("blog_post_share", { slug: likeKey, method: "copy_link" });
     }
     setIsOpen(false);
-  }, [shareUrl, likeKey]);
+  }, [shareUrl, likeKey, t]);
 
   const handleOptionClick = useCallback(
     (optionId: string, getUrl?: (url: string, title: string) => string) => {
@@ -195,7 +206,7 @@ export function ShareButton({ slug, basePath, likeKey, title, featuredImageUrl }
       type="button"
       onClick={canNativeShare ? handleNativeShare : () => setIsOpen(true)}
       className="group flex items-center gap-2 rounded-full border border-border px-4 py-2 cursor-pointer transition-colors hover:border-foreground/30 hover:bg-muted"
-      aria-label="Share this post"
+      aria-label={t("share")}
     >
       <ArrowUpFromLine className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
     </button>
@@ -229,13 +240,13 @@ export function ShareButton({ slug, basePath, likeKey, title, featuredImageUrl }
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <DialogTitle className="text-base font-semibold text-foreground">
-                Share this post
+                {t("share")}
               </DialogTitle>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
                 className="rounded-full p-1 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
-                aria-label="Close"
+                aria-label={t("close")}
               >
                 <XMarkIcon className="h-5 w-5" />
               </button>
@@ -278,7 +289,7 @@ export function ShareButton({ slug, basePath, likeKey, title, featuredImageUrl }
                     <option.icon className="h-4 w-4 text-foreground" />
                   </span>
                   <span className="text-[11px] text-muted-foreground leading-tight text-center">
-                    {option.label}
+                    {shareOptionLabel(option.id, option.label, t)}
                   </span>
                 </button>
               ))}

@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { Typography } from "@src/components/ui/typography";
 import { Divider } from "@src/components/ui/divider";
 
@@ -5,10 +6,12 @@ type KeywordTagsProps = Readonly<{
   keywords: string[];
 }>;
 
-export function KeywordTags({ keywords }: KeywordTagsProps) {
+export async function KeywordTags({ keywords }: KeywordTagsProps) {
   if (!keywords || keywords.length === 0) {
     return null;
   }
+
+  const t = await getTranslations("BlogPostActions");
 
   return (
     <div className="flex flex-col gap-y-4">
@@ -20,7 +23,7 @@ export function KeywordTags({ keywords }: KeywordTagsProps) {
           variant="h6"
           className="text-foreground/70"
         >
-          Tags
+          {t("tags")}
         </Typography>
         
         <div className="flex flex-wrap gap-2">
