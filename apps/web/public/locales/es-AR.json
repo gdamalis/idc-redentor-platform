@@ -99,5 +99,9 @@
     "success-message": "¡Tu mensaje fue enviado con éxito!",
     "error-save-failed": "No pudimos guardar tu mensaje. Por favor intentá de nuevo más tarde.",
     "error-unexpected": "Ocurrió un error inesperado. Por favor intentá de nuevo más tarde."
+  },
+  "SubscribeBanner": {
+    "error-already-subscribed": "Este correo ya está suscripto a nuestro boletín.",
+    "error-unexpected": "Ocurrió un error inesperado. Por favor intentá de nuevo más tarde."
   }
 }
