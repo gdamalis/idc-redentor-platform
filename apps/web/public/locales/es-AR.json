@@ -99,5 +99,15 @@
     "success-message": "¡Tu mensaje fue enviado con éxito!",
     "error-save-failed": "No pudimos guardar tu mensaje. Por favor intentá de nuevo más tarde.",
     "error-unexpected": "Ocurrió un error inesperado. Por favor intentá de nuevo más tarde."
+  },
+  "BlogPostActions": {
+    "share-this-post": "Compartir este artículo",
+    "copy-link": "Copiar enlace",
+    "email": "Correo",
+    "link-copied": "Enlace copiado al portapapeles",
+    "close": "Cerrar",
+    "like-this-post": "Me gusta este artículo",
+    "unlike-this-post": "Ya no me gusta este artículo",
+    "tags": "Etiquetas"
   }
 }

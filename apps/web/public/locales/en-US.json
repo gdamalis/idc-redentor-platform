@@ -99,5 +99,15 @@
     "success-message": "Your message was sent successfully!",
     "error-save-failed": "Failed to save your message. Please try again later.",
     "error-unexpected": "An unexpected error occurred. Please try again later."
+  },
+  "BlogPostActions": {
+    "share-this-post": "Share this post",
+    "copy-link": "Copy link",
+    "email": "Email",
+    "link-copied": "Link copied to clipboard",
+    "close": "Close",
+    "like-this-post": "Like this post",
+    "unlike-this-post": "Unlike this post",
+    "tags": "Tags"
   }
 }
