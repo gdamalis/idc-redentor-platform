@@ -4,16 +4,19 @@ interface BroadcastChrome {
   logoAlt: string;
   /** May contain {{currentYear}} — resolved by renderTemplate. */
   footer: string;
+  unsubscribeLabel: string;
 }
 
 export const BROADCAST_CHROME: Record<BroadcastLocale, BroadcastChrome> = {
   "es-AR": {
     logoAlt: "Logo de Iglesia de Cristo Redentor",
     footer: "&copy; {{currentYear}} Iglesia de Cristo Redentor. Todos los derechos reservados.",
+    unsubscribeLabel: "Cancelar suscripción",
   },
   "en-US": {
     logoAlt: "Church of Christ the Redeemer logo",
     footer: "&copy; {{currentYear}} Church of Christ the Redeemer. All rights reserved.",
+    unsubscribeLabel: "Unsubscribe",
   },
 };
 
@@ -39,7 +42,11 @@ export const BROADCAST_TEMPLATE = `
         <img src="{{baseUrl}}/assets/img/redentor_logo.png" alt="{{logoAlt}}" />
       </div>
       <div class="email-content">{{body}}</div>
-      <div class="email-footer">{{footer}}</div>
+      <div class="email-footer">
+        {{footer}}<br />
+        {{postalAddress}}<br />
+        <a href="{{{RESEND_UNSUBSCRIBE_URL}}}">{{unsubscribeLabel}}</a>
+      </div>
     </div>
   </body>
 </html>
