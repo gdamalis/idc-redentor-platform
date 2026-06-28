@@ -27,10 +27,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ status: response.status });
     }
 
-    return NextResponse.json(
-      { message: "Successfully subscribed!" },
-      { status: 200 },
-    );
+    return NextResponse.json({ success: true }, { status: 200 });
      
   } catch (error: unknown) {
     // Type narrowing for Mailchimp error
@@ -50,7 +47,7 @@ export async function POST(request: Request) {
         const errorData = JSON.parse(error.response.error.text);
         if (errorData?.title === "Member Exists") {
           return NextResponse.json(
-            { message: "Email is already subscribed" },
+            { messageKey: "SubscribeBanner.error-already-subscribed" },
             { status: "status" in error && typeof error.status === "number" ? error.status : 400 },
           );
         }
@@ -60,7 +57,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { message: "Internal Server Error" },
+      { messageKey: "SubscribeBanner.error-unexpected" },
       { status: 500 },
     );
   }
