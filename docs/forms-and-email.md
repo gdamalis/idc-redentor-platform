@@ -113,6 +113,71 @@ src/service/mailing.service.ts          sendEmail(content) + FROM_EMAIL default
 | `MONGODB_URI`                                                          | `contact.service.ts`                         |     ❌ missing     |
 | `MAILCHIMP_API_KEY` / `MAILCHIMP_API_SERVER` / `MAILCHIMP_AUDIENCE_ID` | `/api/subscribe`                             |     ✅ present     |
 
+## Broadcast engine (ICR-29)
+
+`sendBroadcast(input)` is the single, reusable way to email all newsletter subscribers from server
+code (e.g. an authenticated webhook). It lives at
+`apps/web/src/service/broadcast.service.ts` and is consumed by ICR-44 (blog-post notifications).
+
+### Invocation
+
+```ts
+import { sendBroadcast } from "@src/service/broadcast.service";
+
+const result = await sendBroadcast({
+  broadcastId: "blog:mi-articulo:es-AR", // stable, caller-supplied idempotency key
+  subject: "Nuevo artículo en el blog",
+  html: "<p>Cuerpo del mensaje</p>", // inner body; the service wraps it in the template
+  text: "Cuerpo del mensaje", // plain-text alternative (Mailchimp plain_text)
+  locale: "es-AR", // "es-AR" | "en-US"
+});
+// result: { status: "sent"|"skipped"|"failed", campaignId?, reason? }
+```
+
+`sendBroadcast` **never throws**. All operational and validation failures are caught and returned
+as a typed `BroadcastResult`, so callers cannot be broken by a send failure.
+
+### Transport: Mailchimp campaign
+
+Under the hood the engine creates a **Mailchimp campaign** (`campaigns.create → setContent → send`)
+against `MAILCHIMP_AUDIENCE_ID`. Because the campaign is addressed to the Mailchimp list,
+**subscriber emails and PII never touch our server**. Mailchimp handles the list, the unsubscribe
+link, and the CAN-SPAM footer. Delivery and bounce tracking are delegated to ICR-28.
+
+- `from_name` = `MAILCHIMP_FROM_NAME` (set in Vercel for all envs)
+- `reply_to` = `"info@idcredentor.org"` (constant `BROADCAST_REPLY_TO` in `mailchimpCampaign.ts`)
+- Required env: `MAILCHIMP_API_KEY`, `MAILCHIMP_API_SERVER`, `MAILCHIMP_AUDIENCE_ID`,
+  `MAILCHIMP_FROM_NAME`. If any are missing the function returns
+  `{ status: "failed", reason: "mailchimp-not-configured" }` without sending.
+
+### Idempotency (dedupe)
+
+Before calling Mailchimp, the engine atomically claims `broadcastId` in the **`broadcast_log`**
+MongoDB collection (`website` DB) via an insert-first upsert + unique index:
+
+- First call with a new `broadcastId` → claim succeeds → send → mark `sent` → `{ status: "sent" }`.
+- Re-call with the same `broadcastId` that was already sent → duplicate-key error → skip without
+  sending → `{ status: "skipped", reason: "already-sent" }`.
+- Re-call after a previous failure → log is `failed` (not `sent`) → claim re-succeeds → retried.
+- If MongoDB is unreachable → **fail safe**: `{ status: "failed", reason: "dedupe-unavailable" }` —
+  **no send** (never risk a double mass-send when we can't verify uniqueness).
+
+See [`likes-and-mongodb.md`](./likes-and-mongodb.md) for the `broadcast_log` collection schema.
+
+### Template
+
+`input.html` is the **inner body**. The engine wraps it in the locale-aware `broadcast` template
+(`apps/web/src/templates/broadcast.template.ts`): branded chrome, `<html lang="…">`, responsive
+layout. Both `es-AR` and `en-US` produce correct chrome copy. `input.text` is sent as Mailchimp
+`plain_text` unchanged.
+
+### PII / secret discipline
+
+The engine logs only `broadcastId`, `locale`, `campaignId`, `status`, and `error.message` —
+**never API keys, never subscriber data** (the campaign transport means subscriber emails are
+never in process memory). The `reason` values returned by `sendBroadcast` are non-secret tokens
+(`already-sent`, `invalid-input`, `dedupe-unavailable`, `mailchimp-not-configured`, `send-failed`).
+
 ## Spam & PII discipline
 
 - **Collect the minimum.** Contact: name/email/subject/message. Newsletter: email. Don't add fields casually.
