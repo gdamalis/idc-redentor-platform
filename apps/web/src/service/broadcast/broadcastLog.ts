@@ -1,3 +1,5 @@
+import type { Collection } from "mongodb";
+
 import { connect } from "../database.service";
 
 export type ClaimResult = "claimed" | "already-sent" | "error";
@@ -16,6 +18,20 @@ interface BroadcastLogDocument {
 
 const DB_NAME = "website";
 const COLLECTION = "broadcast_log";
+
+let indexEnsured: Promise<unknown> | null = null;
+
+function ensureBroadcastIndex(col: Collection<BroadcastLogDocument>): Promise<unknown> {
+  if (!indexEnsured) {
+    indexEnsured = col
+      .createIndex({ broadcastId: 1 }, { unique: true })
+      .catch((error: unknown) => {
+        indexEnsured = null; // allow a retry on the next claim
+        throw error;
+      });
+  }
+  return indexEnsured;
+}
 
 function isDuplicateKeyError(error: unknown): boolean {
   return (
@@ -43,7 +59,7 @@ export async function claimBroadcast(broadcastId: string): Promise<ClaimResult> 
   if (!client) return "error";
   try {
     const col = client.db(DB_NAME).collection<BroadcastLogDocument>(COLLECTION);
-    await col.createIndex({ broadcastId: 1 }, { unique: true });
+    await ensureBroadcastIndex(col);
     const now = new Date();
     await col.updateOne(
       { broadcastId, status: { $ne: "sent" } },
