@@ -1,8 +1,8 @@
 # Description
 
-<!-- What does this PR do and why? Link the Trello card: [ICR-N](https://trello.com/c/<shortLink>) -->
+<!-- What does this PR do and why? Link the Jira issue: [ICR-N](https://divinelab.atlassian.net/browse/ICR-N) -->
 
-Ticket: [ICR-N](https://trello.com/c/)
+Ticket: [ICR-N](https://divinelab.atlassian.net/browse/ICR-N)
 Type: <!-- feat | fix | perf | docs | chore | refactor -->
 
 # Changes

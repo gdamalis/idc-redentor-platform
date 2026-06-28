@@ -20,8 +20,8 @@ you need; you commit when the checkpoint is done.
 - `checkpointNumber` — which checkpoint to execute (1, 2, 3, …)
 - `branch` — current feature branch (`<type>/ICR-<N>-<slug>`)
 - `worktreePath` — absolute path to the worktree (operate INSIDE this)
-- `commitType` — `feat` | `fix` | `refactor` | `perf` | `chore` | `docs` (matches the Trello label)
-- `ticketId` — `ICR-<N>` (Trello card idShort `N`)
+- `commitType` — `feat` | `fix` | `refactor` | `perf` | `chore` | `docs` (matches the issue type)
+- `ticketId` — `ICR-N` (the native Jira issue key)
 - `previousFeedback` (optional) — verifier/QA errors from the prior attempt. In the post-PR loop
   (step 14.5 of `/work`) this channel ALSO carries **CI-failure excerpts** (red CI is fed back here).
 - `prReviewThreads` (optional) — array of actionable PR review-comment threads from the post-PR loop
@@ -147,8 +147,8 @@ revalidate,draft}`). Define the schema inline or colocated. Sensitive areas — 
   - Example: `feat(ICR-45): redesign creed section hero`
 - **Header (first line) max 100 chars. Body lines max 100 chars.** Hard-wrap the body — don't rely on
   terminal soft-wrap.
-- Commit-type ↔ Trello label: Feature→`feat`, Bug→`fix`, Integration→`feat`/`chore`,
-  NFR→`chore`/`refactor`/`perf`. Match the `commitType` the orchestrator passed.
+- Commit-type ↔ issue type: Bug→`fix`, Story→`feat`, Task→`chore` (a `perf`/`refactor` label may
+  override a Task). Match the `commitType` the orchestrator passed.
 - Commit at the END of the checkpoint, after `pnpm type-check` + `pnpm test` pass locally.
 - Stage specific files (`git add <files>`), never `git add .`.
 - **Never `--amend` a pushed commit. Never `--no-verify`.**
@@ -246,7 +246,7 @@ a11y issue) → append ONE line to `${MAIN_REPO_ROOT}/tasks/todo.md` (resolve vi
 ```
 
 Do NOT fold these into the current checkpoint (scope creep), but don't lose them either. The
-orchestrator's triage step (15) surfaces these to the user and either promotes to Trello (via the
+orchestrator's triage step (15) surfaces these to the user and either promotes to Jira (via the
 `explorer` subagent's `observation-context` mode) or fixes on the spot. You do not triage them
 yourself.
 

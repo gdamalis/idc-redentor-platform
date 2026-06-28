@@ -1,7 +1,7 @@
 {
-  "trello": {
-    "apiKey": "<your-trello-api-key>",
-    "token": "<your-trello-token>"
+  "jira": {
+    "email": "<your-jira-email>",
+    "apiToken": "<your-jira-apiToken>"
   },
   "preview": {
     "baseUrl": ""

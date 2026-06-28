@@ -3,24 +3,24 @@
 > **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
 
 > **Purpose:** How to use the Claude Code agent harness on this repo — the agents and slash commands, the
-> human-gated Trello automation (Backlog → To Do → In Progress → In Review → **In Testing** → Done, with
+> human-gated Jira automation (Backlog → To Do → In Progress → In Review → **In Testing** → Done, with
 > **Done human-only**), the branch/PR/merge conventions, the always-on type-aware QA on both the Vercel
 > preview and **staging**, the detached **post-PR review + CI loop**, and the user-triggered `/merge`.
 > **Last reviewed:** 2026-06-23 (v2)
 
 ## What it is
 
-A set of focused subagents plus orchestrating slash commands that take a church-team idea from a Trello
-card all the way to a merged-and-staging-verified change. The harness is **human-gated at two points**:
+A set of focused subagents plus orchestrating slash commands that take a church-team idea from a Jira
+issue all the way to a merged-and-staging-verified change. The harness is **human-gated at two points**:
 (1) a _conditional_ brainstorm/spec gate during `/work`, and (2) the **merge approval** — a human triggers
 `/merge`. Agents do the mechanical work (research, implement, verify, QA, open PRs, address review
-comments, run the squash-merge when asked, run staging QA, move cards forward) but **no agent ever
-_autonomously_ merges, and no agent ever moves a card to Done.** Configuration lives in `.claude/config.json`;
+comments, run the squash-merge when asked, run staging QA, transition issues forward) but **no agent ever
+_autonomously_ merges, and no agent ever moves an issue to Done.** Configuration lives in `.claude/config.json`;
 agent definitions in `.claude/agents/`; commands in `.claude/commands/`.
 
 > **What changed from v1.** v1 stopped at _"idea → reviewed PR"_ — it had a human merge every PR by hand and
 > QA'd against per-PR Vercel previews only, with no dedicated staging target. v2 extends the pipeline to
-> _"idea → merged → staging-verified"_: it adds the **In Testing** list, a real **staging** QA env
+> _"idea → merged → staging-verified"_: it adds the **In Testing** status, a real **staging** QA env
 > (`staging.idcredentor.org` / `website-staging` DB), the **`acceptance-judge`** verdict agent (split from
 > the QA tester), the detached **post-PR loop**, and the user-triggered **`/merge`** command. Merge is no
 > longer "humans do it by hand" — the human _triggers_ `/merge`, which performs the squash. `autoMerge`
@@ -28,27 +28,27 @@ agent definitions in `.claude/agents/`; commands in `.claude/commands/`.
 
 ## Commands
 
-| Command                       | Backed by                                                                    | Does                                                                                                                                                                                                                                                                                                                 | Card moves                                                                             |
-| ----------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| **`/pm`**                     | `product-manager`                                                            | Intake a raw idea → To Do card; refine a thin card to ready; groom the Backlog + To Do lists. Enforces `docs/product/scope-and-boundaries.md`. **Never implements.**                                                                                                                                                 | Creates/updates cards up to **To Do**; never past it                                   |
-| **`/work [ICR-N]`**           | explorer → implementer → verifier → qa-runner → acceptance-judge → pr-author | Pick up a ready card, refine-gate it, create a worktree + branch, (conditionally) brainstorm + spec, implement ↔ verify, open a draft PR, run always-on type-aware pre-merge QA on the preview, mark ready, then run the detached post-PR review + CI loop. Hands off to `/merge` on an explicit in-session "merge". | **To Do → In Progress** (step 3), **In Progress → In Review** (step 14, via pr-author) |
-| **`/merge ICR-N`**            | `/work` hand-off or standalone                                               | **User-triggered ONLY.** Squash-merge the PR (refuse on red/pending CI), delete the worktree + branch, move the card → In Testing, then run post-merge **staging** QA. **Never merges autonomously; never moves to Done.**                                                                                           | **In Review → In Testing** (after a verified squash-merge)                             |
-| **`/qa [ICR-N] [--preview]`** | `qa-acceptance` (tester) → `acceptance-judge` (verdict)                      | Acceptance QA against the **staging** deployment by default; `--preview` re-targets the PR's Vercel preview. Posts a structured Trello comment with inline screenshots. **Phase 1: report-only.**                                                                                                                    | May move To Do/In Progress → In Review on the **preview** path only; **never Done**    |
-| **`/verify`**                 | verifier (+ security-reviewer)                                               | Run `pnpm type-check && pnpm lint && pnpm test && pnpm build` and security checks. Local-only.                                                                                                                                                                                                                       | none                                                                                   |
+| Command                       | Backed by                                                                    | Does                                                                                                                                                                                                                                                                                                                  | Issue transitions                                                                         |
+| ----------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| **`/pm`**                     | `product-manager`                                                            | Intake a raw idea → To Do issue; refine a thin issue to ready; groom the Backlog + To Do statuses. Enforces `docs/product/scope-and-boundaries.md`. **Never implements.**                                                                                                                                             | Creates/updates issues up to **To Do**; never past it                                     |
+| **`/work [ICR-N]`**           | explorer → implementer → verifier → qa-runner → acceptance-judge → pr-author | Pick up a ready issue, refine-gate it, create a worktree + branch, (conditionally) brainstorm + spec, implement ↔ verify, open a draft PR, run always-on type-aware pre-merge QA on the preview, mark ready, then run the detached post-PR review + CI loop. Hands off to `/merge` on an explicit in-session "merge". | **To Do → In Progress** (step 3), **In Progress → In Review** (step 14, via pr-author)    |
+| **`/merge ICR-N`**            | `/work` hand-off or standalone                                               | **User-triggered ONLY.** Squash-merge the PR (refuse on red/pending CI), delete the worktree + branch, transition the issue → In Testing, then run post-merge **staging** QA. **Never merges autonomously; never moves to Done.**                                                                                     | **In Review → In Testing** (after a verified squash-merge)                                |
+| **`/qa [ICR-N] [--preview]`** | `qa-acceptance` (tester) → `acceptance-judge` (verdict)                      | Acceptance QA against the **staging** deployment by default; `--preview` re-targets the PR's Vercel preview. Posts a structured Jira comment with inline screenshots. **Phase 1: report-only.**                                                                                                                       | May transition To Do/In Progress → In Review on the **preview** path only; **never Done** |
+| **`/verify`**                 | verifier (+ security-reviewer)                                               | Run `pnpm type-check && pnpm lint && pnpm test && pnpm build` and security checks. Local-only.                                                                                                                                                                                                                        | none                                                                                      |
 
 ## The agents
 
 The roster is read from `.claude/agents/` — always check it for the live set. The current agents:
 
-- **`product-manager`** (`/pm`) — turns ideas into well-formed Trello cards and grooms the backlog, grounded
-  in `docs/product/`. Three modes: **intake** (raw idea → To Do card), **refine** (thin card → ready),
-  **groom** (read-only audit of **Backlog + To Do**). Never writes code, never branches/PRs, never moves a
-  card past To Do. Flags sensitive areas (email, contact/subscribe PII, likes Mongo writes, env/secrets, CSP).
+- **`product-manager`** (`/pm`) — turns ideas into well-formed Jira issues and grooms the backlog, grounded
+  in `docs/product/`. Three modes: **intake** (raw idea → To Do issue), **refine** (thin issue → ready),
+  **groom** (read-only audit of **Backlog + To Do**). Never writes code, never branches/PRs, never transitions
+  an issue past To Do. Flags sensitive areas (email, contact/subscribe PII, likes Mongo writes, env/secrets, CSP).
 - **`explorer`** — read-only codebase research for `/work`. Two modes: `ticket-context` (default) summarizes
-  relevant code/patterns/risks for an incoming card **and emits two machine-readable signals**:
+  relevant code/patterns/risks for an incoming issue **and emits two machine-readable signals**:
   `Suggested QA depth` (`light|standard|heavy`) and a `needsDesignGate: true|false` line that drives whether
   `/work`'s brainstorm + spec gates fire; `observation-context` enriches a stray `tasks/todo.md` line into a
-  Trello card draft (JSON). Uses the graphify graph when present (see below).
+  Jira issue draft (JSON). Uses the graphify graph when present (see below).
 - **`implementer`** — writes the change inside the feature-branch worktree, TDD-first, following the
   conventions in `CLAUDE.md` / `AGENTS.md` / `.cursorrules`. In the post-PR loop it also takes
   **PR review-comment threads** as input: it invokes `superpowers:receiving-code-review` (verify → fix →
@@ -58,54 +58,56 @@ The roster is read from `.claude/agents/` — always check it for the live set. 
 - **`verifier`** — runs the gate commands (`pnpm type-check`, `pnpm lint`, `pnpm test`, `pnpm build`) per QA
   depth and reports failures rather than inventing missing scripts.
 - **`pr-author`** — opens the draft PR with a conventional-commit title `<type>(ICR-N): description`, fills
-  the template, posts the PR-link Trello comment, and at `mark_ready` flips the PR to ready and moves the
-  card **In Progress → In Review**. **Never merges, never moves to Done.** The `In Review → In Testing` move
+  the template, posts the PR-link Jira comment, and at `mark_ready` flips the PR to ready and transitions the
+  issue **In Progress → In Review**. **Never merges, never moves to Done.** The `In Review → In Testing` transition
   is owned by `/merge`, not pr-author — preserving pr-author's single responsibility.
 - **`qa-runner`** — **tester-only**, type- and depth-aware automated QA. `qaType` decides **what** to test
   (`ui` → MCP browser walk + screenshots **always**; `api` → request-level checks at the network boundary;
   `chore` → vitest/local only, no browser); `depth` is the **effort dial within a type, never an on/off
   switch** (there is no `light = skip` anymore). Env-aware by name (`preview`|`staging`). It produces
   **evidence**; it does not render the verdict.
-- **`qa-acceptance`** — **tester-only** per-card acceptance QA: reads the card's acceptance criteria (Spanish
+- **`qa-acceptance`** — **tester-only** per-issue acceptance QA: reads the issue's acceptance criteria (Spanish
   or English), drives a real browser via the Playwright MCP and hits APIs against the env resolved **by name**
   (`preview`|`staging`), captures screenshots, and returns a raw evidence bundle. The authoritative verdict
   comes from the `acceptance-judge`, not here.
 - **`acceptance-judge`** _(new in v2)_ — **fresh, evidence-only product verdict.** Modeled on
   `security-reviewer` (fresh context, adversarial, read-only, **no execution** — never drives a browser, runs
-  a command, hits an API/Mongo, or re-runs QA). Inputs = the tester's evidence bundle + the card's acceptance
+  a command, hits an API/Mongo, or re-runs QA). Inputs = the tester's evidence bundle + the issue's acceptance
   criteria. Output = a structured compliance verdict (overall `pass|partial|fail` + per-AC
-  `{n, text, type, verdict, rationale, evidenceRef}`) shaped to drop straight into the trello-result table.
+  `{n, text, type, verdict, rationale, evidenceRef}`) shaped to drop straight into the jira-result table.
   **Separation of concerns:** the **tester** proves _what the system does_ (evidence); the **judge** decides
-  _whether that meets the card_ (product). Never fused — the judge's verdict supersedes any provisional
+  _whether that meets the issue_ (product). Never fused — the judge's verdict supersedes any provisional
   result the tester emitted.
 - **`security-reviewer`** — fresh, diff-only security + performance review. Scans a PR/branch diff against the
   sensitive paths (services, API routes, `proxy.ts`, `lib/contentful/fetch.ts`, `config/headers.js`, env
   files) and returns a structured gating verdict. Used by `/qa` and `/verify`; can run ad hoc.
 
-## Trello: keys, board, and the human gates
+## Jira: keys, project, and the human gates
 
-The tracker is the Trello board **"IDCR Website"** (`boardId` `67a7a743186065f07e87bbe9`, short link
-`sxuUAeck`), accessed via the Trello MCP (`mcp__trello__*`). All board/list/label ids come from
-`.claude/config.json` → `tracker` — never inline literal ids.
+The tracker is the Jira project **IDC Redentor** (key `ICR`) on `divinelab.atlassian.net` — a
+company-managed software project, accessed via the Atlassian MCP (`mcp__atlassian-divinelab__*`). The project
+key, cloudId, and the status/transition names come from `.claude/config.json` → `jira` — never inline literal
+ids.
 
-### Card keys (`ICR-N`)
+### Issue keys (`ICR-N`)
 
-`ICR-N` is a **derived display key**: `N` is the card's Trello `idShort`. There is no native `ICR-N` field.
-To act on `ICR-N`: `set_active_board(boardId)`, resolve the card whose `idShort === N`, then use the resolved
-card **id** for every write. Branches, commits, and PR titles use the `ICR-N` string.
+`ICR-N` is the **native Jira issue key** — `N` is the issue number, not a Trello idShort. There is no
+scan-to-resolve step: fetch the issue directly via `getJiraIssue(cloudId, "ICR-N")` and use the `ICR-N` key
+for every read, write, and transition. Branches, commits, and PR titles use the same `ICR-N` string.
 
-### Workflow lists
+### Workflow statuses
 
 ```
 Backlog → To Do → In Progress → In Review → In Testing → Done
  (PM)     (PM)     (#1 /work)   (#2 /work)  (#3 /merge)  (HUMAN, after prod deploy)
 ```
 
-Move cards by **listId** (from `config.tracker.lists`), never by name — the name fields are display-only and
-may be renamed on the board without changing the ids. If a listId 404s at runtime, re-fetch via
-`get_lists(boardId)`, match by name, and surface the drift rather than inventing an id.
+Transition issues by **status name** (from `config.tracker.workflow`), resolved at runtime via
+`getTransitionsForJiraIssue` matching `transition.to.name` — never hardcode numeric transition ids. The status
+name is the contract; if a transition isn't offered at runtime (the status is missing from the project's
+workflow, or was renamed), surface the drift rather than inventing an id.
 
-| List        | Set by                                                            |       Automated?       |
+| Status      | Set by                                                            |       Automated?       |
 | ----------- | ----------------------------------------------------------------- | :--------------------: |
 | Backlog     | PM / human (backlog grooming)                                     |           no           |
 | To Do       | PM / human (ready to pick up)                                     |           no           |
@@ -114,41 +116,40 @@ may be renamed on the board without changing the ids. If a listId 404s at runtim
 | In Testing  | `/merge` (after a verified squash-merge)                          |          yes           |
 | **Done**    | **HUMAN ONLY** — after the human's manual prod deploy from Vercel | **never by any agent** |
 
-There are exactly **three** automated moves across the harness:
+There are exactly **three** automated transitions across the harness:
 
 1. **To Do → In Progress** — owned by `/work` (step 3, right after the worktree exists).
 2. **In Progress → In Review** — owned by `/work` via `pr-author` (step 14, at PR-ready, paired with the
    PR-link comment).
 3. **In Review → In Testing** — owned by **`/merge`**, **only after a verified squash-merge**.
 
-`/work` owns exactly the first two and **never** performs move #3 itself — even the in-session "merge"
-hand-off (see below) delegates move #3 to `/merge`. **No agent or command ever moves a card to Done.**
+`/work` owns exactly the first two and **never** performs transition #3 itself — even the in-session "merge"
+hand-off (see below) delegates transition #3 to `/merge`. **No agent or command ever moves an issue to Done.**
 `config.tracker.forbiddenTransitions` blocks `→ done`. Done means: the human deployed to production from
-Vercel and then moved the card to Done themselves. Nothing infers "staging passed ⇒ safe for Done."
+Vercel and then transitioned the issue to Done themselves. Nothing infers "staging passed ⇒ safe for Done."
 
-### Labels → commit type
+### Issue type → commit type
 
-The board's four labels double as commit-type hints: **Feature → `feat`**, **Bug → `fix`**,
-**Integration → `feat`/`chore`**, **NFR → `chore`/`refactor`/`perf`**. Don't create new labels.
-"Needs refinement" is tracked structurally via a `Refinement → needs-refinement` checklist item, not a label
-(`config.tracker.needsRefinementChecklistName` / `needsRefinementItemText`) — a To Do card with **no open**
-`needs-refinement` item is the `/work`-ready signal. `/work` reads this at its entry gate (step 1.5).
+The Jira **issue type** drives the commit-type hint: **Bug → `fix`**, **Story → `feat`**, **Task → `chore`**,
+with an optional label override for `perf`/`refactor`. "Needs refinement" is tracked via a **`needs-refinement`
+Jira label** (`config.tracker.needsRefinementLabel`), not a checklist — a To Do issue **without** the
+`needs-refinement` label is the `/work`-ready signal. `/work` reads this at its entry gate (step 1.5).
 
 ## `/work` end-to-end
 
 `/work ICR-N` is the orchestrator playbook. The main thread follows it step by step; subagents are spawned
 only at the marked points; the human gates (★) stay in the main conversation. The shape:
 
-1. **Resolve the card** by `idShort = N`; pin its id, list, labels, QA depth. Infer the **commit type** (from
-   the label) and the **QA TYPE** (`ui` | `api` | `chore`, independent of depth — reconciled against the real
+1. **Resolve the issue** by key `ICR-N` (`getJiraIssue`); pin its status, labels, QA depth. Infer the **commit
+   type** (from the issue type) and the **QA TYPE** (`ui` | `api` | `chore`, independent of depth — reconciled against the real
    `git diff` at the QA step).
-2. **Entry gate — needs-refinement ★ (step 1.5).** Runs after the card is resolved and **before any side
-   effect** (no worktree, no move). It reads the `Refinement` checklist; if an **open** `needs-refinement`
-   item exists, it **STOPS** and offers a carrail: **(a) refine now** (dispatch `product-manager` in
-   `refine` mode, then re-read the checklist) or **(b) pick another ticket** (abort cleanly — no worktree,
-   no move, no state file). A card that fails this gate is never moved To Do → In Progress.
+2. **Entry gate — needs-refinement ★ (step 1.5).** Runs after the issue is resolved and **before any side
+   effect** (no worktree, no transition). It reads the issue's labels; if the **`needs-refinement`** label is
+   present, it **STOPS** and offers a carrail: **(a) refine now** (dispatch `product-manager` in
+   `refine` mode, then re-read the labels) or **(b) pick another ticket** (abort cleanly — no worktree,
+   no transition, no state file). An issue that fails this gate is never transitioned To Do → In Progress.
 3. **Worktree + branch (mandatory).** Create an isolated worktree under `<main-root>/.claude/worktrees/ICR-N`
-   off `origin/main`, branch `<type>/ICR-N-<slug>`. Then **To Do → In Progress** (automated move #1).
+   off `origin/main`, branch `<type>/ICR-N-<slug>`. Then **To Do → In Progress** (automated transition #1).
 4. **Explore (explorer).** Returns relevant files / patterns / risks + **`needsDesignGate`** (boolean) and
    **`Suggested QA depth`**. `/work` parses both literally; on absence/ambiguity it **fail-safe defaults
    `needsDesignGate = true`** (never auto-skip the design gate on ambiguity).
@@ -156,38 +157,38 @@ only at the marked points; the human gates (★) stay in the main conversation. 
    `needsDesignGate === true`** — a sensitive area touched, QA depth above `light`, or a data-model / API /
    CSP / i18n / email change. Then the human reviews the spec (`★ HUMAN GATE ★`). When `needsDesignGate ===
 false` (a trivial copy/refactor), **both are skipped** and `/work` auto-pilots straight to the
-   implementation plan built from the card + explorer summary. **The six sensitive areas always gate.**
+   implementation plan built from the issue + explorer summary. **The six sensitive areas always gate.**
 6. **Implement ↔ verify loop.** The implementer executes each plan checkpoint TDD-first and commits; the
    verifier runs the gate stack per depth. A **3-attempt cap** (with prior-error diff) guards the loop; on
    cap it triggers the Failure handler.
 7. **Open a draft PR early (pr-author).** `git push -u`, `gh pr create --draft` with a conventional title,
-   fills the template, posts the PR-link Trello comment. **Card stays In Progress.** Every later checkpoint
+   fills the template, posts the PR-link Jira comment. **Issue stays In Progress.** Every later checkpoint
    commits-and-pushes to this open PR so cloud review agents can review iteratively.
 8. **Always-on pre-merge QA on the PREVIEW (step 13).** **Unconditional for every testable ticket** — no
    `light = skip`. Type-aware: `ui` → browser walk + screenshots; `api` → API/request-level checks;
    `chore` → vitest/local only. The **tester (`qa-runner`) → `acceptance-judge` (verdict)** split applies;
    the loop's pass/fail decision keys off the **judge's** verdict. Evidence is **dual-posted to BOTH the PR
-   and the Trello card** (screenshots attach to Trello; the PR carries the written report + per-AC verdict
-   table + a link to the Trello card). A 3-attempt QA cap mirrors the verify loop; it auto-remediates but
+   and the Jira issue** (screenshots attach to the Jira issue; the PR carries the written report + per-AC verdict
+   table + a link to the Jira issue). A 3-attempt QA cap mirrors the verify loop; it auto-remediates but
    **never auto-merges**.
-9. **Docs evaluation (step 13.5)** then **mark ready (step 14, pr-author).** `gh pr ready`, a final Trello
-   comment, and **In Progress → In Review** (automated move #2). This is `/work`'s last automated move.
+9. **Docs evaluation (step 13.5)** then **mark ready (step 14, pr-author).** `gh pr ready`, a final Jira
+   comment, and **In Progress → In Review** (automated transition #2). This is `/work`'s last automated transition.
 10. **Detached post-PR review + CI loop (step 14.5).** See the next section.
 11. **In-session merge hand-off (step 14.6).** After the loop reaches its CLEAN/CAP exit and the human has
     reviewed, the human may say **"merge"** in the same conversation; only then does `/work` route the live
     session into the **`/merge ICR-N`** logic (it does **not** reimplement merge). Merge is never autonomous.
 12. **Triage stray observations (step 15)** and **lessons (step 16)**, then stop. `/work` deletes its state
-    file on success. **It never merges and never moves a card to Done.**
+    file on success. **It never merges and never moves an issue to Done.**
 
 `/work` persists progress to a state file (`tasks/specs/ICR-N-<slug>.state.json`) so an aborted run (Ctrl-C,
 sleep, network drop) can resume — including resuming mid-loop without double-replying to a thread.
 
 ### The detached post-PR review + CI loop (step 14.5)
 
-After the PR is ready and the card is In Review, `/work` enters a **detached, dynamic-paced loop** driven by
+After the PR is ready and the issue is In Review, `/work` enters a **detached, dynamic-paced loop** driven by
 `config.reviewLoop`. It watches the PR's **code-review comment threads** (including the **Codex review bot**,
 which posts a few minutes after PR-ready) **and CI checks**, auto-remediates, and notifies the user when the
-PR is ready for their eyes. **The loop NEVER merges and NEVER moves a card** — it only fixes, replies, and
+PR is ready for their eyes. **The loop NEVER merges and NEVER transitions an issue** — it only fixes, replies, and
 notifies.
 
 - **Driver: `ScheduleWakeup`** (the orchestrator-level driver; dynamic-paced, stateful, worktree-bound). The
@@ -213,30 +214,30 @@ notifies.
 
 ## `/merge ICR-N` (user-triggered)
 
-`/merge` is the **only** owner of the squash-merge and of the `In Review → In Testing` move. It runs
+`/merge` is the **only** owner of the squash-merge and of the `In Review → In Testing` transition. It runs
 **only when a human explicitly asks** (`config.merge.requireUserTrigger`; `config.qaLoop.autoMerge.enabled`
 stays `false`). It is invoked standalone or via the `/work` step-14.6 hand-off.
 
-1. **Pre-flight + guards.** Pin `config.merge` and `config.qaLoop.env.staging` by name. The card **must** be
+1. **Pre-flight + guards.** Pin `config.merge` and `config.qaLoop.env.staging` by name. The issue **must** be
    in **In Review**; resolve the PR by `ICR-N`. Refuse if the PR is a draft.
 2. **CI gate (refuse on red).** With `config.merge.requireCiGreen`, anything not `SUCCESS`/`NEUTRAL`/`SKIPPED`
-   — including still-`PENDING`/`IN_PROGRESS` — is **not green**. On not-green: **REFUSE**, leave the card In
+   — including still-`PENDING`/`IN_PROGRESS` — is **not green**. On not-green: **REFUSE**, leave the issue In
    Review, do not merge or clean up. (Re-read PR state right before merging — a `/work` loop tick may have
    pushed after the human said "merge"; the CI gate + not-draft guard catch an in-flight fix.)
 3. **Squash-merge ONLY.** `gh pr merge <n> --squash --delete-branch` (never `--merge`/`--rebase`). Verify the
-   PR is MERGED afterward; on merge failure, stop and leave the card In Review.
+   PR is MERGED afterward; on merge failure, stop and leave the issue In Review.
 4. **Clean up worktree + local branch.** `--delete-branch` removed the remote branch; this step removes the
    local worktree + branch, anchored to `MAIN_REPO_ROOT`. If `/merge` is running **inside** the target
    worktree, it leaves it first via `ExitWorktree(action: "remove")` so the shell is never stranded.
    "Already gone" is tolerated non-fatally.
-5. **Move In Review → In Testing (automated move #3)** — only after the verified squash-merge. **Never Done.**
+5. **Transition In Review → In Testing (automated transition #3)** — only after the verified squash-merge. **Never Done.**
 6. **Post-merge staging QA.** Validate the staging URL against `config.qaLoop.env.staging` (host must match
    `^staging\.idcredentor\.org$`, prod hosts hard-denied; **skip** the must-be-a-Vercel-preview check —
    staging is not a preview). Then **tester (`qa-acceptance`) → `acceptance-judge`** → post the result to
-   Trello (`postedBy: "/merge"`, `envName: "staging"`). A `no-POST` happy-path AC the tester correctly
+   the Jira issue (`postedBy: "/merge"`, `envName: "staging"`). A `no-POST` happy-path AC the tester correctly
    skipped is **BLOCKED/deferred**, not FAIL.
 7. **Stop.** Report the merge + cleanup + the staging verdict, and remind the user that **Done is human-only**
-   — deploy prod from Vercel, then move In Testing → Done. `/merge` **never** moves a card to Done.
+   — deploy prod from Vercel, then transition In Testing → Done. `/merge` **never** moves an issue to Done.
 
 ## QA loop (Phase 1: report-only)
 
@@ -255,7 +256,7 @@ guardrails:
   (`requirePreviewEnvironment: false` — it has its own allowlist) but **keeps the prod hard-deny**.
 - **tester → acceptance-judge split everywhere.** Every QA path runs a fresh tester (`qa-runner` or
   `qa-acceptance`) for evidence, then a fresh `acceptance-judge` for the authoritative verdict; results post
-  via `post-trello-result.mjs` (`meta.envName` is required and drives the `Staging:` / `Preview:` label;
+  via `post-jira-result.mjs` (`meta.envName` is required and drives the `Staging:` / `Preview:` label;
   `meta.postedBy` is the provenance footer — `/qa` | `/work` | `/merge`).
 - **Staging is `no-POST`** (`config.qaLoop.env.staging.liveIntegrationPolicy`): no live happy-path POST to
   `/api/subscribe` or `/api/contact` — Mailchimp/SendGrid/Resend are presumed LIVE on staging unless sandbox
@@ -272,12 +273,12 @@ guardrails:
   `src/i18n/**`, `lib/contentful/fetch.ts`, `config/**`, `next.config.*`, `package.json`, `.env*`,
   `.github/**`) raise the bar further.
 - **QA depth** (`light`/`standard`/`heavy`, default `standard`) is the **effort dial within a type**, resolved
-  from a Trello custom field / label / description token. **There is no `light = skip` tier** — every testable
+  from a Jira label / description token. **There is no `light = skip` tier** — every testable
   ticket runs its TYPE's baseline.
 
 ## Contentful model-change workflow (two lanes)
 
-When a card changes the Contentful **content model** — a new/changed/deleted content type or field, or an
+When an issue changes the Contentful **content model** — a new/changed/deleted content type or field, or an
 entry remap (**not** just a new read fragment in `lib/contentful/*`) — the harness routes it through one of
 two lanes, wired in `.claude/config.json` → `contentful` and documented in full in
 [`contentful-environments.md`](./contentful-environments.md). (Plain **content** edits — new posts, text
@@ -355,12 +356,12 @@ Grep/Read on an empty/stale/absent graph and notes it. Full guide: [`graphify.md
 
 ## Golden rules
 
-1. **Never move a card to Done** — that's the human gate, after their manual prod deploy.
+1. **Never move an issue to Done** — that's the human gate, after their manual prod deploy.
 2. **No autonomous merge** — `autoMerge` stays `false`. Agents never merge on their own; the human triggers
    `/merge`, which executes the squash-merge.
 3. **Never run QA against production — in any env** — prod custom domains AND prod `*.vercel.app` aliases are
    hard-denied for both `preview` and `staging`.
-4. **Never invent a script or a Trello id** — report drift instead; move cards by listId.
+4. **Never invent a script or a Jira transition** — report drift instead; transition issues by status name.
 5. **Tester proves, judge decides** — never fuse the QA tester and the `acceptance-judge`; the judge's
    verdict is authoritative.
 6. **Respect the product scope** (`docs/product/scope-and-boundaries.md`) — the PM rejects/reframes

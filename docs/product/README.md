@@ -8,8 +8,8 @@ This folder is the **canonical product definition** for the Iglesia de Cristo Re
 
 ## Reading order
 
-1. **[overview.md](./overview.md)** — what the site is, who it serves, the mission and values (draft), brand voice, and the audience surfaces mapped to routes. *Start here.*
-2. **[scope-and-boundaries.md](./scope-and-boundaries.md)** — what's IN, what's deliberately OUT (no logins, no payments, no public UGC, no in-product AI), and what's DEFERRED on the roadmap. *The hard filter for every idea.*
+1. **[overview.md](./overview.md)** — what the site is, who it serves, the mission and values (draft), brand voice, and the audience surfaces mapped to routes. _Start here._
+2. **[scope-and-boundaries.md](./scope-and-boundaries.md)** — what's IN, what's deliberately OUT (no logins, no payments, no public UGC, no in-product AI), and what's DEFERRED on the roadmap. _The hard filter for every idea._
 3. **[content-types.md](./content-types.md)** — the real Contentful content types (Page, the four section components, ContentCollection with Credo + ValueItem, EventBanner → Event + LocationComponent, Blog post, Footer, NavigationMenu, Seo), with the getter that reads each and the route/component that renders it.
 4. **[editorial-and-content-rules.md](./editorial-and-content-rules.md)** — the bilingual rule, voice/tone for a church audience, the doctrinal-content guardrail, image and SEO-copy rules, and the publish/preview flow.
 5. **[ai-era-strategy.md](./ai-era-strategy.md)** — the discoverability thesis for a church (structured data + clean metadata, **not** an on-site bot), prioritized, and the KPIs.
@@ -18,9 +18,9 @@ This folder is the **canonical product definition** for the Iglesia de Cristo Re
 
 The `product-manager` agent loads this folder on every run and applies **[scope-and-boundaries.md](./scope-and-boundaries.md)** as a hard filter:
 
-- An idea inside **IN scope** → draft a Trello card.
+- An idea inside **IN scope** → draft a Jira issue.
 - An idea **OUT of scope** → reject it or offer the in-scope reframe, citing the specific boundary.
-- An idea in **DEFERRED** → card it, tag it roadmap/deferred, and tie it to the discoverability thesis in [ai-era-strategy.md](./ai-era-strategy.md).
+- An idea in **DEFERRED** → create an issue, tag it roadmap/deferred, and tie it to the discoverability thesis in [ai-era-strategy.md](./ai-era-strategy.md).
 
 ## Keeping these docs alive
 

@@ -2,31 +2,48 @@
   "project": "idc-redentor-web",
   "_monorepoNote": "pnpm + Turborepo workspace: the site lives under apps/web/. App paths in any descriptive note below (src/..., lib/..., public/..., config/..., scripts/contentful/..., .env.local) resolve under apps/web/ (e.g. apps/web/src/utils/predica/sermonEntry.ts, apps/web/.env.local). Only .claude/, docs/, and tasks/ stay at the repo root. The script/output/dir paths actually executed by the harness (commands.*, predica.*.script, predica.*.logo, predica.voices.dir, etc.) are already correct as written; this note only governs the prose references.",
   "ticketKeyPrefix": "ICR",
-  "ticketLinkBase": "https://trello.com/c/",
+  "ticketLinkBase": "https://divinelab.atlassian.net/browse/",
   "tracker": {
-    "type": "trello",
-    "mcpNamespace": "mcp__trello__",
-    "boardName": "IDCR Website",
-    "boardId": "67a7a743186065f07e87bbe9",
-    "boardShortLink": "sxuUAeck",
+    "type": "jira",
+    "mcpNamespace": "mcp__atlassian-divinelab__",
+    "site": "divinelab.atlassian.net",
+    "cloudId": "0228eaa6-e8fa-4746-b2ac-6c58f1478e42",
+    "projectKey": "ICR",
+    "projectId": "10038",
+    "projectName": "IDC Redentor",
+    "projectType": "company-managed-classic",
     "ticketKeyPrefix": "ICR",
-    "ticketIdField": "idShort",
-    "ticketKeyNote": "ICR-N is a DERIVED display key: N == the Trello card's idShort. There is no native 'ICR-N' field. To fetch a card from key ICR-N: set_active_board(boardId), then resolve the card whose idShort === N (scan lists via get_cards_by_list_id, or get_card once the id is known). Branches/PRs/commits use the ICR-N string; all Trello WRITE calls use the resolved card id.",
-    "lists": {
-      "discovery": { "id": "67a7a748b44f06e964c9eddd", "name": "Backlog" },
-      "todo": { "id": "67b500c7c65a4d3edf11e180", "name": "To Do" },
-      "inProgress": { "id": "67a7a74bc9dd606c2e41cea2", "name": "In Progress" },
-      "inReview": { "id": "67a7a74df6bfc532c70a06c8", "name": "In Review" },
-      "inTesting": { "id": "6a3a7f99c43d9b731c47fe61", "name": "In Testing" },
-      "done": { "id": "67a7a758f2da48a6482634a2", "name": "Done" }
+    "ticketIdField": "key",
+    "ticketKeyNote": "ICR-N is the NATIVE Jira issue key — N is the Jira issue number (not a Trello idShort). Fetch directly via getJiraIssue(cloudId, issueIdOrKey='ICR-N'); there is no board/list scan. Branches/PRs/commits and all Atlassian WRITE calls use the ICR-N key string. cloudId is required on every mcp__atlassian-divinelab__* call.",
+    "components": {
+      "web": {
+        "id": "10001",
+        "name": "Website",
+        "note": "the public marketing/blog site (apps/web)"
+      },
+      "admin": {
+        "id": "10000",
+        "name": "Ministry Admin Panel",
+        "note": "the internal admin app (apps/admin)"
+      },
+      "shared": { "id": "10003", "name": "Shared" },
+      "infra": { "id": "10002", "name": "Infra" }
     },
-    "listResolution": "by-list-id",
-    "listResolutionNote": "Trello cards move between LISTS by listId (move_card takes the destination listId), not by status name. Always use the listId values above. The name fields are display-only and may be renamed on the board without changing listIds/boardId; trust the ids, not the names. If a listId 404s at runtime, re-fetch via get_lists(boardId), match by name, surface the drift — never invent an id.",
+    "componentNote": "ICR is ONE Jira project for the whole monorepo; the source app is the Jira Component (Website vs Ministry Admin Panel), not a separate project. Set components:[{name}] at create. Default a new issue's component from its work area: apps/web -> Website, apps/admin -> Ministry Admin Panel.",
+    "statuses": {
+      "discovery": "Backlog",
+      "todo": "To Do",
+      "inProgress": "In Progress",
+      "inReview": "In Review",
+      "inTesting": "In Testing",
+      "done": "Done"
+    },
+    "statusResolution": "by-name",
+    "statusResolutionNote": "Jira issues move between STATUSES by workflow transition, not by id or list. Resolve at runtime: getTransitionsForJiraIssue(cloudId, key) -> pick the transition whose to.name === the target status name (from statuses above; compare case-insensitive/trimmed) -> transitionJiraIssue(cloudId, key, transitionId). NEVER hardcode numeric transition ids. If the target status isn't directly reachable in one hop, advance along workflow[].order without overshooting; if still unreachable, surface the drift — never invent an id.",
     "workflow": [
       {
         "key": "discovery",
         "name": "Backlog",
-        "listId": "67a7a748b44f06e964c9eddd",
         "order": 1,
         "automated": false,
         "setBy": "PM / human (backlog grooming)"
@@ -34,7 +51,6 @@
       {
         "key": "todo",
         "name": "To Do",
-        "listId": "67b500c7c65a4d3edf11e180",
         "order": 2,
         "automated": false,
         "setBy": "PM / human (ready to pick up)"
@@ -42,7 +58,6 @@
       {
         "key": "inProgress",
         "name": "In Progress",
-        "listId": "67a7a74bc9dd606c2e41cea2",
         "order": 3,
         "automated": true,
         "setBy": "/work step 3 (To Do -> In Progress)"
@@ -50,7 +65,6 @@
       {
         "key": "inReview",
         "name": "In Review",
-        "listId": "67a7a74df6bfc532c70a06c8",
         "order": 4,
         "automated": true,
         "setBy": "/work step 14 via pr-author (In Progress -> In Review, at PR-ready)"
@@ -58,7 +72,6 @@
       {
         "key": "inTesting",
         "name": "In Testing",
-        "listId": "6a3a7f99c43d9b731c47fe61",
         "order": 5,
         "automated": true,
         "setBy": "/merge (In Review -> In Testing, after squash-merge succeeds)"
@@ -66,10 +79,9 @@
       {
         "key": "done",
         "name": "Done",
-        "listId": "67a7a758f2da48a6482634a2",
         "order": 6,
         "automated": false,
-        "setBy": "HUMAN ONLY — set when the human deploys to prod and closes the card. NEVER set by any agent or command."
+        "setBy": "HUMAN ONLY — set when the human deploys to prod and closes the issue. NEVER set by any agent or command."
       }
     ],
     "automatedTransitions": [
@@ -95,43 +107,38 @@
     "forbiddenTransitions": [
       {
         "to": "done",
-        "reason": "Human-only. /work and all agents MUST NOT move any card to Done. Done == merged and closed by a human."
+        "reason": "Human-only. /work and all agents MUST NOT transition any issue to Done. Done == merged, deployed, and closed by a human."
       }
     ],
-    "labelToCommitType": {
-      "Feature": { "color": "green", "commitType": "feat" },
-      "Bug": { "color": "red", "commitType": "fix" },
-      "Integration": {
-        "color": "purple",
-        "commitType": "feat",
-        "alt": "chore",
-        "note": "feat when it adds user-facing capability; chore when it's wiring/config only"
-      },
-      "NFR": {
-        "color": "sky",
+    "issueTypeToCommitType": {
+      "Bug": { "id": "10068", "commitType": "fix" },
+      "Story": { "id": "10006", "commitType": "feat" },
+      "Task": {
+        "id": "10066",
         "commitType": "chore",
-        "alt": ["refactor", "perf"],
-        "note": "default chore; use refactor/perf when the work is purely that"
+        "alt": ["refactor", "perf", "feat"],
+        "note": "default chore; use refactor/perf/feat when the work is purely that. A 'perf'/'refactor' label overrides."
       }
     },
-    "needsRefinementMechanism": "checklist",
-    "needsRefinementChecklistName": "Refinement",
-    "needsRefinementItemText": "needs-refinement",
-    "needsRefinementNote": "The 4 board labels (Feature/Bug/Integration/NFR) are reserved for commit-type. Refinement state is structural: an intake card carries a 'Refinement' checklist (needsRefinementChecklistName) with an unchecked 'needs-refinement' item (needsRefinementItemText); refine clears it. A To Do card with no open needs-refinement item is the /work-ready signal. /work reads this checklist at its entry gate (step 1.5) and stops with a carrail if the item is still open.",
-    "humanGateNote": "Every tracker WRITE (move_card, add_comment, update_card_details) happens at or after a human gate. /work owns exactly two automated moves (todo->inProgress, inProgress->inReview) and posts the PR-link comment at PR-ready. It NEVER moves a card to Done."
+    "issueTypeNote": "Commit type derives from the Jira ISSUE TYPE (not a label): Bug->fix, Story->feat, Task->chore. Epic (id 10000) is the parent/initiative level; child issues set parent:{key:'ICR-<epic>'} at create (the system 'parent' field — Epic Link is deprecated in company-managed projects).",
+    "needsRefinementMechanism": "label",
+    "needsRefinementLabel": "needs-refinement",
+    "needsRefinementNote": "Refinement state is a Jira LABEL. An intake issue (To Do) carries the 'needs-refinement' label; refine removes it via editJiraIssue. A To Do issue WITHOUT the 'needs-refinement' label is the /work-ready signal. /work reads issue labels at its entry gate (step 1.5) and stops with a guardrail if 'needs-refinement' is still present.",
+    "humanGateNote": "Every tracker WRITE (transitionJiraIssue, addCommentToJiraIssue, editJiraIssue) happens at or after a human gate. /work owns exactly two automated transitions (todo->inProgress, inProgress->inReview) and posts the PR-link comment at PR-ready. It NEVER transitions an issue to Done.",
+    "migrationNote": "Issues imported from the legacy Trello boards carry a 'migrated-from-trello' label plus a 'trello-web-<n>'/'trello-admin-<n>' label and a description-footer backlink to the archived Trello card. The legacy Trello idShort is NOT the Jira key (numbers differ)."
   },
   "qaDepth": {
     "default": "standard",
     "allowed": ["light", "standard", "heavy"],
-    "sourceNote": "Trello has no native 'QA Depth' field. Resolve in priority order: (1) a custom field 'QA Depth' if get_board_custom_fields exposes one; (2) a label or a 'QA: <depth>' token in the card description/checklist; (3) fall back to qaDepth.default. Reject values not in qaDepth.allowed."
+    "sourceNote": "Jira has no default 'QA Depth' field. Resolve in priority order: (1) a 'qa-<depth>' label on the issue (e.g. qa-heavy); (2) a 'QA: <depth>' token in the issue description; (3) fall back to qaDepth.default. Reject values not in qaDepth.allowed."
   },
   "qaLoop": {
-    "_note": "Drives /qa + qa-acceptance + the embedded /work and /merge QA steps. Reads the top-level tracker block for board/list ids. QA targets are env-by-name (qaLoop.env.<name>): 'preview' = the per-PR Vercel preview deployment (pre-merge QA), 'staging' = the dedicated staging env at staging.idcredentor.org / website-staging DB (post-merge QA). Production is hard-denied in EVERY env. autoMerge disabled (kill switch); merge is user-triggered via /merge.",
-    "ticketSource": "trello",
+    "_note": "Drives /qa + qa-acceptance + the embedded /work and /merge QA steps. Reads the top-level tracker block for the Jira project key + status names. QA targets are env-by-name (qaLoop.env.<name>): 'preview' = the per-PR Vercel preview deployment (pre-merge QA), 'staging' = the dedicated staging env at staging.idcredentor.org / website-staging DB (post-merge QA). Production is hard-denied in EVERY env. autoMerge disabled (kill switch); merge is user-triggered via /merge.",
+    "ticketSource": "jira",
     "defaultMode": "report",
     "modes": ["report", "seed", "fix", "auto"],
     "enabledModes": ["report"],
-    "batch": { "list": "inReview", "maxTickets": 5, "sequential": true },
+    "batch": { "status": "In Review", "maxTickets": 5, "sequential": true },
     "humanGate": { "neverMoveTo": ["done"] },
     "env": {
       "preview": {
@@ -177,7 +184,7 @@
       }
     },
     "transitions": {
-      "_note": "Trello list moves by listId. Phase 1 report-only: /qa may move To Do/In Progress -> In Review, never Done. When fix/auto land later, onRemediationReady moves inProgress->inReview via pr-author.",
+      "_note": "Jira status moves by transition-by-name (statusResolution: by-name in the tracker block). Phase 1 report-only: /qa may transition To Do/In Progress -> In Review, never Done. When fix/auto land later, onRemediationReady moves inProgress->inReview via pr-author.",
       "onPickup": "inReview",
       "onRemediationStart": "inProgress",
       "onRemediationReady": "inReview"

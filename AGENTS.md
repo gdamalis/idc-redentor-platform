@@ -95,12 +95,12 @@ ENVIRONMENT_NAME
 VERCEL_ENV              # injected by Vercel; drives draft mode
 ```
 
-## Tracker (Trello)
+## Tracker (Jira)
 
-- Board: **"IDCR Website"** — `boardId` `67a7a743186065f07e87bbe9`, short link `sxuUAeck`. Access via the Trello MCP (`mcp__trello__*`).
-- A card's `idShort` **N** is its display key **`ICR-N`**. There is no native `ICR-N` field — resolve the card whose `idShort === N`; all Trello writes use the resolved card id.
+- Project: **IDC Redentor** (key `ICR`) on `divinelab.atlassian.net` — a company-managed software project. Access via the Atlassian MCP (`mcp__atlassian-divinelab__*`).
+- **`ICR-N`** is the **native Jira issue key** — `N` is the issue number, not a Trello idShort. Fetch the issue directly via `getJiraIssue(cloudId, "ICR-N")` (no scan-to-resolve); all Atlassian calls use the `ICR-N` key.
 - Branches: `<type>/ICR-N-<slug>` · PR titles: `<type>(ICR-N): description`.
-- Workflow lists: **Backlog** → **To Do** → **In Progress** → **In Review** → **In Testing** → **Done**. `/work` moves To Do → In Progress → In Review; `/merge` moves In Review → In Testing (after a user-triggered squash-merge). **No agent ever moves a card to Done** — a human does that after deploying to production. (The first list was renamed `Dsicovery` → `Backlog` on the real board; the `discovery` config key is unchanged — trust listIds, not names.)
+- Workflow statuses: **Backlog** → **To Do** → **In Progress** → **In Review** → **In Testing** → **Done**. `/work` transitions To Do → In Progress → In Review; `/merge` transitions In Review → In Testing (after a user-triggered squash-merge). **No agent ever transitions an issue to Done** — a human does that after deploying to production. Transitions resolve **by name** at runtime (`getTransitionsForJiraIssue` matching `transition.to.name`); the status name is the contract, never hardcode numeric transition ids.
 
 ## Git & Release
 
