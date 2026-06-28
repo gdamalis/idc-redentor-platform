@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildLocaleAlternates, i18n } from "@src/i18n/config";
+import { buildLocaleAlternates, i18n, isValidLocale } from "@src/i18n/config";
 
 describe("i18n config", () => {
   it("declares es-AR as default and includes en-US", () => {
@@ -17,5 +17,29 @@ describe("i18n config", () => {
   it("omits a trailing slash for an empty path", () => {
     const alts = buildLocaleAlternates();
     expect(alts["es-AR"]).not.toMatch(/\/$/);
+  });
+});
+
+describe("isValidLocale", () => {
+  it("accepts the configured locales", () => {
+    expect(isValidLocale("es-AR")).toBe(true);
+    expect(isValidLocale("en-US")).toBe(true);
+  });
+
+  it("rejects unknown, malformed, unsafe, and nullish values", () => {
+    for (const bad of [
+      "fr-FR",
+      "es",
+      "EN-US",
+      "es-ar",
+      "",
+      "/evil.com", // open-redirect payload
+      "//evil.com",
+      '" }) { __typename }', // injection payload
+      null,
+      undefined,
+    ]) {
+      expect(isValidLocale(bad)).toBe(false);
+    }
   });
 });

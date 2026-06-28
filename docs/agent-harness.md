@@ -21,7 +21,7 @@ agent definitions in `.claude/agents/`; commands in `.claude/commands/`.
 > **What changed from v1.** v1 stopped at _"idea → reviewed PR"_ — it had a human merge every PR by hand and
 > QA'd against per-PR Vercel previews only, with no dedicated staging target. v2 extends the pipeline to
 > _"idea → merged → staging-verified"_: it adds the **In Testing** status, a real **staging** QA env
-> (`staging.idcredentor.com` / `website-staging` DB), the **`acceptance-judge`** verdict agent (split from
+> (`staging.idcredentor.org` / `website-staging` DB), the **`acceptance-judge`** verdict agent (split from
 > the QA tester), the detached **post-PR loop**, and the user-triggered **`/merge`** command. Merge is no
 > longer "humans do it by hand" — the human _triggers_ `/merge`, which performs the squash. `autoMerge`
 > stays `false`; nothing merges autonomously.
@@ -232,7 +232,7 @@ stays `false`). It is invoked standalone or via the `/work` step-14.6 hand-off.
    "Already gone" is tolerated non-fatally.
 5. **Transition In Review → In Testing (automated transition #3)** — only after the verified squash-merge. **Never Done.**
 6. **Post-merge staging QA.** Validate the staging URL against `config.qaLoop.env.staging` (host must match
-   `^staging\.idcredentor\.com$`, prod hosts hard-denied; **skip** the must-be-a-Vercel-preview check —
+   `^staging\.idcredentor\.org$`, prod hosts hard-denied; **skip** the must-be-a-Vercel-preview check —
    staging is not a preview). Then **tester (`qa-acceptance`) → `acceptance-judge`** → post the result to
    the Jira issue (`postedBy: "/merge"`, `envName: "staging"`). A `no-POST` happy-path AC the tester correctly
    skipped is **BLOCKED/deferred**, not FAIL.
@@ -245,7 +245,7 @@ stays `false`). It is invoked standalone or via the `/work` step-14.6 hand-off.
 guardrails:
 
 - **Env-by-name targets (`config.qaLoop.env.<name>`).** `/qa`'s **default target is `staging`**
-  (`staging.idcredentor.com`); pass **`--preview`** to re-target the PR's Vercel preview. `/work`'s pre-merge
+  (`staging.idcredentor.org`); pass **`--preview`** to re-target the PR's Vercel preview. `/work`'s pre-merge
   QA always targets **`preview`**; `/merge`'s post-merge QA always targets **`staging`**. Every consumer
   selects its allowlist / db-allow / live-integration policy **off the env block by name** — never hardcoding
   preview literals.

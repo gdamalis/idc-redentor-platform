@@ -1,3 +1,9 @@
+## [1.20.1](https://github.com/gdamalis/idc-redentor-web/compare/v1.20.0...v1.20.1) (2026-06-27)
+
+### Bug Fixes
+
+- validate slug/locale inputs (GraphQL injection + open redirect) ([#64](https://github.com/gdamalis/idc-redentor-web/issues/64)) ([7f0a9b9](https://github.com/gdamalis/idc-redentor-web/commit/7f0a9b98d7fa4b278e8ceacd9b85d381fdf0a8b5))
+
 # [1.20.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.19.0...v1.20.0) (2026-06-27)
 
 ### Features

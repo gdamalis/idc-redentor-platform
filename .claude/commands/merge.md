@@ -126,6 +126,7 @@ When `config.merge.deleteWorktreeAndBranch` is `true`:
    **not** try to `rm` the cwd out from under the running shell.
 3. **Else (running from the main checkout or another worktree)** — anchor to `MAIN_REPO_ROOT` and run, in
    order:
+
    ```bash
    git -C "${MAIN_REPO_ROOT}" worktree remove "${MAIN_REPO_ROOT}/.claude/worktrees/ICR-N" --force
    git -C "${MAIN_REPO_ROOT}" branch -D "<branch>"
@@ -136,6 +137,7 @@ When `config.merge.deleteWorktreeAndBranch` is `true`:
      (it's on `main`); there is no unmerged content to lose.
    - `branch -D <branch>` clears the **local** branch (the remote one is already gone via `--delete-branch`).
    - `worktree prune` clears any stale administrative refs.
+
 4. **Tolerate "already gone" non-fatally.** If the worktree or branch was already removed (e.g. a prior
    partial run), log it and continue — cleanup is idempotent and must not abort the rest of the flow.
 
@@ -161,13 +163,13 @@ numeric ID:
 
 ## 6. Post-merge staging QA
 
-Staging QA proves the merged change on `staging.idcredentor.com`. **Staging is NOT a Vercel preview** — it
+Staging QA proves the merged change on `staging.idcredentor.org`. **Staging is NOT a Vercel preview** — it
 has its own host allowlist and **skips** the `requirePreviewEnvironment` check, but the production hard-deny
 still applies.
 
 1. **Resolve + validate the staging URL.** Read the base URL from `qa-env.json` →
    `config.qaLoop.env.staging.baseUrlFrom` (`staging.baseUrl`). Validate the host:
-   - host **matches** `config.qaLoop.env.staging.baseUrlHostAllow` (`^staging\.idcredentor\.com$`), **and**
+   - host **matches** `config.qaLoop.env.staging.baseUrlHostAllow` (`^staging\.idcredentor\.org$`), **and**
    - host is **NOT** in `config.qaLoop.env.staging.productionHostDeny` (custom domains AND prod
      `*.vercel.app` aliases).
    - **Do NOT run the `requirePreviewEnvironment` check** — for staging it is `false` (staging is not a

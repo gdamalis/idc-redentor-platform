@@ -74,7 +74,7 @@ scriptureRefs/closing?`. Keys consumed by the Contentful publisher: everything e
   "slug": "el-perdon-de-jesus",
   "sermonDate": "2026-06-07",
   "preacher": "Jonathan Hanegan",
-  "preacherEmail": "jonathan@idcredentor.com",
+  "preacherEmail": "jonathan@idcredentor.org",
   "internalName": "Prédica · 2026-06-07 · El perdón de Jesús",
   "durationSeconds": 1651,
   "serviceLabel": { "es-AR": "Culto dominical", "en-US": "Sunday service" },

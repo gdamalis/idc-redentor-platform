@@ -8,7 +8,7 @@ argument-hint: "[ICR-123] [--preview] [--mode report] [--dry-run] [--max N]"
 Runs **acceptance QA** on a Jira issue by reading its acceptance criteria (ACs) and driving a real
 browser (and APIs where relevant) against the **resolved env target**, then posting a consistent,
 structured result comment on the issue. By **default** the target is the dedicated **staging** deployment
-(`staging.idcredentor.com`); pass **`--preview`** to re-target the PR's **Vercel preview** deployment
+(`staging.idcredentor.org`); pass **`--preview`** to re-target the PR's **Vercel preview** deployment
 (the original pre-merge path). With no issue key it batches the **env-appropriate** status — **In Testing**
 for the default staging target (post-merge issues awaiting staging verification), or **In Review** with
 `--preview` (pre-merge issues on their PR preview) — one fresh `qa-acceptance` (tester) →
@@ -105,7 +105,7 @@ For each issue:
    **STAGING (`qaEnvName === "staging"`, the default):**
    - Read the base URL from `qa-env.json` → `staging.baseUrl` (`envBlock.baseUrlFrom`).
    - Validate the host (two gates, both required):
-     1. **Host allowlist**: host matches `envBlock.baseUrlHostAllow` (`^staging\.idcredentor\.com$`).
+     1. **Host allowlist**: host matches `envBlock.baseUrlHostAllow` (`^staging\.idcredentor\.org$`).
      2. **Host denylist**: host is NOT in `envBlock.productionHostDeny` (prod hard-deny — custom domains AND
         prod `*.vercel.app` aliases).
    - **SKIP the Vercel preview-environment check** — staging is NOT a Vercel preview
