@@ -57,6 +57,12 @@ tasks/specs/*.state.json
 qa-env.json
 graphify-out/
 
+# One-time Trello->Jira migration tooling (kept local; the record lives in Jira labels + the id-map)
+/scripts/migrate-trello-to-jira.mjs
+/scripts/trello-export.json
+/scripts/trello-jira-id-map.json
+/scripts/dry-run-plan.txt
+
 # obsidian
 .obsidian/
 
