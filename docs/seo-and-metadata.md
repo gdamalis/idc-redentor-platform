@@ -41,13 +41,15 @@ The module exports three functions:
 `lib/metadata.ts` defines a default:
 
 ```ts
-const DEFAULT_OG_IMAGE = {
-  url: "/assets/img/og-default.jpeg",
+export const DEFAULT_OG_IMAGE = {
+  url: "/assets/img/og_default.jpeg",
   width: 1200,
   height: 630,
   alt: "Iglesia de Cristo Redentor",
 };
 ```
+
+The filename uses an underscore (`og_default.jpeg`) to match the asset on disk — `DEFAULT_OG_IMAGE` is the single source of truth for it, so reference the constant rather than hard-coding the path to avoid the recurring `og-default.jpeg` (hyphen) 404.
 
 `buildOgImage(seoContent)` returns the `Seo` entry's `image` (with its width/height/title, defaulting to 1200×630) when present, otherwise the default. Blog posts always use their `featuredImage` at 1200×630. **1200×630 is the canonical OG size** — author images to that aspect ratio. Editorial guidance for this lives in `docs/product/editorial-and-content-rules.md`.
 
