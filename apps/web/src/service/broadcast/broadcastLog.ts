@@ -50,9 +50,16 @@ function logError(op: string, broadcastId: string, error: unknown): void {
 }
 
 /**
- * Insert-first claim. A *sent* doc fails the `status != sent` filter, so the
- * upsert attempts an insert and the unique index throws E11000 → "already-sent".
- * A "failed"/"sending" doc matches → re-claimed (retryable). No doc → upsert claims it.
+ * Insert-first claim with race-safe deduplication.
+ *
+ * Filter semantics:
+ *   - No doc for this broadcastId → no match → upsert inserts → "claimed" (first run).
+ *   - Doc with status "failed" → matches → atomically flipped to "sending" → "claimed" (retry).
+ *   - Doc with status "sent" or "sending" → no match → upsert attempts insert → unique-index
+ *     E11000 → caught → "already-sent".  Both statuses are blocked, so a concurrent in-flight
+ *     "sending" doc is indistinguishable from a completed "sent" doc: neither can be re-claimed.
+ *
+ * Only an explicitly FAILED prior attempt is re-claimable.
  */
 export async function claimBroadcast(broadcastId: string): Promise<ClaimResult> {
   const client = await connect();
@@ -62,10 +69,10 @@ export async function claimBroadcast(broadcastId: string): Promise<ClaimResult> 
     await ensureBroadcastIndex(col);
     const now = new Date();
     await col.updateOne(
-      { broadcastId, status: { $ne: "sent" } },
+      { broadcastId, status: "failed" },
       {
         $set: { status: "sending", updatedAt: now },
-        $setOnInsert: { broadcastId, createdAt: now },
+        $setOnInsert: { createdAt: now },
       },
       { upsert: true },
     );
