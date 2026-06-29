@@ -1,3 +1,9 @@
+# [1.23.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.22.0...v1.23.0) (2026-06-29)
+
+### Features
+
+- **predica:** multi-preacher sermons — embedded audio/PDF + co-preacher byline ([#73](https://github.com/gdamalis/idc-redentor-web/issues/73)) ([9ee7b20](https://github.com/gdamalis/idc-redentor-web/commit/9ee7b20231210d434097e2db3c1eab27dfea8811))
+
 # [1.22.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.21.1...v1.22.0) (2026-06-29)
 
 ### Features
