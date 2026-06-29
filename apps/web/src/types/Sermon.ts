@@ -19,6 +19,18 @@ export interface Sermon {
     };
     email: string;
   };
+  /**
+   * Co-preachers for a multi-preacher service (optional). When present, the byline
+   * lists `[preacher, ...additionalPreachers]`; absent for normal single-author sermons.
+   */
+  additionalPreachers?: Array<{
+    name: string;
+    avatar?: {
+      url: string;
+      title: string;
+    };
+    email: string;
+  }>;
   scriptureReferences?: ScriptureRef[];
   thesis: string;
   mainPoints: string[];

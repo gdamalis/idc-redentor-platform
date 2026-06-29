@@ -75,6 +75,7 @@ scriptureRefs/closing?`. Keys consumed by the Contentful publisher: everything e
   "sermonDate": "2026-06-07",
   "preacher": "Jonathan Hanegan",
   "preacherEmail": "jonathan@idcredentor.org",
+  "additionalPreachers": [],
   "internalName": "Prédica · 2026-06-07 · El perdón de Jesús",
   "durationSeconds": 1651,
   "serviceLabel": { "es-AR": "Culto dominical", "en-US": "Sunday service" },
@@ -128,6 +129,12 @@ scriptureRefs/closing?`. Keys consumed by the Contentful publisher: everything e
 
 ### Field rules
 
+- **`preacher`** is the single primary preacher (a normal sermon). **`additionalPreachers`** is **optional** —
+  an array of `{ "name", "email"? }` co-preachers used only for a **multi-preacher service** (one post that
+  combines several short messages). Omit it (or leave it `[]`) for an ordinary single-preacher sermon. When
+  present, the publisher resolves each to an `author` (creating missing ones from `name`+`email`) and the
+  byline renders `[preacher, ...additionalPreachers]`. The standard one-audio flow never sets it; it is
+  populated by the multi-preacher (multi-audio) assembly path.
 - **content blocks** use ONLY: `h2`, `h3`, `p`, `blockquote` (each `{type,text}`), and `ul`/`ol`
   (`{type,items[]}`). This matches the `sermon.content` Contentful validation exactly (H2/H3, lists,
   blockquotes, paragraphs). Do not invent other block types. Plain text only inside blocks (no markdown).

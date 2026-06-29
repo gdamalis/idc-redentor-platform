@@ -56,8 +56,10 @@ export default async function SermonDetails({
           <PdfDownloadButton pdfSummary={sermon.pdfSummary} />
         )}
 
-        {/* 5. Rich-text body */}
-        {sermon.content && <SermonContent content={sermon.content} />}
+        {/* 5. Rich-text body (may embed per-preacher audio/PDF for multi-preacher services) */}
+        {sermon.content && (
+          <SermonContent content={sermon.content} audioTitleFallback={sermon.title} />
+        )}
 
         {/* 6. Scripture references */}
         {sermon.scriptureReferences && sermon.scriptureReferences.length > 0 && (

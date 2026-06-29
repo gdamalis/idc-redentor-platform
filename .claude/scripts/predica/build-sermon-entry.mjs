@@ -49,6 +49,13 @@ const list = (ordered, items) => ({
   content: items.map(listItem),
 });
 
+// embedded-asset-block referencing an already-uploaded Contentful Asset (audio/pdf/image).
+const embeddedAsset = (assetId) => ({
+  nodeType: "embedded-asset-block",
+  data: { target: { sys: { type: "Link", linkType: "Asset", id: assetId } } },
+  content: [],
+});
+
 const blockToNode = (block) => {
   switch (block.type) {
     case "h2":
@@ -63,6 +70,8 @@ const blockToNode = (block) => {
       return list(false, block.items ?? []);
     case "ol":
       return list(true, block.items ?? []);
+    case "embeddedAsset":
+      return embeddedAsset(block.assetId ?? "");
     default:
       return paragraph(block.text ?? "");
   }
@@ -112,6 +121,8 @@ export function buildSermonEntryFields(sermon, links, options = {}) {
   fields.sermonDate = atDefault(sermon.sermonDate);
   if (typeof sermon.durationSeconds === "number") fields.durationSeconds = atDefault(sermon.durationSeconds);
   fields.preacher = atDefault(entryLink(links.preacherId));
+  if (links.additionalPreacherIds?.length)
+    fields.additionalPreachers = atDefault(links.additionalPreacherIds.map(entryLink));
   if (links.scriptureRefIds?.length) fields.scriptureReferences = atDefault(links.scriptureRefIds.map(entryLink));
   if (links.featuredImageAssetId) fields.featuredImage = atDefault(assetLink(links.featuredImageAssetId));
   if (links.audioAssetId) fields.audio = atDefault(assetLink(links.audioAssetId));
@@ -151,6 +162,18 @@ export function validateSermonForEntry(raw) {
   if (typeof s.sermonDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(s.sermonDate))
     errs.push("sermonDate: required YYYY-MM-DD string");
   if (typeof s.preacher !== "string" || !s.preacher.trim()) errs.push("preacher: required string");
+  if (s.additionalPreachers != null) {
+    if (!Array.isArray(s.additionalPreachers)) {
+      errs.push("additionalPreachers: must be an array when present");
+    } else {
+      s.additionalPreachers.forEach((p, i) => {
+        if (!p || typeof p !== "object" || typeof p.name !== "string" || !p.name.trim())
+          errs.push(`additionalPreachers[${i}].name: required non-empty string`);
+        if (p && p.email != null && typeof p.email !== "string")
+          errs.push(`additionalPreachers[${i}].email: must be a string when present`);
+      });
+    }
+  }
   if (typeof s.internalName !== "string" || !s.internalName.trim()) errs.push("internalName: required string");
   if (s.durationSeconds != null && typeof s.durationSeconds !== "number")
     errs.push("durationSeconds: must be a number when present");
