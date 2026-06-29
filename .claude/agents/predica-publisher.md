@@ -68,6 +68,11 @@ bilingual **DRAFT** `sermon` entry in Contentful from `sermon.json`. You are **d
    matching entry id. If none, write an author fields file `{ internalName:{["es-AR"]:name}, name:{["es-AR"]:name},
 email:{["es-AR"]:email} }` (avatar optional — omit) and create it via
    `node <entryCreator> --content-type author --fields <file> --space <s> --env <e>`.
+   - **Co-preachers (multi-preacher services).** If `sermon.json` carries a top-level `additionalPreachers`
+     array (e.g. one post combining several short messages from different preachers), resolve **each** the same
+     way — reuse the author by `name`, or create it from `{ name, email }` when missing — and collect the ids
+     **in order** as `additionalPreacherIds`. Absent/empty for a normal single-preacher sermon. The byline then
+     renders `[preacher, ...additionalPreachers]`.
 4. **bibleVerse refs (idempotent upsert).** `node <entryBuilder> <sermonJson> --bible` → a JSON array of
    `{ internalName, fields }`, where `internalName` is the **derived, version-scoped dedup key**
    (e.g. `"Joel 2:13 (NVI)"`). For each: write its `fields` to a temp file and
@@ -83,8 +88,10 @@ email:{["es-AR"]:email} }` (avatar optional — omit) and create it via
      the prior `featuredImage` asset id from step 2's snapshot.
    - Each upload prints `{ assetId, url }`. Collect the ids.
 6. **Build the entry fields.** Write `links.json` to `slugDir`:
-   `{ preacherId, scriptureRefIds:[...], pdfAssetIds:{ "es-AR":…, "en-US":… }, audioAssetId:…, featuredImageAssetId:…, sourceSha256? }`
-   (use the reused featured id when `replaceFeatured === false`). Then
+   `{ preacherId, additionalPreacherIds?:[...], scriptureRefIds:[...], pdfAssetIds:{ "es-AR":…, "en-US":… }, audioAssetId:…, featuredImageAssetId:…, sourceSha256? }`
+   (include `additionalPreacherIds` from step 3 when there are co-preachers — omit/empty otherwise; the entry
+   builder only emits the `additionalPreachers` field when the array is non-empty. Use the reused featured id
+   when `replaceFeatured === false`). Then
    `node <entryBuilder> <sermonJson> --entry --links <slugDir>/links.json > <slugDir>/contentful-entry.fields.json`.
 7. **Write the DRAFT** sermon:
    - `mode = "create"`: `node <entryCreator> --content-type sermon --fields <…>/contentful-entry.fields.json --space <s> --env <e>` → `{ entryId, editUrl }`.
@@ -117,6 +124,7 @@ Return **only** a JSON object:
   "finalSlug": "el-deseo-mas-profundo-de-dios",
   "editUrl": "https://app.contentful.com/spaces/<space>/environments/production/entries/<id>",
   "preacherId": "<id>",
+  "additionalPreacherIds": [],
   "bibleVerseIds": ["<id>"],
   "assetIds": {
     "audio": "<id>",

@@ -101,6 +101,13 @@ export interface SermonDocument {
   sermonDate: string;
   preacher: string;
   preacherEmail?: string;
+  /**
+   * Optional co-preachers for a multi-preacher service (one post combining several
+   * short messages). The publisher resolves each `name` to an `author` entry id and
+   * passes them as {@link ResolvedLinks.additionalPreacherIds}; the byline then renders
+   * `[preacher, ...additionalPreachers]`. Omitted for a normal single-preacher sermon.
+   */
+  additionalPreachers?: Array<{ name: string; email?: string }>;
   internalName: string;
   durationSeconds?: number;
   serviceLabel?: Record<PredicaLocale, string>;

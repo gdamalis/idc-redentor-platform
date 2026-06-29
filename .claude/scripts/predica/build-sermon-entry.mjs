@@ -162,6 +162,18 @@ export function validateSermonForEntry(raw) {
   if (typeof s.sermonDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(s.sermonDate))
     errs.push("sermonDate: required YYYY-MM-DD string");
   if (typeof s.preacher !== "string" || !s.preacher.trim()) errs.push("preacher: required string");
+  if (s.additionalPreachers != null) {
+    if (!Array.isArray(s.additionalPreachers)) {
+      errs.push("additionalPreachers: must be an array when present");
+    } else {
+      s.additionalPreachers.forEach((p, i) => {
+        if (!p || typeof p !== "object" || typeof p.name !== "string" || !p.name.trim())
+          errs.push(`additionalPreachers[${i}].name: required non-empty string`);
+        if (p && p.email != null && typeof p.email !== "string")
+          errs.push(`additionalPreachers[${i}].email: must be a string when present`);
+      });
+    }
+  }
   if (typeof s.internalName !== "string" || !s.internalName.trim()) errs.push("internalName: required string");
   if (s.durationSeconds != null && typeof s.durationSeconds !== "number")
     errs.push("durationSeconds: must be a number when present");
