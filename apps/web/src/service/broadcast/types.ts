@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const BROADCAST_LOCALES = ["es-AR", "en-US"] as const;
 export type BroadcastLocale = (typeof BROADCAST_LOCALES)[number];
+export const DEFAULT_BROADCAST_LOCALE: BroadcastLocale = "es-AR";
 
 export const broadcastInputSchema = z.object({
   /** Stable, caller-supplied id. ICR-44 uses `blog:<slug>:<locale>`. */
