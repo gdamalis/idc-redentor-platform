@@ -68,6 +68,32 @@ describe("blocksToRichTextDocument", () => {
     expect(ol.nodeType).toBe("ordered-list");
   });
 
+  it("maps an embeddedAsset block to an embedded-asset-block node linking the asset id", () => {
+    const [node] = blocksToRichTextDocument([
+      { type: "embeddedAsset", assetId: "AUD1" },
+    ]).content;
+    expect(node.nodeType).toBe("embedded-asset-block");
+    expect(node.content).toEqual([]);
+    expect(node.data).toEqual({
+      target: { sys: { type: "Link", linkType: "Asset", id: "AUD1" } },
+    });
+  });
+
+  it("interleaves embeddedAsset blocks between text blocks in order", () => {
+    const doc = blocksToRichTextDocument([
+      { type: "h2", text: "Jonathan — Mini" },
+      { type: "embeddedAsset", assetId: "AUD1" },
+      { type: "embeddedAsset", assetId: "PDF1" },
+      { type: "p", text: "Texto breve." },
+    ]);
+    expect(doc.content.map((n) => n.nodeType)).toEqual([
+      "heading-2",
+      "embedded-asset-block",
+      "embedded-asset-block",
+      "paragraph",
+    ]);
+  });
+
   it("gives every block a data object and every text node empty marks", () => {
     const blocks: ContentBlock[] = [
       { type: "h2", text: "T" },
@@ -233,6 +259,27 @@ describe("buildSermonEntryFields", () => {
       "es-AR": { sys: { type: "Link", linkType: "Asset", id: "PDFES" } },
       "en-US": { sys: { type: "Link", linkType: "Asset", id: "PDFEN" } },
     });
+  });
+
+  it("links additionalPreachers as an array of entry links under the default locale", () => {
+    const fields = buildSermonEntryFields(sermon, {
+      preacherId: "PRE1",
+      additionalPreacherIds: ["PRE2", "PRE3", "PRE4"],
+    });
+    expect(fields.additionalPreachers).toEqual({
+      "es-AR": [
+        { sys: { type: "Link", linkType: "Entry", id: "PRE2" } },
+        { sys: { type: "Link", linkType: "Entry", id: "PRE3" } },
+        { sys: { type: "Link", linkType: "Entry", id: "PRE4" } },
+      ],
+    });
+  });
+
+  it("omits additionalPreachers when there are no co-preachers", () => {
+    expect(buildSermonEntryFields(sermon, { preacherId: "PRE1" }).additionalPreachers).toBeUndefined();
+    expect(
+      buildSermonEntryFields(sermon, { preacherId: "PRE1", additionalPreacherIds: [] }).additionalPreachers,
+    ).toBeUndefined();
   });
 
   it("omits audio/featuredImage/scriptureReferences/pdfSummary when not resolved", () => {

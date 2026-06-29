@@ -49,6 +49,13 @@ const list = (ordered, items) => ({
   content: items.map(listItem),
 });
 
+// embedded-asset-block referencing an already-uploaded Contentful Asset (audio/pdf/image).
+const embeddedAsset = (assetId) => ({
+  nodeType: "embedded-asset-block",
+  data: { target: { sys: { type: "Link", linkType: "Asset", id: assetId } } },
+  content: [],
+});
+
 const blockToNode = (block) => {
   switch (block.type) {
     case "h2":
@@ -63,6 +70,8 @@ const blockToNode = (block) => {
       return list(false, block.items ?? []);
     case "ol":
       return list(true, block.items ?? []);
+    case "embeddedAsset":
+      return embeddedAsset(block.assetId ?? "");
     default:
       return paragraph(block.text ?? "");
   }
@@ -112,6 +121,8 @@ export function buildSermonEntryFields(sermon, links, options = {}) {
   fields.sermonDate = atDefault(sermon.sermonDate);
   if (typeof sermon.durationSeconds === "number") fields.durationSeconds = atDefault(sermon.durationSeconds);
   fields.preacher = atDefault(entryLink(links.preacherId));
+  if (links.additionalPreacherIds?.length)
+    fields.additionalPreachers = atDefault(links.additionalPreacherIds.map(entryLink));
   if (links.scriptureRefIds?.length) fields.scriptureReferences = atDefault(links.scriptureRefIds.map(entryLink));
   if (links.featuredImageAssetId) fields.featuredImage = atDefault(assetLink(links.featuredImageAssetId));
   if (links.audioAssetId) fields.audio = atDefault(assetLink(links.audioAssetId));

@@ -19,7 +19,7 @@ interface AuthorInfoProps {
 }
 
 /** Returns the initials from a full name, e.g. "Gabriel Damalis" → "GD". */
-function getInitials(name: string): string {
+export function getInitials(name: string): string {
   return name
     .split(" ")
     .filter(Boolean)

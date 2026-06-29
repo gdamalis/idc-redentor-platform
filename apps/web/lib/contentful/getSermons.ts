@@ -56,6 +56,18 @@ const GRAPHQL_FIELDS = `
       email
     }
   }
+  additionalPreachersCollection {
+    items {
+      ... on Author {
+        name
+        avatar {
+          url
+          title
+        }
+        email
+      }
+    }
+  }
   scriptureReferencesCollection {
     items {
       ... on BibleVerse {
@@ -152,11 +164,16 @@ function mapSermon(item: Record<string, unknown>): Sermon {
     (item.relatedSermonsCollection as Record<string, unknown>)?.items as unknown[]
   ) ?? [];
 
+  const additionalPreacherItems = (
+    (item.additionalPreachersCollection as Record<string, unknown>)?.items as unknown[]
+  ) ?? [];
+
   return {
     title: item.title as string,
     slug: item.slug as string,
     sermonDate: item.sermonDate as string,
     preacher: item.preacher as Sermon["preacher"],
+    additionalPreachers: additionalPreacherItems as Sermon["additionalPreachers"],
     scriptureReferences: scriptureItems as Sermon["scriptureReferences"],
     thesis: item.thesis as string,
     mainPoints: (item.mainPoints as string[]) ?? [],

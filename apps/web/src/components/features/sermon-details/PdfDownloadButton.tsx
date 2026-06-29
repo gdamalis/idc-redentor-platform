@@ -5,9 +5,15 @@ import type { Sermon } from "@src/types/Sermon";
 
 interface PdfDownloadButtonProps {
   readonly pdfSummary: NonNullable<Sermon["pdfSummary"]>;
+  /**
+   * Optional label override. Used when several PDFs are embedded in the body
+   * (one per preacher) so each button reads its own asset title instead of the
+   * generic "summary-pdf" translation.
+   */
+  readonly label?: string;
 }
 
-export function PdfDownloadButton({ pdfSummary }: PdfDownloadButtonProps) {
+export function PdfDownloadButton({ pdfSummary, label }: PdfDownloadButtonProps) {
   const t = useTranslations("Sermons");
 
   return (
@@ -23,7 +29,7 @@ export function PdfDownloadButton({ pdfSummary }: PdfDownloadButtonProps) {
       )}
     >
       <FileDown className="h-4 w-4 shrink-0" aria-hidden />
-      {t("summary-pdf")}
+      {label ?? t("summary-pdf")}
     </a>
   );
 }

@@ -40,11 +40,17 @@ export const PREDICA_DEFAULT_LOCALE: PredicaLocale = "es-AR";
 
 /** A single content block in the writer's simplified body representation. */
 export interface ContentBlock {
-  type: "h2" | "h3" | "p" | "blockquote" | "ul" | "ol";
+  type: "h2" | "h3" | "p" | "blockquote" | "ul" | "ol" | "embeddedAsset";
   /** Text for h2 / h3 / p / blockquote. */
   text?: string;
   /** Items for ul / ol. */
   items?: string[];
+  /**
+   * Contentful Asset id for `embeddedAsset` blocks (renders an `embedded-asset-block`
+   * node). Used by the multi-preacher sermon body to interleave per-segment audio +
+   * PDF players inside the rich text. The id must already be resolved (uploaded).
+   */
+  assetId?: string;
 }
 
 /** Per-locale values for one `bibleVerse` reference. */
@@ -106,6 +112,12 @@ export interface SermonDocument {
 /** Contentful link ids the publisher resolves before building the sermon entry. */
 export interface ResolvedLinks {
   preacherId: string;
+  /**
+   * Co-preacher author ids for a multi-preacher service (e.g. four short messages
+   * in one post). Linked to the optional `additionalPreachers` field; the byline
+   * renders `[preacher, ...additionalPreachers]`. Empty/absent for normal sermons.
+   */
+  additionalPreacherIds?: string[];
   scriptureRefIds?: string[];
   pdfAssetIds?: Partial<Record<PredicaLocale, string>>;
   audioAssetId?: string;
@@ -170,6 +182,17 @@ const list = (ordered: boolean, items: string[]): RichTextNode => ({
   content: items.map(listItem),
 });
 
+/**
+ * An `embedded-asset-block` node referencing an already-uploaded Contentful Asset.
+ * The renderer (sermonRichTextOptions) resolves it by `data.target.sys.id` and draws
+ * an audio player / PDF button / image by the asset's contentType.
+ */
+const embeddedAsset = (assetId: string): RichTextNode => ({
+  nodeType: "embedded-asset-block",
+  data: { target: { sys: { type: "Link", linkType: "Asset", id: assetId } } },
+  content: [],
+});
+
 const blockToNode = (block: ContentBlock): RichTextNode => {
   switch (block.type) {
     case "h2":
@@ -184,6 +207,8 @@ const blockToNode = (block: ContentBlock): RichTextNode => {
       return list(false, block.items ?? []);
     case "ol":
       return list(true, block.items ?? []);
+    case "embeddedAsset":
+      return embeddedAsset(block.assetId ?? "");
   }
 };
 
@@ -289,6 +314,9 @@ export function buildSermonEntryFields(
     fields.durationSeconds = atDefault(sermon.durationSeconds);
   }
   fields.preacher = atDefault(entryLink(links.preacherId));
+  if (links.additionalPreacherIds?.length) {
+    fields.additionalPreachers = atDefault(links.additionalPreacherIds.map(entryLink));
+  }
   if (links.scriptureRefIds?.length) {
     fields.scriptureReferences = atDefault(links.scriptureRefIds.map(entryLink));
   }
