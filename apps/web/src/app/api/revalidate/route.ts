@@ -10,8 +10,9 @@ export async function POST(request: Request) {
   }
 
   // Revalidate first and unconditionally — notification is an isolated side-effect.
-  // Next.js 16 revalidateTag requires a second profile arg; {} = purge with no custom cache life.
-  revalidateTag("site-content", {});
+  // Next.js 16 revalidateTag requires a second profile arg; "max" matches the
+  // pre-existing on-demand purge behaviour (unchanged from before ICR-44).
+  revalidateTag("site-content", "max");
 
   let notified;
   try {

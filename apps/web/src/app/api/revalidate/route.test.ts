@@ -40,7 +40,7 @@ describe("POST /api/revalidate", () => {
       req({ sys: { id: "e1", contentType: { sys: { id: "blogPostPage" } } } }),
     );
     expect(res.status).toBe(200);
-    expect(vi.mocked(revalidateTag)).toHaveBeenCalledWith("site-content", {});
+    expect(vi.mocked(revalidateTag)).toHaveBeenCalledWith("site-content", "max");
     expect(vi.mocked(notifyOnPublish)).toHaveBeenCalledWith({
       contentTypeId: "blogPostPage",
       entryId: "e1",
@@ -50,7 +50,7 @@ describe("POST /api/revalidate", () => {
   it("revalidates but does not notify when sys is absent", async () => {
     const res = await POST(req({ hello: "world" }));
     expect(res.status).toBe(200);
-    expect(vi.mocked(revalidateTag)).toHaveBeenCalledWith("site-content", {});
+    expect(vi.mocked(revalidateTag)).toHaveBeenCalledWith("site-content", "max");
     expect(vi.mocked(notifyOnPublish)).not.toHaveBeenCalled();
   });
 
