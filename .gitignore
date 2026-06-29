@@ -79,6 +79,11 @@ apps/web/scripts/contentful/backups/
 # Playwright MCP — local browser console logs (temporary test artifacts)
 .playwright-mcp/
 
+# QA evidence — per-ticket browser screenshots (binary, large; uploaded to Jira, not source of truth)
+tasks/qa-evidence/
+tasks/qa-runs/
+qa-icr*.png
+
 # turborepo cache
 .turbo/
 
