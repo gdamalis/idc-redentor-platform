@@ -1,3 +1,9 @@
+## [1.21.1](https://github.com/gdamalis/idc-redentor-web/compare/v1.21.0...v1.21.1) (2026-06-29)
+
+### Bug Fixes
+
+- **ICR-47:** localize SubscribeBanner feedback messages (error states) ([#70](https://github.com/gdamalis/idc-redentor-web/issues/70)) ([02dc5fc](https://github.com/gdamalis/idc-redentor-web/commit/02dc5fc678c94fc3be43ab3c10a17fc41441c01b))
+
 # [1.21.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.20.3...v1.21.0) (2026-06-29)
 
 ### Features
