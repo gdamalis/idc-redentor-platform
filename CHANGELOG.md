@@ -1,3 +1,9 @@
+# [1.21.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.20.3...v1.21.0) (2026-06-29)
+
+### Features
+
+- **ICR-29:** add reusable subscriber broadcast email service ([#69](https://github.com/gdamalis/idc-redentor-web/issues/69)) ([70612f3](https://github.com/gdamalis/idc-redentor-web/commit/70612f3295e3214505ba8ab4d3d2a94bbcb6929a))
+
 ## [1.20.3](https://github.com/gdamalis/idc-redentor-web/compare/v1.20.2...v1.20.3) (2026-06-28)
 
 ### Bug Fixes
