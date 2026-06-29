@@ -5,10 +5,10 @@ vi.mock("./broadcast/broadcastLog", () => ({
   markSent: vi.fn(),
   markFailed: vi.fn(),
 }));
-vi.mock("./broadcast/resendBroadcast", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("./broadcast/resendBroadcast")>();
-  return { ...actual, createAndSendBroadcast: vi.fn(), isResendBroadcastConfigured: vi.fn() };
-});
+vi.mock("./broadcast/resendBroadcast", () => ({
+  createAndSendBroadcast: vi.fn(),
+  isResendBroadcastConfigured: vi.fn(),
+}));
 
 import { sendBroadcast } from "./broadcast.service";
 import { claimBroadcast, markFailed, markSent } from "./broadcast/broadcastLog";
@@ -29,15 +29,15 @@ beforeEach(() => {
   process.env.BROADCAST_POSTAL_ADDRESS = "Calle Falsa 123, Buenos Aires, Argentina";
   vi.mocked(isResendBroadcastConfigured).mockReturnValue(true);
   vi.mocked(claimBroadcast).mockResolvedValue("claimed");
-  vi.mocked(createAndSendBroadcast).mockResolvedValue("bcast_1");
+  vi.mocked(createAndSendBroadcast).mockResolvedValue({ ok: true, id: "camp_1" });
 });
 
 describe("sendBroadcast", () => {
   it("sends and marks sent on the happy path", async () => {
     const result = await sendBroadcast(input);
-    expect(result).toEqual({ status: "sent", campaignId: "bcast_1" });
+    expect(result).toEqual({ status: "sent", campaignId: "camp_1" });
     expect(createAndSendBroadcast).toHaveBeenCalledOnce();
-    expect(markSent).toHaveBeenCalledWith("blog:hola:es-AR", "bcast_1");
+    expect(markSent).toHaveBeenCalledWith("blog:hola:es-AR", "camp_1");
   });
 
   it("skips without sending when already sent", async () => {
@@ -54,8 +54,19 @@ describe("sendBroadcast", () => {
     expect(createAndSendBroadcast).not.toHaveBeenCalled();
   });
 
-  it("marks failed and returns failed when the transport throws", async () => {
-    vi.mocked(createAndSendBroadcast).mockRejectedValueOnce(new Error("api down"));
+  it("marks failed and returns failed when the transport returns a failure result", async () => {
+    vi.mocked(createAndSendBroadcast).mockResolvedValue({
+      ok: false,
+      reason: "send-failed",
+      message: "api down",
+    });
+    const result = await sendBroadcast(input);
+    expect(result).toEqual({ status: "failed", reason: "send-failed" });
+    expect(markFailed).toHaveBeenCalledWith("blog:hola:es-AR", "send-failed");
+  });
+
+  it("marks failed and returns failed when the transport throws unexpectedly", async () => {
+    vi.mocked(createAndSendBroadcast).mockRejectedValueOnce(new Error("boom"));
     const result = await sendBroadcast(input);
     expect(result).toEqual({ status: "failed", reason: "send-failed" });
     expect(markFailed).toHaveBeenCalledWith("blog:hola:es-AR", "send-failed");
@@ -86,7 +97,11 @@ describe("sendBroadcast", () => {
   it("never leaks the API key to the console", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    vi.mocked(createAndSendBroadcast).mockRejectedValueOnce(new Error("api down"));
+    vi.mocked(createAndSendBroadcast).mockResolvedValueOnce({
+      ok: false,
+      reason: "send-failed",
+      message: "api down",
+    });
     await sendBroadcast(input);
     const all = [...errorSpy.mock.calls, ...logSpy.mock.calls].flat().map(String).join(" ");
     expect(all).not.toContain("SECRET_KEY_123");

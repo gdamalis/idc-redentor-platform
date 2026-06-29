@@ -7,7 +7,6 @@ import {
 } from "./broadcast/types";
 import { claimBroadcast, markFailed, markSent } from "./broadcast/broadcastLog";
 import {
-  ResendConfigError,
   isResendBroadcastConfigured,
   createAndSendBroadcast,
 } from "./broadcast/resendBroadcast";
@@ -50,24 +49,28 @@ export async function sendBroadcast(input: BroadcastInput): Promise<BroadcastRes
       postalAddress,
       unsubscribeLabel: chrome.unsubscribeLabel,
     });
-
-    const campaignId = await createAndSendBroadcast({
+    const dispatch = await createAndSendBroadcast({
       subject,
       name: `broadcast ${broadcastId}`,
       html: wrappedHtml,
       text,
     });
-
-    await markSent(broadcastId, campaignId);
-    console.log(`[broadcast] sent ${broadcastId} (${locale}) broadcast=${campaignId}`);
-    return { status: "sent", campaignId };
+    if (!dispatch.ok) {
+      console.error(
+        `[broadcast] ${dispatch.reason} for ${broadcastId}${dispatch.message ? `: ${dispatch.message}` : ""}`,
+      );
+      await markFailed(broadcastId, dispatch.reason);
+      return { status: "failed", reason: dispatch.reason };
+    }
+    await markSent(broadcastId, dispatch.id);
+    console.log(`[broadcast] sent ${broadcastId} (${locale}) broadcast=${dispatch.id}`);
+    return { status: "sent", campaignId: dispatch.id };
   } catch (error) {
-    const reason = error instanceof ResendConfigError ? "resend-not-configured" : "send-failed";
     console.error(
-      `[broadcast] ${reason} for ${broadcastId}:`,
+      `[broadcast] send-failed for ${broadcastId}:`,
       error instanceof Error ? error.message : String(error),
     );
-    await markFailed(broadcastId, reason);
-    return { status: "failed", reason };
+    await markFailed(broadcastId, "send-failed");
+    return { status: "failed", reason: "send-failed" };
   }
 }

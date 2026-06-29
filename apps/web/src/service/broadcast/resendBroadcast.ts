@@ -4,13 +4,6 @@ import { FROM_EMAIL } from "../mailing.service";
 export const BROADCAST_REPLY_TO = "info@idcredentor.org";
 export const BROADCAST_FROM_NAME = "Iglesia de Cristo Redentor";
 
-export class ResendConfigError extends Error {
-  constructor() {
-    super("resend-not-configured");
-    this.name = "ResendConfigError";
-  }
-}
-
 export interface BroadcastParams {
   subject: string;
   /** Internal broadcast name (not shown to subscribers; carries no PII). */
@@ -19,22 +12,28 @@ export interface BroadcastParams {
   text: string;
 }
 
+export type BroadcastDispatchResult =
+  | { ok: true; id: string }
+  | { ok: false; reason: "resend-not-configured" | "send-failed"; message?: string };
+
 export function isResendBroadcastConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY && process.env.RESEND_AUDIENCE_ID);
 }
 
-export async function createAndSendBroadcast(params: BroadcastParams): Promise<string> {
+export async function createAndSendBroadcast(
+  params: BroadcastParams,
+): Promise<BroadcastDispatchResult> {
   const apiKey = process.env.RESEND_API_KEY;
   const audienceId = process.env.RESEND_AUDIENCE_ID;
   if (!apiKey || !audienceId) {
-    throw new ResendConfigError();
+    return { ok: false, reason: "resend-not-configured" };
   }
 
   const from = `${BROADCAST_FROM_NAME} <${process.env.FROM_EMAIL ?? FROM_EMAIL}>`;
   const resend = new Resend(apiKey);
 
   const { data: created, error: createError } = await resend.broadcasts.create({
-    audienceId, // if no-deprecated lint flags this, use: segmentId: audienceId
+    audienceId,
     from,
     replyTo: BROADCAST_REPLY_TO,
     subject: params.subject,
@@ -42,14 +41,17 @@ export async function createAndSendBroadcast(params: BroadcastParams): Promise<s
     text: params.text,
     name: params.name,
   });
-  if (createError ?? !created) {
-    throw new Error(`broadcast create failed: ${createError?.message ?? "no data returned"}`);
+  if (createError) {
+    return { ok: false, reason: "send-failed", message: createError.message };
+  }
+  if (!created) {
+    return { ok: false, reason: "send-failed", message: "no data returned" };
   }
 
   const { error: sendError } = await resend.broadcasts.send(created.id);
   if (sendError) {
-    throw new Error(`broadcast send failed: ${sendError.message}`);
+    return { ok: false, reason: "send-failed", message: sendError.message };
   }
 
-  return created.id;
+  return { ok: true, id: created.id };
 }

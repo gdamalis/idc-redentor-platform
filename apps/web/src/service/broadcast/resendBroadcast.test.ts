@@ -17,7 +17,6 @@ vi.mock("resend", () => ({
 
 import {
   BROADCAST_REPLY_TO,
-  ResendConfigError,
   createAndSendBroadcast,
   isResendBroadcastConfigured,
 } from "./resendBroadcast";
@@ -47,9 +46,9 @@ describe("isResendBroadcastConfigured", () => {
 });
 
 describe("createAndSendBroadcast", () => {
-  it("creates then sends and returns the broadcast id", async () => {
-    const id = await createAndSendBroadcast({ subject: "S", name: "broadcast b1", html: "<p>x</p>", text: "x" });
-    expect(id).toBe("bcast_1");
+  it("creates then sends and returns ok result with broadcast id", async () => {
+    const result = await createAndSendBroadcast({ subject: "S", name: "broadcast b1", html: "<p>x</p>", text: "x" });
+    expect(result).toEqual({ ok: true, id: "bcast_1" });
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
         audienceId: "aud_1",
@@ -64,26 +63,23 @@ describe("createAndSendBroadcast", () => {
     expect(send).toHaveBeenCalledWith("bcast_1");
   });
 
-  it("throws ResendConfigError and never calls the SDK when unconfigured", async () => {
+  it("returns resend-not-configured and never calls the SDK when unconfigured", async () => {
     delete (process.env as Record<string, string | undefined>).RESEND_AUDIENCE_ID;
-    await expect(
-      createAndSendBroadcast({ subject: "S", name: "n", html: "h", text: "t" }),
-    ).rejects.toBeInstanceOf(ResendConfigError);
+    const result = await createAndSendBroadcast({ subject: "S", name: "n", html: "h", text: "t" });
+    expect(result).toEqual({ ok: false, reason: "resend-not-configured" });
     expect(create).not.toHaveBeenCalled();
   });
 
-  it("throws when create returns an error", async () => {
+  it("returns send-failed and skips send when create returns an error", async () => {
     create.mockResolvedValueOnce({ data: null, error: { message: "bad", name: "validation_error" } });
-    await expect(
-      createAndSendBroadcast({ subject: "S", name: "n", html: "h", text: "t" }),
-    ).rejects.toThrow(/create failed/);
+    const result = await createAndSendBroadcast({ subject: "S", name: "n", html: "h", text: "t" });
+    expect(result).toMatchObject({ ok: false, reason: "send-failed" });
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("throws when send returns an error", async () => {
+  it("returns send-failed when send returns an error", async () => {
     send.mockResolvedValueOnce({ data: null, error: { message: "nope", name: "application_error" } });
-    await expect(
-      createAndSendBroadcast({ subject: "S", name: "n", html: "h", text: "t" }),
-    ).rejects.toThrow(/send failed/);
+    const result = await createAndSendBroadcast({ subject: "S", name: "n", html: "h", text: "t" });
+    expect(result).toMatchObject({ ok: false, reason: "send-failed" });
   });
 });
