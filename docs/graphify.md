@@ -66,13 +66,13 @@ as directed:
 
 1. **Git post-commit hook** (`.husky/post-commit`, tracked) — keeps the **shared graph in sync with
    main** on every commit via AST. No LLM, no network, ~2s, detached so it never blocks/fails the
-   commit. It resolves the **main repo root via the common git dir** (so it works from `/work`
+   commit. It resolves the **main repo root via the common git dir** (so it works from `/divinelab:work`
    worktrees, where `--show-toplevel` would point at the worktree and skip the refresh) and refreshes
-   the one shared graph there, lock-guarded against races and yielding to a `/work` update. No-ops when
+   the one shared graph there, lock-guarded against races and yielding to a `/divinelab:work` update. No-ops when
    graphify isn't installed or no graph exists. Because `graphify update` extracts from and writes to
    the same root (no output redirect), a **worktree's feature code enters the graph when it merges to
-   main** — which is also the tree `/work`'s agents query.
-2. **`/work` per-session update** — the first `/work` that acquires the lock runs `graphify update`
+   main** — which is also the tree `/divinelab:work`'s agents query.
+2. **`/divinelab:work` per-session update** — the first `/divinelab:work` that acquires the lock runs `graphify update`
    (lock-guarded) to also catch **doc/content** (semantic) drift the AST hook ignores, and to fold in
    `graphify-out/memory/` entries.
 

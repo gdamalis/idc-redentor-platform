@@ -74,8 +74,8 @@ The agent harness isolates each ticket in a git worktree so parallel work and th
 .claude/worktrees/<ICR-N>      # one worktree per ticket, branched from origin/main
 ```
 
-- `/work` creates the worktree (`config.worktree`: parent `.claude/worktrees`, name = `<ticket-id>`, base `origin/main`), then transitions the issue To Do → In Progress.
-- The session-namer hook reads the worktree dir (or the branch) and titles the session `ICR-N-<slug>`. The naming is automatic — **don't run `/rename`**; the hook handles it and a manual rename is respected if you do set one.
+- `/divinelab:work` creates the worktree (`config.worktree`: parent `.claude/worktrees`, name = `<ticket-id>`, base `origin/main`), then transitions the issue To Do → In Progress.
+- The divinelab plugin's session-namer hook reads the worktree dir (or the branch) and titles the session `ICR-N-<slug>`. The naming is automatic — **don't run `/rename`**; the hook handles it and a manual rename is respected if you do set one.
 - When you're working by hand and want isolation, create a worktree the same way (`git worktree add .claude/worktrees/ICR-N -b <type>/ICR-N-<slug> origin/main`) or use your tooling's worktree helper. Worktrees are gitignored.
 - Clean up the worktree after the PR is merged.
 
