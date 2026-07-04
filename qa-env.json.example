@@ -1,4 +1,5 @@
 {
+  "_readme": "Per-developer QA secrets for the divinelab harness. Copy to qa-env.json (gitignored) — NEVER commit the filled file. Dot-paths in .claude/config.json are resolved INSIDE this file relative to its root: qa.env.preview.baseUrlFrom = 'preview.baseUrl' and qa.env.staging.baseUrlFrom = 'staging.baseUrl' each read the matching key below. jira.{email,apiToken} are read by the divinelab plugin's post-jira-result.mjs bin to attach QA results to Jira issues; preview/staging.baseUrl feed the QA target resolver; mongodbUri is optional (a LOCAL test DB only — never the prod cluster).",
   "jira": {
     "email": "<your-jira-email>",
     "apiToken": "<your-jira-apiToken>"
@@ -6,5 +7,8 @@
   "preview": {
     "baseUrl": ""
   },
-  "mongodbUri": "<optional: connection string for a test DB named website-test|website-qa|website-e2e>"
+  "staging": {
+    "baseUrl": "https://staging.idcredentor.org"
+  },
+  "mongodbUri": "<optional: connection string for a LOCAL test DB named website-test|website-qa|website-e2e|website-staging — never the prod 'website' cluster>"
 }
