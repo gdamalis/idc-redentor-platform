@@ -43,7 +43,7 @@ IDC Redentor is the official bilingual (es-AR / en-US) website of Iglesia de Cri
 - **Security/CSP**: `config/headers.js` (HSTS, X-Frame-Options, CSP allowlisting GTM/GA, Vercel, and Contentful image CDNs).
 - **Path aliases**: `@src/*`, `@lib/*`, `@public/*`, `@icons/*`.
 
-See `docs/architecture.md` and the domain docs in `docs/` for detail.
+See `docs/architecture/architecture.md` and the domain docs in `docs/` for detail.
 
 ## Code Conventions
 
@@ -108,4 +108,4 @@ VERCEL_ENV              # injected by Vercel; drives draft mode
 - **Conventional Commits**; header ≤ 100 chars; commitlint enforced via husky.
 - **PR titles** follow `<type>(ICR-N): description` and are validated in CI by `amannn/action-semantic-pull-request`.
 - **`semantic-release`** runs on `main` (`.releaserc.json`): `feat` → minor; `fix`, `perf`, `docs` → patch; `chore` → no release. (Note `docs` and `perf` cut a patch release here — be deliberate.)
-- See `docs/contributing.md` for the branch/commit/PR + worktree flow.
+- See `docs/architecture/contributing.md` for the branch/commit/PR + worktree flow.
