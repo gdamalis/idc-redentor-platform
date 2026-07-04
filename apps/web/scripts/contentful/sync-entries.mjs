@@ -4,7 +4,7 @@
  * via the CMA. The free-tier replacement for Contentful Launch (paid) and the
  * complement to the Merge app (which moves the content MODEL only, never entries).
  *
- * Mental model (docs/contentful-environments.md): content lives in production;
+ * Mental model (docs/architecture/contentful-environments.md): content lives in production;
  * models are forged in staging. Content flows DOWN (production -> staging) to
  * refresh; entries are promoted UP (staging -> production) only at a model
  * cutover. Default direction is the refresh: production -> staging.

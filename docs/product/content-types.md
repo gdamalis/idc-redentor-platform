@@ -109,7 +109,7 @@ Most pages carry SEO inline via `Page.seo`, but there is also a standalone `Seo`
 - **Purpose:** reusable SEO metadata for routes that look one up by name (e.g. the blog index, or any page that references a shared Seo entry).
 - **Key fields:** `title`, `description`, `keywords`, `image` (`url`, `title`, `width`, `height`), `siteName`, `type`, and `machineName` (lookup key). _(Type: `src/types/Seo.ts`.)_
 - **Getter:** `lib/contentful/getSeo.ts#getSeo(name, locale, isDraftMode)` — looks up by `machineName`.
-- **Rendered by:** metadata builders (`lib/metadata.ts`) that emit `<title>`, meta description, keywords, and OG/Twitter tags. See [ai-era-strategy.md](./ai-era-strategy.md) and `docs/seo-and-metadata.md`.
+- **Rendered by:** metadata builders (`lib/metadata.ts`) that emit `<title>`, meta description, keywords, and OG/Twitter tags. See [ai-era-strategy.md](./ai-era-strategy.md) and `docs/architecture/seo-and-metadata.md`.
 
 ---
 

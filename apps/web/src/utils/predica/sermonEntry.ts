@@ -14,7 +14,7 @@
  *    `internalName` is DERIVED from the passage + version (`buildBibleVerseInternalName`),
  *    never the per-sermon slug, so identical passages produce the same key and the
  *    publisher reuses one entry across sermons (a different translation → a different
- *    key, never collided). See `docs/predica-bibleverse-reuse.md`.
+ *    key, never collided). See `docs/architecture/predica-bibleverse-reuse.md`.
  *  - `buildSermonEntryFields(sermon, links)` → the localized `fields` payload for the
  *    DRAFT `sermon` entry, given the link ids the publisher already resolved
  *    (preacher, scriptureReferences, pdfSummary, optional audio/featuredImage).
@@ -267,7 +267,7 @@ function localizedFrom<T>(
  * upserts on. Built from the structured passage + es version (never the per-sermon
  * slug): the SAME passage across sermons yields the SAME key (reuse), and a different
  * translation (RVR1960 vs NVI) yields a DIFFERENT key (never collided). Use full,
- * canonical Spanish book names so keys match. See `docs/predica-bibleverse-reuse.md`.
+ * canonical Spanish book names so keys match. See `docs/architecture/predica-bibleverse-reuse.md`.
  */
 export function buildBibleVerseInternalName(ref: SermonScriptureRef): string {
   const verses = ref.toVerse ? `${ref.fromVerse}-${ref.toVerse}` : ref.fromVerse;

@@ -144,7 +144,7 @@ scriptureRefs/closing?`. Keys consumed by the Contentful publisher: everything e
   an `internalName`** — the publisher derives a stable, version-scoped dedup key from the passage
   (`"Joel 2:13 (NVI)"`) so identical passages are reused across sermons. Use **full canonical Spanish book
   names** (`Efesios`, `Mateo`, `1 Corintios`) consistently so those keys match. See
-  `docs/predica-bibleverse-reuse.md`.
+  `docs/architecture/predica-bibleverse-reuse.md`.
 - `lead`, `closing`, `keyQuotes`, `scriptureHeadline`, `scriptureRefs` are PDF-facing; still author them well.
 - `whatsappText` is es-AR, warm, ends with the `{{URL}}` placeholder (the whatsapp step substitutes the
   real canonical URL after publish).

@@ -398,4 +398,4 @@ Grep/Read on an empty/stale/absent graph and notes it. Full guide: [`graphify.md
 8. **Never apply Contentful model changes to production or re-point the `master` alias** — that's a human
    promotion, like merge/Done. Agents make changes in a **work env** (the permanent `staging`, or a versioned
    env for big breaking changes) via the MCP + `scripts/contentful/` and propose; the human cuts over. See
-   `docs/contentful-environments.md` (the `/divinelab:work` Contentful gate enforces this).
+   `docs/architecture/contentful-environments.md` (the `/divinelab:work` Contentful gate enforces this).

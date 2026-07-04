@@ -15,7 +15,7 @@
  * existing entry instead of creating a duplicate. The script GETs by content_type +
  * fields.internalName first; on a hit it returns that id (`reused:true`) WITHOUT
  * writing; otherwise it creates as normal (`reused:false`). Deterministic — it does
- * not depend on the agent remembering to search. See docs/predica-bibleverse-reuse.md.
+ * not depend on the agent remembering to search. See docs/architecture/predica-bibleverse-reuse.md.
  *
  * UPDATE-IN-PLACE (--id <entryId>): instead of creating, GET the entry's current
  * version and PUT the full `fields` payload back under the SAME id. Used when
