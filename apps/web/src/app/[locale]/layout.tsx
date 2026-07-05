@@ -4,6 +4,7 @@ import { getNavigationMenu } from "@lib/contentful/getNavigationMenu";
 import { getSingleEmailForm } from "@lib/contentful/getSingleEmailForm";
 import { buildOrganizationJsonLd, DEFAULT_OG_IMAGE } from "@lib/metadata";
 import { ConsentBanner } from "@src/components/shared/consent-banner/ConsentBanner";
+import { ContentfulPreviewProvider } from "@src/components/shared/contentful-preview";
 import { Footer } from "@src/components/shared/footer";
 import { JsonLd } from "@src/components/shared/json-ld";
 import { NavbarWrapper } from "@src/components/shared/navbar";
@@ -94,6 +95,21 @@ export default async function LocaleLayout({
 
   const messages = await getMessages();
 
+  const content = (
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+      <NextIntlClientProvider messages={messages}>
+        <NavbarWrapper menuItems={navMenu} />
+        {children}
+        <SubscribeBanner content={subscribeContent} />
+        <Footer content={footerContent} />
+        <ConsentBanner />
+        <Toaster />
+      </NextIntlClientProvider>
+      <SpeedInsights />
+      <Analytics />
+    </ThemeProvider>
+  );
+
   return (
     <html lang={locale} suppressHydrationWarning>
       <body className={`${outfit.variable} ${playfairDisplay.variable} font-sans antialiased`}>
@@ -104,18 +120,13 @@ export default async function LocaleLayout({
         />
         <JsonLd data={buildOrganizationJsonLd(locale)} />
         <GoogleTagManager gtmId={process.env.NEXT_PUBLIC_GTM_ID!} />
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-          <NextIntlClientProvider messages={messages}>
-            <NavbarWrapper menuItems={navMenu} />
-            {children}
-            <SubscribeBanner content={subscribeContent} />
-            <Footer content={footerContent} />
-            <ConsentBanner />
-            <Toaster />
-          </NextIntlClientProvider>
-          <SpeedInsights />
-          <Analytics />
-        </ThemeProvider>
+        {isEnabled ? (
+          <ContentfulPreviewProvider locale={locale}>
+            {content}
+          </ContentfulPreviewProvider>
+        ) : (
+          content
+        )}
       </body>
     </html>
   );
