@@ -188,12 +188,17 @@ export function renderScriptureReferences(
  * @param localeData  - The locale-specific post body (title + content[]).
  * @param common      - Shared metadata (date, preacher(s), scripture refs, logo).
  * @param locale      - Which locale to render ("es-AR" | "en-US").
+ * @param version     - Optional render version (ICR-114 regen webhook). When provided,
+ *                      a small "· v<N>" is appended to the footer signature so a preacher
+ *                      can tell a new PDF landed. Omitted (the local `/predica` pipeline's
+ *                      call sites) → the footer is unchanged, a no-op.
  * @returns           A complete HTML document string ready for Playwright setContent().
  */
 export function buildPdfHtml(
   localeData: SermonLocaleData,
   common: SermonCommon,
   locale: SupportedLocale,
+  version?: number,
 ): string {
   const L = LABELS[locale];
   const formattedDate = formatSermonDate(common.sermonDate, locale);
@@ -211,6 +216,8 @@ export function buildPdfHtml(
   const logoHtml = common.logoDataUri
     ? `<img src="${common.logoDataUri}" alt="Logo Iglesia de Cristo Redentor" class="logo" />`
     : `<p class="logo-fallback">Iglesia de Cristo Redentor</p>`;
+
+  const footerText = version != null ? `${e(L.footer)} ${L.eyebrowSep} v${version}` : e(L.footer);
 
   return `<!DOCTYPE html>
 <html lang="${locale}">
@@ -417,7 +424,7 @@ export function buildPdfHtml(
 
   <!-- ── Footer signature ── -->
   <div class="footer-sig">
-    ${e(L.footer)}
+    ${footerText}
   </div>
 
 </body>

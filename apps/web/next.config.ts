@@ -4,7 +4,11 @@ import headersConfig from "./config/headers";
 
 const withNextIntl = createNextIntlPlugin();
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@sparticuz/chromium", "playwright-core"],
+  // @playwright/test is a devDependency, only ever dynamically imported behind the
+  // renderSermonPdf.ts local/dev branch (ICR-114) — externalizing it here stops
+  // webpack from tracing/bundling it into the Vercel function even though it's a
+  // dynamic import; that branch never runs in a Vercel/Lambda environment.
+  serverExternalPackages: ["@sparticuz/chromium", "playwright-core", "@playwright/test"],
   images: {
     remotePatterns: [
       {
