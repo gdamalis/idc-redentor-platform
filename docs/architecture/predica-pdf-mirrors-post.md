@@ -2,8 +2,9 @@
 
 **TL;DR.** A sermon has **one body** — the localized rich-text `content[]`. The website post and the
 downloadable branded PDF are **two views of that same body**. There is no separately-authored PDF summary
-anymore. This is what lets a preacher edit the post in Contentful and have the PDF reflect it (the webhook
-regeneration is specced in [`tasks/specs/predica-pdf-regen-webhook.md`](../tasks/specs/predica-pdf-regen-webhook.md)).
+anymore. This is what lets a preacher edit the post in Contentful and have the PDF reflect it — automatically,
+via the webhook + cron regeneration described in **Part B** below (design spec:
+[`tasks/specs/predica-pdf-regen-webhook.md`](../tasks/specs/predica-pdf-regen-webhook.md)).
 
 ## Why this changed
 
@@ -50,6 +51,50 @@ A multi-preacher post (one service, several short messages) keeps its own shape:
 interleaves per-segment audio/PDF players via `embeddedAsset` blocks. `buildPdfHtml` skips `embeddedAsset`
 blocks, so it stays focused on the readable body. (Whether webhook regeneration covers multi-preacher posts
 is an open item in the Part B spec.)
+
+## Part B — automatic regeneration on draft edit (ICR-114)
+
+Editing a sermon's `content[]` in Contentful now regenerates the branded PDF **without a human re-running
+`/predica`**:
+
+```
+Contentful draft save / auto_save
+   │  webhook → POST /api/predica/regenerate-pdf   (header x-predica-regen-key)
+   ▼
+mark the sermon's job dirty in MongoDB `website.pdf_jobs`  — 202 Accepted, no render here
+   │
+   ▼  Vercel Cron (~every minute), GET /api/predica/regenerate-pdf/cron, header
+   │  Authorization: Bearer <CRON_SECRET>
+select jobs idle longer than the quiet window (default 90s; env `PDF_REGEN_QUIET_WINDOW_SECONDS`)
+AND whose content actually changed since the last render
+   │  claim (lock) → fetch the DRAFT sermon (both locales) → buildPdfHtml → Chromium → PDF
+   ▼
+swap `pdfSummary[locale]` on the SAME draft entry in place, delete the superseded asset, release the lock
+```
+
+- **Debounce, not per-keystroke render.** The webhook only ever bumps `dirtyAt`/`contentHash` on the job
+  doc — the cron is the only thing that renders. A burst of auto_save webhooks collapses into one render
+  once the quiet window has elapsed since the last edit.
+- **Draft-only, never publish, never `master`.** Every write (asset upload, `pdfSummary` swap, superseded-asset
+  delete) touches DRAFT content on the same entry and stops there — a human still Publishes to go live (Gate 2
+  of `/predica` is unchanged). The write-back also **hard-refuses `master`/`master-*`**, defaulting instead to
+  the concrete `production` environment — see the read-vs-write environment-default note in
+  `docs/architecture/contentful-data-layer.md`.
+- **Version-stamped.** Each successful render bumps a monotonic `version`, which lands both in the PDF footer
+  (a small `· v<N>` appended to the existing signature) and the new asset's title
+  (`"<sermon title> — PDF <locale> · v<N>"`) — so a preacher can tell a fresh PDF landed.
+- **Still reuses `buildPdfHtml`.** The render (`apps/web/src/service/predica/renderSermonPdf.ts`) calls the
+  same `buildPdfHtml` this doc describes above, so the post and the regenerated PDF still can't drift. The
+  only differences from the local `/predica` pipeline are render-environment constraints, not content ones:
+  a self-contained HTML variant (inlined `@font-face` fonts + the logo as a `data:` URI, replacing the
+  Google-Fonts `<link>`) and a serverless-friendly Chromium launch (`@sparticuz/chromium` + `playwright-core`
+  on Vercel; `@playwright/test` locally) — because the cron function has no guaranteed outbound network
+  access at render time.
+- **Quiet window is env-tunable.** `PDF_REGEN_QUIET_WINDOW_SECONDS` (optional; defaults to 90 seconds in
+  code) lets the debounce window be adjusted without touching the render logic.
+
+See `tasks/specs/predica-pdf-regen-webhook.md` for the full design spec (now implemented) and
+`docs/architecture/likes-and-mongodb.md` for the `pdf_jobs` collection shape.
 
 ## Where this lives (keep in sync)
 
