@@ -10,6 +10,7 @@ import {
   cardDescriptionOptions,
 } from "@lib/contentful/rich-text-options";
 import type { ContentCollection } from "@lib/contentful/types";
+import type { InspectorProps } from "@src/components/shared/contentful-preview/useLivePreview";
 import {
   MessageCircle,
   Heart,
@@ -25,10 +26,7 @@ import {
  * Maps creed titles (both EN and ES) to Lucide icons.
  * Covers both locales so the correct icon renders regardless of language.
  */
-const CREED_ICON_MAP: Record<
-  string,
-  ComponentType<{ className?: string }>
-> = {
+const CREED_ICON_MAP: Record<string, ComponentType<{ className?: string }>> = {
   // English
   Testimony: MessageCircle,
   Redemption: Heart,
@@ -51,9 +49,13 @@ const DEFAULT_ICON = BookOpen;
 
 interface CreedSectionProps {
   content: ContentCollection;
+  inspectorProps?: InspectorProps;
 }
 
-export const CreedSection = ({ content }: CreedSectionProps) => {
+export const CreedSection = ({
+  content,
+  inspectorProps,
+}: CreedSectionProps) => {
   const description = content.description
     ? documentToReactComponents(
         content.description.json,
@@ -64,7 +66,17 @@ export const CreedSection = ({ content }: CreedSectionProps) => {
   return (
     <section className="py-24 bg-muted/30">
       <Container>
-        <SectionHeader title={content.title} description={description} />
+        {/* SectionHeader doesn't forward extra props to its DOM node — wrap it
+            so the inspector attributes still reach the DOM without touching
+            SectionHeader's API (it's shared by other callers). */}
+        <div
+          {...inspectorProps?.({
+            entryId: content.sys?.id ?? "",
+            fieldId: "title",
+          })}
+        >
+          <SectionHeader title={content.title} description={description} />
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {content.creedItems.map((credo, index) => {
@@ -76,26 +88,43 @@ export const CreedSection = ({ content }: CreedSectionProps) => {
             const bibleVerse = v ? `"${v.verseContent}" (${ref})` : null;
 
             return (
-              <IconCard
+              // Entry-level inspector granularity for pass 1: wrapping the
+              // whole IconCard (rather than threading inspectorProps into
+              // IconCard's own API, which is shared by other callers) still
+              // lets an editor click through to the right BeliefItem entry.
+              // `h-full` on both the wrapper and IconCard preserves the
+              // pre-existing equal-card-height grid behavior — without it,
+              // IconCard's own box (not the wrapper) would stop stretching
+              // to the grid row's height on the non-draft render path.
+              <div
                 key={credo.title}
-                icon={Icon}
-                title={credo.title}
-                index={index}
-                footer={
-                  bibleVerse ? (
-                    <div className="border-t border-border pt-4 mt-4">
-                      <p className="text-sm italic text-muted-foreground/80">
-                        {bibleVerse}
-                      </p>
-                    </div>
-                  ) : undefined
-                }
+                className="h-full"
+                {...inspectorProps?.({
+                  entryId: credo.sys?.id ?? "",
+                  fieldId: "title",
+                })}
               >
-                {documentToReactComponents(
-                  credo.description.json,
-                  cardDescriptionOptions,
-                )}
-              </IconCard>
+                <IconCard
+                  icon={Icon}
+                  title={credo.title}
+                  index={index}
+                  className="h-full"
+                  footer={
+                    bibleVerse ? (
+                      <div className="border-t border-border pt-4 mt-4">
+                        <p className="text-sm italic text-muted-foreground/80">
+                          {bibleVerse}
+                        </p>
+                      </div>
+                    ) : undefined
+                  }
+                >
+                  {documentToReactComponents(
+                    credo.description.json,
+                    cardDescriptionOptions,
+                  )}
+                </IconCard>
+              </div>
             );
           })}
         </div>

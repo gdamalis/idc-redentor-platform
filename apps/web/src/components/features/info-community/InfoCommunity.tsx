@@ -5,6 +5,7 @@ import {
 import { BLOCKS, Document } from "@contentful/rich-text-types";
 import { Container } from "@src/components/ui/container";
 import { Typography } from "@src/components/ui/typography";
+import type { InspectorProps } from "@src/components/shared/contentful-preview/useLivePreview";
 import { ReactNode } from "react";
 
 const options = {
@@ -25,20 +26,26 @@ type InfoCommunityProps = {
   content: {
     headline: string;
     body: {
-       
       json: Document;
     };
+    sys: { id: string };
   };
+  inspectorProps?: InspectorProps;
 };
 
 export default function InfoCommunity({
   content,
+  inspectorProps,
 }: Readonly<InfoCommunityProps>) {
   const bodyText = documentToReactComponents(content?.body.json, options);
 
   return (
     <div className="bg-muted/50">
-      <Container size="md" className="py-16 text-center md:space-y-6 sm:py-24">
+      <Container
+        size="md"
+        className="py-16 text-center md:space-y-6 sm:py-24"
+        {...inspectorProps?.({ entryId: content.sys.id, fieldId: "body" })}
+      >
         {bodyText}
       </Container>
     </div>
