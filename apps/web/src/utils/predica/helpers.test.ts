@@ -3,7 +3,7 @@
  * Exercises escapeHtml, formatSermonDate, and buildPdfHtml without invoking Playwright.
  *
  * The PDF mirrors the website post body: cover → content[] body → scripture
- * references → footer (see helpers.ts / docs/predica-pdf-mirrors-post.md).
+ * references → footer (see helpers.ts / docs/architecture/predica-pdf-mirrors-post.md).
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { escapeHtml, formatSermonDate, buildPdfHtml } from "@src/utils/predica/helpers";

@@ -23,7 +23,7 @@ Carry the voice from [overview.md](./overview.md) into every piece of copy:
 - **Reverent but plain.** Respect the subject; drop the jargon. Avoid denominational insider shorthand and assumed knowledge on public pages — explain gently instead.
 - **Second person, inclusive.** Speak _to_ the reader ("vos/usted" per the church's preference — confirm with leadership). Include newcomers and seekers; never make them feel like outsiders.
 - **Honest and unpushy.** No salesy language, no manufactured urgency, no fear-based appeals. Invite; don't pressure.
-- **Scripture is attributed.** Quote with book, chapter, and verse, and keep the Bible version consistent across the site. The church's confirmed translations are **NVI (Nueva Versión Internacional)** in Spanish and **NIV** in English. The `bibleVerse` field on Credo/ValueItem entries is the place for these; sermon scripture is stored as structured `bibleVerse` entries reused across sermons (see `docs/predica-bibleverse-reuse.md`).
+- **Scripture is attributed.** Quote with book, chapter, and verse, and keep the Bible version consistent across the site. The church's confirmed translations are **NVI (Nueva Versión Internacional)** in Spanish and **NIV** in English. The `bibleVerse` field on Credo/ValueItem entries is the place for these; sermon scripture is stored as structured `bibleVerse` entries reused across sermons (see `docs/architecture/predica-bibleverse-reuse.md`).
 
 ## Doctrinal content guardrail (leadership-owned)
 
@@ -49,7 +49,7 @@ _(This mirrors the general "improve, don't overwrite" editorial standard, recast
 - **Title** ≤ ~60 characters; **description** ≤ ~155 characters; include the church name where natural; write for a human, not a keyword stuffer.
 - **Keywords** should be a small, relevant set (location, "iglesia", topic) — not a dump.
 - **OG image** set per page where it matters (home, blog posts); fall back to the default OG image otherwise.
-- Keep es-AR and en-US SEO fields both populated and locale-appropriate (a Spanish title for es-AR, English for en-US). See [ai-era-strategy.md](./ai-era-strategy.md) and `docs/seo-and-metadata.md`.
+- Keep es-AR and en-US SEO fields both populated and locale-appropriate (a Spanish title for es-AR, English for en-US). See [ai-era-strategy.md](./ai-era-strategy.md) and `docs/architecture/seo-and-metadata.md`.
 
 ## Publish & preview flow
 

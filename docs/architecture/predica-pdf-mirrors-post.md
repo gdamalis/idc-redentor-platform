@@ -53,12 +53,12 @@ is an open item in the Part B spec.)
 
 ## Where this lives (keep in sync)
 
-| File | Role |
-|------|------|
-| `apps/web/src/utils/predica/helpers.ts` | Canonical `buildPdfHtml` — renders `content[]` + scripture refs. Vitest-tested. |
-| `.claude/scripts/predica/build-predica-pdf.mjs` | Runtime twin (no build step). Must mirror `helpers.ts`. |
-| `apps/web/src/utils/predica/sermonEntry.ts` | `SermonLocaleContent` (no PDF-only fields) + the entry-field builders. |
-| `.claude/agents/predica-writer.md` | Writes `content[]` as the medium, voice-faithful summary. |
+| File                                               | Role                                                                                                         |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `apps/web/src/utils/predica/helpers.ts`            | Canonical `buildPdfHtml` — renders `content[]` + scripture refs. Vitest-tested.                              |
+| `.claude/scripts/predica/build-predica-pdf.mjs`    | Runtime twin (no build step). Must mirror `helpers.ts`.                                                      |
+| `apps/web/src/utils/predica/sermonEntry.ts`        | `SermonLocaleContent` (no PDF-only fields) + the entry-field builders.                                       |
+| `.claude/agents/predica-writer.md`                 | Writes `content[]` as the medium, voice-faithful summary.                                                    |
 | `apps/web/src/components/features/sermon-details/` | The website views the PDF mirrors (`SermonDetails`, `SermonContent`, `ScriptureReferences`, `SermonByline`). |
 
 See also [`docs/predica-rerun-idempotency.md`](./predica-rerun-idempotency.md) (regenerate-in-place) and

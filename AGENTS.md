@@ -43,7 +43,7 @@ IDC Redentor is the official bilingual (es-AR / en-US) website of Iglesia de Cri
 - **Security/CSP**: `config/headers.js` (HSTS, X-Frame-Options, CSP allowlisting GTM/GA, Vercel, and Contentful image CDNs).
 - **Path aliases**: `@src/*`, `@lib/*`, `@public/*`, `@icons/*`.
 
-See `docs/architecture.md` and the domain docs in `docs/` for detail.
+See `docs/architecture/architecture.md` and the domain docs in `docs/` for detail.
 
 ## Code Conventions
 
@@ -101,11 +101,11 @@ VERCEL_ENV              # injected by Vercel; drives draft mode
 - Project: **IDC Redentor** (key `ICR`) on `divinelab.atlassian.net` — a company-managed software project. Access via the Atlassian MCP (`mcp__atlassian-divinelab__*`).
 - **`ICR-N`** is the **native Jira issue key** — `N` is the issue number, not a Trello idShort. Fetch the issue directly via `getJiraIssue(cloudId, "ICR-N")` (no scan-to-resolve); all Atlassian calls use the `ICR-N` key.
 - Branches: `<type>/ICR-N-<slug>` · PR titles: `<type>(ICR-N): description`.
-- Workflow statuses: **Backlog** → **To Do** → **In Progress** → **In Review** → **In Testing** → **Done**. `/work` transitions To Do → In Progress → In Review; `/merge` transitions In Review → In Testing (after a user-triggered squash-merge). **No agent ever transitions an issue to Done** — a human does that after deploying to production. Transitions resolve **by name** at runtime (`getTransitionsForJiraIssue` matching `transition.to.name`); the status name is the contract, never hardcode numeric transition ids.
+- Workflow statuses: **Backlog** → **To Do** → **In Progress** → **In Review** → **In Testing** → **Done**. `/divinelab:work` transitions To Do → In Progress → In Review; `/divinelab:merge` transitions In Review → In Testing (after a user-triggered squash-merge). **No agent ever transitions an issue to Done** — a human does that after deploying to production. Transitions resolve **by name** at runtime (`getTransitionsForJiraIssue` matching `transition.to.name`); the status name is the contract, never hardcode numeric transition ids.
 
 ## Git & Release
 
 - **Conventional Commits**; header ≤ 100 chars; commitlint enforced via husky.
 - **PR titles** follow `<type>(ICR-N): description` and are validated in CI by `amannn/action-semantic-pull-request`.
 - **`semantic-release`** runs on `main` (`.releaserc.json`): `feat` → minor; `fix`, `perf`, `docs` → patch; `chore` → no release. (Note `docs` and `perf` cut a patch release here — be deliberate.)
-- See `docs/contributing.md` for the branch/commit/PR + worktree flow.
+- See `docs/architecture/contributing.md` for the branch/commit/PR + worktree flow.

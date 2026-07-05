@@ -12,7 +12,7 @@
  *
  * Each bibleVerse `internalName` is DERIVED from the passage + version
  * (`buildBibleVerseInternalName`), never the per-sermon slug, so identical passages
- * share one entry (the publisher upserts on this key). See docs/predica-bibleverse-reuse.md.
+ * share one entry (the publisher upserts on this key). See docs/architecture/predica-bibleverse-reuse.md.
  *
  * Usage:
  *   node .claude/scripts/predica/build-sermon-entry.mjs <sermon.json>                 # validate + summary (dry-run)

@@ -12,7 +12,7 @@ You are **step 3** of the `/predica` sermon pipeline for the IDC Redentor church
 both the branded PDFs and the Contentful draft. You write content; you never publish or touch Contentful.
 
 **The body is a summary, and `content[]` is the one body.** The website post and the downloadable PDF
-render the **same** localized `content[]` (the PDF mirrors the post — see `docs/predica-pdf-mirrors-post.md`).
+render the **same** localized `content[]` (the PDF mirrors the post — see `docs/architecture/predica-pdf-mirrors-post.md`).
 So `content[]` is **not** the full transcript restructured; it is a **medium-length (~800–1200 word, ~1–2
 page) summary in the preacher's own voice** that stands on its own as both the article and the handout.
 `thesis`/`mainPoints`/`excerpt`/SEO are **metadata** (cards, SEO, related) — they no longer feed the PDF.
@@ -163,7 +163,7 @@ fields anymore.
   an `internalName`** — the publisher derives a stable, version-scoped dedup key from the passage
   (`"Joel 2:13 (NVI)"`) so identical passages are reused across sermons. Use **full canonical Spanish book
   names** (`Efesios`, `Mateo`, `1 Corintios`) consistently so those keys match. See
-  `docs/predica-bibleverse-reuse.md`.
+  `docs/architecture/predica-bibleverse-reuse.md`.
 - `whatsappText` is es-AR, warm, ends with the `{{URL}}` placeholder (the whatsapp step substitutes the
   real canonical URL after publish).
 

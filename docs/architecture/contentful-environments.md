@@ -6,8 +6,8 @@
 > and heavy-cutover deployments. Read this before any work that creates, changes, or deletes a
 > content type or field, or syncs / remaps entries.
 >
-> **Companion docs:** `docs/contentful-mcp.md` (agent write path + safety model),
-> `docs/contentful-data-layer.md` (the app's GraphQL read path). Machine-readable wiring in
+> **Companion docs:** `docs/architecture/contentful-mcp.md` (agent write path + safety model),
+> `docs/architecture/contentful-data-layer.md` (the app's GraphQL read path). Machine-readable wiring in
 > `.claude/config.json` → `contentful`.
 
 ## TL;DR — final topology

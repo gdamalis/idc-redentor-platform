@@ -10,7 +10,7 @@ works in every directory including git worktrees.
 
 > This is a **tooling/agent capability**, not part of the Next.js app. The website itself
 > still reads content through the GraphQL Delivery API (`lib/contentful/fetch.ts`); see
-> `docs/contentful-data-layer.md`. The MCP server is a parallel, agent-only path.
+> `docs/architecture/contentful-data-layer.md`. The MCP server is a parallel, agent-only path.
 
 ## Why the local server (not the remote one)
 
@@ -62,12 +62,12 @@ Model changes (a new/changed/deleted content type or field, or an entry remap) r
 human promotes. **Default lane:** a permanent **`staging`** env (granted on the API keys once), promoted
 via Contentful **Merge** and/or the committed scripts. **Heavy lane** (big breaking changes): also
 developed in the permanent **`staging`** env, but promoted via the stable-name **alias-swap** for an
-atomic, instantly-reversible cutover (see `docs/contentful-environments.md` → Heavy alias-swap runbook).
+atomic, instantly-reversible cutover (see `docs/architecture/contentful-environments.md` → Heavy alias-swap runbook).
 
 The full runbook — the cutover/rollback steps, the one-time config touch points (MCP `ENVIRONMENT_ID`,
 `.env.local` `CONTENTFUL_ENVIRONMENT`, branch-scoped Vercel Preview), and the heavy alias-swap
 procedure for breaking changes — lives in
-**[`docs/contentful-environments.md`](./contentful-environments.md)** (machine-readable wiring in
+**[`docs/architecture/contentful-environments.md`](./contentful-environments.md)** (machine-readable wiring in
 `.claude/config.json` → `contentful`). **`ENVIRONMENT_ID` is permanently `staging`** — it is set once
 and does not rotate each cycle. The alias re-point is **never** done by an agent — it is a human
 promotion.
@@ -83,7 +83,7 @@ promotion.
    Environments → Add environment**, name it `staging`, **clone from current production** (the
    `master` alias target). (Or, once the MCP is connected, an agent can call `create_environment`.)
    This is done once — `staging` is a permanent env, not recreated each cycle. See
-   [`docs/contentful-environments.md`](./contentful-environments.md) for the two-lane workflow and
+   [`docs/architecture/contentful-environments.md`](./contentful-environments.md) for the two-lane workflow and
    the heavy alias-swap procedure for breaking changes.
 
 3. **Register the server in your local Claude Code config**, baking the values in from

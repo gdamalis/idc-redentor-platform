@@ -3,7 +3,7 @@
 > **Status:** Design / not yet implemented · 2026-06-29
 > **Depends on:** the "PDF mirrors the post" change (Part A) — the PDF now renders the localized `content[]`
 > body, so it can be regenerated from whatever a preacher edits in Contentful. See
-> `docs/predica-pdf-mirrors-post.md`.
+> `docs/architecture/predica-pdf-mirrors-post.md`.
 > **⚠ Sensitive areas:** adds a **Contentful Management (write) token to the app runtime**, a **new public
 > webhook endpoint**, and **MongoDB writes**. Treat env/secrets + the endpoint as security-sensitive; review
 > accordingly.
@@ -78,17 +78,18 @@ This decouples the noisy webhook from the expensive render, which is what gives 
 
 ```ts
 interface PdfJob {
-  entryId: string;          // Contentful sermon entry id (unique key)
-  dirtyAt: Date;            // last edit webhook time (debounce window anchor)
-  contentHash: string;      // hash of PDF-relevant fields at last webhook
-  lastRenderedHash?: string;// contentHash at last successful render (skip no-ops)
-  version: number;          // monotonic; rendered into the footer + asset title
+  entryId: string; // Contentful sermon entry id (unique key)
+  dirtyAt: Date; // last edit webhook time (debounce window anchor)
+  contentHash: string; // hash of PDF-relevant fields at last webhook
+  lastRenderedHash?: string; // contentHash at last successful render (skip no-ops)
+  version: number; // monotonic; rendered into the footer + asset title
   status: "idle" | "rendering";
-  lockedAt?: Date;          // for stale-lock recovery
+  lockedAt?: Date; // for stale-lock recovery
   lastRenderedAt?: Date;
   lastError?: string;
 }
 ```
+
 Index: unique on `entryId`. Reuse the cached client in `apps/web/src/service/database.service.ts`.
 
 ## API changes
@@ -101,11 +102,11 @@ Index: unique on `entryId`. Reuse the cached client in `apps/web/src/service/dat
 
 ## Environment / config changes
 
-| Variable | Purpose | New? |
-|----------|---------|------|
+| Variable                             | Purpose                                                                                                            | New?                                                            |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
 | `CONTENTFUL_MANAGEMENT_ACCESS_TOKEN` | CMA write token for the app runtime (upload asset + update entry). **Today only local `.claude` scripts have it.** | **yes — add to Vercel + `apps/web/src/types/environment.d.ts`** |
-| `PREDICA_REGEN_SECRET` | `x-predica-regen-key` for the webhook | yes |
-| `CRON_SECRET` | protect the cron route | yes (or reuse Vercel Cron auth) |
+| `PREDICA_REGEN_SECRET`               | `x-predica-regen-key` for the webhook                                                                              | yes                                                             |
+| `CRON_SECRET`                        | protect the cron route                                                                                             | yes (or reuse Vercel Cron auth)                                 |
 
 Also: add `@sparticuz/chromium` + `playwright-core` to `apps/web` deps; configure the route's `maxDuration`
 and memory; add the cron schedule to `vercel.json`; configure a Contentful **draft save / auto_save** webhook
@@ -145,7 +146,7 @@ and memory; add the cron schedule to `vercel.json`; configure a Contentful **dra
 4. Server render util: sermon(draft) → `buildPdfHtml` → serverless Chromium → Buffer. (`feat`)
 5. CMA write-back: upload asset, swap `pdfSummary` in place, guarded delete of superseded, version bump. (`feat`)
 6. Cron route + `vercel.json` schedule + lock/coalesce logic. (`feat`)
-7. Docs: update `docs/predica-pdf-mirrors-post.md` + `docs/contentful-data-layer.md` (second webhook),
+7. Docs: update `docs/architecture/predica-pdf-mirrors-post.md` + `docs/architecture/contentful-data-layer.md` (second webhook),
    `.env.example`, and `environment.d.ts`. (`docs`)
 
 ## Open questions / risks

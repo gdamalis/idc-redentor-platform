@@ -18,7 +18,7 @@ src/app/[locale]/**            RSC pages call the getters       ← the consumer
 > This is the app's **read** path (Delivery/Preview GraphQL API). There is a separate,
 > agent-only **write** path: Claude Code agents talk to Contentful's Management API through
 > the Contentful MCP server (token-based, writes scoped to a sandbox environment). The
-> two never mix — see `docs/contentful-mcp.md`.
+> two never mix — see `docs/architecture/contentful-mcp.md`.
 
 ## `fetchGraphQL` — the only transport
 
@@ -119,7 +119,7 @@ export async function shouldUseDraftMode(): Promise<boolean> {
 
 So editors get drafts automatically in local dev and on **every Vercel preview deployment**, and can opt into drafts in production by hitting `/api/draft/enable?secret=…&locale=…` (validates `CONTENTFUL_PREVIEW_SECRET`, enables Next draft mode, redirects to `/{locale}`). `/api/draft/disable` turns it back off. Always call `shouldUseDraftMode()` in a Server Component before calling getters; never hard-code `preview: true`.
 
-> Environment topology + the content/model workflow: see `docs/contentful-environments.md`.
+> Environment topology + the content/model workflow: see `docs/architecture/contentful-environments.md`.
 
 ## On-demand revalidation
 

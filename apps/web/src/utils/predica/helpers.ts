@@ -13,7 +13,7 @@
  * `scriptureReferences`. There is no separately-authored PDF summary anymore — the
  * post body IS the PDF body, so the two can never drift and a Contentful edit can
  * regenerate the PDF. `thesis`/`mainPoints`/SEO live on the entry as metadata, not
- * in the PDF. See docs/predica-pdf-mirrors-post.md.
+ * in the PDF. See docs/architecture/predica-pdf-mirrors-post.md.
  */
 
 import type { ContentBlock, SermonScriptureRef } from "./sermonEntry";

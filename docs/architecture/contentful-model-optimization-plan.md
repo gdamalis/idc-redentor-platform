@@ -3,7 +3,7 @@
 > **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
 
 > **Status:** Approved design · **Epic:** ICR-76 · **Branch:** `refactor/ICR-76-contentful-model-optimization`
-> **Companion to:** [`docs/contentful-model-audit.md`](./contentful-model-audit.md) — read the audit first; this doc turns its ranked tiers (T1–T12) and cross-cutting suggestions (S1–S4) into an executable, sequenced plan.
+> **Companion to:** [`docs/architecture/contentful-model-audit.md`](./contentful-model-audit.md) — read the audit first; this doc turns its ranked tiers (T1–T12) and cross-cutting suggestions (S1–S4) into an executable, sequenced plan.
 > **Space:** `vg9le24yw8hb` · **Authored:** 2026-06-23
 >
 > This plan ships as **one atomic epic PR + one Contentful cutover**. All model + entry changes are made in `master-1.0.0` via committed migration scripts, the whole site is tested locally (and on a sandbox-pointed preview), and at the end the `master` alias is re-pointed to `master-1.0.0` at the same moment the PR merges.
@@ -21,7 +21,7 @@
 
 ### Ground truth established (research, 2026-06-23)
 
-- `master` is an **alias → `master-0.0.1`** (production, created 2024-05-31). The work env **`master-1.0.0`** is provisioned in commit 0 by cloning `master-0.0.1` (the pre-scheme `agent-sandbox` clone of `master-0.0.1` was verified byte-for-byte identical on 2026-06-22 — same schema + entry IDs/versions — confirming a clone is faithful). This epic is a **major** model change; see `docs/contentful-environments.md`.
+- `master` is an **alias → `master-0.0.1`** (production, created 2024-05-31). The work env **`master-1.0.0`** is provisioned in commit 0 by cloning `master-0.0.1` (the pre-scheme `agent-sandbox` clone of `master-0.0.1` was verified byte-for-byte identical on 2026-06-22 — same schema + entry IDs/versions — confirming a clone is faithful). This epic is a **major** model change; see `docs/architecture/contentful-environments.md`.
 - The space has **~29 content types** (the list endpoint under-reports 24; `componentCta`/`componentDuplex`/`componentQuote`/`churchInfoTopic`/`bibleVerse` exist but are omitted from the listing). Verdicts unchanged.
 - Entry counts (production): `componentQuote`=0, `churchInfoTopic`=1 (Privacy Policy), `credo`=7, `valueItem`=3, `componentDuplex`=1, `componentHeroBanner`=1, `componentCta`=1, `componentTextBlock`=2, `bibleVerse`=1, `page`=3, `seo`=5, `blogPostPage`=3.
 - Phantoms `topicPerson` / `post` / `nt_mergetag` are 404 (validation-only dangling refs in both envs).
@@ -33,7 +33,7 @@
 
 - **CMA token** `CONTENTFUL_MANAGEMENT_ACCESS_TOKEN` available locally (already used by the Contentful MCP; never committed).
 - **Contentful MCP** scoped to `master-1.0.0` with `PROTECTED_ENVIRONMENTS=master` (available; used for inspection + verification).
-- **`master-1.0.0` work env** — provisioned in commit 0 by cloning current production (`master-0.0.1`). The free tier holds two envs, so the pre-scheme `agent-sandbox` clone is deleted to free the slot. If production content drifts during the work window, re-clone before cutover (migration scripts are idempotent → re-run cheaply). See `docs/contentful-environments.md`.
+- **`master-1.0.0` work env** — provisioned in commit 0 by cloning current production (`master-0.0.1`). The free tier holds two envs, so the pre-scheme `agent-sandbox` clone is deleted to free the slot. If production content drifts during the work window, re-clone before cutover (migration scripts are idempotent → re-run cheaply). See `docs/architecture/contentful-environments.md`.
 - **Vercel Preview env var:** the epic branch's preview must set `CONTENTFUL_ENVIRONMENT=master-1.0.0` (branch-scoped) so the preview renders the new model. See §3.
 - New dev dependency to add in commit 0: **`contentful-migration`** (and `contentful-management` for entry transforms if needed).
 
@@ -41,7 +41,7 @@
 
 ## 3. Environment & cutover workflow (S1)
 
-> This epic uses the **heavy variant** of the repo's Contentful model-change workflow (the two lanes are documented in [`docs/contentful-environments.md`](./contentful-environments.md); machine-readable wiring in `.claude/config.json` → `contentful`). Because it is a **major breaking** change (type deletions, field renames, merges), it warrants the heavy variant's **atomic cutover + instant flip-back rollback**: clone production into a versioned env and re-point the `master` alias at cutover. The work env is **`master-1.0.0`**, cloned from `master-0.0.1`. (The _standing_ workflow for everyday model changes is the permanent `staging` lane; this epic is the exception.) The rest of this section is the epic-specific application.
+> This epic uses the **heavy variant** of the repo's Contentful model-change workflow (the two lanes are documented in [`docs/architecture/contentful-environments.md`](./contentful-environments.md); machine-readable wiring in `.claude/config.json` → `contentful`). Because it is a **major breaking** change (type deletions, field renames, merges), it warrants the heavy variant's **atomic cutover + instant flip-back rollback**: clone production into a versioned env and re-point the `master` alias at cutover. The work env is **`master-1.0.0`**, cloned from `master-0.0.1`. (The _standing_ workflow for everyday model changes is the permanent `staging` lane; this epic is the exception.) The rest of this section is the epic-specific application.
 
 ### 3.1 The coupling that drives everything
 
@@ -89,7 +89,7 @@ Between steps 2 and 3 there is a brief window where production runs **old code a
 
 **Rollback:** re-point the `master` alias back to `master-0.0.1` and revert/redeploy the PR. Because `master-0.0.1` is untouched, rollback is instant on the content side.
 
-**Post-cutover housekeeping:** the alias now points at `master-1.0.0`, so that env **is** production. For the next change cycle, delete the stale `master-0.0.1` and clone `master-1.0.0` → the next versioned work env (`master-1.0.1` for a fix, `master-1.1.0` for new/additive, `master-2.0.0` for the next breaking change), then re-point the MCP `ENVIRONMENT_ID` + `.env.local` + branch Preview at it. Full cycle: `docs/contentful-environments.md`.
+**Post-cutover housekeeping:** the alias now points at `master-1.0.0`, so that env **is** production. For the next change cycle, delete the stale `master-0.0.1` and clone `master-1.0.0` → the next versioned work env (`master-1.0.1` for a fix, `master-1.1.0` for new/additive, `master-2.0.0` for the next breaking change), then re-point the MCP `ENVIRONMENT_ID` + `.env.local` + branch Preview at it. Full cycle: `docs/architecture/contentful-environments.md`.
 
 ---
 
@@ -273,7 +273,7 @@ Cheapest/safest first; T8 (invasive) late; T9 after T7. Each commit = model migr
 4. **T9 verse field shape** (commit 4) — confirm the current freeform field + `CreedSection` renderer; keep output identical.
 5. **JSON-LD church NAP/socials** (commit 10) — decide hard-code vs getter before building `Organization`.
 6. **`section` field-name choices** (commit 5) — `body`/`subHeadline` chosen to minimize renderer edits; confirm each reader (`OurMissionCta`, `InfoCommunity`, `InfoConnect`) during the commit.
-7. **Post-cutover env rotation** — for the next cycle, delete stale `master-0.0.1`, clone `master-1.0.0` → the next versioned work env, and re-point the MCP `ENVIRONMENT_ID` + `.env.local` + branch Preview (`docs/contentful-environments.md`).
+7. **Post-cutover env rotation** — for the next cycle, delete stale `master-0.0.1`, clone `master-1.0.0` → the next versioned work env, and re-point the MCP `ENVIRONMENT_ID` + `.env.local` + branch Preview (`docs/architecture/contentful-environments.md`).
 
 ---
 

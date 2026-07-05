@@ -1,19 +1,25 @@
 {
-  "project": "idc-redentor-web",
   "_monorepoNote": "pnpm + Turborepo workspace: the site lives under apps/web/. App paths in any descriptive note below (src/..., lib/..., public/..., config/..., scripts/contentful/..., .env.local) resolve under apps/web/ (e.g. apps/web/src/utils/predica/sermonEntry.ts, apps/web/.env.local). Only .claude/, docs/, and tasks/ stay at the repo root. The script/output/dir paths actually executed by the harness (commands.*, predica.*.script, predica.*.logo, predica.voices.dir, etc.) are already correct as written; this note only governs the prose references.",
-  "ticketKeyPrefix": "ICR",
-  "ticketLinkBase": "https://divinelab.atlassian.net/browse/",
+  "project": {
+    "name": "idc-redentor-web",
+    "ticketPrefix": "ICR",
+    "ticketPrefixAliases": [
+      "IDCR"
+    ],
+    "ticketLinkBase": "https://divinelab.atlassian.net/browse/",
+    "stagingUrl": "https://staging.idcredentor.org",
+    "prodUrl": "https://www.idcredentor.org",
+    "packageManager": "pnpm"
+  },
   "tracker": {
     "type": "jira",
-    "mcpNamespace": "mcp__atlassian-divinelab__",
     "site": "divinelab.atlassian.net",
     "cloudId": "0228eaa6-e8fa-4746-b2ac-6c58f1478e42",
     "projectKey": "ICR",
     "projectId": "10038",
     "projectName": "IDC Redentor",
     "projectType": "company-managed-classic",
-    "ticketKeyPrefix": "ICR",
-    "ticketIdField": "key",
+    "mcpServer": "atlassian-divinelab",
     "ticketKeyNote": "ICR-N is the NATIVE Jira issue key — N is the Jira issue number (not a Trello idShort). Fetch directly via getJiraIssue(cloudId, issueIdOrKey='ICR-N'); there is no board/list scan. Branches/PRs/commits and all Atlassian WRITE calls use the ICR-N key string. cloudId is required on every mcp__atlassian-divinelab__* call.",
     "components": {
       "web": {
@@ -26,8 +32,14 @@
         "name": "Ministry Admin Panel",
         "note": "the internal admin app (apps/admin)"
       },
-      "shared": { "id": "10003", "name": "Shared" },
-      "infra": { "id": "10002", "name": "Infra" }
+      "shared": {
+        "id": "10003",
+        "name": "Shared"
+      },
+      "infra": {
+        "id": "10002",
+        "name": "Infra"
+      }
     },
     "componentNote": "ICR is ONE Jira project for the whole monorepo; the source app is the Jira Component (Website vs Ministry Admin Panel), not a separate project. Set components:[{name}] at create. Default a new issue's component from its work area: apps/web -> Website, apps/admin -> Ministry Admin Panel.",
     "statuses": {
@@ -38,8 +50,8 @@
       "inTesting": "In Testing",
       "done": "Done"
     },
-    "statusResolution": "by-name",
-    "statusResolutionNote": "Jira issues move between STATUSES by workflow transition, not by id or list. Resolve at runtime: getTransitionsForJiraIssue(cloudId, key) -> pick the transition whose to.name === the target status name (from statuses above; compare case-insensitive/trimmed) -> transitionJiraIssue(cloudId, key, transitionId). NEVER hardcode numeric transition ids. If the target status isn't directly reachable in one hop, advance along workflow[].order without overshooting; if still unreachable, surface the drift — never invent an id.",
+    "transitionResolution": "by-name",
+    "transitionResolutionNote": "Jira issues move between STATUSES by workflow transition, not by id or list. Resolve at runtime: getTransitionsForJiraIssue(cloudId, key) -> pick the transition whose to.name === the target status name (from statuses above; compare case-insensitive/trimmed) -> transitionJiraIssue(cloudId, key, transitionId). NEVER hardcode numeric transition ids. If the target status isn't directly reachable in one hop, advance along workflow[].order without overshooting; if still unreachable, surface the drift — never invent an id.",
     "workflow": [
       {
         "key": "discovery",
@@ -111,12 +123,22 @@
       }
     ],
     "issueTypeToCommitType": {
-      "Bug": { "id": "10068", "commitType": "fix" },
-      "Story": { "id": "10006", "commitType": "feat" },
+      "Bug": {
+        "id": "10068",
+        "commitType": "fix"
+      },
+      "Story": {
+        "id": "10006",
+        "commitType": "feat"
+      },
       "Task": {
         "id": "10066",
         "commitType": "chore",
-        "alt": ["refactor", "perf", "feat"],
+        "alt": [
+          "refactor",
+          "perf",
+          "feat"
+        ],
         "note": "default chore; use refactor/perf/feat when the work is purely that. A 'perf'/'refactor' label overrides."
       }
     },
@@ -127,24 +149,36 @@
     "humanGateNote": "Every tracker WRITE (transitionJiraIssue, addCommentToJiraIssue, editJiraIssue) happens at or after a human gate. /work owns exactly two automated transitions (todo->inProgress, inProgress->inReview) and posts the PR-link comment at PR-ready. It NEVER transitions an issue to Done.",
     "migrationNote": "Issues imported from the legacy Trello boards carry a 'migrated-from-trello' label plus a 'trello-web-<n>'/'trello-admin-<n>' label and a description-footer backlink to the archived Trello card. The legacy Trello idShort is NOT the Jira key (numbers differ)."
   },
-  "qaDepth": {
-    "default": "standard",
-    "allowed": ["light", "standard", "heavy"],
-    "sourceNote": "Jira has no default 'QA Depth' field. Resolve in priority order: (1) a 'qa-<depth>' label on the issue (e.g. qa-heavy); (2) a 'QA: <depth>' token in the issue description; (3) fall back to qaDepth.default. Reject values not in qaDepth.allowed."
-  },
-  "qaLoop": {
-    "_note": "Drives /qa + qa-acceptance + the embedded /work and /merge QA steps. Reads the top-level tracker block for the Jira project key + status names. QA targets are env-by-name (qaLoop.env.<name>): 'preview' = the per-PR Vercel preview deployment (pre-merge QA), 'staging' = the dedicated staging env at staging.idcredentor.org / website-staging DB (post-merge QA). Production is hard-denied in EVERY env. autoMerge disabled (kill switch); merge is user-triggered via /merge.",
-    "ticketSource": "jira",
+  "qa": {
+    "_note": "Drives /qa + qa-acceptance + the embedded /work and /merge QA steps. Reads the tracker block for the Jira project key + status names. QA targets are env-by-name (qa.env.<name>): 'preview' = the per-PR Vercel preview deployment (pre-merge QA), 'staging' = the dedicated staging env at staging.idcredentor.org / website-staging DB (post-merge QA). Production is hard-denied in EVERY env. autoMerge disabled (kill switch); merge is user-triggered via /merge.",
+    "depth": {
+      "default": "standard",
+      "allowed": [
+        "light",
+        "standard",
+        "heavy"
+      ],
+      "sourceNote": "Jira has no default 'QA Depth' field. Resolve in priority order: (1) a 'qa-<depth>' label on the issue (e.g. qa-heavy); (2) a 'QA: <depth>' token in the issue description; (3) fall back to qa.depth.default. Reject values not in qa.depth.allowed."
+    },
     "defaultMode": "report",
-    "modes": ["report", "seed", "fix", "auto"],
-    "enabledModes": ["report"],
-    "batch": { "status": "In Review", "maxTickets": 5, "sequential": true },
-    "humanGate": { "neverMoveTo": ["done"] },
+    "enabledModes": [
+      "report"
+    ],
+    "batch": {
+      "status": "inReview",
+      "maxTickets": 5,
+      "sequential": true
+    },
+    "humanGate": {
+      "neverMoveTo": [
+        "done"
+      ]
+    },
     "env": {
       "preview": {
         "target": "vercel-preview",
         "vercelProject": "idc-redentor-website",
-        "baseUrlFrom": "qa-env.preview.baseUrl",
+        "baseUrlFrom": "preview.baseUrl",
         "baseUrlHostAllow": "^[a-z0-9-]+\\.vercel\\.app$",
         "productionHostDeny": [
           "idcredentor.com",
@@ -157,13 +191,14 @@
         "requirePreviewEnvironment": true,
         "requirePreviewEnvironmentNote": "The hostname allowlist is NECESSARY BUT NOT SUFFICIENT: the production deployment ALSO has a *.vercel.app alias (e.g. idc-redentor-website.vercel.app), which the regex would otherwise accept. Before ANY browser/API/seed action the resolver MUST confirm the resolved deployment is a PREVIEW, not Production — check mcp__claude_ai_Vercel__get_deployment.target !== 'production' (or the GitHub deployment environment === 'Preview'). Reject any deployment whose target/environment is Production even when its host ends in .vercel.app. Prefer the per-PR branch preview whose host contains '-git-<branch>-' or a unique deployment hash.",
         "baseUrlHostAllowNote": "Default-deny allowlist for the QA base URL host. /qa runs ONLY against a Vercel PREVIEW deployment for the PR. Three gates, all required: (1) host matches baseUrlHostAllow (*.vercel.app); (2) host is NOT in productionHostDeny (custom domains AND the production *.vercel.app aliases); (3) the deployment's target/environment is Preview (requirePreviewEnvironment). Preview URL is discovered per-PR via mcp__claude_ai_Vercel__list_deployments / get_deployment (target=preview), or the GitHub deployment status on the PR.",
-        "mongoMcp": "mcp__mongodb-localhost__",
+        "mongoMcp": "mongodb-localhost",
         "dbNameAllow": "^website-(test|qa|e2e)$",
-        "dbNote": "Mongo backs ONLY the blog 'likes' + saved 'contact' messages, in a DB literally named 'website'. The allowlist excludes 'website' so QA never reads/writes production data. Phase 1: no Mongo writes at all."
+        "dbNote": "Mongo backs ONLY the blog 'likes' + saved 'contact' messages, in a DB literally named 'website'. The allowlist excludes 'website' so QA never reads/writes production data. Phase 1: no Mongo writes at all.",
+        "batchStatus": "inReview"
       },
       "staging": {
         "target": "staging",
-        "baseUrlFrom": "qa-env.staging.baseUrl",
+        "baseUrlFrom": "staging.baseUrl",
         "baseUrlHostAllow": "^staging\\.idcredentor\\.org$",
         "productionHostDeny": [
           "idcredentor.com",
@@ -177,14 +212,15 @@
         "requirePreviewEnvironmentNote": "Staging is NOT a Vercel preview — it has its OWN host allowlist (^staging\\.idcredentor\\.org$). It MUST NOT inherit the preview's 'must be a Vercel preview deployment (target!==production)' check. But it MUST still hard-deny every productionHostDeny host. Net: the only sanctioned non-preview QA target is exactly staging.idcredentor.org.",
         "liveIntegrationPolicy": "no-POST",
         "liveIntegrationNote": "Staging has its OWN 'website-staging' Mongo DB (created + wired in Vercel), so Mongo reads/writes against website-staging are allowed. BUT Mailchimp/SendGrid/Resend are presumed LIVE on staging unless sandbox creds exist — so QA must NOT happy-path POST /api/subscribe or /api/contact (it would email a real recipient / hit the live audience). Form submit/validation can be exercised up to the network boundary; full end-to-end form POST is DEFERRED until staging has sandbox mail creds or a test recipient.",
-        "mongoMcp": "mcp__mongodb-localhost__",
+        "mongoMcp": "mongodb-localhost",
         "dbNameAllow": "^website-(test|qa|e2e|staging)$",
         "dbNameAllowNote": "Now INCLUDES 'website-staging' (the real staging DB). Prod 'website' stays excluded — never read/write it.",
-        "baseUrlHostAllowNote": "Default-deny allowlist for the staging QA base URL host. Two gates, both required: (1) host matches baseUrlHostAllow (^staging\\.idcredentor\\.org$); (2) host is NOT in productionHostDeny. requirePreviewEnvironment is false here (staging is not a Vercel preview), so the preview-only third gate does not apply — but production is still rejected by gate (2)."
+        "baseUrlHostAllowNote": "Default-deny allowlist for the staging QA base URL host. Two gates, both required: (1) host matches baseUrlHostAllow (^staging\\.idcredentor\\.org$); (2) host is NOT in productionHostDeny. requirePreviewEnvironment is false here (staging is not a Vercel preview), so the preview-only third gate does not apply — but production is still rejected by gate (2).",
+        "batchStatus": "inTesting"
       }
     },
     "transitions": {
-      "_note": "Jira status moves by transition-by-name (statusResolution: by-name in the tracker block). Phase 1 report-only: /qa may transition To Do/In Progress -> In Review, never Done. When fix/auto land later, onRemediationReady moves inProgress->inReview via pr-author.",
+      "_note": "Jira status moves by transition-by-name (tracker.transitionResolution). Phase 1 report-only: /qa may transition To Do/In Progress -> In Review, never Done. When fix/auto land later, onRemediationReady moves inProgress->inReview via pr-author.",
       "onPickup": "inReview",
       "onRemediationStart": "inProgress",
       "onRemediationReady": "inReview"
@@ -230,7 +266,7 @@
     }
   },
   "reviewLoop": {
-    "_note": "Drives the detached post-PR loop in /work after the PR is marked ready: watch code-review comments (incl. the Codex bot, which posts a few minutes after PR-ready) AND CI checks, address them, then notify the user. Driver is ScheduleWakeup (dynamic-paced, stateful, worktree-bound). If ScheduleWakeup is unavailable at runtime, /work skips the loop and falls back to a one-shot check + notify. CronCreate is a deferred headless-only variant.",
+    "_note": "Drives the detached post-PR loop in /work after the PR is marked ready: watch code-review comments (incl. the Codex bot, which posts a few minutes after PR-ready) AND CI checks, address them, then notify the user. Driver is ScheduleWakeup (dynamic-paced, stateful, worktree-bound). If ScheduleWakeup is unavailable at runtime, /work skips the loop and falls back to a one-shot check + notify.",
     "driver": "schedule-wakeup",
     "firstCheckSeconds": 240,
     "pollSeconds": 270,
@@ -238,15 +274,22 @@
     "maxIterations": 8,
     "totalTimeoutSeconds": 2400,
     "ciTimeoutSeconds": 1800,
-    "watch": ["reviewComments", "ciChecks"],
+    "watch": [
+      "reviewComments",
+      "ciChecks"
+    ],
     "idempotency": "reply-marker",
     "idempotencyNote": "Track addressed review-thread ids in the /work state file (addressedThreadIds). On each tick, skip threads already replied to (and cross-check the reply author == self) so a crash-and-resume never double-replies.",
-    "readinessRequires": ["qaPass", "ciGreen", "commentsAddressed"],
+    "readinessRequires": [
+      "qaPass",
+      "ciGreen",
+      "commentsAddressed"
+    ],
     "notify": "push",
     "pacingNote": "First tick ~firstCheckSeconds after PR-ready (catch the Codex review + first CI signal). Idle re-checks every pollSeconds (cache-warm). After WE push a fix, wait afterPushSeconds for the fresh CI run. End on clean (all readinessRequires) OR maxIterations/totalTimeoutSeconds; notify either way."
   },
   "merge": {
-    "_note": "Drives /merge ICR-N (and the in-session 'merge' hand-off from /work). USER-TRIGGERED ONLY — autoMerge.enabled stays false; nothing here is autonomous. Squash-only, refuse on red CI, clean up the worktree+branch, move In Review -> In Testing, then run post-merge staging QA. NEVER moves a card to Done.",
+    "_note": "Drives /merge ICR-N (and the in-session 'merge' hand-off from /work). USER-TRIGGERED ONLY — qa.autoMerge.enabled stays false; nothing here is autonomous. Squash-only, refuse on red CI, clean up the worktree+branch, move In Review -> In Testing, then run post-merge staging QA. NEVER moves a card to Done.",
     "method": "squash",
     "squashOnly": true,
     "requireUserTrigger": true,
@@ -276,6 +319,7 @@
     "todo": "tasks/todo.md",
     "lessons": "tasks/lessons.md",
     "qaEnv": "qa-env.json",
+    "qaEvidence": "tasks/qa-evidence",
     "docs": "docs",
     "productBrain": "docs/product"
   },
@@ -289,9 +333,9 @@
   },
   "commandsNote": "typecheck maps to ICR's actual 'type-check' script (hyphen). 'test' = vitest run (single-pass; package.json 'test' is 'vitest run', never watch). 'e2e' = playwright test (config present, no specs in Phase 1). lint = eslint . If a script is absent at runtime, verifier/qa-runner reports it rather than inventing one.",
   "contentful": {
-    "_note": "TWO LANES (docs/contentful-environments.md). CONTENT edits happen live in production (the `master` alias env) with no workflow. MODEL changes (new/changed/deleted content type or field, or an entry remap) use a work env: DEFAULT = a permanent `staging` env (granted on the Delivery+Preview API keys ONCE), promoted to prod at cutover via Contentful Merge and/or the committed scripts/contentful/ migrations (rollback = reverse migration). HEAVY = for big BREAKING changes (type deletions, field renames, merges), build in `staging`, then a HUMAN performs the stable-name alias-swap cutover: re-point master→staging, delete the old production env, clone staging→a fresh `production`, re-point master→production (see docs/contentful-environments.md §Heavy alias-swap runbook). The single free-tier work-env slot is shared, so only one lane runs at a time. Cutover is HUMAN-ONLY, like merge/Done. Write path + safety: docs/contentful-mcp.md. Read path: docs/contentful-data-layer.md.",
+    "_note": "TWO LANES (docs/architecture/contentful-environments.md). CONTENT edits happen live in production (the `master` alias env) with no workflow. MODEL changes (new/changed/deleted content type or field, or an entry remap) use a work env: DEFAULT = a permanent `staging` env (granted on the Delivery+Preview API keys ONCE), promoted to prod at cutover via Contentful Merge and/or the committed scripts/contentful/ migrations (rollback = reverse migration). HEAVY = for big BREAKING changes (type deletions, field renames, merges), build in `staging`, then a HUMAN performs the stable-name alias-swap cutover: re-point master→staging, delete the old production env, clone staging→a fresh `production`, re-point master→production (see docs/architecture/contentful-environments.md §Heavy alias-swap runbook). The single free-tier work-env slot is shared, so only one lane runs at a time. Cutover is HUMAN-ONLY, like merge/Done. Write path + safety: docs/architecture/contentful-mcp.md. Read path: docs/architecture/contentful-data-layer.md.",
     "defaultWorkEnv": "staging",
-    "defaultWorkEnvNote": "The standing model-change work env (permanent; set up on the API keys + MCP/.env.local/preview ONCE). For big breaking changes that need an alias-flip rollback, see the `heavyCutover` key below and docs/contentful-environments.md §Heavy alias-swap runbook — stable names (`production` + `staging`) are used throughout; semver work-env names are not.",
+    "defaultWorkEnvNote": "The standing model-change work env (permanent; set up on the API keys + MCP/.env.local/preview ONCE). For big breaking changes that need an alias-flip rollback, see the `heavyCutover` key below and docs/architecture/contentful-environments.md §Heavy alias-swap runbook — stable names (`production` + `staging`) are used throughout; semver work-env names are not.",
     "mcpNamespace": "mcp__contentful__",
     "spaceId": "vg9le24yw8hb",
     "productionAlias": "master",
@@ -301,7 +345,7 @@
     "appEnvVar": "CONTENTFUL_ENVIRONMENT",
     "appEnvVarNote": "Read by lib/contentful/fetch.ts. Unset/absent => the app targets the `master` alias (production) — production config NEVER sets it. Set it to the current work env (e.g. staging) in .env.local AND the branch-scoped Vercel Preview to test model changes before cutover.",
     "heavyCutover": {
-      "_note": "Big BREAKING model changes (type deletions, field renames, merges) use a stable-name alias-swap, NOT semver work-env names. Runbook: docs/contentful-environments.md §5.",
+      "_note": "Big BREAKING model changes (type deletions, field renames, merges) use a stable-name alias-swap, NOT semver work-env names. Runbook: docs/architecture/contentful-environments.md §5.",
       "steps": [
         "Cold-backup old production (npx contentful space export -> scripts/contentful/backups/).",
         "Re-point master alias -> staging (live now reads the tested staging env).",
@@ -319,10 +363,10 @@
     },
     "cutover": {
       "owner": "human",
-      "action": "DEFAULT lane: apply the tested migration to production (Contentful Merge for the model and/or run the committed scripts/contentful/ migrations against the prod env). HEAVY lane: 5-step stable-name alias-swap — cold-backup old production → re-point master→staging → delete old production → clone staging→`production` → re-point master→production (see docs/contentful-environments.md §5). Either way, done at PR-merge time.",
+      "action": "DEFAULT lane: apply the tested migration to production (Contentful Merge for the model and/or run the committed scripts/contentful/ migrations against the prod env). HEAVY lane: 5-step stable-name alias-swap — cold-backup old production → re-point master→staging → delete old production → clone staging→`production` → re-point master→production (see docs/architecture/contentful-environments.md §5). Either way, done at PR-merge time.",
       "humanGate": true,
       "humanGateNote": "HUMAN-ONLY, like merge and Done. NO agent or command ever re-points the `master` alias. Agents propose changes in the work env; a human promotes at PR-merge time.",
-      "rollback": "DEFAULT lane: reverse migration or fix-forward. HEAVY lane: during the alias-swap window the alias serves the known-good, fully-tested `staging` env (never deleted); the §0 JSON cold backup (scripts/contentful/backups/) is the last-resort restore. No separate rollback env exists — that is the documented free-tier tradeoff (docs/contentful-environments.md §Heavy alias-swap runbook)."
+      "rollback": "DEFAULT lane: reverse migration or fix-forward. HEAVY lane: during the alias-swap window the alias serves the known-good, fully-tested `staging` env (never deleted); the §0 JSON cold backup (scripts/contentful/backups/) is the last-resort restore. No separate rollback env exists — that is the documented free-tier tradeoff (docs/architecture/contentful-environments.md §Heavy alias-swap runbook)."
     },
     "apiKeyEnvAccess": "Contentful Delivery (CDA) + Preview (CPA) API keys are ENVIRONMENT-SCOPED. The app's existing tokens allow the `master` alias ONLY, so a freshly created work env returns UNKNOWN_ENVIRONMENT until it is added to BOTH keys (Contentful -> Settings -> API keys -> [key] -> Environments). Do this FIRST each cycle, before local/preview testing. After cutover the alias covers the new env automatically, so production never needs a key change. (No MCP tool manages API keys -> human action in the Contentful UI.)",
     "oneTimeConfigTouch": [
@@ -334,23 +378,62 @@
   },
   "playwrightProjectMap": {
     "_note": "Monorepo: the public site is at apps/web. ICR uses apps/web/src/app/[locale]/<segment> (NO route groups) plus apps/web/src/app/api/<route>. Phase 1 has NO e2e suite — qa-runner authors specs per-ticket on heavy depth. This map tells qa-runner which e2e project/tag to target for a given changed path.",
-    "apps/web/src/app/[locale]/page.tsx": ["e2ePublic"],
-    "apps/web/src/app/[locale]/blog": ["e2eBlog"],
-    "apps/web/src/app/[locale]/community": ["e2ePublic"],
-    "apps/web/src/app/[locale]/come-meet-us": ["e2ePublic"],
-    "apps/web/src/app/[locale]/who-is-jesus": ["e2ePublic"],
-    "apps/web/src/app/api/contact": ["apiForms"],
-    "apps/web/src/app/api/subscribe": ["apiForms"],
-    "apps/web/src/app/api/likes": ["apiLikes"],
-    "apps/web/src/app/api/revalidate": ["apiForms"],
-    "apps/web/src/app/api/draft": ["apiForms"],
-    "apps/web/src/service": ["apiForms", "apiLikes", "e2ePublic"],
-    "apps/web/src/components": ["e2ePublic"],
-    "apps/web/src/i18n": ["e2ePublic", "e2eBlog"],
-    "apps/web/src/proxy.ts": ["e2ePublic"],
-    "apps/web/public/locales": ["e2ePublic", "e2eBlog"],
-    "apps/web/lib/contentful": ["e2ePublic", "e2eBlog"],
-    "apps/web/config/headers.js": ["e2ePublic"]
+    "apps/web/src/app/[locale]/page.tsx": [
+      "e2ePublic"
+    ],
+    "apps/web/src/app/[locale]/blog": [
+      "e2eBlog"
+    ],
+    "apps/web/src/app/[locale]/community": [
+      "e2ePublic"
+    ],
+    "apps/web/src/app/[locale]/come-meet-us": [
+      "e2ePublic"
+    ],
+    "apps/web/src/app/[locale]/who-is-jesus": [
+      "e2ePublic"
+    ],
+    "apps/web/src/app/api/contact": [
+      "apiForms"
+    ],
+    "apps/web/src/app/api/subscribe": [
+      "apiForms"
+    ],
+    "apps/web/src/app/api/likes": [
+      "apiLikes"
+    ],
+    "apps/web/src/app/api/revalidate": [
+      "apiForms"
+    ],
+    "apps/web/src/app/api/draft": [
+      "apiForms"
+    ],
+    "apps/web/src/service": [
+      "apiForms",
+      "apiLikes",
+      "e2ePublic"
+    ],
+    "apps/web/src/components": [
+      "e2ePublic"
+    ],
+    "apps/web/src/i18n": [
+      "e2ePublic",
+      "e2eBlog"
+    ],
+    "apps/web/src/proxy.ts": [
+      "e2ePublic"
+    ],
+    "apps/web/public/locales": [
+      "e2ePublic",
+      "e2eBlog"
+    ],
+    "apps/web/lib/contentful": [
+      "e2ePublic",
+      "e2eBlog"
+    ],
+    "apps/web/config/headers.js": [
+      "e2ePublic"
+    ]
   },
   "graphify": {
     "enabled": "auto",
@@ -381,7 +464,7 @@
     }
   },
   "predica": {
-    "_note": "Drives /predica + the four predica-* subagents (transcriber, writer, publisher, whatsapp). Local on-demand sermon pipeline: a recording -> transcript -> bilingual sermon.json -> two branded PDFs (Card C) -> a Contentful DRAFT in production -> a ready-to-paste WhatsApp text. TWO human gates (transcript correction; promote/publish). Draft-only + send-only: the publisher's MCP allowlist omits every publish_* and writes only a DRAFT to production (never publishes); nothing is ever auto-published or auto-sent. See tasks/specs/sermon-pipeline.md §7-§9.",
+    "_note": "DOMAIN BLOCK (idc-only; stays project-local per the canon domain policy). Drives /predica + the four predica-* subagents (transcriber, writer, publisher, whatsapp). Local on-demand sermon pipeline: a recording -> transcript -> bilingual sermon.json -> two branded PDFs (Card C) -> a Contentful DRAFT in production -> a ready-to-paste WhatsApp text. TWO human gates (transcript correction; promote/publish). Draft-only + send-only: the publisher's MCP allowlist omits every publish_* and writes only a DRAFT to production (never publishes); nothing is ever auto-published or auto-sent. See tasks/specs/sermon-pipeline.md §7-§9.",
     "audioInbox": "/Users/gabriel/Documents/Church/Redentor/02 - Vida en Comunidad/Cultos/Predicas",
     "audioInboxNote": "Where Sunday recordings land. `/predica` with no path picks the NEWEST audio file here. Spaces/accents in filenames are expected; the slug is derived from the TITLE, not the filename (§7.1).",
     "artifactsDir": "tasks/predicas",
@@ -392,18 +475,26 @@
     "contentfulProtectedEnv": "master",
     "contentfulEnvNote": "The publisher creates (or, on a regenerate, updates in place) the sermon as a DRAFT in `production` (the live env behind the master alias) via the committed CMA scripts — none has a publish call, so nothing goes live until a human reviews both locales and clicks Publish at Gate 2. The scripts refuse the `master` ALIAS by name (you write the `production` ENV, never the alias). The MCP server runs PROTECTED_ENVIRONMENTS=master,production as a backstop, which does not affect these scripts (they use the management token directly, not the MCP).",
     "defaultContentfulLocale": "es-AR",
-    "locales": ["es-AR", "en-US"],
+    "locales": [
+      "es-AR",
+      "en-US"
+    ],
     "defaultLocale": "es-AR",
     "whatsappLocale": "es-AR",
     "siteBaseUrl": "https://www.idcredentor.org",
     "siteBaseUrlNote": "Production canonical used to build the deterministic share URL ${siteBaseUrl}/es-AR/predicas/<slug>. NOT the local .env.local NEXT_PUBLIC_BASE_URL (which is http://localhost:3000 in dev). The human verifies/corrects this URL at Gate 2 if the live domain differs.",
-    "scriptureVersion": { "es-AR": "NVI", "en-US": "NIV" },
+    "scriptureVersion": {
+      "es-AR": "NVI",
+      "en-US": "NIV"
+    },
     "whisper": {
       "bin": "/Users/gabriel/repos/whisper.cpp/build/bin/whisper-cli",
       "model": "/Users/gabriel/repos/whisper.cpp/models/ggml-large-v3-turbo.bin",
       "lang": "es",
       "threads": 8,
-      "extraFlags": ["-sns"],
+      "extraFlags": [
+        "-sns"
+      ],
       "prompt": "Prédica en español. Iglesia de Cristo Redentor. Jesús, evangelio, Espíritu Santo, gracia, arrepentimiento, salvación, Escritura.",
       "note": "large-v3-turbo is fast (~3-5 min for a 60-min sermon on the M3 Pro). The prompt seeds church vocabulary. -sns = suppress non-speech tokens. transcribe(audioPath) is a swappable boundary so V2 can drop in a cloud provider."
     },
@@ -419,17 +510,26 @@
     "pdf": {
       "script": ".claude/scripts/predica/build-predica-pdf.mjs",
       "logo": "apps/web/public/assets/img/redentor_logo.png",
-      "outputs": ["predica.es-AR.pdf", "predica.en-US.pdf"],
+      "outputs": [
+        "predica.es-AR.pdf",
+        "predica.en-US.pdf"
+      ],
       "note": "Card C's generator (consumed as a black box): node <script> <sermon.json> [--out <dir>]. Needs Chromium: `pnpm exec playwright install chromium` on a fresh checkout."
     },
     "featured": {
       "script": ".claude/scripts/predica/build-predica-featured.mjs",
       "logo": "apps/web/public/assets/img/redentor_logo_light.png",
-      "outputs": ["featured.png", "featured.bg.png"],
+      "outputs": [
+        "featured.png",
+        "featured.bg.png"
+      ],
       "provider": "gemini",
       "model": "gemini-2.5-flash-image",
       "apiKeyEnv": "GEMINI_API_KEY",
-      "dimensions": [1200, 630],
+      "dimensions": [
+        1200,
+        630
+      ],
       "note": "Generates the 1200x630 sermon featured image (also the OG/social card): node <script> <sermon.json> [--out <dir>] [--prompt <txt>] [--no-ai] [--regenerate]. AI background via Google Gemini (REST, reads GEMINI_API_KEY from env/.env.local, name only) + branded title/date overlay rendered with Playwright. DEGRADES GRACEFULLY: no key or any API failure -> on-brand typographic fallback card, still exits 0. Same Chromium dependency as the PDF. Canonical typed helpers + tests: src/utils/predica/featuredCard.ts. The image is a DRAFT DEFAULT the human reviews/replaces at Gate 2."
     },
     "entryBuilder": ".claude/scripts/predica/build-sermon-entry.mjs",
@@ -439,7 +539,11 @@
     "entryDeleter": ".claude/scripts/predica/delete-contentful.mjs",
     "writePathNote": "All Contentful WRITES go through these THREE CMA scripts (binary-upload + create/update-entry + delete), NOT the MCP write tools — reliable at any size (a ~20MB mp3, a 50KB+ rich-text entry) where MCP base64 / LLM round-trip is infeasible. create-contentful-entry.mjs creates a draft OR updates one in place (--id <entryId>, full-fields replace, used when /predica regenerates an existing sermon). delete-contentful.mjs is the ONLY delete path (unpublish-then-delete by explicit id; --guard-referenced refuses to delete a bibleVerse still linked by another sermon/the Creed). All three are DRAFT-ONLY (no publish call) and HARD-REFUSE the master environment; they read CONTENTFUL_MANAGEMENT_ACCESS_TOKEN from env/.env.local (name only, never printed). The publisher's MCP allowlist is READ-ONLY, so it structurally cannot publish or touch master by any path.",
     "assetUploadPolicy": {
-      "uploadedViaCma": ["audio", "pdfSummary", "featuredImage"],
+      "uploadedViaCma": [
+        "audio",
+        "pdfSummary",
+        "featuredImage"
+      ],
       "deferToHumanAtGate2": [],
       "note": "The CMA upload endpoint handles any size, so the audio mp3, both PDFs, AND the generated featuredImage are uploaded + linked automatically. featuredImage is produced by config.predica.featured (build-predica-featured.mjs) as a DRAFT DEFAULT — the human reviews/replaces it at Gate 2 before publishing. durationSeconds is set from ffprobe."
     },
@@ -453,7 +557,7 @@
     "voices": {
       "dir": "tasks/predicas/_voices",
       "file": "tasks/predicas/_voices/<preacher-slug>.md",
-      "note": "Local-only (gitignored) per-preacher voice profiles, one <preacher-slug>.md per preacher (slug derived from the preacher full name with the same transliterate->lowercase->dash-collapse rule as the title slug). TWO ZONES: Zone A = human-curated canonical voice guide (seeded once by the coach on first creation, NEVER auto-overwritten thereafter; the coach only appends to its fenced '🤖 Refinamientos sugeridos' list, which the human promotes by hand); Zone B = machine append-only dated observation log, one concise entry per sermon keyed by sermonDate (idempotent — a transcript-reuse re-run never double-appends). SOURCE OF LEARNING = the corrected transcript.txt ONLY, never the generated sermon.json (avoids a model-style feedback loop). PRIVATE BY DESIGN: the repo is PUBLIC and all sermon-derived content already stays out of git (.gitignore: tasks/predicas/), so these profiles live in that same private tier; in-file dated history replaces git history. STYLE, not doctrine — describes HOW the preacher communicates, never WHAT they assert. See docs/predica-voice-profiles.md."
+      "note": "Local-only (gitignored) per-preacher voice profiles, one <preacher-slug>.md per preacher (slug derived from the preacher full name with the same transliterate->lowercase->dash-collapse rule as the title slug). TWO ZONES: Zone A = human-curated canonical voice guide (seeded once by the coach on first creation, NEVER auto-overwritten thereafter; the coach only appends to its fenced '🤖 Refinamientos sugeridos' list, which the human promotes by hand); Zone B = machine append-only dated observation log, one concise entry per sermon keyed by sermonDate (idempotent — a transcript-reuse re-run never double-appends). SOURCE OF LEARNING = the corrected transcript.txt ONLY, never the generated sermon.json (avoids a model-style feedback loop). PRIVATE BY DESIGN: the repo is PUBLIC and all sermon-derived content already stays out of git (.gitignore: tasks/predicas/), so these profiles live in that same private tier; in-file dated history replaces git history. STYLE, not doctrine — describes HOW the preacher communicates, never WHAT they assert. See docs/architecture/predica-voice-profiles.md."
     },
     "voiceCoach": {
       "agent": "predica-voice-coach",
