@@ -1,3 +1,9 @@
+# [1.24.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.23.1...v1.24.0) (2026-07-05)
+
+### Features
+
+- **predica:** render the PDF from the post body so the two always match ([#75](https://github.com/gdamalis/idc-redentor-web/issues/75)) ([8be8882](https://github.com/gdamalis/idc-redentor-web/commit/8be8882c03766640bc5843522b65d4acfe912b3b))
+
 ## [1.23.1](https://github.com/gdamalis/idc-redentor-web/compare/v1.23.0...v1.23.1) (2026-07-04)
 
 # [1.23.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.22.0...v1.23.0) (2026-06-29)
