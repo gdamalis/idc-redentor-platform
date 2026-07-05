@@ -3,7 +3,7 @@
 > **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
 
 > **Purpose:** How content gets from Contentful onto a page — the hand-written GraphQL convention in `lib/contentful/`, the single `site-content` cache tag, draft/preview, and on-demand revalidation. Also: why `codegen.ts` is irrelevant.
-> **Last reviewed:** 2026-06-21
+> **Last reviewed:** 2026-07-05
 
 ## The shape of it
 
@@ -120,6 +120,69 @@ export async function shouldUseDraftMode(): Promise<boolean> {
 So editors get drafts automatically in local dev and on **every Vercel preview deployment**, and can opt into drafts in production by hitting `/api/draft/enable?secret=…&locale=…` (validates `CONTENTFUL_PREVIEW_SECRET`, enables Next draft mode, redirects to `/{locale}`). `/api/draft/disable` turns it back off. Always call `shouldUseDraftMode()` in a Server Component before calling getters; never hard-code `preview: true`.
 
 > Environment topology + the content/model workflow: see `docs/architecture/contentful-environments.md`.
+
+## Live Preview
+
+Editors can open the home + community/Creed pages inside Contentful's **Live Preview** pane on a
+Vercel preview deployment and see field edits reflect in real time, plus an inspector overlay that
+click-jumps from rendered content back to the field being edited. Additive and **preview-only**; the
+production fetch path, `/api/revalidate`, and `revalidateTag` above are untouched. First-pass scope
+is the **home** + **community/Creed** components only — other content types are not yet live-wired.
+
+**Why a draft-gated client boundary.** `src/components/shared/contentful-preview/ContentfulPreviewProvider.tsx`
+wraps `@contentful/live-preview`'s `ContentfulLivePreviewProvider` and is mounted in
+`[locale]/layout.tsx` **only when `await shouldUseDraftMode()` is true**. Pages/layout stay RSC; this
+is the one new `'use client'` boundary at the root, so the SDK's JS bundle ships only on draft
+renders — production visitors get zero live-preview code (RSC-first, per the repo's minimize-`'use
+client'` rule). Each in-scope component follows the same **view / `*Live` wrapper** split: the
+existing presentational view gains an optional `inspectorProps` accessor spread onto its editable
+elements, and a thin `'use client'` `<Component>Live` sibling calls the shared
+`useLivePreview(raw, locale)` hook (`src/components/shared/contentful-preview/useLivePreview.ts`)
+and renders the view with live data + inspector props. The page branches
+`isEnabled ? <XLive raw={raw} locale={locale}/> : <XView content={map(raw)}/>` so the non-draft path
+never even imports the client wrapper's runtime behavior beyond the branch itself.
+
+**Why getters return raw data.** `useContentfulLiveUpdates` (inside `useLivePreview`) subscribes to
+field-level postMessage updates from the Contentful pane, and it needs the **untransformed** GraphQL
+entry node to match updates against — not a reshaped view model. `getContentCollection` therefore
+stopped reshaping its response; it now returns the raw node, and a new pure
+`lib/contentful/mapContentCollection.ts` reproduces the old `{ title, description, creedItems, image }`
+shape for the non-draft render path (same behavior, including the pre-existing always-`undefined`
+`image`). `getSection`-backed getters (`getHeroBannerComponent`, `getCtaComponent`,
+`getTextBlockComponent`) already returned raw nodes, so they needed no getter change. **Every
+live-editable node needs `sys { id }` + `__typename`** in its `GRAPHQL_FIELDS` selection — including
+nested union members, e.g. `... on BeliefItem` inside `ContentCollection`, so each Creed item is
+individually inspectable rather than only the parent collection.
+
+**CSP env-gating.** `config/headers.js` delegates to the pure, unit-tested
+`buildSecurityHeaders({ previewLike })` in `config/securityHeaders.js`, branching on
+`VERCEL_ENV`/`NODE_ENV`:
+
+- **Production** (default branch): strict clickjacking protection — `X-Frame-Options: SAMEORIGIN`
+  **and** `frame-ancestors 'self'` (no Contentful origins). Production is never Contentful-framable.
+- **Preview / dev** (`VERCEL_ENV==='preview'` or `NODE_ENV==='development'`): `X-Frame-Options` is
+  **omitted entirely** and `frame-ancestors` additionally allows `https://app.contentful.com` and
+  `https://app.eu.contentful.com`.
+
+All other CSP directives (`script-src`, `connect-src`, `img-src`, `media-src`) are identical across
+envs. **Gotcha:** `X-Frame-Options` and `frame-ancestors` both control framing, but browsers honor
+whichever is stricter — leaving `X-Frame-Options: SAMEORIGIN` set on preview would silently block
+the Contentful iframe even with a fully correct CSP. It must be genuinely absent, not merely relaxed.
+`next.config.ts`'s `headers()` runs at build time, so each Vercel deployment bakes the branch for its
+own `VERCEL_ENV` — a local `pnpm build` (no `VERCEL_ENV`) always resolves to the strict/production
+branch, which is safe by default.
+
+**Editor setup (one-time, human, per environment).** In Contentful: **Settings → Content preview**,
+add a Content Preview URL of the form:
+
+```
+<preview-deploy-url>/api/draft/enable?secret=<CONTENTFUL_PREVIEW_SECRET value>&locale=<locale>
+```
+
+Reference the secret by the environment variable **name** `CONTENTFUL_PREVIEW_SECRET` — never paste
+its value into the Contentful UI notes or into docs/commits. This only works against a **preview**
+deployment: production intentionally cannot be framed by Contentful (see CSP env-gating above), so
+there is no production Content Preview URL to configure.
 
 ## On-demand revalidation
 
