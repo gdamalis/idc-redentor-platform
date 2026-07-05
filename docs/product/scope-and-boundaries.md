@@ -3,8 +3,29 @@
 > **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
 
 > **Purpose:** The hard filter for what the IDC Redentor website is and is not. Every new idea or Jira issue is checked against this. When in doubt, this document wins.
-> **Last reviewed:** 2026-06-21
+> **Last reviewed:** 2026-07-05
 > **Status:** DRAFT — sensible defaults for the maintainer ([@gdamalis](https://github.com/gdamalis)) and church leadership to confirm/refine.
+
+---
+
+## Two products in this repo
+
+This repo is a monorepo with **two distinct products**, and **this document governs the public
+website only** (`apps/web`):
+
+- **Public website — `apps/web`** (this doc): public, read-only, content-managed, informational.
+  **No auth, no RBAC, no user accounts, minimal PII** — the boundaries below are permanent and
+  intentional for this surface.
+- **Ministry Admin Panel — `apps/admin`** (separate product): an internal, **authenticated,
+  access-controlled** tool for the leadership team — deliberately the inverse (write-heavy, RBAC,
+  congregant PII + later finances). It is governed by its own brief,
+  [`tasks/specs/admin-platform-brief.md`](../../tasks/specs/admin-platform-brief.md), **not** by
+  this document. The two apps share brand/UI via `packages/`, but their product boundaries are
+  separate.
+
+So "no login / no RBAC / no PII at scale" below means **not in the public website** — those
+capabilities are exactly what the separate `apps/admin` product exists to provide, safely and
+privately.
 
 ---
 
@@ -24,12 +45,12 @@
 These are intentional boundaries, not "not yet." An idea that reintroduces one should be **rejected or reframed**, not ticketed as-is.
 
 - **Online donations / tithing / payments / e-commerce.** No payment processing, no store, no paid registration. _(If giving is ever needed, the answer is a link out to a dedicated, PCI-compliant provider — never card handling in this app. See DEFERRED.)_
-- **User accounts / login / member portals / authentication.** The site is fully public and read-only to visitors; there is no auth, no RBAC, no gated content. This project has **no** authentication today, and adding it is a product decision, not an implementation detail.
+- **User accounts / login / member portals / authentication.** The site is fully public and read-only to visitors; there is no auth, no RBAC, no gated content. This project has **no** authentication today, and adding it is a product decision, not an implementation detail. _This boundary governs the **public website (`apps/web`)**; authenticated leadership tooling lives in the separate `apps/admin` Ministry Admin Panel (see `tasks/specs/admin-platform-brief.md`), never in the public site._
 - **Public user-generated content** — no public comments, reviews, ratings, forums, prayer-wall posting, or public event submission. The blog "like" is the only write path open to anonymous visitors, and it stores no PII beyond an anonymous visitor id. The contact form and newsletter signup are constrained, server-validated forms — not open content surfaces.
 - **AI chatbot / LLM features in-product.** No on-site AI assistant, no generated answers, no chat widget. (AI is a _tooling/discoverability_ concern — see [ai-era-strategy.md](./ai-era-strategy.md) — not a product surface.)
 - **Self-service event registration / ticketing / RSVP** with capacity, seat selection, or calendars-as-a-service. Events are informational; "register" means a link or a contact, not a booking system.
 - **Streaming / media-hosting platform, sermon archive app, podcast backend.** Embeds of third-party media (YouTube, Vimeo, etc.) are fine; building a media platform is not.
-- **Storing congregant personal data at scale** — membership databases, pastoral records, directories, attendance tracking. The only PII this app touches is contact-form submissions and newsletter emails; minimize, protect, and don't expand that surface casually.
+- **Storing congregant personal data at scale** — membership databases, pastoral records, directories, attendance tracking. The only PII this app touches is contact-form submissions and newsletter emails; minimize, protect, and don't expand that surface casually. _(Congregant data at scale is the domain of the separate, access-controlled `apps/admin` product — kept out of `apps/web` by design.)_
 
 ### How to reframe a tempting idea
 
