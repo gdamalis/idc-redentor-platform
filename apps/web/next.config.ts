@@ -4,6 +4,7 @@ import headersConfig from "./config/headers";
 
 const withNextIntl = createNextIntlPlugin();
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["@sparticuz/chromium", "playwright-core"],
   images: {
     remotePatterns: [
       {
