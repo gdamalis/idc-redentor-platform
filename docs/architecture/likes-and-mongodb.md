@@ -2,20 +2,21 @@
 
 > **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
 
-> **Purpose:** The only stateful part of the app. How the cached MongoDB client works, the three collections it backs (`likes`, `contact`, `broadcast_log`), the anonymous like toggle and its visitor de-dup, and the write-safety considerations.
-> **Last reviewed:** 2026-06-28
+> **Purpose:** The only stateful part of the app. How the cached MongoDB client works, the four collections it backs (`likes`, `contact`, `broadcast_log`, `pdf_jobs`), the anonymous like toggle and its visitor de-dup, and the write-safety considerations.
+> **Last reviewed:** 2026-07-05
 
 ## Scope: this is the whole database
 
-MongoDB is **not** the content store — Contentful is. Mongo exists only for the things Contentful can't do: an anonymous blog **like** counter, **saved contact-form messages**, and **broadcast send tracking**. All three live in a database literally named **`website`**:
+MongoDB is **not** the content store — Contentful is. Mongo exists only for the things Contentful can't do: an anonymous blog **like** counter, **saved contact-form messages**, **broadcast send tracking**, and (since ICR-114) a **dirty-queue for sermon PDF regeneration**. All four live in a database literally named **`website`**:
 
-| Collection      | Written by                                                   | Read by                                           | Doc shape                                                                               |
-| --------------- | ------------------------------------------------------------ | ------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `likes`         | `POST /api/likes` → `like.service.ts#toggleLike`             | `GET /api/likes` → `getLikes`; the blog UI        | `{ slug, count, visitors: string[], updatedAt }`                                        |
-| `contact`       | contact Server Action → `contact.service.ts#sendContactForm` | `getContactMessages` (internal, no public route)  | `{ name, email, subject, message, createdAt }`                                          |
-| `broadcast_log` | `sendBroadcast` → `broadcast/broadcastLog.ts#claimBroadcast` | never read by the public site (dedupe guard only) | `{ broadcastId (unique), status, campaignId?, reason?, createdAt, updatedAt, sentAt? }` |
+| Collection      | Written by                                                                                      | Read by                                                   | Doc shape                                                                               |
+| --------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `likes`         | `POST /api/likes` → `like.service.ts#toggleLike`                                                | `GET /api/likes` → `getLikes`; the blog UI                | `{ slug, count, visitors: string[], updatedAt }`                                        |
+| `contact`       | contact Server Action → `contact.service.ts#sendContactForm`                                    | `getContactMessages` (internal, no public route)          | `{ name, email, subject, message, createdAt }`                                          |
+| `broadcast_log` | `sendBroadcast` → `broadcast/broadcastLog.ts#claimBroadcast`                                    | never read by the public site (dedupe guard only)         | `{ broadcastId (unique), status, campaignId?, reason?, createdAt, updatedAt, sentAt? }` |
+| `pdf_jobs`      | the regen webhook (`markDirty`) + the regen cron (`claimJob`/`completeJob`/`failJob`/`dropJob`) | never read by the public site (internal dirty-queue only) | see [`pdf_jobs` collection (ICR-114)](#pdf_jobs-collection-icr-114) below               |
 
-If a task mentions "the database" on this project, it means these three collections — nothing else.
+If a task mentions "the database" on this project, it means these four collections — nothing else.
 
 ### `broadcast_log` collection (ICR-29)
 
@@ -49,6 +50,45 @@ as `sending`. This guarantees at-most-one campaign per `broadcastId` even under 
 
 See [`forms-and-email.md`](./forms-and-email.md#broadcast-engine-icr-29) for the full engine
 description.
+
+### `pdf_jobs` collection (ICR-114)
+
+The `pdf_jobs` collection is the **dirty-queue** behind the Predica sermon-PDF regeneration webhook + cron
+(`apps/web/src/service/predica/pdfJobs.ts`). It is never read by the public site — it only coordinates the
+webhook (mark dirty) and the cron (claim → render → complete/fail). Full flow:
+[`predica-pdf-mirrors-post.md`](./predica-pdf-mirrors-post.md#part-b--automatic-regeneration-on-draft-edit-icr-114).
+
+**Document shape:**
+
+```ts
+type PdfJobStatus = "idle" | "rendering";
+
+interface PdfJob {
+  entryId: string; // Contentful sermon entry id — unique key
+  dirtyAt: Date; // last edit-webhook time (debounce window anchor)
+  contentHash: string; // hash of PDF-relevant fields at last webhook
+  lastRenderedHash?: string; // contentHash at last successful render (skip no-op re-renders)
+  version: number; // monotonic; rendered into the PDF footer + asset title. Starts 0.
+  status: PdfJobStatus;
+  lockedAt?: Date; // set while status === "rendering"; stale-lock recovery anchor
+  lastRenderedAt?: Date;
+  lastError?: string;
+}
+```
+
+**Unique index:** `{ entryId: 1 }` (created lazily on first call via `createIndex(..., { unique: true })`,
+mirroring `broadcast_log`'s pattern).
+
+**Written by two callers, never by the public site:**
+
+- The **webhook** (`POST /api/predica/regenerate-pdf`) only ever calls `markDirty(entryId, contentHash)` — an
+  upsert that bumps `dirtyAt`/`contentHash` and never touches `lastRenderedHash`.
+- The **cron** (`GET /api/predica/regenerate-pdf/cron`) calls `selectRenderableJobs` (quiet-window +
+  hash-diff + lock-state predicate), then per job: `claimJob` (atomic `findOneAndUpdate` lock, race-safe like
+  `broadcast_log#claimBroadcast`), then on success `completeJob` (advances `lastRenderedHash`/`version`,
+  releases the lock) or on failure `failJob` (releases the lock, records `lastError`, leaves
+  `lastRenderedHash` alone so the next tick retries). `dropJob` removes the doc if the underlying Contentful
+  entry vanished mid-flight.
 
 ## The cached client (`src/service/database.service.ts`)
 

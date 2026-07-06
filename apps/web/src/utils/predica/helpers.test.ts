@@ -235,6 +235,23 @@ describe("buildPdfHtml — es-AR", () => {
   });
 });
 
+describe("buildPdfHtml — version footer (ICR-114)", () => {
+  it("is a no-op when version is omitted (existing call sites unaffected)", () => {
+    const html = buildPdfHtml(ES_LOCALE_DATA, COMMON_FIXTURE, "es-AR");
+    expect(html).not.toMatch(/·\s*v\d/);
+  });
+
+  it("renders a small '· v<N>' in the footer when a version is passed", () => {
+    const html = buildPdfHtml(ES_LOCALE_DATA, COMMON_FIXTURE, "es-AR", 3);
+    expect(html).toContain("Iglesia de Cristo Redentor · v3");
+  });
+
+  it("renders the version footer for en-US too", () => {
+    const html = buildPdfHtml(EN_LOCALE_DATA, COMMON_FIXTURE, "en-US", 12);
+    expect(html).toContain("Iglesia de Cristo Redentor · v12");
+  });
+});
+
 describe("buildPdfHtml — en-US", () => {
   let html: string;
 

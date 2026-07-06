@@ -13,7 +13,13 @@ declare namespace NodeJS {
     CONTENTFUL_PREVIEW_SECRET: string;
     CONTENTFUL_REVALIDATE_SECRET: string;
     CONTENTFUL_ENVIRONMENT?: string;
-    
+    CONTENTFUL_MANAGEMENT_ACCESS_TOKEN: string;
+
+    // Predica PDF regeneration webhook + cron
+    PREDICA_REGEN_SECRET: string;
+    CRON_SECRET: string;
+    PDF_REGEN_QUIET_WINDOW_SECONDS?: string;
+
     // MailChimp
     MAILCHIMP_API_KEY: string;
     MAILCHIMP_API_SERVER: string;

@@ -1,6 +1,6 @@
 # Predica PDF regeneration on draft edit — Design Spec (Part B)
 
-> **Status:** Design / not yet implemented · 2026-06-29
+> **Status:** Implemented (ICR-114) · design 2026-06-29, implemented 2026-07-05
 > **Depends on:** the "PDF mirrors the post" change (Part A) — the PDF now renders the localized `content[]`
 > body, so it can be regenerated from whatever a preacher edits in Contentful. See
 > `docs/architecture/predica-pdf-mirrors-post.md`.
@@ -151,11 +151,20 @@ and memory; add the cron schedule to `vercel.json`; configure a Contentful **dra
 
 ## Open questions / risks
 
-- **Chromium on Vercel** is the main risk (cold start, bundle size, font loading). If `@sparticuz/chromium`
-  proves fragile, alternatives: a Vercel **background function** with a long `maxDuration`, or a tiny external
-  render worker the cron calls. Decide during checkpoint 4 with a spike.
-- **Quiet-window length** (60s vs 90s vs 120s): tune to how preachers actually edit; start at 90s.
-- **Multi-preacher scope** for v1 (see edge case 7).
-- **Cron vs. delayed queue:** Vercel Cron (1-min granularity) is the simplest coalescer; a delayed-message
-  queue (e.g. Upstash QStash) is an alternative if sub-minute latency is ever wanted (it isn't, for a weekly
-  sermon).
+- **Chromium on Vercel — RESOLVED.** `@sparticuz/chromium@149.0.0` exact-matches the Chromium build
+  (`149`) that `playwright-core@1.61.0` targets. A self-contained render (Google Fonts `<link>` replaced
+  with inlined `@font-face` data-URI fonts, logo as a `data:` `<img>`, no outbound network at render time)
+  was spike-verified locally; see `apps/web/src/service/predica/renderSermonPdf.ts` and the ICR-114 PR
+  description for the spike command + output. No fallback to a background function or external render
+  worker was needed.
+- **Quiet-window length — RESOLVED.** Shipped at **90 seconds**, and made env-tunable via
+  `PDF_REGEN_QUIET_WINDOW_SECONDS` (optional; falls back to 90s in code if unset or non-numeric) so it can
+  be retuned to how preachers actually edit without a code change.
+- **Multi-preacher scope — RESOLVED for v1.** The webhook/cron regenerates only the single `pdfSummary`
+  field (one PDF per locale). Per-part **segment PDFs** for multi-preacher services stay out of scope —
+  those are still produced by the local `/predica` pipeline (`build-predica-segment-pdf.mjs`), not by this
+  webhook.
+- **Cron vs. delayed queue — RESOLVED.** Shipped with Vercel Cron (1-minute granularity, `vercel.json`
+  schedule `* * * * *`, capped at `MAX_PER_TICK = 3` renders per tick with any remainder deferred to the
+  next tick). A delayed-message queue (e.g. Upstash QStash) remains a future option only if sub-minute
+  latency is ever wanted — it isn't, for a weekly sermon.

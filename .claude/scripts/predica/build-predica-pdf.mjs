@@ -220,9 +220,13 @@ export function renderScriptureReferences(refs, locale) {
  * @param {object} localeData  - Per-locale post body (title + content[]).
  * @param {object} common      - Shared metadata (sermonDate, preacher(s), scriptureReferences, logoDataUri, …)
  * @param {string} locale      - "es-AR" | "en-US"
+ * @param {number} [version]  - Optional render version (ICR-114 regen webhook). When
+ *   provided, appends "· v<N>" to the footer signature. Omitted (this script's only
+ *   caller today) → the footer is unchanged, a no-op. Kept in sync with the version
+ *   param on buildPdfHtml in src/utils/predica/helpers.ts — see the file header note.
  * @returns {string}           - Complete HTML document string.
  */
-export function buildPdfHtml(localeData, common, locale) {
+export function buildPdfHtml(localeData, common, locale, version) {
   const L = LABELS[locale];
   const formattedDate = formatSermonDate(common.sermonDate, locale);
   const serviceLabel = common.serviceLabel?.[locale] ?? L.defaultService;
@@ -238,6 +242,8 @@ export function buildPdfHtml(localeData, common, locale) {
   const logoHtml = common.logoDataUri
     ? `<img src="${common.logoDataUri}" alt="Logo Iglesia de Cristo Redentor" class="logo" />`
     : `<p class="logo-fallback">Iglesia de Cristo Redentor</p>`;
+
+  const footerText = version != null ? `${e(L.footer)} ${L.eyebrowSep} v${version}` : e(L.footer);
 
   return `<!DOCTYPE html>
 <html lang="${locale}">
@@ -444,7 +450,7 @@ export function buildPdfHtml(localeData, common, locale) {
 
   <!-- ── Footer signature ── -->
   <div class="footer-sig">
-    ${e(L.footer)}
+    ${footerText}
   </div>
 
 </body>

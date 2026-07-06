@@ -15,10 +15,12 @@ lib/contentful/get*.ts         one getter per content type     ← the query str
 src/app/[locale]/**            RSC pages call the getters       ← the consumers
 ```
 
-> This is the app's **read** path (Delivery/Preview GraphQL API). There is a separate,
-> agent-only **write** path: Claude Code agents talk to Contentful's Management API through
-> the Contentful MCP server (token-based, writes scoped to a sandbox environment). The
-> two never mix — see `docs/architecture/contentful-mcp.md`.
+> This is the app's **read** path (Delivery/Preview GraphQL API). There are two separate
+> **write** paths: Claude Code agents talk to Contentful's Management API through the
+> Contentful MCP server (token-based, writes scoped to a sandbox environment) — see
+> `docs/architecture/contentful-mcp.md` — and, since ICR-114, the **app runtime itself**
+> holds a Management token for one narrow purpose (the Predica PDF regen cron, below).
+> Neither write path mixes with the read path above.
 
 ## `fetchGraphQL` — the only transport
 
@@ -136,6 +138,35 @@ revalidateTag("site-content")   →  drops every fetchGraphQL cache entry
 ```
 
 `CONTENTFUL_REVALIDATE_SECRET` is **required at runtime but missing from `.env.example`** — set it in the environment and configure the Contentful webhook to send the matching `x-vercel-reval-key` header. Because all requests share one tag, a single publish refreshes the entire site's content cache on next request.
+
+## A second webhook + the app runtime's first CMA write path (ICR-114)
+
+The publish webhook above is not the only one. A **separate** Contentful webhook — configured on
+**draft save / `auto_save`**, not publish — sends `POST /api/predica/regenerate-pdf` with header
+`x-predica-regen-key` whenever a preacher edits a sermon draft. It only marks a MongoDB job dirty
+(see `docs/architecture/likes-and-mongodb.md`); a debounced Vercel Cron does the actual work. Full flow:
+`docs/architecture/predica-pdf-mirrors-post.md` (Part B).
+
+That cron's write-back (`apps/web/src/service/predica/contentfulWriteBack.ts`) is the **first time the app
+runtime** — not just a `.claude` script run by an agent — holds a Contentful **Management** (write) token.
+It uses the `contentful-management` SDK to upload a new PDF asset and swap it onto the sermon entry, DRAFT
+only, never publishing.
+
+**A subtle gotcha worth internalizing: `CONTENTFUL_ENVIRONMENT` has two different defaults depending on
+which path reads it.**
+
+| Path                                 | Default when `CONTENTFUL_ENVIRONMENT` is unset | Behavior on `master*`                                                             |
+| ------------------------------------ | ---------------------------------------------- | --------------------------------------------------------------------------------- |
+| **Read** (`lib/contentful/fetch.ts`) | the `master` **alias**                         | normal — this is the production read path                                         |
+| **Write** (`contentfulWriteBack.ts`) | the concrete `production` **environment**      | **hard-refused** — the guard rejects `master`/`master-*` before building a client |
+
+Why: a CMA write must land on a real, addressable environment, never an alias — writing "through" an alias
+is exactly the kind of operation Contentful's environment model is designed to prevent, and it's also the
+same invariant the local `.claude/scripts/predica/*.mjs` scripts already enforce (see
+`docs/architecture/contentful-environments.md`). Today `master` and `production` resolve to the same
+underlying environment, so this split is invisible in normal operation — but the write guard exists so that
+if `master` is ever repointed to a new environment during a migration, the regen cron cannot write to the
+wrong (old) one just because it inherited the alias default.
 
 ## Ignore `codegen.ts`
 
