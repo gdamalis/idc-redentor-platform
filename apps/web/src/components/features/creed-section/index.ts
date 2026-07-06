@@ -1,1 +1,2 @@
-export * from './CreedSection';
+export * from "./CreedSection";
+export { CreedSectionLive } from "./CreedSectionLive";
