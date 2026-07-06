@@ -1,3 +1,10 @@
+# [1.25.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.24.0...v1.25.0) (2026-07-06)
+
+### Features
+
+- **ICR-114:** regenerate sermon PDF when a preacher edits the draft ([#81](https://github.com/gdamalis/idc-redentor-web/issues/81)) ([86e9e62](https://github.com/gdamalis/idc-redentor-web/commit/86e9e62650a5adc334b39b3fbd6dc27fbda03f42))
+- **ICR-21:** integrate Contentful Live Preview (draft-gated) ([#79](https://github.com/gdamalis/idc-redentor-web/issues/79)) ([71bbb01](https://github.com/gdamalis/idc-redentor-web/commit/71bbb01c29768548b444e1df24690489780d71e9))
+
 # [1.24.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.23.1...v1.24.0) (2026-07-05)
 
 ### Features
