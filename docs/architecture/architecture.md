@@ -7,7 +7,7 @@
 
 ## What this is
 
-A bilingual (es-AR / en-US) **content-managed informational site** for Iglesia de Cristo Redentor, built on **Next.js 16** (App Router) + **React 19**, with **Contentful** as the CMS, **Tailwind CSS 4** for styling, and **next-intl** for localization. It is deployed on **Vercel** (production + a preview deployment per pull request). There is **no authentication, no RBAC, no payments, and no AI** — almost every byte of the page is read from Contentful and rendered in a Server Component.
+A bilingual (es-AR / en-US) **content-managed informational site** for Iglesia de Cristo Redentor, built on **Next.js 16** (App Router) + **React 19**, with **Contentful** as the CMS, **Tailwind CSS 4** for styling, and **next-intl** for localization. It is deployed on **Vercel** (production + a preview deployment per pull request). There is **no authentication, no RBAC, no payments, and no AI** — almost every byte of the page is read from Contentful and rendered in a Server Component. _(This describes the **public website** (`apps/web`). The separate internal Ministry Admin Panel (`apps/admin`) is an authenticated product — Firebase Auth + RBAC — governed by `tasks/specs/admin-platform-brief.md`.)_
 
 The one stateful reader feature is an anonymous blog "like", and the contact form persists messages. Those are the only writes the app performs, and they go to MongoDB — never to Contentful.
 

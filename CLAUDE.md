@@ -4,7 +4,9 @@
 
 **Iglesia de Cristo Redentor (IDC Redentor)** is the official bilingual (es-AR / en-US) website of the church: informational pages, a blog, community/values content (the Creed/Credo), a worship-service "come meet us" page with map + service times, a newsletter signup, and a contact form. It is the **first custom website** for the community — modern, fast, easy for non-technical editors to maintain, and welcoming to members and visitors.
 
-It is a **content-managed informational site**, not an app: there is **no authentication, no RBAC, no payments, and no in-product AI**. Almost all content is rendered from **Contentful** via hand-written GraphQL in React Server Components. The only stateful reader feature is an anonymous blog "like".
+The **public website** (`apps/web`) is a **content-managed informational site**, not an app: it has **no authentication, no RBAC, no payments, and no in-product AI**. Almost all content is rendered from **Contentful** via hand-written GraphQL in React Server Components. The only stateful reader feature is an anonymous blog "like".
+
+> **Admin exception:** the separate internal **Ministry Admin Panel** (`apps/admin`) _is_ an authenticated app — Firebase Auth + RBAC + congregant data — and is deliberately **in scope**. The no-auth boundary above governs `apps/web` only. See `tasks/specs/admin-platform-brief.md` and `docs/product/scope-and-boundaries.md` § "Two products in this repo".
 
 **Version**: 1.10.0 (read from `package.json`) | **Node**: 22.14.0 (`.nvmrc`) | **Package Manager**: pnpm | **Host**: Vercel (production + per-PR preview deploys)
 
@@ -197,10 +199,12 @@ Sessions are named after the active Jira ticket automatically.
 The dev harness ships as the **divinelab plugin** (Claude Code marketplace `DivineLab/divinelab-plugins`, enabled in `.claude/settings.json`) and runs an idea → merged → staging-verified pipeline against Jira. The generic commands, agents, and hooks (session-namer + graphify-hint) all live in the plugin; this repo carries only the **project facts** — `.claude/config.json` (canon-schema, validated by the plugin's `divinelab:canon` skill) — plus the **`/predica` domain command, its `predica-*` agents, and `.claude/scripts/predica/`** (the local sermon pipeline; stays project-local). `.claude/config.json` is the single source of truth; `docs/architecture/agent-harness.md` is the full description.
 
 ### Where work lives
+
 1. **Jira** — project **IDC Redentor** (key `ICR`) on `divinelab.atlassian.net` (via the `atlassian-divinelab` MCP). Issues are native keys `ICR-N` (the `IDCR` alias also resolves); acceptance criteria live in the issue description.
 2. **`tasks/specs/`** — local per-ticket artifacts written during a `/divinelab:work` run.
 
 ### Harness commands (divinelab plugin)
+
 - `/divinelab:pm` — intake / refine / groom a Jira issue against `docs/product/` (human-gated; never past To Do).
 - `/divinelab:work ICR-N` — the orchestrator: mandatory worktree + branch → explore → (conditional design gate) → plan → implement (TDD) ↔ verify → draft PR → preview QA → mark ready → detached post-PR review + CI loop. Owns exactly **two** Jira transitions: To Do→In Progress and In Progress→In Review.
 - `/divinelab:qa ICR-N` — acceptance QA (staging by default; `--preview` targets the PR's Vercel preview). Report-only; posts a structured Jira comment.
@@ -208,21 +212,26 @@ The dev harness ships as the **divinelab plugin** (Claude Code marketplace `Divi
 - `/divinelab:merge ICR-N` — **human-triggered** squash-merge → In Review→In Testing → post-merge **staging** QA. Never deploys prod, never sets Done.
 
 ### Artifacts per ticket
+
 - **Spec:** `tasks/specs/ICR-N-<slug>.md` — requirements and design.
 - **Plan:** `tasks/specs/ICR-N-<slug>.plan.md` — file paths, checkpoints, dependencies (plus the per-run `.state.json` for `/divinelab:work` resume).
 
 ### The two human gates
+
 1. A conditional **design gate** inside `/divinelab:work` (brainstorm + spec for non-trivial or sensitive work — the six sensitive areas `email-services`, `form-pii-spam`, `likes-mongo`, `env-secrets`, `csp-headers`, `i18n-messages` always gate).
 2. The **merge** trigger — you say "merge"; `/divinelab:merge` runs. Afterward **you** deploy prod and move the issue to **Done** (Done is human-only; no agent ever sets it).
 
 ### Contentful model-change gate (domain)
+
 `ICR` is Contentful-backed, so `/divinelab:work` carries one extra project gate. **When a `/divinelab:work` plan changes the Contentful content model** — creates / updates / deletes a **content type or field**, or **remaps entries** (as opposed to only adding a read-side GraphQL fragment/getter in `lib/contentful/*`) — STOP after the plan and confirm the migration **lane** before implementing:
+
 - **Default — permanent `staging` work env** (recommended): develop in the standing `staging` env, promote to prod at cutover via Contentful Merge and/or the committed `scripts/contentful/` migrations (rollback = reverse migration).
 - **Heavy — alias-swap cutover** (for big breaking changes — type deletions, field renames, merges): build in `staging`, then a human performs the stable-name alias-swap at cutover.
 
 The implementer writes to the `staging` work env only — **never** the `master` alias or `production`. **Cutover is HUMAN-ONLY and deferred**, like merge and Done: no agent or command re-points the alias or applies the prod migration. Facts + runbook: `.claude/config.json` → `contentful` and `docs/architecture/contentful-environments.md`.
 
 ### `/predica` (domain command — stays local)
+
 `/predica` and its `predica-*` agents are the local sermon pipeline (recording → transcript → bilingual `sermon.json` → branded PDFs → a Contentful **draft** → a WhatsApp text), with two human gates (transcript correction; promote/publish). It is draft-only + send-only and is **not** part of the divinelab plugin. See `tasks/specs/sermon-pipeline.md` and the `docs/predica-*` docs.
 
 A human always merges the PR and closes the issue (transitions it to **Done**). Scratchpads live in `tasks/{todo.md,lessons.md}` (gitignored); specs in `tasks/specs/`.
