@@ -158,7 +158,11 @@ Sessions are named after the active Jira ticket automatically.
 
 ## Environment Variables
 
-> ⚠️ **`.env.example` is INCOMPLETE.** It lists only the Contentful + Mailchimp + base-URL vars; several variables that are **required at runtime** (per `src/types/environment.d.ts` and the services) are missing from it. When onboarding or debugging, copy from the **Required** table below, not just from `.env.example`. Fixing `.env.example` to match is a good first ticket.
+> **Source of truth: `apps/web/.env.example` + `src/types/environment.d.ts`.** `.env.example` is
+> **current** — it carries every runtime variable below (it was brought up to date during ICR-114).
+> An older version of this doc claimed it was incomplete and that several vars were "missing"; that
+> is no longer true. The one thing still wrong with it: it retains the **dead** `MAILCHIMP_*` vars
+> (see the callout below) — ICR-110 removes them.
 
 ### Required (must be set for the app to function)
 
@@ -169,14 +173,14 @@ Sessions are named after the active Jira ticket automatically.
 | `CONTENTFUL_ACCESS_TOKEN`         | Content Delivery API token (published content)                    |         ✅         |
 | `CONTENTFUL_PREVIEW_ACCESS_TOKEN` | Content Preview API token (drafts)                                |         ✅         |
 | `CONTENTFUL_PREVIEW_SECRET`       | Secret for `/api/draft/enable`                                    |         ✅         |
-| `CONTENTFUL_REVALIDATE_SECRET`    | `x-vercel-reval-key` for `/api/revalidate`                        |   ❌ **missing**   |
-| `MONGODB_URI`                     | MongoDB connection (likes + contact)                              |   ❌ **missing**   |
-| `MAIL_PROVIDER`                   | `sendgrid` or `resend` — selects the email adapter                |   ❌ **missing**   |
-| `CONTACT_FORM_RECIPIENT_EMAIL`    | Where contact-form notifications are sent                         |   ❌ **missing**   |
-| `FROM_EMAIL`                      | From address for transactional email                              |   ❌ **missing**   |
-| `RESEND_API_KEY`                  | **Newsletter** (Resend contacts) + the `resend` mail adapter      |   ❌ **missing**   |
-| `RESEND_AUDIENCE_ID_ES_AR`        | Newsletter audience for `es-AR`                                   |   ❌ **missing**   |
-| `RESEND_AUDIENCE_ID_EN_US`        | Newsletter audience for `en-US`                                   |   ❌ **missing**   |
+| `CONTENTFUL_REVALIDATE_SECRET`    | `x-vercel-reval-key` for `/api/revalidate`                        |         ✅         |
+| `MONGODB_URI`                     | MongoDB — likes + contact (+ the predica pdf-regen job queue)     |         ✅         |
+| `MAIL_PROVIDER`                   | `sendgrid` or `resend` — selects the email adapter                |         ✅         |
+| `CONTACT_FORM_RECIPIENT_EMAIL`    | Where contact-form notifications are sent                         |         ✅         |
+| `FROM_EMAIL`                      | From address for transactional email                              |         ✅         |
+| `RESEND_API_KEY`                  | **Newsletter** (Resend contacts) + the `resend` mail adapter      |         ✅         |
+| `RESEND_AUDIENCE_ID_ES_AR`        | Newsletter audience for `es-AR`                                   |         ✅         |
+| `RESEND_AUDIENCE_ID_EN_US`        | Newsletter audience for `en-US`                                   |         ✅         |
 
 > ⚠️ **The `MAILCHIMP_*` vars are DEAD.** The newsletter moved to **Resend** (per-locale audiences).
 > `MAILCHIMP_API_KEY` / `MAILCHIMP_API_SERVER` / `MAILCHIMP_AUDIENCE_ID` are still declared in
@@ -190,8 +194,8 @@ Sessions are named after the active Jira ticket automatically.
 
 | Variable           | Purpose                                                            | In `.env.example`? |
 | ------------------ | ------------------------------------------------------------------ | :----------------: |
-| `SENDGRID_API_KEY` | Required when `MAIL_PROVIDER=sendgrid`                             |   ❌ **missing**   |
-| `RESEND_API_KEY`   | Required when `MAIL_PROVIDER=resend` (also required by newsletter) |   ❌ **missing**   |
+| `SENDGRID_API_KEY` | Required when `MAIL_PROVIDER=sendgrid`                             |         ✅         |
+| `RESEND_API_KEY`   | Required when `MAIL_PROVIDER=resend` (also required by newsletter) |         ✅         |
 
 ### Optional / injected
 

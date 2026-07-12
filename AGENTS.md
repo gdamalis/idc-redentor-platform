@@ -69,26 +69,48 @@ See `docs/architecture/architecture.md` and the domain docs in `docs/` for detai
 
 ## Environment
 
-> ⚠️ **`.env.example` is INCOMPLETE.** Several runtime-required variables are missing from it. Use the lists below (and `src/types/environment.d.ts`) as the source of truth. **Never put real secret values in docs/commits — reference variable names only.**
+> **Source of truth: `apps/web/.env.example` + `src/types/environment.d.ts`.** `.env.example` is
+> current — it carries every runtime variable, including the ones this guide used to flag as
+> "missing". Do not re-duplicate the full list here; it only drifts. **Never put real secret values
+> in docs/commits — reference variable names only.**
 
-Required at runtime:
+Required at runtime (all present in `.env.example`):
 
 ```text
 NEXT_PUBLIC_BASE_URL
 CONTENTFUL_SPACE_ID, CONTENTFUL_ACCESS_TOKEN, CONTENTFUL_PREVIEW_ACCESS_TOKEN, CONTENTFUL_PREVIEW_SECRET
-CONTENTFUL_REVALIDATE_SECRET          # MISSING from .env.example
-MONGODB_URI                           # MISSING from .env.example
-MAIL_PROVIDER (sendgrid|resend)       # MISSING from .env.example
-CONTACT_FORM_RECIPIENT_EMAIL          # MISSING from .env.example
-FROM_EMAIL                            # MISSING from .env.example
-MAILCHIMP_API_KEY, MAILCHIMP_API_SERVER, MAILCHIMP_AUDIENCE_ID
+CONTENTFUL_REVALIDATE_SECRET     # x-vercel-reval-key for POST /api/revalidate
+MONGODB_URI                      # likes + contact (+ the predica pdf-regen job queue)
+MAIL_PROVIDER (sendgrid|resend)  # selects the transactional-email adapter
+CONTACT_FORM_RECIPIENT_EMAIL
+FROM_EMAIL
+RESEND_API_KEY                   # newsletter (Resend contacts) AND the `resend` mail adapter
+RESEND_AUDIENCE_ID_ES_AR         # newsletter audience, es-AR
+RESEND_AUDIENCE_ID_EN_US         # newsletter audience, en-US
 ```
 
-Conditionally required by `MAIL_PROVIDER` (both MISSING from `.env.example`):
+Production-only, for the predica PDF-regen webhook + cron (ICR-114; cutover runbook = ICR-133):
+
+```text
+CONTENTFUL_MANAGEMENT_ACCESS_TOKEN   # CMA write token — DRAFT-only, never the `master` alias
+PREDICA_REGEN_SECRET                 # x-predica-regen-key for POST /api/predica/regenerate-pdf
+CRON_SECRET                          # Bearer secret Vercel Cron sends to the regen cron
+PDF_REGEN_QUIET_WINDOW_SECONDS       # optional; debounce window, defaults to 90
+```
+
+> ⚠️ **`MAILCHIMP_API_KEY` / `MAILCHIMP_API_SERVER` / `MAILCHIMP_AUDIENCE_ID` are DEAD.** The newsletter
+> moved to **Resend** (per-locale audiences). They are still declared in `src/types/environment.d.ts` and
+> listed in `.env.example`, but **nothing reads them** — setting them does nothing. ICR-110 removes them.
+> **Do not provision Mailchimp for a new deploy.**
+>
+> `RESEND_AUDIENCE_ID` (no locale suffix) is a legacy single-audience fallback, used only for the
+> **default** locale when the per-locale var is unset (`src/service/resendAudience.ts`).
+
+Conditionally required by `MAIL_PROVIDER`:
 
 ```text
 SENDGRID_API_KEY        # when MAIL_PROVIDER=sendgrid
-RESEND_API_KEY          # when MAIL_PROVIDER=resend
+RESEND_API_KEY          # when MAIL_PROVIDER=resend (also required above, by the newsletter)
 ```
 
 Optional / injected:
