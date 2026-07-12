@@ -7,7 +7,7 @@
 IDC Redentor is the official bilingual (es-AR / en-US) website of Iglesia de Cristo Redentor: a content-managed informational church site with a blog, community/Creed content, a worship-service location page, a newsletter signup, and a contact form. It is the church's first custom website.
 
 - Stack: **Next.js 16** (App Router) + **React 19** + **Contentful** (CMS) + **Tailwind CSS 4** + **next-intl**
-- Version: 1.20.0 (from the root `package.json`)
+- Version: read it from the root `package.json` — `semantic-release` bumps it on every merge to `main`, so never hardcode it here
 - Node: 22.14.0 (`.nvmrc`) · Package manager: **pnpm** · Host: **Vercel** (production + per-PR preview deploys)
 
 > **Monorepo layout:** this repo is a **pnpm + Turborepo** workspace. The website lives entirely under **`apps/web/`** — every app path in this guide (`src/`, `lib/`, `public/`, `config/`, `next.config.ts`, `tsconfig.json`, `vitest.config.ts`, `playwright.config.ts`, …) resolves **under `apps/web/`** unless stated otherwise. The repo root holds the workspace files (`pnpm-workspace.yaml`, `turbo.json`, root `package.json` with the released version + Turbo-proxy scripts), the `.claude/` harness, `docs/`, and `tasks/`. Bare `pnpm <task>` at root proxies through Turbo across the workspace; scope to the site with `pnpm --filter @idcr/web <task>`. Vercel builds with **Root Directory = `apps/web`**.
@@ -39,7 +39,7 @@ IDC Redentor is the official bilingual (es-AR / en-US) website of Iglesia de Cri
 - **App Router**: pages under `src/app/[locale]/{page,who-is-jesus,community,come-meet-us,blog/[slug]}`; route handlers under `src/app/api/{likes,subscribe,revalidate,draft/{enable,disable}}`. No route groups; the contact form is a Server Action (`src/components/features/contact-form/contactFormAction.ts`).
 - **Contentful data layer (hand-written GraphQL, not an SDK)**: `lib/contentful/fetch.ts` (`fetchGraphQL`) → `lib/contentful/get*.ts` → RSC pages/components. Every request is tagged `next: { tags: ["site-content"] }`. **There is no codegen or generated client — it's all hand-written** (the unused `codegen.ts` + `@graphql-codegen/*` deps were removed).
 - **MongoDB** backs only two collections in db `website`: `likes` and `contact` (`src/service/database.service.ts` caches the client).
-- **Email**: adapter pattern (`src/service/mailing.service.ts` selects `mailing/{sendgrid,resend}.adapter.ts` by `MAIL_PROVIDER`); templates in `src/templates/`. **Newsletter** = Mailchimp (`/api/subscribe`).
+- **Email**: adapter pattern (`src/service/mailing.service.ts` selects `mailing/{sendgrid,resend}.adapter.ts` by `MAIL_PROVIDER`); templates in `src/templates/`. **Newsletter** = **Resend** contacts with **per-locale audiences** (`/api/subscribe` → `src/service/subscribe.service.ts` → `resendAudience.ts`). _Mailchimp is gone_ — the `@mailchimp/*` dep + `MAILCHIMP_*` env vars are dead code pending removal (ICR-110).
 - **i18n**: next-intl, default `es-AR`, secondary `en-US`. Middleware in **`src/proxy.ts`** (exports `proxy`). UI strings in `public/locales/{es-AR,en-US}.json`.
 - **Revalidation**: `POST /api/revalidate` with header `x-vercel-reval-key === CONTENTFUL_REVALIDATE_SECRET` → `revalidateTag("site-content")`.
 - **Security/CSP**: `config/headers.js` (HSTS, X-Frame-Options, CSP allowlisting GTM/GA, Vercel, and Contentful image CDNs).

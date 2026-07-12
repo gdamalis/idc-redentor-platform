@@ -81,7 +81,7 @@ src/app/
 │   └── blog/[slug]/          # Blog index + article pages
 └── api/                      # Route handlers (no auth)
     ├── likes/                # GET/POST blog likes (MongoDB)
-    ├── subscribe/            # POST → Mailchimp newsletter
+    ├── subscribe/            # POST → Resend newsletter (per-locale audience)
     ├── revalidate/           # POST → revalidateTag("site-content")
     └── draft/{enable,disable}/  # Contentful preview/draft mode toggles
 ```
@@ -108,7 +108,7 @@ MongoDB    → src/service/database.service.ts (cached client) → like/contact 
 ### Email & newsletter
 
 - **Transactional email** uses an adapter pattern: `src/service/mailing.service.ts` selects `src/service/mailing/{sendgrid,resend}.adapter.ts` by the `MAIL_PROVIDER` env var. HTML bodies come from `src/templates/`.
-- **Newsletter** is **Mailchimp** via `/api/subscribe` (client helper `src/service/subscribe.ts`).
+- **Newsletter** is **Resend** — contacts added to a **per-locale audience** via `/api/subscribe` → `src/service/subscribe.service.ts` → `resendAudience.ts` (client helper `src/service/subscribe.ts`). **Mailchimp is no longer used**; the `@mailchimp/*` dep and `MAILCHIMP_*` env vars are dead code pending removal (ICR-110).
 - See `docs/architecture/forms-and-email.md` for the contact + subscribe flows and the spam/PII discipline.
 
 ### Revalidation & draft mode
@@ -174,16 +174,24 @@ Sessions are named after the active Jira ticket automatically.
 | `MAIL_PROVIDER`                   | `sendgrid` or `resend` — selects the email adapter                |   ❌ **missing**   |
 | `CONTACT_FORM_RECIPIENT_EMAIL`    | Where contact-form notifications are sent                         |   ❌ **missing**   |
 | `FROM_EMAIL`                      | From address for transactional email                              |   ❌ **missing**   |
-| `MAILCHIMP_API_KEY`               | Newsletter                                                        |         ✅         |
-| `MAILCHIMP_API_SERVER`            | Newsletter datacenter (e.g. `us21`)                               |         ✅         |
-| `MAILCHIMP_AUDIENCE_ID`           | Newsletter list                                                   |         ✅         |
+| `RESEND_API_KEY`                  | **Newsletter** (Resend contacts) + the `resend` mail adapter      |   ❌ **missing**   |
+| `RESEND_AUDIENCE_ID_ES_AR`        | Newsletter audience for `es-AR`                                   |   ❌ **missing**   |
+| `RESEND_AUDIENCE_ID_EN_US`        | Newsletter audience for `en-US`                                   |   ❌ **missing**   |
+
+> ⚠️ **The `MAILCHIMP_*` vars are DEAD.** The newsletter moved to **Resend** (per-locale audiences).
+> `MAILCHIMP_API_KEY` / `MAILCHIMP_API_SERVER` / `MAILCHIMP_AUDIENCE_ID` are still declared in
+> `src/types/environment.d.ts` and listed in `.env.example`, but **nothing reads them** — setting
+> them does nothing. ICR-110 removes them. Do not provision Mailchimp for a new deploy.
+>
+> `RESEND_AUDIENCE_ID` (no locale suffix) is a legacy single-audience fallback used only for the
+> **default** locale when the per-locale var is unset (`src/service/resendAudience.ts`).
 
 ### Conditionally required (by `MAIL_PROVIDER`)
 
-| Variable           | Purpose                                | In `.env.example`? |
-| ------------------ | -------------------------------------- | :----------------: |
-| `SENDGRID_API_KEY` | Required when `MAIL_PROVIDER=sendgrid` |   ❌ **missing**   |
-| `RESEND_API_KEY`   | Required when `MAIL_PROVIDER=resend`   |   ❌ **missing**   |
+| Variable           | Purpose                                                            | In `.env.example`? |
+| ------------------ | ------------------------------------------------------------------ | :----------------: |
+| `SENDGRID_API_KEY` | Required when `MAIL_PROVIDER=sendgrid`                             |   ❌ **missing**   |
+| `RESEND_API_KEY`   | Required when `MAIL_PROVIDER=resend` (also required by newsletter) |   ❌ **missing**   |
 
 ### Optional / injected
 
