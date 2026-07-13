@@ -61,4 +61,29 @@ describe("POST /api/subscribe", () => {
     });
     expect(addSubscriber).not.toHaveBeenCalled();
   });
+  it("400 when the service reports invalid-input", async () => {
+    addSubscriber.mockResolvedValue({ ok: false, reason: "invalid-input" });
+    const res = await POST(req({ email: "a@b.com" }));
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      messageKey: "SubscribeBanner.error-unexpected",
+    });
+    expect(addSubscriber).toHaveBeenCalled();
+  });
+  it("500 when the service reports failed", async () => {
+    addSubscriber.mockResolvedValue({ ok: false, reason: "failed" });
+    const res = await POST(req({ email: "a@b.com" }));
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({
+      messageKey: "SubscribeBanner.error-unexpected",
+    });
+  });
+  it("500 when the service is not configured", async () => {
+    addSubscriber.mockResolvedValue({ ok: false, reason: "not-configured" });
+    const res = await POST(req({ email: "a@b.com" }));
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({
+      messageKey: "SubscribeBanner.error-unexpected",
+    });
+  });
 });
