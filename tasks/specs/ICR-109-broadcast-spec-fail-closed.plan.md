@@ -10,7 +10,17 @@
 
 ## Global Constraints
 
-- **Commit type is `docs`** (not `chore`) — `docs(ICR-109): …`. A docs-only change must not make semantic-release cut a version bump. Branch is already `docs/ICR-109-broadcast-spec-fail-closed`.
+- **Commit type is `chore`** — `chore(ICR-109): …`. This ticket must not cut a version bump, and in **this** repo `chore` is the only no-release type. Verify against `.releaserc.json` rather than intuition — its `releaseRules` map `docs` to a **patch release** and `chore` to `release: false`:
+
+  ```json
+  { "type": "docs",  "release": "patch" },
+  { "type": "chore", "release": false   }
+  ```
+
+  This is the **opposite** of the conventionalcommits default, and it is confirmed empirically: every `docs(…)` commit on `main` is immediately followed by a `chore(release)` commit (e.g. `cfed21e docs: …` → `b71c7fb chore(release): 1.25.3`). `chore` also happens to be what `.claude/config.json` → `tracker.issueTypeToCommitType` already maps this issue's type (**Task**) to.
+
+  The **squash-merge commit message is the PR title**, so the PR title is what decides whether a release is cut — it must be `chore(ICR-109): …`. (The branch is named `docs/ICR-109-broadcast-spec-fail-closed`; a branch prefix need not match the commit type, so it is left as-is.)
+
 - **No code file may appear in the diff.** `git diff --name-only origin/main...HEAD` must list **only** the two `tasks/specs/ICR-29-*.md` files plus this plan. Explicitly out of scope: `apps/web/src/service/broadcast.service.ts`, `apps/web/src/service/broadcast/types.ts`, any `*.test.ts`, and `docs/architecture/forms-and-email.md` (all already correct).
 - **The shipped reason union is canonical** (`apps/web/src/service/broadcast/types.ts:22-27`), in this exact order:
   `already-sent | invalid-input | dedupe-unavailable | resend-not-configured | postal-address-missing | send-failed`
@@ -211,7 +221,7 @@ Expected: exactly one modified path — `tasks/specs/ICR-29-broadcast-email-serv
 
 ```bash
 git add tasks/specs/ICR-29-broadcast-email-service.plan.md
-git commit -m "docs(ICR-109): correct broadcast plan to fail-closed postal-address guard"
+git commit -m "chore(ICR-109): correct broadcast plan to fail-closed postal-address guard"
 ```
 
 ---
@@ -326,7 +336,7 @@ Expected: `format:check` clean. The file list contains **only** `tasks/specs/*.m
 
 ```bash
 git add tasks/specs/ICR-29-broadcast-email-service.md
-git commit -m "docs(ICR-109): make ICR-29 spec edge case 9 fail-closed on postal address"
+git commit -m "chore(ICR-109): make ICR-29 spec edge case 9 fail-closed on postal address"
 ```
 
 ---
