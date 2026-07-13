@@ -125,11 +125,12 @@ So editors get drafts automatically in local dev and on **every Vercel preview d
 
 ## Live Preview
 
-Editors can open the home + community/Creed pages inside Contentful's **Live Preview** pane on a
-Vercel preview deployment and see field edits reflect in real time, plus an inspector overlay that
-click-jumps from rendered content back to the field being edited. Additive and **preview-only**; the
-production fetch path, `/api/revalidate`, and `revalidateTag` above are untouched. First-pass scope
-is the **home** + **community/Creed** components only — other content types are not yet live-wired.
+Editors can open the home + community/Creed pages inside Contentful's **Live Preview** pane — on the
+**staging** deployment (the standing target) or on any per-PR preview — and see field edits reflect in
+real time, plus an inspector overlay that click-jumps from rendered content back to the field being
+edited. Additive and **draft-only**; the production fetch path, `/api/revalidate`, and `revalidateTag`
+above are untouched. First-pass scope is the **home** + **community/Creed** components only — other
+content types are not yet live-wired.
 
 **Why a draft-gated client boundary.** `src/components/shared/contentful-preview/ContentfulPreviewProvider.tsx`
 wraps `@contentful/live-preview`'s `ContentfulLivePreviewProvider` and is mounted in
@@ -157,14 +158,28 @@ nested union members, e.g. `... on BeliefItem` inside `ContentCollection`, so ea
 individually inspectable rather than only the parent collection.
 
 **CSP env-gating.** `config/headers.js` delegates to the pure, unit-tested
-`buildSecurityHeaders({ previewLike })` in `config/securityHeaders.js`, branching on
-`VERCEL_ENV`/`NODE_ENV`:
+`buildSecurityHeaders({ previewLike })` in `config/securityHeaders.js`, branching on a single flag:
+
+```js
+const previewLike = VERCEL_ENV === "preview" || NODE_ENV === "development";
+```
 
 - **Production** (default branch): strict clickjacking protection — `X-Frame-Options: SAMEORIGIN`
   **and** `frame-ancestors 'self'` (no Contentful origins). Production is never Contentful-framable.
-- **Preview / dev** (`VERCEL_ENV==='preview'` or `NODE_ENV==='development'`): `X-Frame-Options` is
-  **omitted entirely** and `frame-ancestors` additionally allows `https://app.contentful.com` and
-  `https://app.eu.contentful.com`.
+- **Preview / dev** (`previewLike`): `X-Frame-Options` is **omitted entirely** and `frame-ancestors`
+  additionally allows `https://app.contentful.com` and `https://app.eu.contentful.com`.
+
+The **same** flag also drives `shouldUseDraftMode()` (`lib/contentful/draftMode.ts`), so one condition
+turns on draft content **and** opens the frame. Across the three Vercel tiers:
+
+| Tier                 | Host                          | `previewLike` | Contentful-framable? | Live Preview role                                  |
+| -------------------- | ----------------------------- | :-----------: | :------------------: | -------------------------------------------------- |
+| **Production**       | `www.idcredentor.org`         |       ✗       |        **No**        | Deliberately never a preview target                |
+| **Preview** (per-PR) | `*-git-<branch>-*.vercel.app` |       ✓       |         Yes          | Works, but the host changes every PR               |
+| **Staging**          | `staging.idcredentor.org`     |       ✓       |         Yes          | **Stable host → the standing Live Preview target** |
+
+Staging is a Vercel **branch** deployment, so Vercel injects `VERCEL_ENV=preview` there — the same
+branch as a per-PR preview, but on a hostname that doesn't rot when a PR merges.
 
 All other CSP directives (`script-src`, `connect-src`, `img-src`, `media-src`) are identical across
 envs. **Gotcha:** `X-Frame-Options` and `frame-ancestors` both control framing, but browsers honor
@@ -174,17 +189,46 @@ the Contentful iframe even with a fully correct CSP. It must be genuinely absent
 own `VERCEL_ENV` — a local `pnpm build` (no `VERCEL_ENV`) always resolves to the strict/production
 branch, which is safe by default.
 
-**Editor setup (one-time, human, per environment).** In Contentful: **Settings → Content preview**,
-add a Content Preview URL of the form:
+**Editor setup (one-time, human).** Live Preview needs **no secret, no cookie, and no query string** —
+`previewLike` alone serves draft content _and_ allows the Contentful iframe. So a Content Preview URL
+is simply **the page's own URL** on a framable host.
 
-```
-<preview-deploy-url>/api/draft/enable?secret=<CONTENTFUL_PREVIEW_SECRET value>&locale=<locale>
-```
+In Contentful → **Settings → Content preview**, create **two** preview environments:
 
-Reference the secret by the environment variable **name** `CONTENTFUL_PREVIEW_SECRET` — never paste
-its value into the Contentful UI notes or into docs/commits. This only works against a **preview**
-deployment: production intentionally cannot be framed by Contentful (see CSP env-gating above), so
-there is no production Content Preview URL to configure.
+| Preview environment | Content Preview URL                                  |
+| ------------------- | ---------------------------------------------------- |
+| Home                | `https://staging.idcredentor.org/{locale}`           |
+| Community / Creed   | `https://staging.idcredentor.org/{locale}/community` |
+
+`{locale}` is `es-AR` (the default) or `en-US`.
+
+**Why two.** Contentful configures a preview URL **per content type**, but here entry→page is
+**many-to-many**: the same content type — and even the same _entry_ — renders on both pages
+(`contactCta` is a `section`; `ourMissionCollection` is a `contentCollection`; both appear on home
+**and** on community). No single URL per content type can disambiguate, so the editor chooses the
+preview environment instead. The rule generalizes: **one preview environment per page**, not per type —
+a future content type on a third page needs a third preview environment.
+
+> ⚠️ **Two unrelated things are called "staging".** The Vercel **staging deployment** (a hosting tier)
+> is not the Contentful **`staging` environment** (the model-work content env — see
+> `contentful-environments.md`). A Live Preview target must read the content env editors actually
+> author in: `lib/contentful/fetch.ts` resolves `CONTENTFUL_ENVIRONMENT ?? "master"`, and the `master`
+> alias points at `production`, where editors author. So **`CONTENTFUL_ENVIRONMENT` must stay unset on
+> the staging deployment** (it is). Setting it to `staging` would silently aim the preview pane at the
+> model-work env — blank or stale content, with **no error**.
+
+**Not `/api/draft/enable`.** That route is not on the Live Preview path at all. Its only remaining role
+is the **production draft opt-in**: it validates `CONTENTFUL_PREVIEW_SECRET`, enables Next draft mode,
+and **always redirects to `/{locale}`** (the home page — it cannot deep-link to `/community` or a blog
+post); `/api/draft/disable` turns it back off. Never use it as a Content Preview URL, and **never paste
+the value** of `CONTENTFUL_PREVIEW_SECRET` into a Contentful settings field — reference secrets by
+**name** only.
+
+Production has no Content Preview URL by design: it is intentionally not Contentful-framable (see CSP
+env-gating above).
+
+> Actually performing this Contentful configuration is **ICR-135** (human-only — no MCP/CMA path exists
+> for content-preview settings).
 
 ## On-demand revalidation
 
