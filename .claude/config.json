@@ -3,9 +3,7 @@
   "project": {
     "name": "idc-redentor-web",
     "ticketPrefix": "ICR",
-    "ticketPrefixAliases": [
-      "IDCR"
-    ],
+    "ticketPrefixAliases": ["IDCR"],
     "ticketLinkBase": "https://divinelab.atlassian.net/browse/",
     "stagingUrl": "https://staging.idcredentor.org",
     "prodUrl": "https://www.idcredentor.org",
@@ -134,11 +132,7 @@
       "Task": {
         "id": "10066",
         "commitType": "chore",
-        "alt": [
-          "refactor",
-          "perf",
-          "feat"
-        ],
+        "alt": ["refactor", "perf", "feat"],
         "note": "default chore; use refactor/perf/feat when the work is purely that. A 'perf'/'refactor' label overrides."
       }
     },
@@ -153,26 +147,18 @@
     "_note": "Drives /qa + qa-acceptance + the embedded /work and /merge QA steps. Reads the tracker block for the Jira project key + status names. QA targets are env-by-name (qa.env.<name>): 'preview' = the per-PR Vercel preview deployment (pre-merge QA), 'staging' = the dedicated staging env at staging.idcredentor.org / website-staging DB (post-merge QA). Production is hard-denied in EVERY env. autoMerge disabled (kill switch); merge is user-triggered via /merge.",
     "depth": {
       "default": "standard",
-      "allowed": [
-        "light",
-        "standard",
-        "heavy"
-      ],
+      "allowed": ["light", "standard", "heavy"],
       "sourceNote": "Jira has no default 'QA Depth' field. Resolve in priority order: (1) a 'qa-<depth>' label on the issue (e.g. qa-heavy); (2) a 'QA: <depth>' token in the issue description; (3) fall back to qa.depth.default. Reject values not in qa.depth.allowed."
     },
     "defaultMode": "report",
-    "enabledModes": [
-      "report"
-    ],
+    "enabledModes": ["report"],
     "batch": {
       "status": "inReview",
       "maxTickets": 5,
       "sequential": true
     },
     "humanGate": {
-      "neverMoveTo": [
-        "done"
-      ]
+      "neverMoveTo": ["done"]
     },
     "env": {
       "preview": {
@@ -209,7 +195,7 @@
           "idc-redentor-web.vercel.app"
         ],
         "requirePreviewEnvironment": false,
-        "requirePreviewEnvironmentNote": "Staging is NOT a Vercel preview — it has its OWN host allowlist (^staging\\.idcredentor\\.org$). It MUST NOT inherit the preview's 'must be a Vercel preview deployment (target!==production)' check. But it MUST still hard-deny every productionHostDeny host. Net: the only sanctioned non-preview QA target is exactly staging.idcredentor.org.",
+        "requirePreviewEnvironmentNote": "Staging is NOT a PER-PR Vercel preview deployment — it has its OWN host allowlist (^staging\\.idcredentor\\.org$), not a *.vercel.app host. It MUST NOT inherit the preview's 'must be a Vercel preview deployment (target!==production)' check. But it MUST still hard-deny every productionHostDeny host. Net: the only sanctioned non-per-PR-preview QA target is exactly staging.idcredentor.org. CAUTION — this is a statement about the QA HOST GATE, not about the build env: staging IS a Vercel BRANCH deployment, so it is built with VERCEL_ENV=preview, which makes previewLike true there (draft content + Contentful-framable CSP, X-Frame-Options omitted). Do not read 'staging is not a preview' as 'VERCEL_ENV !== preview' — verified live: staging.idcredentor.org returns frame-ancestors including app.contentful.com and no X-Frame-Options. This is what makes staging the standing Contentful Live Preview target (docs/architecture/contentful-data-layer.md § Live Preview).",
         "liveIntegrationPolicy": "no-POST",
         "liveIntegrationNote": "Staging has its OWN 'website-staging' Mongo DB (created + wired in Vercel), so Mongo reads/writes against website-staging are allowed. BUT Mailchimp/SendGrid/Resend are presumed LIVE on staging unless sandbox creds exist — so QA must NOT happy-path POST /api/subscribe or /api/contact (it would email a real recipient / hit the live audience). Form submit/validation can be exercised up to the network boundary; full end-to-end form POST is DEFERRED until staging has sandbox mail creds or a test recipient.",
         "mongoMcp": "mongodb-localhost",
@@ -274,17 +260,10 @@
     "maxIterations": 8,
     "totalTimeoutSeconds": 2400,
     "ciTimeoutSeconds": 1800,
-    "watch": [
-      "reviewComments",
-      "ciChecks"
-    ],
+    "watch": ["reviewComments", "ciChecks"],
     "idempotency": "reply-marker",
     "idempotencyNote": "Track addressed review-thread ids in the /work state file (addressedThreadIds). On each tick, skip threads already replied to (and cross-check the reply author == self) so a crash-and-resume never double-replies.",
-    "readinessRequires": [
-      "qaPass",
-      "ciGreen",
-      "commentsAddressed"
-    ],
+    "readinessRequires": ["qaPass", "ciGreen", "commentsAddressed"],
     "notify": "push",
     "pacingNote": "First tick ~firstCheckSeconds after PR-ready (catch the Codex review + first CI signal). Idle re-checks every pollSeconds (cache-warm). After WE push a fix, wait afterPushSeconds for the fresh CI run. End on clean (all readinessRequires) OR maxIterations/totalTimeoutSeconds; notify either way."
   },
@@ -378,62 +357,23 @@
   },
   "playwrightProjectMap": {
     "_note": "Monorepo: the public site is at apps/web. ICR uses apps/web/src/app/[locale]/<segment> (NO route groups) plus apps/web/src/app/api/<route>. Phase 1 has NO e2e suite — qa-runner authors specs per-ticket on heavy depth. This map tells qa-runner which e2e project/tag to target for a given changed path.",
-    "apps/web/src/app/[locale]/page.tsx": [
-      "e2ePublic"
-    ],
-    "apps/web/src/app/[locale]/blog": [
-      "e2eBlog"
-    ],
-    "apps/web/src/app/[locale]/community": [
-      "e2ePublic"
-    ],
-    "apps/web/src/app/[locale]/come-meet-us": [
-      "e2ePublic"
-    ],
-    "apps/web/src/app/[locale]/who-is-jesus": [
-      "e2ePublic"
-    ],
-    "apps/web/src/app/api/contact": [
-      "apiForms"
-    ],
-    "apps/web/src/app/api/subscribe": [
-      "apiForms"
-    ],
-    "apps/web/src/app/api/likes": [
-      "apiLikes"
-    ],
-    "apps/web/src/app/api/revalidate": [
-      "apiForms"
-    ],
-    "apps/web/src/app/api/draft": [
-      "apiForms"
-    ],
-    "apps/web/src/service": [
-      "apiForms",
-      "apiLikes",
-      "e2ePublic"
-    ],
-    "apps/web/src/components": [
-      "e2ePublic"
-    ],
-    "apps/web/src/i18n": [
-      "e2ePublic",
-      "e2eBlog"
-    ],
-    "apps/web/src/proxy.ts": [
-      "e2ePublic"
-    ],
-    "apps/web/public/locales": [
-      "e2ePublic",
-      "e2eBlog"
-    ],
-    "apps/web/lib/contentful": [
-      "e2ePublic",
-      "e2eBlog"
-    ],
-    "apps/web/config/headers.js": [
-      "e2ePublic"
-    ]
+    "apps/web/src/app/[locale]/page.tsx": ["e2ePublic"],
+    "apps/web/src/app/[locale]/blog": ["e2eBlog"],
+    "apps/web/src/app/[locale]/community": ["e2ePublic"],
+    "apps/web/src/app/[locale]/come-meet-us": ["e2ePublic"],
+    "apps/web/src/app/[locale]/who-is-jesus": ["e2ePublic"],
+    "apps/web/src/app/api/contact": ["apiForms"],
+    "apps/web/src/app/api/subscribe": ["apiForms"],
+    "apps/web/src/app/api/likes": ["apiLikes"],
+    "apps/web/src/app/api/revalidate": ["apiForms"],
+    "apps/web/src/app/api/draft": ["apiForms"],
+    "apps/web/src/service": ["apiForms", "apiLikes", "e2ePublic"],
+    "apps/web/src/components": ["e2ePublic"],
+    "apps/web/src/i18n": ["e2ePublic", "e2eBlog"],
+    "apps/web/src/proxy.ts": ["e2ePublic"],
+    "apps/web/public/locales": ["e2ePublic", "e2eBlog"],
+    "apps/web/lib/contentful": ["e2ePublic", "e2eBlog"],
+    "apps/web/config/headers.js": ["e2ePublic"]
   },
   "graphify": {
     "enabled": "auto",
@@ -475,10 +415,7 @@
     "contentfulProtectedEnv": "master",
     "contentfulEnvNote": "The publisher creates (or, on a regenerate, updates in place) the sermon as a DRAFT in `production` (the live env behind the master alias) via the committed CMA scripts — none has a publish call, so nothing goes live until a human reviews both locales and clicks Publish at Gate 2. The scripts refuse the `master` ALIAS by name (you write the `production` ENV, never the alias). The MCP server runs PROTECTED_ENVIRONMENTS=master,production as a backstop, which does not affect these scripts (they use the management token directly, not the MCP).",
     "defaultContentfulLocale": "es-AR",
-    "locales": [
-      "es-AR",
-      "en-US"
-    ],
+    "locales": ["es-AR", "en-US"],
     "defaultLocale": "es-AR",
     "whatsappLocale": "es-AR",
     "siteBaseUrl": "https://www.idcredentor.org",
@@ -492,9 +429,7 @@
       "model": "/Users/gabriel/repos/whisper.cpp/models/ggml-large-v3-turbo.bin",
       "lang": "es",
       "threads": 8,
-      "extraFlags": [
-        "-sns"
-      ],
+      "extraFlags": ["-sns"],
       "prompt": "Prédica en español. Iglesia de Cristo Redentor. Jesús, evangelio, Espíritu Santo, gracia, arrepentimiento, salvación, Escritura.",
       "note": "large-v3-turbo is fast (~3-5 min for a 60-min sermon on the M3 Pro). The prompt seeds church vocabulary. -sns = suppress non-speech tokens. transcribe(audioPath) is a swappable boundary so V2 can drop in a cloud provider."
     },
@@ -510,26 +445,17 @@
     "pdf": {
       "script": ".claude/scripts/predica/build-predica-pdf.mjs",
       "logo": "apps/web/public/assets/img/redentor_logo.png",
-      "outputs": [
-        "predica.es-AR.pdf",
-        "predica.en-US.pdf"
-      ],
+      "outputs": ["predica.es-AR.pdf", "predica.en-US.pdf"],
       "note": "Card C's generator (consumed as a black box): node <script> <sermon.json> [--out <dir>]. Needs Chromium: `pnpm exec playwright install chromium` on a fresh checkout."
     },
     "featured": {
       "script": ".claude/scripts/predica/build-predica-featured.mjs",
       "logo": "apps/web/public/assets/img/redentor_logo_light.png",
-      "outputs": [
-        "featured.png",
-        "featured.bg.png"
-      ],
+      "outputs": ["featured.png", "featured.bg.png"],
       "provider": "gemini",
       "model": "gemini-2.5-flash-image",
       "apiKeyEnv": "GEMINI_API_KEY",
-      "dimensions": [
-        1200,
-        630
-      ],
+      "dimensions": [1200, 630],
       "note": "Generates the 1200x630 sermon featured image (also the OG/social card): node <script> <sermon.json> [--out <dir>] [--prompt <txt>] [--no-ai] [--regenerate]. AI background via Google Gemini (REST, reads GEMINI_API_KEY from env/.env.local, name only) + branded title/date overlay rendered with Playwright. DEGRADES GRACEFULLY: no key or any API failure -> on-brand typographic fallback card, still exits 0. Same Chromium dependency as the PDF. Canonical typed helpers + tests: src/utils/predica/featuredCard.ts. The image is a DRAFT DEFAULT the human reviews/replaces at Gate 2."
     },
     "entryBuilder": ".claude/scripts/predica/build-sermon-entry.mjs",
@@ -539,11 +465,7 @@
     "entryDeleter": ".claude/scripts/predica/delete-contentful.mjs",
     "writePathNote": "All Contentful WRITES go through these THREE CMA scripts (binary-upload + create/update-entry + delete), NOT the MCP write tools — reliable at any size (a ~20MB mp3, a 50KB+ rich-text entry) where MCP base64 / LLM round-trip is infeasible. create-contentful-entry.mjs creates a draft OR updates one in place (--id <entryId>, full-fields replace, used when /predica regenerates an existing sermon). delete-contentful.mjs is the ONLY delete path (unpublish-then-delete by explicit id; --guard-referenced refuses to delete a bibleVerse still linked by another sermon/the Creed). All three are DRAFT-ONLY (no publish call) and HARD-REFUSE the master environment; they read CONTENTFUL_MANAGEMENT_ACCESS_TOKEN from env/.env.local (name only, never printed). The publisher's MCP allowlist is READ-ONLY, so it structurally cannot publish or touch master by any path.",
     "assetUploadPolicy": {
-      "uploadedViaCma": [
-        "audio",
-        "pdfSummary",
-        "featuredImage"
-      ],
+      "uploadedViaCma": ["audio", "pdfSummary", "featuredImage"],
       "deferToHumanAtGate2": [],
       "note": "The CMA upload endpoint handles any size, so the audio mp3, both PDFs, AND the generated featuredImage are uploaded + linked automatically. featuredImage is produced by config.predica.featured (build-predica-featured.mjs) as a DRAFT DEFAULT — the human reviews/replaces it at Gate 2 before publishing. durationSeconds is set from ffprobe."
     },
