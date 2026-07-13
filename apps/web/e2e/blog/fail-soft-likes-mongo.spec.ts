@@ -29,7 +29,8 @@ test.describe("Blog article — fail-soft when likes DB is unavailable", () => {
       page,
     }) => {
       const res = await page.goto(`/${locale}/blog/${SLUG}`);
-      expect(res?.status()).toBeLessThan(400);
+      // 200, not merely "not an error" — this page returned 500 before the fix.
+      expect(res?.status()).toBe(200);
 
       // Title + body render.
       await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
