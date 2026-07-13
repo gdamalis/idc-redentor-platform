@@ -11,7 +11,7 @@ import { Button } from "@src/components/ui/button";
 import { Link } from "@src/i18n/routing";
 import { Card, CardContent } from "@src/components/ui/card";
 import { formatDate } from "@src/utils/formatDate";
-import { cn } from "@src/utils/cn";
+import { cn } from "@idcr/ui";
 import type { Sermon } from "@src/types/Sermon";
 
 interface SermonCardProps {

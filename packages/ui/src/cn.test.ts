@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cn } from "@src/utils/cn";
+import { cn } from "./cn";
 
 describe("cn", () => {
   it("joins truthy classes and drops falsey ones", () => {

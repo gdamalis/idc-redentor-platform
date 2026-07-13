@@ -1,6 +1,6 @@
 import { useTranslations } from "next-intl";
 import { FileDown } from "lucide-react";
-import { cn } from "@src/utils/cn";
+import { cn } from "@idcr/ui";
 import type { Sermon } from "@src/types/Sermon";
 
 interface PdfDownloadButtonProps {

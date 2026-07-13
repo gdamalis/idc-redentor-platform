@@ -5,7 +5,7 @@ import { ChevronDownIcon, GlobeAltIcon } from "@heroicons/react/24/outline";
 import { i18n, type Locale } from "@src/i18n/config";
 import { Link, usePathname } from "@src/i18n/routing";
 import { useLocale } from "next-intl";
-import { cn } from "@src/utils/cn";
+import { cn } from "@idcr/ui";
 
 type LanguageSwitcherProps = {
   isScrolled?: boolean;

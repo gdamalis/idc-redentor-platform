@@ -5,7 +5,7 @@ import { Link } from "@src/i18n/routing";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { Menu, X } from "lucide-react";
-import { cn } from "@src/utils/cn";
+import { cn } from "@idcr/ui";
 import { Button } from "@src/components/ui/button";
 import { Container } from "@src/components/ui/container";
 import LanguageSwitcher from "@src/components/shared/language-switcher/LanguageSwitcher";

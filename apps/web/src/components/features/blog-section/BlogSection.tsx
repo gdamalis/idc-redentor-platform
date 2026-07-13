@@ -1,7 +1,7 @@
 import { Container } from "@src/components/ui/container";
 import { Typography } from "@src/components/ui/typography";
 import { useTranslations } from "next-intl";
-import { cn } from "@src/utils/cn";
+import { cn } from "@idcr/ui";
 
 import { BlogPost } from "@src/types/BlogPost";
 import { BlogPostCard } from "./BlogPostCard";
