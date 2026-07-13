@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 import type { Sermon } from "@src/types/Sermon";
 
@@ -49,10 +49,14 @@ function fixtureSermon(overrides: Partial<Sermon> = {}): Sermon {
 }
 
 beforeEach(() => {
-  process.env.PREDICA_REGEN_SECRET = SECRET;
+  vi.stubEnv("PREDICA_REGEN_SECRET", SECRET);
   getSermonById.mockReset();
   markDirty.mockReset();
   markDirty.mockResolvedValue(true);
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe("POST /api/predica/regenerate-pdf", () => {
@@ -135,5 +139,22 @@ describe("POST /api/predica/regenerate-pdf", () => {
     const res = await POST(req(sermonPayload("e1")));
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({ message: "Failed to enqueue regen job" });
+  });
+
+  // --- ICR-136: fail closed, by intent rather than by type-coercion accident. ---
+  it("401s for every x-predica-regen-key value when PREDICA_REGEN_SECRET is unset", async () => {
+    vi.stubEnv("PREDICA_REGEN_SECRET", undefined);
+
+    for (const key of ["undefined", "", "anything"]) {
+      const res = await POST(req(sermonPayload("e1"), key));
+      expect(res.status).toBe(401);
+      expect(await res.json()).toEqual({ message: "Invalid secret" });
+    }
+
+    const noHeader = await POST(req(sermonPayload("e1"), null));
+    expect(noHeader.status).toBe(401);
+
+    expect(markDirty).not.toHaveBeenCalled();
+    expect(getSermonById).not.toHaveBeenCalled();
   });
 });

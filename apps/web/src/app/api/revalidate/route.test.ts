@@ -62,4 +62,16 @@ describe("POST /api/revalidate", () => {
     expect(res.status).toBe(200);
     expect(vi.mocked(revalidateTag)).toHaveBeenCalled();
   });
+
+  it("401s when CONTENTFUL_REVALIDATE_SECRET is unset, without revalidating or notifying", async () => {
+    vi.stubEnv("CONTENTFUL_REVALIDATE_SECRET", undefined);
+
+    for (const secret of ["undefined", "", "anything"]) {
+      const res = await POST(req({}, secret));
+      expect(res.status).toBe(401);
+    }
+
+    expect(vi.mocked(revalidateTag)).not.toHaveBeenCalled();
+    expect(vi.mocked(notifyOnPublish)).not.toHaveBeenCalled();
+  });
 });

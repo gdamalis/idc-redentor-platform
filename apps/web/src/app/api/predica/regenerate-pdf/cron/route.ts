@@ -17,6 +17,7 @@ import {
 } from "@src/service/predica/contentfulWriteBack";
 import { renderSermonPdfs } from "@src/service/predica/renderSermonPdf";
 import type { Sermon } from "@src/types/Sermon";
+import { extractBearerToken, isAuthorizedSecret } from "@src/utils/auth/secret";
 import type { SupportedLocale } from "@src/utils/predica/helpers";
 import { computeSermonContentHash } from "@src/utils/predica/regenContent";
 
@@ -47,8 +48,8 @@ interface CronSummary {
 }
 
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const token = extractBearerToken(request.headers.get("authorization"));
+  if (!isAuthorizedSecret(token, process.env.CRON_SECRET)) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 

@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { notifyOnPublish } from "@src/service/post-notification.service";
+import { isAuthorizedSecret } from "@src/utils/auth/secret";
 
 export async function POST(request: Request) {
   const secret = request.headers.get("x-vercel-reval-key");
 
-  if (secret !== process.env.CONTENTFUL_REVALIDATE_SECRET) {
+  if (!isAuthorizedSecret(secret, process.env.CONTENTFUL_REVALIDATE_SECRET)) {
     return NextResponse.json({ message: "Invalid secret" }, { status: 401 });
   }
 

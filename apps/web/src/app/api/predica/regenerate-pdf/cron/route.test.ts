@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 import type { PdfJob } from "@src/service/predica/pdfJobs";
 import type { Sermon } from "@src/types/Sermon";
@@ -78,7 +78,7 @@ function fixtureSermon(overrides: Partial<Sermon> = {}): Sermon {
 }
 
 beforeEach(() => {
-  process.env.CRON_SECRET = SECRET;
+  vi.stubEnv("CRON_SECRET", SECRET);
   getSermonById.mockReset();
   selectRenderableJobs.mockReset();
   claimJob.mockReset();
@@ -91,6 +91,10 @@ beforeEach(() => {
   uploadPdfAsset.mockReset();
   swapPdfSummary.mockReset();
   deleteSupersededAsset.mockReset();
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe("GET /api/predica/regenerate-pdf/cron", () => {
@@ -319,5 +323,36 @@ describe("GET /api/predica/regenerate-pdf/cron", () => {
     const body = await res.json();
     expect(body.processed).toBe(3);
     expect(body.deferred).toBe(2);
+  });
+
+  // --- ICR-136: the guard must fail CLOSED when CRON_SECRET is unset. ---
+  it("401s on 'Bearer undefined' when CRON_SECRET is unset, without querying jobs", async () => {
+    vi.stubEnv("CRON_SECRET", undefined);
+
+    const res = await GET(req("Bearer undefined"));
+
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ message: "Unauthorized" });
+    expect(selectRenderableJobs).not.toHaveBeenCalled();
+    expect(claimJob).not.toHaveBeenCalled();
+  });
+
+  it("401s on a missing Authorization header when CRON_SECRET is unset", async () => {
+    vi.stubEnv("CRON_SECRET", undefined);
+
+    const res = await GET(req(null));
+
+    expect(res.status).toBe(401);
+    expect(selectRenderableJobs).not.toHaveBeenCalled();
+    expect(claimJob).not.toHaveBeenCalled();
+  });
+
+  it("401s on 'Bearer ' + the empty string when CRON_SECRET is unset", async () => {
+    vi.stubEnv("CRON_SECRET", undefined);
+
+    const res = await GET(req("Bearer "));
+
+    expect(res.status).toBe(401);
+    expect(selectRenderableJobs).not.toHaveBeenCalled();
   });
 });

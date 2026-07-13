@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // vi.mock factories are hoisted above the module body, so the shared mock fn must be created
 // via vi.hoisted to be defined when the factory runs.
@@ -30,7 +30,11 @@ function makeRequest(params: Record<string, string>) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  process.env.CONTENTFUL_PREVIEW_SECRET = SECRET;
+  vi.stubEnv("CONTENTFUL_PREVIEW_SECRET", SECRET);
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe("GET /api/draft/enable", () => {
@@ -62,5 +66,18 @@ describe("GET /api/draft/enable", () => {
     expect(mockDraftMode).toHaveBeenCalled();
     expect(enable).toHaveBeenCalledTimes(1);
     expect(mockRedirect).toHaveBeenCalledWith("/es-AR");
+  });
+
+  it("401s when CONTENTFUL_PREVIEW_SECRET is unset, without enabling draft mode", async () => {
+    vi.stubEnv("CONTENTFUL_PREVIEW_SECRET", undefined);
+
+    for (const secret of ["undefined", "anything"]) {
+      const res = await GET(makeRequest({ secret, locale: "es-AR" }));
+      expect(res.status).toBe(401);
+      expect(await res.text()).toBe("Invalid token");
+    }
+
+    expect(enable).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
   });
 });
