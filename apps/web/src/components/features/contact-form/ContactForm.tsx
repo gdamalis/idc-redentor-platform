@@ -18,7 +18,7 @@ import { trackEvent } from "@src/lib/analytics";
 
 import { useTranslations } from "next-intl";
 import { handleContactFormSubmission } from "./contactFormAction";
-import { CONTACT_FORM_KEYS } from "./contactFormMessageKeys";
+import { CONTACT_FORM_KEYS } from "@src/i18n/messageKeys/contactForm";
 import {
   getDropdownField,
   getEmailInput,
@@ -133,7 +133,7 @@ export const ContactForm = ({ content }: ContactFormProps) => {
               >
                 {t(CONTACT_FORM_KEYS.FORM_HEADING)}
               </Typography>
-              
+
               <form action={formAction} className="space-y-6">
                 <div className="grid grid-cols-1 gap-6">
                   {content.formFields.map((field) => {
@@ -175,7 +175,11 @@ export const ContactForm = ({ content }: ContactFormProps) => {
                   className="w-full rounded-full text-lg h-12"
                   size="lg"
                 >
-                  {isPending ? <LoadingSpinner size="sm" className="text-white" /> : content.ctaText}
+                  {isPending ? (
+                    <LoadingSpinner size="sm" className="text-white" />
+                  ) : (
+                    content.ctaText
+                  )}
                 </Button>
 
                 {/* Agreement note */}

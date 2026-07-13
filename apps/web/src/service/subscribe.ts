@@ -1,7 +1,7 @@
 import {
   SUBSCRIBE_BANNER_KEYS,
   type SubscribeBannerKey,
-} from "@src/components/shared/subscribe-banner/subscribeBannerMessageKeys";
+} from "@src/i18n/messageKeys/subscribeBanner";
 
 export interface SubscribeResult {
   success: boolean;
@@ -12,7 +12,10 @@ export type SubscribeState = SubscribeResult | null;
 
 const KNOWN_KEYS = Object.values(SUBSCRIBE_BANNER_KEYS) as string[];
 
-export async function subscribe(email: string, locale: string): Promise<SubscribeResult> {
+export async function subscribe(
+  email: string,
+  locale: string,
+): Promise<SubscribeResult> {
   try {
     const response = await fetch("/api/subscribe", {
       method: "POST",
@@ -25,12 +28,16 @@ export async function subscribe(email: string, locale: string): Promise<Subscrib
 
     const data = await response.json().catch(() => ({}));
     const messageKey =
-      typeof data?.messageKey === "string" && KNOWN_KEYS.includes(data.messageKey)
+      typeof data?.messageKey === "string" &&
+      KNOWN_KEYS.includes(data.messageKey)
         ? (data.messageKey as SubscribeBannerKey)
         : SUBSCRIBE_BANNER_KEYS.ERROR_UNEXPECTED;
 
     return { success: false, messageKey };
   } catch {
-    return { success: false, messageKey: SUBSCRIBE_BANNER_KEYS.ERROR_UNEXPECTED };
+    return {
+      success: false,
+      messageKey: SUBSCRIBE_BANNER_KEYS.ERROR_UNEXPECTED,
+    };
   }
 }
