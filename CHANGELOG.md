@@ -1,3 +1,5 @@
+## [1.25.3](https://github.com/gdamalis/idc-redentor-web/compare/v1.25.2...v1.25.3) (2026-07-13)
+
 ## [1.25.2](https://github.com/gdamalis/idc-redentor-web/compare/v1.25.1...v1.25.2) (2026-07-13)
 
 ### Bug Fixes
