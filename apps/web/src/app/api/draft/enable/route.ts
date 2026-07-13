@@ -1,13 +1,14 @@
 import { draftMode } from "next/headers";
 import { redirect } from "next/navigation";
 import { isValidLocale } from "@src/i18n/config";
+import { isAuthorizedSecret } from "@src/utils/auth/secret";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const secret = searchParams.get("secret");
   const locale = searchParams.get("locale");
 
-  if (secret !== process.env.CONTENTFUL_PREVIEW_SECRET) {
+  if (!isAuthorizedSecret(secret, process.env.CONTENTFUL_PREVIEW_SECRET)) {
     return new Response("Invalid token", { status: 401 });
   }
 

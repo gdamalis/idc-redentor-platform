@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getSermonById } from "@lib/contentful/getSermons";
 import { markDirty } from "@src/service/predica/pdfJobs";
+import { isAuthorizedSecret } from "@src/utils/auth/secret";
 import { computeSermonContentHash } from "@src/utils/predica/regenContent";
 
 /**
@@ -13,7 +14,7 @@ import { computeSermonContentHash } from "@src/utils/predica/regenContent";
  */
 export async function POST(request: Request) {
   const key = request.headers.get("x-predica-regen-key");
-  if (key !== process.env.PREDICA_REGEN_SECRET) {
+  if (!isAuthorizedSecret(key, process.env.PREDICA_REGEN_SECRET)) {
     return NextResponse.json({ message: "Invalid secret" }, { status: 401 });
   }
 

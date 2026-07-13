@@ -1,14 +1,19 @@
 /**
- * ICR-114: E2E spec for the predica PDF-regen webhook + cron AUTH BOUNDARY ONLY.
+ * ICR-114 / ICR-136: E2E spec for the predica PDF-regen webhook + cron AUTH BOUNDARY ONLY.
  *
  * Safety note: PREDICA_REGEN_SECRET / CRON_SECRET / CONTENTFUL_MANAGEMENT_ACCESS_TOKEN /
- * MONGODB_URI are NOT set on preview deployments (env-limited, see ICR-44 lesson + the
- * cron route's own doc comment: Vercel Cron only ever invokes production, never a
- * preview). These tests therefore exercise ONLY the fail-closed auth rejection —
- * they never send a valid secret and never attempt to reach the mark-dirty/render/
- * write-back path. The happy-path (AC1/AC2/AC3/AC5) and the "non-sermon payload ->
- * 200 no-op" branch of AC4 are BLOCKED on preview and deferred to post-merge staging
- * QA where the secrets exist.
+ * MONGODB_URI are NOT set on preview deployments (env-limited, see ICR-44 lesson + the cron
+ * route's own doc comment: Vercel Cron only ever invokes production, never a preview). These
+ * tests therefore exercise ONLY the fail-closed auth rejection — they never send a valid secret
+ * and never reach the mark-dirty/render/write-back path. The happy path is BLOCKED on preview and
+ * deferred to post-merge staging QA, where the secrets exist.
+ *
+ * ICR-136: an unset secret used to authenticate the CALLER rather than reject them. The cron
+ * interpolated `process.env.CRON_SECRET` into a template literal, so with the variable unset the
+ * expected value became the literal string "Bearer undefined" — and anyone sending that header was
+ * let in (confirmed 200 against staging on 2026-07-10). Because preview is an environment WITHOUT
+ * CRON_SECRET, the `Bearer undefined` tests below are a live regression check on exactly the
+ * environment that was vulnerable. They must return 401.
  */
 
 import { expect, test } from "@playwright/test";
@@ -60,6 +65,23 @@ test.describe("/api/predica/regenerate-pdf webhook auth boundary", () => {
     expect(text.toLowerCase()).not.toContain("error:");
     expect(text.length).toBeLessThan(200);
   });
+
+  test("returns 401 for the literal 'undefined' x-predica-regen-key (ICR-136 lock)", async ({
+    request,
+  }) => {
+    const res = await request.post(`${BASE}/api/predica/regenerate-pdf`, {
+      data: {
+        sys: { id: "qa-icr136-test", contentType: { sys: { id: "sermon" } } },
+      },
+      headers: {
+        "Content-Type": "application/json",
+        "x-predica-regen-key": "undefined",
+      },
+    });
+    expect(res.status()).toBe(401);
+    const body = await res.json();
+    expect(body).toEqual({ message: "Invalid secret" });
+  });
 });
 
 test.describe("/api/predica/regenerate-pdf/cron auth boundary", () => {
@@ -92,5 +114,16 @@ test.describe("/api/predica/regenerate-pdf/cron auth boundary", () => {
     expect(text.toLowerCase()).not.toContain("at ");
     expect(text.toLowerCase()).not.toContain("error:");
     expect(text.length).toBeLessThan(200);
+  });
+
+  test("returns 401 for 'Bearer undefined' — the ICR-136 unset-secret bypass", async ({
+    request,
+  }) => {
+    const res = await request.get(`${BASE}/api/predica/regenerate-pdf/cron`, {
+      headers: { Authorization: "Bearer undefined" },
+    });
+    expect(res.status()).toBe(401);
+    const body = await res.json();
+    expect(body).toEqual({ message: "Unauthorized" });
   });
 });
