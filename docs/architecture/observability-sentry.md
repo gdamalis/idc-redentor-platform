@@ -48,19 +48,48 @@ point cannot drift from another because there is nothing runtime-specific left t
 ## Environment resolution
 
 ```ts
-NEXT_PUBLIC_SENTRY_ENVIRONMENT ?? VERCEL_ENV ?? "development";
+NEXT_PUBLIC_SENTRY_ENVIRONMENT ??
+  NEXT_PUBLIC_VERCEL_ENV ??
+  VERCEL_ENV ??
+  "development";
 ```
 
-`VERCEL_ENV` alone is **not enough**. Vercel only ever sets it to `production`, `preview`, or
-`development` — there is no native `staging` value. This site's staging deployment is a **separate
-deploy at `staging.idcredentor.org`**, not a Vercel "Preview" in the platform's sense, so without the
-explicit override every staging page load would tag its Sentry events `environment=production` (if
-staging shares the production Vercel env) or `environment=preview` (if it's deployed via a preview
-build) — either way, indistinguishable from the deploys it's supposed to be distinct from. Setting
-`NEXT_PUBLIC_SENTRY_ENVIRONMENT=staging` **only** on that one deployment is what makes staging show up
-as its own environment in the Sentry UI. See `docs/architecture/contentful-environments.md` and the
-project's `stagingUrl` in `.claude/config.json` for the same staging-is-not-a-native-Vercel-env fact
-in a different context (Contentful envs).
+> **WARNING — two traps here, both bitten us once (ICR-117 QA). Do not "simplify" this chain.**
+>
+> 1. **`VERCEL_ENV` is server-only. The browser cannot read it.** Next.js only inlines
+>    `process.env.*` into the client bundle for keys prefixed `NEXT_PUBLIC_*`; every other key is
+>    stripped, so a browser bundle reading `process.env.VERCEL_ENV` always gets `undefined`. Without
+>    `NEXT_PUBLIC_VERCEL_ENV` in the chain, client-side Sentry events silently fall through to
+>    `"development"` on every deploy that has no explicit `NEXT_PUBLIC_SENTRY_ENVIRONMENT`, while
+>    server-side events on the same deploy correctly tag `preview`/`production` — client and server
+>    disagree, and real browser errors land in the wrong Sentry environment. `NEXT_PUBLIC_VERCEL_ENV`
+>    is Vercel's own browser-readable mirror of the same value; it is what makes client and server
+>    agree. If you ever see client events tagged `development` in a deployed environment, check this
+>    fallback chain first.
+> 2. **`NEXT_PUBLIC_SENTRY_ENVIRONMENT` must be scoped to the staging deployment ONLY.** If it leaks
+>    into the Preview tier's scope in the Vercel dashboard, it wins the `??` chain for every PR
+>    preview too (since it's checked first), and **every PR preview reports as `"staging"` in
+>    Sentry** — preview and staging become indistinguishable. This is not hypothetical: it happened
+>    during ICR-117 QA. Double-check the Vercel environment-variable scope (Production / Preview /
+>    Development / Custom Environments), not just the variable's presence.
+
+`VERCEL_ENV` alone is **not enough** even once `NEXT_PUBLIC_VERCEL_ENV` is added to the chain. Vercel
+only ever sets it to `production`, `preview`, or `development` — there is no native `staging` value.
+This site's staging deployment is a **separate deploy at `staging.idcredentor.org`**, run as a Vercel
+custom environment whose `NEXT_PUBLIC_VERCEL_ENV`/`VERCEL_ENV` resolve to `"preview"` — identical to
+any ordinary PR preview. Without the explicit override, staging would be indistinguishable from a PR
+preview in the Sentry UI. Setting `NEXT_PUBLIC_SENTRY_ENVIRONMENT=staging` **only** on that one
+deployment (see trap 2 above) is what makes staging show up as its own environment. See
+`docs/architecture/contentful-environments.md` and the project's `stagingUrl` in `.claude/config.json`
+for the same staging-is-not-a-native-Vercel-env fact in a different context (Contentful envs).
+
+Resolution order, in full:
+
+1. `NEXT_PUBLIC_SENTRY_ENVIRONMENT` — explicit override, wins unconditionally. Required on staging.
+2. `NEXT_PUBLIC_VERCEL_ENV` — browser- and server-readable. Makes client and server agree.
+3. `VERCEL_ENV` — server-only fallback, kept for robustness (e.g. if Vercel ever stops exposing the
+   `NEXT_PUBLIC_*` system var, the server side still resolves correctly).
+4. `"development"` — local fallback.
 
 ## Sampling
 
@@ -185,14 +214,15 @@ not a misconfiguration.
 | Variable                         | Public?    | Purpose                                                              | Set on (Vercel tier)                               |
 | -------------------------------- | ---------- | -------------------------------------------------------------------- | -------------------------------------------------- |
 | `NEXT_PUBLIC_SENTRY_DSN`         | public     | Ingest endpoint. Absent → Sentry inert (app runs normally).          | Production + Staging + Preview                     |
-| `NEXT_PUBLIC_SENTRY_ENVIRONMENT` | public     | Overrides the env tag. See "Environment resolution" above.           | Staging only                                       |
+| `NEXT_PUBLIC_SENTRY_ENVIRONMENT` | public     | Overrides the env tag. See "Environment resolution" above.           | Staging only — see trap 2 above                    |
+| `NEXT_PUBLIC_VERCEL_ENV`         | public     | Auto-injected by Vercel; browser-readable mirror of `VERCEL_ENV`.    | Auto (all tiers) — never set by hand               |
 | `SENTRY_ORG`                     | not public | Build-time source-map upload.                                        | Production + Staging + CI                          |
 | `SENTRY_PROJECT`                 | not public | Build-time source-map upload.                                        | Production + Staging + CI                          |
 | `SENTRY_AUTH_TOKEN`              | **secret** | Build-time source-map upload only. Missing → warns, skips, build OK. | Production + Staging + CI (never PR-fork previews) |
 
 Names only — never a real value — in `.env.example`, this doc, commits, or PRs. See
 `apps/web/src/types/environment.d.ts` for the typed declarations and `apps/web/.env.example` for the
-documented placeholders. `turbo.json`'s `tasks.build.env` also declares all five (plus `CI`, which
+documented placeholders. `turbo.json`'s `tasks.build.env` also declares all six (plus `CI`, which
 gates the `silent` option above) — the root `pnpm build` runs `turbo run build`, whose `env` allowlist
 gates what a task actually sees; an undeclared var can be silently filtered out of the task
 environment even if it's set in the shell, which would look identical to source-map upload just not

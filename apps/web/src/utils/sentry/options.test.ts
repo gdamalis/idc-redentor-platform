@@ -11,15 +11,37 @@ afterEach(() => {
 });
 
 describe("resolveSentryEnvironment", () => {
-  it("prefers the explicit NEXT_PUBLIC_SENTRY_ENVIRONMENT override", () => {
+  it("prefers the explicit NEXT_PUBLIC_SENTRY_ENVIRONMENT override over NEXT_PUBLIC_VERCEL_ENV (staging beats preview)", () => {
+    // This is the staging deploy's case: staging's NEXT_PUBLIC_VERCEL_ENV is "preview"
+    // (it's a Vercel custom environment), so the explicit override is the ONLY thing
+    // that can distinguish it from an actual PR preview. This must keep winning.
     vi.stubEnv("NEXT_PUBLIC_SENTRY_ENVIRONMENT", "staging");
+    vi.stubEnv("NEXT_PUBLIC_VERCEL_ENV", "preview");
     vi.stubEnv("VERCEL_ENV", "preview");
 
     expect(resolveSentryEnvironment()).toBe("staging");
   });
 
-  it("falls back to VERCEL_ENV when no override is set", () => {
+  it("falls back to NEXT_PUBLIC_VERCEL_ENV when no override is set", () => {
     vi.stubEnv("NEXT_PUBLIC_SENTRY_ENVIRONMENT", undefined);
+    vi.stubEnv("NEXT_PUBLIC_VERCEL_ENV", "preview");
+    vi.stubEnv("VERCEL_ENV", undefined);
+
+    expect(resolveSentryEnvironment()).toBe("preview");
+  });
+
+  it("prefers NEXT_PUBLIC_VERCEL_ENV over the server-only VERCEL_ENV, because the browser cannot read VERCEL_ENV", () => {
+    // Distinct values so the assertion is unambiguous about which one won.
+    vi.stubEnv("NEXT_PUBLIC_SENTRY_ENVIRONMENT", undefined);
+    vi.stubEnv("NEXT_PUBLIC_VERCEL_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "preview");
+
+    expect(resolveSentryEnvironment()).toBe("production");
+  });
+
+  it("falls back to the server-only VERCEL_ENV when both NEXT_PUBLIC_* vars are unset (server-side path)", () => {
+    vi.stubEnv("NEXT_PUBLIC_SENTRY_ENVIRONMENT", undefined);
+    vi.stubEnv("NEXT_PUBLIC_VERCEL_ENV", undefined);
     vi.stubEnv("VERCEL_ENV", "preview");
 
     expect(resolveSentryEnvironment()).toBe("preview");
@@ -27,6 +49,7 @@ describe("resolveSentryEnvironment", () => {
 
   it("falls back to development when nothing is set", () => {
     vi.stubEnv("NEXT_PUBLIC_SENTRY_ENVIRONMENT", undefined);
+    vi.stubEnv("NEXT_PUBLIC_VERCEL_ENV", undefined);
     vi.stubEnv("VERCEL_ENV", undefined);
 
     expect(resolveSentryEnvironment()).toBe("development");
