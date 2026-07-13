@@ -1,3 +1,9 @@
+## [1.25.2](https://github.com/gdamalis/idc-redentor-web/compare/v1.25.1...v1.25.2) (2026-07-13)
+
+### Bug Fixes
+
+- **ICR-136:** fail closed when a route's shared secret is unset ([#83](https://github.com/gdamalis/idc-redentor-web/issues/83)) ([6c0bd89](https://github.com/gdamalis/idc-redentor-web/commit/6c0bd899f50402b89cd4270bae91a69c4f152338))
+
 ## [1.25.1](https://github.com/gdamalis/idc-redentor-web/compare/v1.25.0...v1.25.1) (2026-07-09)
 
 # [1.25.0](https://github.com/gdamalis/idc-redentor-web/compare/v1.24.0...v1.25.0) (2026-07-06)
