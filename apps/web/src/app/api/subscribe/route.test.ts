@@ -10,6 +10,12 @@ const req = (body: unknown) =>
     body: JSON.stringify(body),
   });
 
+const rawReq = (body?: BodyInit) =>
+  new Request("http://x/api/subscribe", {
+    method: "POST",
+    body,
+  });
+
 beforeEach(() => addSubscriber.mockReset());
 
 describe("POST /api/subscribe", () => {
@@ -34,6 +40,25 @@ describe("POST /api/subscribe", () => {
   it("400 on invalid email (zod) without calling the service", async () => {
     const res = await POST(req({ email: "nope" }));
     expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      messageKey: "SubscribeBanner.error-unexpected",
+    });
+    expect(addSubscriber).not.toHaveBeenCalled();
+  });
+  it("400 on an empty body without calling the service", async () => {
+    const res = await POST(rawReq());
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      messageKey: "SubscribeBanner.error-unexpected",
+    });
+    expect(addSubscriber).not.toHaveBeenCalled();
+  });
+  it("400 on malformed JSON without calling the service", async () => {
+    const res = await POST(rawReq("{not json"));
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      messageKey: "SubscribeBanner.error-unexpected",
+    });
     expect(addSubscriber).not.toHaveBeenCalled();
   });
 });
