@@ -349,45 +349,64 @@ closes a _linkage_ hole, not a behavior bug). Step 5 is what actually proves the
 
 - [ ] **Step 5: THE MUTATION CHECK — mandatory, do not skip**
 
-This replaces TDD's RED phase. A suite never observed failing is a rubber stamp (ICR-108). Break the const
-map and confirm the failure now reaches **`route.test.ts`** — that is the proof the route is linked to the
-map rather than to a private copy of its string.
+> **CORRECTED 2026-07-13 (v2).** The original Step 5 demanded that mutating a **map value** turn
+> `route.test.ts` red. **That expectation was wrong, and the implementer was right to stop on it.** Once
+> `route.ts` and `route.test.ts` both import the same const map, the assertion
+> `expect(body.messageKey).toEqual(SUBSCRIBE_BANNER_KEYS.ERROR_UNEXPECTED)` reads _both_ sides from the
+> same object — a value mutation moves them in lockstep, so it is a tautology w.r.t. the value and can
+> never fail. That is not a weakness: post-refactor the route **follows** the map by construction, so
+> there is no desync left for a runtime test to detect. The refactor converts a runtime-checkable
+> invariant into a **structural** one, and a structural guarantee is proven by the **compiler**, not by a
+> red test. Do **not** "fix" this by reverting `route.test.ts` to hardcoded literals — that would undo
+> AC-2 and restore the duplication the ticket exists to remove.
 
-Temporarily edit `apps/web/src/i18n/messageKeys/subscribeBanner.ts`:
+Three checks. Run all three, capture verbatim output for the PR body.
 
-```ts
-  /** Fallback for server/network/unexpected failures. */
-  ERROR_UNEXPECTED: "SubscribeBanner.error-MUTATED",
-```
+**5a — Key rename ⇒ the COMPILER catches the route.** This is the hole being closed.
+Temporarily rename the _property_ in `apps/web/src/i18n/messageKeys/subscribeBanner.ts`
+(`ERROR_UNEXPECTED` → `ERROR_UNEXPECTED_RENAMED`), then run `pnpm type-check`.
 
-Run:
+Expected: errors **inside `src/app/api/subscribe/route.ts`** (TS2339, `Property 'ERROR_UNEXPECTED' does
+not exist…`), plus `subscribe.ts` and the tests. **Pre-fix, `route.ts` held a bare literal and would have
+compiled clean** — a literal cannot reference the map, so it cannot error. That silent-compile is exactly
+the defect. Revert.
 
-```bash
-cd /Users/gabriel/repos/idc-redentor-website/.claude/worktrees/ICR-148
-pnpm test 2>&1 | tee /tmp/icr148-mutation.txt | tail -30
-```
+**5b — Value change ⇒ the byte-level wire pin catches it.**
+Temporarily set `ERROR_UNEXPECTED: "SubscribeBanner.error-MUTATED"`, run `pnpm test`.
 
-**Expected — and each part matters:**
+Expected: `src/i18n/messageKeys/subscribeBanner.test.ts` **fails** (its expected side is an independent
+hand-written literal). `route.test.ts` stays **green — and that is correct**: the route faithfully emitted
+the new map value, so nothing is broken at the route. Revert.
 
-- `src/i18n/messageKeys/subscribeBanner.test.ts` fails (the byte-level wire pin — it caught the rename).
-- **`src/app/api/subscribe/route.test.ts` ALSO fails** ← _this is the new protection._ Before this ticket
-  it would have stayed **green** while the route silently desynced.
-- The route failures are on the **body** `toEqual`, while `expect(res.status)` still passes — precisely the
-  blind spot being closed.
+**5c — Route-side wrong-key edit ⇒ `route.test.ts` still catches it.** This proves re-pointing the
+assertions did **not** weaken the route's per-branch coverage.
+Temporarily make the 409 branch of `route.ts` emit `SUBSCRIBE_BANNER_KEYS.ERROR_UNEXPECTED` instead of
+`.ERROR_ALREADY_SUBSCRIBED`, run `pnpm exec vitest run src/app/api/subscribe/route.test.ts`.
 
-Capture the verbatim failing output; it goes in the PR body as the evidence this ticket delivered value.
+Expected: `× 409 already-subscribed` fails on the **body** `toEqual` while `expect(res.status).toBe(409)`
+**passes** — the status-passes/body-fails split ICR-108 bought, still intact. Revert.
 
-- [ ] **Step 6: Revert the mutation and prove the tree is clean**
+**What the three together prove (the honest claim for the PR body):**
+
+1. `subscribeBanner.test.ts` pins **map value → literal wire string** (+ both locales) — 5b.
+2. `route.test.ts` pins **route response → the correct map entry, per branch** — 5c.
+3. A key rename now **fails to compile in `route.ts`** instead of silently desyncing — 5a.
+
+Composed, the route's wire value is still pinned to the exact literal string, **and** the desync class of
+bug is now structurally impossible. Strictly stronger than before.
+
+- [ ] **Step 6: Revert every mutation and prove the tree is clean**
 
 ```bash
 cd /Users/gabriel/repos/idc-redentor-website/.claude/worktrees/ICR-148
 git checkout -- apps/web/src/i18n/messageKeys/subscribeBanner.ts
-git status --porcelain apps/web/src/i18n/messageKeys/subscribeBanner.ts
+git status --porcelain          # expect ONLY the two intended route files as ' M'
+find apps/web/src -name "*.bak" # expect no output
 pnpm test 2>&1 | tail -5
 ```
 
-Expected: `git status` prints **nothing** for that file, and the suite is back to **463 passed**. Do not
-proceed while the mutation is still on disk.
+Expected: no `.bak` strays, the map file unmodified, and the suite back to **463 passed**. Do not proceed
+while any mutation is still on disk.
 
 - [ ] **Step 7: Update the two stale doc citations**
 

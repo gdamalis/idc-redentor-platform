@@ -198,12 +198,27 @@ locale-side regression still fails the build.
 3. Therefore the route response is still pinned to the literal wire string — **and** a key-map rename
    now fails at the route instead of silently desyncing. Strictly stronger than today.
 
-**Mutation check (mandatory — this replaces the RED phase):**
-Temporarily edit `SUBSCRIBE_BANNER_KEYS.ERROR_UNEXPECTED` to a wrong value, run `pnpm test`, and
-confirm the failure lands **in `route.test.ts`** (not only in the key-map test). That is the proof the
-route is now linked to the map rather than to a private copy of its string — the exact hole this
-ticket exists to close. Capture the verbatim output, then revert and confirm `git status` is clean
-before committing.
+**Mutation check (mandatory — this replaces the RED phase).** Corrected 2026-07-13 after the first
+attempt disproved the original design; see the plan's Step 5 for the full rationale.
+
+The naive check — "mutate a map _value_, expect `route.test.ts` to go red" — **cannot work, and its
+failure is not a defect.** Once `route.ts` and `route.test.ts` both import the same const map, the
+assertion reads _both_ sides from the same object, so a value mutation moves them in lockstep. Post-
+refactor the route **follows** the map by construction; there is no desync left for a runtime test to
+detect. The refactor turns a runtime-checkable invariant into a **structural** one, and structural
+guarantees are proven by the **compiler**, not by a red test.
+
+The three checks that do prove it:
+
+| #   | Mutation                                                              | Expected                                                                               | What it proves                                                                                                                            |
+| --- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| 5a  | Rename the _property_ `ERROR_UNEXPECTED` → `ERROR_UNEXPECTED_RENAMED` | `pnpm type-check` errors **inside `route.ts`** (TS2339)                                | **The hole is closed.** Pre-fix `route.ts` held a literal and compiled clean — a literal cannot reference the map, so it could not error. |
+| 5b  | Change the _value_ to `"SubscribeBanner.error-MUTATED"`               | `subscribeBanner.test.ts` **fails**; `route.test.ts` stays **green**                   | The byte-level wire pin holds. The route correctly emitted the new map value — green here is the _right_ answer.                          |
+| 5c  | Make the route's 409 branch emit `ERROR_UNEXPECTED`                   | `route.test.ts` fails on the **body** `toEqual`; `expect(res.status)` still **passes** | Re-pointing the assertions did **not** weaken per-branch route coverage — ICR-108's protection is intact.                                 |
+
+Composed: the route's wire value is still pinned to the exact literal string, **and** the desync class
+of bug is now structurally impossible. Capture verbatim output for the PR body, revert every mutation,
+and confirm `git status` is clean (no `.bak` strays) before committing.
 
 **Manual smoke (preview, `qaType: api`):** `POST /api/subscribe` with an invalid body and assert the
 400 response body is byte-identical to `{"messageKey":"SubscribeBanner.error-unexpected"}`. Do **not**
