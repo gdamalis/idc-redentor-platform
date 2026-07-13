@@ -1,3 +1,4 @@
+import { LOGO } from "@idcr/ui";
 import { routing } from "@src/i18n/routing";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Nunito_Sans } from "next/font/google";
@@ -22,7 +23,7 @@ export default async function NotFound() {
             <div className="flex justify-center mb-8">
               {/* Light Mode Logo */}
               <Image
-                src="/assets/img/redentor_logo_100.png"
+                src={LOGO.default100}
                 className="block h-24 w-24 dark:hidden"
                 width={96}
                 height={96}
@@ -31,7 +32,7 @@ export default async function NotFound() {
               />
               {/* Dark Mode Logo */}
               <Image
-                src="/assets/img/redentor_logo_light_100.png"
+                src={LOGO.light100}
                 className="hidden h-24 w-24 dark:block"
                 width={96}
                 height={96}
