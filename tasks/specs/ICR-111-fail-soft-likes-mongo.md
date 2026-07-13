@@ -235,9 +235,27 @@ Mock `@src/service/like.service` + `next/headers`'s `cookies`. Follow `api/subsc
 
 ### Manual smoke — Vercel preview (the DB-down environment)
 
-Preview has **no `MONGODB_URI`** (lesson ICR-44: previews lack runtime secrets), which makes it a
-free, faithful reproduction of a total Mongo outage. Expected before/after: the blog article page goes
-**500 → 200**.
+Preview is a free, faithful reproduction of a Mongo outage — but **not for the reason this ticket
+assumed**, and the difference is load-bearing.
+
+**Verified against the preview's Vercel runtime logs:** `MONGODB_URI` **is** set on preview, and
+`connect()` **succeeds** — it pings `admin` and logs `Connected to database`. The Atlas user is simply
+not authorized to read the collection:
+
+```
+GET /es-AR/blog/retiro-idc-redentor-2026 200
+    Connected to database
+    Error fetching likes: MongoServerError: user is not allowed to do action [find] on [website.likes]
+      code: 8000, codeName: 'AtlasError'
+```
+
+So the real failure is the **query** path (the `try/catch`), **not** the `!client` connect path the
+ticket's Context and AC1 describe. **A fix that only handled `!client` — the ticket's literal ask —
+would have been a no-op on this environment, and these pages would still be 500ing.** They return 200
+solely because the `catch` block also fails soft (the scope expansion approved at the design gate).
+This is the single most important thing to know about this ticket.
+
+Expected before/after: the blog article page goes **500 → 200**.
 
 - `/es-AR/blog/<slug>` and `/en-US/blog/<slug>` → **200**, title/body/related/share/CTA all intact, **no heart**.
 - `/es-AR/predicas/<slug>` and `/en-US/predicas/<slug>` → same.

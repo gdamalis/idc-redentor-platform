@@ -1,11 +1,17 @@
 /**
  * ICR-111: fail soft when the likes DB (MongoDB) is unavailable.
  *
- * Vercel PREVIEW deployments for this project have NO `MONGODB_URI` (previews lack
- * runtime secrets) — so every request in this suite exercises the REAL degraded path,
- * not a mock. That is intentional: the preview environment is a faithful, permanent
- * reproduction of a total Mongo outage. See src/service/like.service.ts and
- * src/app/api/likes/route.ts.
+ * On Vercel PREVIEW the likes DB is permanently unreachable, so every request in this
+ * suite exercises the REAL degraded path, not a mock. Note the failure mode, because it
+ * is NOT the one the ticket assumed: `MONGODB_URI` *is* set on preview and `connect()`
+ * SUCCEEDS (it pings `admin` and logs "Connected to database") — the Atlas user simply
+ * is not authorized to `find` on `website.likes`, so the QUERY throws
+ * (`MongoServerError ... code 8000`) inside the try/catch.
+ *
+ * That distinction is the whole point of this suite: a fix that only handled the
+ * `!client` (connect-failed) branch would be a NO-OP here, and these pages would still
+ * 500. They return 200 only because the catch block also fails soft. See
+ * src/service/like.service.ts and src/app/api/likes/route.ts.
  *
  * Covers (see tasks/specs/ICR-111-fail-soft-likes-mongo.md for the full AC list):
  *  - AC1 (blog): the blog article page still renders 200 with title, body, related
