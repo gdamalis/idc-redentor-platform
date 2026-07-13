@@ -80,6 +80,14 @@ swap `pdfSummary[locale]` on the SAME draft entry in place, delete the supersede
   of `/predica` is unchanged). The write-back also **hard-refuses `master`/`master-*`**, defaulting instead to
   the concrete `production` environment — see the read-vs-write environment-default note in
   `docs/architecture/contentful-data-layer.md`.
+- **Fail-closed auth (ICR-136).** Both the `x-predica-regen-key` webhook header and the cron's
+  `Authorization: Bearer <CRON_SECRET>` are checked via `isAuthorizedSecret()`
+  (`apps/web/src/utils/auth/secret.ts`), which refuses (401) when the expected env var is unset or
+  empty and otherwise compares in constant time (`crypto.timingSafeEqual`). Before this, the cron
+  interpolated `process.env.CRON_SECRET` into a template literal, so an unset var made the expected
+  value the literal string `Bearer undefined` — any caller sending that header authenticated. The
+  same helper also guards `/api/revalidate` and `/api/draft/enable`; a new secret-guarded route
+  should reuse it, not a raw `!==`.
 - **Version-stamped.** Each successful render bumps a monotonic `version`, which lands both in the PDF footer
   (a small `· v<N>` appended to the existing signature) and the new asset's title
   (`"<sermon title> — PDF <locale> · v<N>"`) — so a preacher can tell a fresh PDF landed.
