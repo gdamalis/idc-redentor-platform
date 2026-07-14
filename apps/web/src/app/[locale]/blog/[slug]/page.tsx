@@ -68,7 +68,10 @@ export default async function PostDetailsPage({
 
   const cookieStore = await cookies();
   const visitorId = cookieStore.get("_visitor_id")?.value;
-  const likesData = await getLikes(slug, visitorId);
+  const likesOutcome = await getLikes(slug, visitorId);
+  const likes = likesOutcome.ok
+    ? { count: likesOutcome.count, hasLiked: likesOutcome.hasLiked }
+    : undefined;
 
   const jsonLd = buildArticleJsonLd(post, locale);
 
@@ -82,8 +85,7 @@ export default async function PostDetailsPage({
         post={post}
         relatedPosts={latestPosts}
         locale={locale}
-        initialLikeCount={likesData.count}
-        initialHasLiked={likesData.hasLiked}
+        likes={likes}
       />
       <ComponentCta content={contactCta} />
     </>

@@ -1,4 +1,4 @@
-import { cn } from "@src/utils/cn";
+import { cn } from "@idcr/ui";
 import { HTMLAttributes } from "react";
 
 export interface DividerProps extends HTMLAttributes<HTMLHRElement> {

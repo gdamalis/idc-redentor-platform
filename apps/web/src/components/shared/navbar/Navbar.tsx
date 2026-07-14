@@ -5,7 +5,7 @@ import { Link } from "@src/i18n/routing";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { Menu, X } from "lucide-react";
-import { cn } from "@src/utils/cn";
+import { cn, LOGO } from "@idcr/ui";
 import { Button } from "@src/components/ui/button";
 import { Container } from "@src/components/ui/container";
 import LanguageSwitcher from "@src/components/shared/language-switcher/LanguageSwitcher";
@@ -51,11 +51,7 @@ export const Navbar = ({ menuItems = [], variant = "overlay" }: NavbarProps) => 
         {/* Logo */}
         <Link href="/" className="flex items-center gap-3 group">
           <Image
-            src={
-              useSolidAppearance
-                ? "/assets/img/redentor_logo.png"
-                : "/assets/img/redentor_logo_light.png"
-            }
+            src={useSolidAppearance ? LOGO.default : LOGO.light}
             alt={t("common.homepage")}
             width={144}
             height={96}

@@ -44,5 +44,16 @@ declare namespace NodeJS {
     
     // MongoDB
     MONGODB_URI: string;
+
+    // Sentry (observability) — see docs/architecture/observability-sentry.md
+    NEXT_PUBLIC_SENTRY_DSN?: string;
+    NEXT_PUBLIC_SENTRY_ENVIRONMENT?: string;
+    // Injected automatically by Vercel — the browser-readable mirror of VERCEL_ENV.
+    // Normally left unset locally; see resolveSentryEnvironment() in
+    // src/utils/sentry/options.ts for why this is in the fallback chain.
+    NEXT_PUBLIC_VERCEL_ENV?: 'production' | 'preview' | 'development';
+    SENTRY_ORG?: string;
+    SENTRY_PROJECT?: string;
+    SENTRY_AUTH_TOKEN?: string;
   }
-} 
+}

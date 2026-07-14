@@ -1,5 +1,6 @@
 import { Container } from "@src/components/ui/container";
 import { BlogPost } from "@src/types/BlogPost";
+import type { Likes } from "@src/service/like.service";
 import { BlogPostHeader } from "./BlogPostHeader";
 import { BlogPostContent } from "./BlogPostContent";
 import { PostActions } from "./PostActions";
@@ -9,16 +10,14 @@ type BlogPostDetailsProps = Readonly<{
   post: BlogPost;
   relatedPosts: BlogPost[];
   locale: string;
-  initialLikeCount: number;
-  initialHasLiked: boolean;
+  likes?: Likes;
 }>;
 
 export default function BlogPostDetails({
   post,
   relatedPosts,
   locale,
-  initialLikeCount,
-  initialHasLiked,
+  likes,
 }: BlogPostDetailsProps) {
   if (!post) {
     return null;
@@ -35,8 +34,7 @@ export default function BlogPostDetails({
           likeKey={post.slug}
           title={post.title}
           featuredImageUrl={post.featuredImage.url}
-          initialLikeCount={initialLikeCount}
-          initialHasLiked={initialHasLiked}
+          likes={likes}
         />
         <RelatedArticles posts={relatedPosts} locale={locale} sourceSlug={post.slug} />
       </div>

@@ -10,7 +10,7 @@ The **public website** (`apps/web`) is a **content-managed informational site**,
 
 **Version**: 1.10.0 (read from `package.json`) | **Node**: 22.14.0 (`.nvmrc`) | **Package Manager**: pnpm | **Host**: Vercel (production + per-PR preview deploys)
 
-> **Monorepo layout (since the admin-platform migration):** this repo is a **pnpm + Turborepo workspace**. The public website now lives entirely under **`apps/web/`** — every app path in this doc (`src/`, `lib/`, `public/`, `config/`, `next.config.ts`, `tsconfig.json`, …) is **under `apps/web/`** unless stated otherwise. The repo root holds the workspace files (`pnpm-workspace.yaml`, `turbo.json`, root `package.json` with Turbo-proxy scripts + the released version + `pnpm.overrides`), the `.claude/` harness, `docs/`, and `tasks/`. Run commands at root (they proxy through Turbo across the workspace) or scope to the site with `pnpm --filter @idcr/web <task>`. Vercel builds the site with **Root Directory = `apps/web`**. The future admin app will be `apps/admin/`.
+> **Monorepo layout (since the admin-platform migration):** this repo is a **pnpm + Turborepo workspace**. The public website now lives entirely under **`apps/web/`** — every app path in this doc (`src/`, `lib/`, `public/`, `config/`, `next.config.ts`, `tsconfig.json`, …) is **under `apps/web/`** unless stated otherwise. The repo root holds the workspace files (`pnpm-workspace.yaml`, `turbo.json`, root `package.json` with Turbo-proxy scripts + the released version + `pnpm.overrides`), the `.claude/` harness, `docs/`, and `tasks/`. Workspace members also include two shared packages `apps/web` consumes — **`packages/config`** (`@idcr/config`: base tsconfig/eslint/postcss/prettier) and **`packages/ui`** (`@idcr/ui`: `cn()`, `LOGO` path constants, `tokens.css`) — see `docs/architecture/monorepo-packages.md`. Run commands at root (they proxy through Turbo across the workspace) or scope to the site with `pnpm --filter @idcr/web <task>`. Vercel builds the site with **Root Directory = `apps/web`**. The future admin app will be `apps/admin/`.
 
 ## Commands
 
@@ -136,7 +136,7 @@ Distilled from `.cursorrules` (which `AGENTS.md` supersedes). Apply these by def
 - **Always `await`** Next.js runtime APIs: `cookies()`, `headers()`, `draftMode()`, `props.params`, `props.searchParams`.
 - Forms use `useActionState` (not the deprecated `useFormState`) and the enhanced `useFormStatus`. Minimize client state.
 - **Naming**: auxiliary-verb booleans (`isLoading`, `hasError`); `handle*` event handlers; **lowercase-dash directories**; **named exports** for components.
-- **UI**: Headless UI + Heroicons / Lucide + Framer Motion; **Tailwind CSS v4**; compose classes with `cn()` (`src/utils/cn`). Validate external input with **Zod** at boundaries (`react-hook-form` + `@hookform/resolvers`).
+- **UI**: Headless UI + Heroicons / Lucide + Framer Motion; **Tailwind CSS v4**; compose classes with `cn()` (`@idcr/ui`). Validate external input with **Zod** at boundaries (`react-hook-form` + `@hookform/resolvers`).
 - **Default site language is `es-AR`**, secondary `en-US`.
 - **Commits**: Conventional Commits (`feat`, `fix`, `chore`, `refactor`, `perf`, `docs`, `test`, `ci`), header ≤ 100 chars. `semantic-release` runs on `main`. See `docs/architecture/contributing.md`.
 
@@ -253,6 +253,7 @@ A human always merges the PR and closes the issue (transitions it to **Done**). 
 - **Product brain (the "church definition")** — [`docs/product/`](docs/product/README.md): the one-paragraph definition, mission/values/voice (draft), `scope-and-boundaries.md` (the hard IN/OUT/DEFERRED filter — no logins, no payments, no public UGC, no in-product AI), `content-types.md`, `editorial-and-content-rules.md`, and `ai-era-strategy.md`. The `product-manager` agent loads this folder on every run. Read it before shaping product work.
 - **Engineering docs** — in `docs/architecture/`:
   - `architecture.md` — App Router groups, the Contentful↔MongoDB split, request lifecycle, path aliases, security posture.
+  - `monorepo-packages.md` — the `@idcr/config` + `@idcr/ui` workspace packages: what each exports, why `@idcr/ui` ships raw source via `transpilePackages`, why `paths` aliases must stay out of the shared tsconfig base, why there's no Tailwind preset, the logo-path-vs-bytes split, the verified Vercel/pnpm workspace deploy behavior, and the tokens contract `apps/admin` must satisfy.
   - `contentful-data-layer.md` — `fetchGraphQL`, the getter convention, the `site-content` cache tag, draft/preview, the revalidate webhook, why codegen is unused.
   - `contentful-environments.md` — the canonical content/model workflow (3 scenarios, heavy alias-swap cutover runbook, entry-sync tool, drift detector); the single source of truth on the `master → production` + `staging` topology.
   - `contentful-mcp.md` — the official Contentful MCP server for agents (registered inline in local `~/.claude.json`; local/token, `ENVIRONMENT_ID=staging` default, `PROTECTED_ENVIRONMENTS=master,production`); the agent-only write path, separate from the app's read path.
@@ -260,6 +261,7 @@ A human always merges the PR and closes the issue (transitions it to **Done**). 
   - `forms-and-email.md` — contact + subscribe flows, the SendGrid/Resend adapter, templates, spam/PII handling.
   - `likes-and-mongodb.md` — the cached Mongo client, the `likes`/`contact` collections, visitor de-dup, write safety.
   - `seo-and-metadata.md` — `lib/metadata.ts`, the Contentful `Seo` type, OG/Twitter cards, JSON-LD, locale alternates.
+  - `observability-sentry.md` — `@sentry/nextjs` across server/edge/client, the `options.ts` single source of truth, the `/monitoring` tunnel vs. CSP/proxy-matcher traps, and the locked PII posture.
   - `agent-harness.md` — how to use the agents and commands; the human-gated Jira automation.
   - `predica-bibleverse-reuse.md` — how `/predica` dedups scripture: the derived, version-scoped `bibleVerse` `internalName` (`"Joel 2:13 (NVI)"`) + the `--upsert-by-internal-name` CMA flag; cross-sermon reuse + sermon re-run safety.
   - `predica-rerun-idempotency.md` — re-running `/predica` safely: pre-flight transcript reuse by audio hash, **Gate 0** existing-sermon detection, regenerate by **update-in-place** (`--id`) instead of duplicating, and the guarded `delete-contentful.mjs` cleanup of superseded assets + orphaned legacy verses.

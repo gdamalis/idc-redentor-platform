@@ -60,7 +60,10 @@ export default async function SermonDetailsPage({
   const cookieStore = await cookies();
   const visitorId = cookieStore.get("_visitor_id")?.value;
   const likeKey = `predicas/${slug}`;
-  const likesData = await getLikes(likeKey, visitorId);
+  const likesOutcome = await getLikes(likeKey, visitorId);
+  const likes = likesOutcome.ok
+    ? { count: likesOutcome.count, hasLiked: likesOutcome.hasLiked }
+    : undefined;
 
   const jsonLd = buildSermonJsonLd(sermon, locale);
 
@@ -74,8 +77,7 @@ export default async function SermonDetailsPage({
         sermon={sermon}
         relatedSermons={relatedSermons}
         locale={locale}
-        initialLikeCount={likesData.count}
-        initialHasLiked={likesData.hasLiked}
+        likes={likes}
       />
       <ComponentCta content={contactCta} />
     </>

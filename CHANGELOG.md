@@ -1,3 +1,9 @@
+## [1.25.6](https://github.com/gdamalis/idc-redentor-web/compare/v1.25.5...v1.25.6) (2026-07-14)
+
+### Bug Fixes
+
+- **ICR-111:** fail soft when the likes DB is unavailable ([#92](https://github.com/gdamalis/idc-redentor-web/issues/92)) ([f015b1d](https://github.com/gdamalis/idc-redentor-web/commit/f015b1de7c64839e8a70c72aa82cff9bd82de5bb))
+
 ## [1.25.5](https://github.com/gdamalis/idc-redentor-web/compare/v1.25.4...v1.25.5) (2026-07-14)
 
 ### Bug Fixes
