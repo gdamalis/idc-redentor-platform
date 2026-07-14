@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 const addSubscriber = vi.hoisted(() => vi.fn());
 vi.mock("@src/service/subscribe.service", () => ({ addSubscriber }));
 import { POST } from "./route";
+import { SUBSCRIBE_BANNER_KEYS } from "@src/i18n/messageKeys/subscribeBanner";
 
 const req = (body: unknown) =>
   new Request("http://x/api/subscribe", {
@@ -32,16 +33,21 @@ describe("POST /api/subscribe", () => {
     expect(addSubscriber).toHaveBeenCalledWith("a@b.com", "es-AR");
   });
   it("409 already-subscribed", async () => {
-    addSubscriber.mockResolvedValue({ ok: false, reason: "already-subscribed" });
+    addSubscriber.mockResolvedValue({
+      ok: false,
+      reason: "already-subscribed",
+    });
     const res = await POST(req({ email: "a@b.com" }));
     expect(res.status).toBe(409);
-    expect(await res.json()).toEqual({ messageKey: "SubscribeBanner.error-already-subscribed" });
+    expect(await res.json()).toEqual({
+      messageKey: SUBSCRIBE_BANNER_KEYS.ERROR_ALREADY_SUBSCRIBED,
+    });
   });
   it("400 on invalid email (zod) without calling the service", async () => {
     const res = await POST(req({ email: "nope" }));
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({
-      messageKey: "SubscribeBanner.error-unexpected",
+      messageKey: SUBSCRIBE_BANNER_KEYS.ERROR_UNEXPECTED,
     });
     expect(addSubscriber).not.toHaveBeenCalled();
   });
@@ -49,7 +55,7 @@ describe("POST /api/subscribe", () => {
     const res = await POST(rawReq());
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({
-      messageKey: "SubscribeBanner.error-unexpected",
+      messageKey: SUBSCRIBE_BANNER_KEYS.ERROR_UNEXPECTED,
     });
     expect(addSubscriber).not.toHaveBeenCalled();
   });
@@ -57,7 +63,7 @@ describe("POST /api/subscribe", () => {
     const res = await POST(rawReq("{not json"));
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({
-      messageKey: "SubscribeBanner.error-unexpected",
+      messageKey: SUBSCRIBE_BANNER_KEYS.ERROR_UNEXPECTED,
     });
     expect(addSubscriber).not.toHaveBeenCalled();
   });
@@ -66,7 +72,7 @@ describe("POST /api/subscribe", () => {
     const res = await POST(req({ email: "a@b.com" }));
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({
-      messageKey: "SubscribeBanner.error-unexpected",
+      messageKey: SUBSCRIBE_BANNER_KEYS.ERROR_UNEXPECTED,
     });
     expect(addSubscriber).toHaveBeenCalled();
   });
@@ -75,7 +81,7 @@ describe("POST /api/subscribe", () => {
     const res = await POST(req({ email: "a@b.com" }));
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({
-      messageKey: "SubscribeBanner.error-unexpected",
+      messageKey: SUBSCRIBE_BANNER_KEYS.ERROR_UNEXPECTED,
     });
   });
   it("500 when the service is not configured", async () => {
@@ -83,7 +89,7 @@ describe("POST /api/subscribe", () => {
     const res = await POST(req({ email: "a@b.com" }));
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({
-      messageKey: "SubscribeBanner.error-unexpected",
+      messageKey: SUBSCRIBE_BANNER_KEYS.ERROR_UNEXPECTED,
     });
   });
 });

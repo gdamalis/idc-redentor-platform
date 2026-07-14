@@ -1,5 +1,5 @@
 import { Document } from "@contentful/rich-text-types";
-import type { ContactFormKey } from "./contactFormMessageKeys";
+import type { ContactFormKey } from "@src/i18n/messageKeys/contactForm";
 import { Field } from "./formFields";
 
 export type ContactFormProps = {
@@ -12,7 +12,6 @@ export type ContactFormProps = {
       title: string;
     };
     agreementNote: {
-       
       json: Document;
     };
     bibleVerse: {
@@ -30,4 +29,4 @@ export type ContactFormProps = {
 export type ContactFormState = {
   success: boolean;
   messageKey: ContactFormKey;
-}; 
+};
