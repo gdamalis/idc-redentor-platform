@@ -7,7 +7,7 @@
  * caught by the compiler and IDEs can find all usages.
  */
 export const SUBSCRIBE_BANNER_KEYS = {
-  /** Shown when the submitted email is already on the Mailchimp audience. */
+  /** Shown when the submitted email is already on the Resend audience. */
   ERROR_ALREADY_SUBSCRIBED: "SubscribeBanner.error-already-subscribed",
 
   /** Fallback for server/network/unexpected failures. */

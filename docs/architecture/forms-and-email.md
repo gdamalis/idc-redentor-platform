@@ -59,7 +59,7 @@ The recipient is `CONTACT_FORM_RECIPIENT_EMAIL`. The user's free-text `message` 
 
 The action treats the **database write as the source of truth**: if the Mongo insert succeeds it returns success **even when the email fails** (the email failure is logged, not surfaced). If the DB write fails, the user sees the localized save-failure message. This is intentional — a submission is never silently lost, but a transient email outage doesn't block the user.
 
-The action is **locale-agnostic**: it returns a stable `messageKey` (one of `ContactFormKey` from `src/components/features/contact-form/contactFormMessageKeys.ts` — `success-message`, `error-required-fields`, `error-invalid-email`, `error-save-failed`, `error-unexpected`), and the client (`ContactForm.tsx`) resolves it to localized text via `useTranslations()` against the `ContactForm` namespace in `public/locales/{es-AR,en-US}.json`. Raw `error.message` from caught exceptions is **never** surfaced to the user (it maps to the generic `error-unexpected` key) — see ICR-49.
+The action is **locale-agnostic**: it returns a stable `messageKey` (one of `ContactFormKey` from `src/i18n/messageKeys/contactForm.ts` — `success-message`, `error-required-fields`, `error-invalid-email`, `error-save-failed`, `error-unexpected`), and the client (`ContactForm.tsx`) resolves it to localized text via `useTranslations()` against the `ContactForm` namespace in `public/locales/{es-AR,en-US}.json`. Raw `error.message` from caught exceptions is **never** surfaced to the user (it maps to the generic `error-unexpected` key) — see ICR-49.
 
 ## Newsletter subscribe (Resend — locale-aware)
 
@@ -87,7 +87,7 @@ src/app/api/subscribe/route.ts
   passes the result to `subscribe(email, locale)`, which POSTs `{ email, locale }`. The route Zod-validates
   the pair and routes the contact to the matching Resend audience via `addSubscriber`.
 - On failure the route returns a stable `messageKey` (one of `SubscribeBannerKey` from
-  `src/components/shared/subscribe-banner/subscribeBannerMessageKeys.ts`). `src/service/subscribe.ts`
+  `src/i18n/messageKeys/subscribeBanner.ts`). `src/service/subscribe.ts`
   validates the key on receipt and falls back to `error-unexpected` for any keyless or network failure.
   The clients resolve the key via `useTranslations()` against the `SubscribeBanner` namespace in
   `public/locales/{es-AR,en-US}.json` — see ICR-47.
