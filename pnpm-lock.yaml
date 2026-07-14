@@ -33,6 +33,9 @@ importers:
       "@commitlint/config-conventional":
         specifier: ^21.0.2
         version: 21.0.2
+      "@idcr/config":
+        specifier: workspace:*
+        version: link:packages/config
       "@semantic-release/changelog":
         specifier: ^6.0.3
         version: 6.0.3(semantic-release@25.0.2(typescript@5.9.3))
@@ -90,6 +93,9 @@ importers:
       "@hookform/resolvers":
         specifier: ^3.10.0
         version: 3.10.0(react-hook-form@7.66.1(react@19.2.1))
+      "@idcr/ui":
+        specifier: workspace:*
+        version: link:../../packages/ui
       "@mailchimp/mailchimp_marketing":
         specifier: ^3.0.80
         version: 3.0.80
@@ -117,9 +123,6 @@ importers:
       "@tailwindcss/postcss":
         specifier: ^4.1.16
         version: 4.1.17
-      "@tailwindcss/typography":
-        specifier: ^0.5.19
-        version: 0.5.19(tailwindcss@4.1.17)
       "@vercel/analytics":
         specifier: ^1.5.0
         version: 1.5.0(next@16.2.9(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(react@19.2.1)
@@ -181,6 +184,9 @@ importers:
       "@eslint/eslintrc":
         specifier: ^3.3.1
         version: 3.3.1
+      "@idcr/config":
+        specifier: workspace:*
+        version: link:../../packages/config
       "@playwright/test":
         specifier: ^1.61.0
         version: 1.61.0
@@ -241,6 +247,31 @@ importers:
       vitest:
         specifier: ^4.1.9
         version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@24.10.1)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1)(vite@8.0.16(@types/node@24.10.1)(jiti@2.6.1)(terser@5.49.0)(yaml@2.9.0))
+
+  packages/config:
+    dependencies:
+      eslint-config-next:
+        specifier: ^16.0.1
+        version: 16.0.5(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3)
+
+  packages/ui:
+    dependencies:
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      tailwind-merge:
+        specifier: ^3.0.2
+        version: 3.4.0
+    devDependencies:
+      "@idcr/config":
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@types/node@24.10.1)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1)(vite@8.0.16(@types/node@24.10.1)(jiti@2.6.1)(yaml@2.9.0))
 
 packages:
   "@actions/core@1.11.1":
@@ -3087,14 +3118,6 @@ packages:
         integrity: sha512-+nKl9N9mN5uJ+M7dBOOCzINw94MPstNR/GtIhz1fpZysxL/4a+No64jCBD6CPN+bIHWFx3KWuu8XJRrj/572Dw==,
       }
 
-  "@tailwindcss/typography@0.5.19":
-    resolution:
-      {
-        integrity: sha512-w31dd8HOx3k9vPtcQh5QHP9GwKcgbMp87j58qi6xgiBnFFtKEAgCWnDw4qUT8aHwkCp8bKvb/KGKWWHedP0AAg==,
-      }
-    peerDependencies:
-      tailwindcss: ">=3.0.0 || insiders || >=4.0.0-alpha.20 || >=4.0.0-beta.1"
-
   "@tanstack/react-virtual@3.13.12":
     resolution:
       {
@@ -4734,14 +4757,6 @@ packages:
       {
         integrity: sha512-YUifsXXuknHlUsmlgyY0PKzgPOr7/FjCePfHNt0jxm83wHZi44VDMQ7/fGNkjY3/jV1MC+1CmZbaHzugyeRtpg==,
       }
-
-  cssesc@3.0.0:
-    resolution:
-      {
-        integrity: sha512-/Tb/JcjK111nNScGob5MNtsntNM1aCNUDipB/TkwZFhyDrrE47SOx/18wF2bbjgc3ZzCSKW1T5nt5EbFoAz/Vg==,
-      }
-    engines: { node: ">=4" }
-    hasBin: true
 
   csstype@3.2.3:
     resolution:
@@ -8101,13 +8116,6 @@ packages:
         integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==,
       }
     engines: { node: ">= 0.4" }
-
-  postcss-selector-parser@6.0.10:
-    resolution:
-      {
-        integrity: sha512-IQ7TZdoaqbT+LCpShg46jnZVlhWD2w6iQYAcYXfHARZ7X1t/UGhhceQDs5X0cGqKvYlHNOuv7Oa1xmb0oQuA3w==,
-      }
-    engines: { node: ">=4" }
 
   postcss@8.5.15:
     resolution:
@@ -11711,11 +11719,6 @@ snapshots:
       postcss: 8.5.15
       tailwindcss: 4.1.17
 
-  "@tailwindcss/typography@0.5.19(tailwindcss@4.1.17)":
-    dependencies:
-      postcss-selector-parser: 6.0.10
-      tailwindcss: 4.1.17
-
   "@tanstack/react-virtual@3.13.12(react-dom@19.2.1(react@19.2.1))(react@19.2.1)":
     dependencies:
       "@tanstack/virtual-core": 3.13.12
@@ -12695,8 +12698,6 @@ snapshots:
 
   css.escape@1.5.1: {}
 
-  cssesc@3.0.0: {}
-
   csstype@3.2.3: {}
 
   damerau-levenshtein@1.0.8: {}
@@ -12982,6 +12983,26 @@ snapshots:
       - eslint-plugin-import-x
       - supports-color
 
+  eslint-config-next@16.0.5(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3):
+    dependencies:
+      "@next/eslint-plugin-next": 16.0.5
+      eslint: 9.39.1(jiti@2.6.1)
+      eslint-import-resolver-node: 0.3.9
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.1(jiti@2.6.1))
+      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.1(jiti@2.6.1))
+      eslint-plugin-jsx-a11y: 6.10.2(eslint@9.39.1(jiti@2.6.1))
+      eslint-plugin-react: 7.37.5(eslint@9.39.1(jiti@2.6.1))
+      eslint-plugin-react-hooks: 7.0.1(eslint@9.39.1(jiti@2.6.1))
+      globals: 16.4.0
+      typescript-eslint: 8.48.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3)
+    optionalDependencies:
+      typescript: 5.9.3
+    transitivePeerDependencies:
+      - "@typescript-eslint/parser"
+      - eslint-import-resolver-webpack
+      - eslint-plugin-import-x
+      - supports-color
+
   eslint-import-resolver-node@0.3.9:
     dependencies:
       debug: 3.2.7
@@ -13040,6 +13061,33 @@ snapshots:
       tsconfig-paths: 3.15.0
     optionalDependencies:
       "@typescript-eslint/parser": 8.48.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3)
+    transitivePeerDependencies:
+      - eslint-import-resolver-typescript
+      - eslint-import-resolver-webpack
+      - supports-color
+
+  eslint-plugin-import@2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.1(jiti@2.6.1)):
+    dependencies:
+      "@rtsao/scc": 1.1.0
+      array-includes: 3.1.9
+      array.prototype.findlastindex: 1.2.6
+      array.prototype.flat: 1.3.3
+      array.prototype.flatmap: 1.3.3
+      debug: 3.2.7
+      doctrine: 2.1.0
+      eslint: 9.39.1(jiti@2.6.1)
+      eslint-import-resolver-node: 0.3.9
+      eslint-module-utils: 2.12.1(@typescript-eslint/parser@8.48.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.1(jiti@2.6.1))
+      hasown: 2.0.4
+      is-core-module: 2.16.1
+      is-glob: 4.0.3
+      minimatch: 3.1.5
+      object.fromentries: 2.0.8
+      object.groupby: 1.0.3
+      object.values: 1.2.1
+      semver: 6.3.1
+      string.prototype.trimend: 1.0.9
+      tsconfig-paths: 3.15.0
     transitivePeerDependencies:
       - eslint-import-resolver-typescript
       - eslint-import-resolver-webpack
@@ -14626,11 +14674,6 @@ snapshots:
   po-parser@2.1.1: {}
 
   possible-typed-array-names@1.1.0: {}
-
-  postcss-selector-parser@6.0.10:
-    dependencies:
-      cssesc: 3.0.0
-      util-deprecate: 1.0.2
 
   postcss@8.5.15:
     dependencies:

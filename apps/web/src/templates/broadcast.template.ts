@@ -1,3 +1,4 @@
+import { LOGO } from "@idcr/ui";
 import type { BroadcastLocale } from "@src/service/broadcast/types";
 
 interface BroadcastChrome {
@@ -39,7 +40,7 @@ export const BROADCAST_TEMPLATE = `
   <body>
     <div class="email-container">
       <div class="email-header">
-        <img src="{{baseUrl}}/assets/img/redentor_logo.png" alt="{{logoAlt}}" />
+        <img src="{{baseUrl}}${LOGO.default}" alt="{{logoAlt}}" />
       </div>
       <div class="email-content">{{body}}</div>
       <div class="email-footer">

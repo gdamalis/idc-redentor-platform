@@ -107,10 +107,12 @@ export type BroadcastStatus = "sent" | "skipped" | "failed";
 export interface BroadcastResult {
   status: BroadcastStatus;
   campaignId?: string;
-  /** Non-secret token: already-sent | invalid-input | dedupe-unavailable | mailchimp-not-configured | send-failed */
+  /** Non-secret token: already-sent | invalid-input | dedupe-unavailable | resend-not-configured | postal-address-missing | send-failed */
   reason?: string;
 }
 ```
+
+> **Note (ICR-109):** the reason union above is the **final shipped** one (`apps/web/src/service/broadcast/types.ts`). This Task-1 block predates the Resend rewrite — the transport token became `resend-not-configured` in **RW-1**, and `postal-address-missing` was added by the CAN-SPAM guard in **RW-4**. Both are folded in here so no reader of this block ever sees a stale union.
 
 - [ ] **Step 4: Add the env var** — in `apps/web/src/types/environment.d.ts`, immediately after the `MAILCHIMP_AUDIENCE_ID: string;` line add:
 
@@ -640,6 +642,8 @@ git commit -m "feat(ICR-29): add Mailchimp campaign transport for broadcasts"
 
 ### Task 5 (CP5): `sendBroadcast` orchestrator + full suite
 
+> **⚠️ SUPERSEDED by RW-4 (ICR-109).** This Task-5 block is the original **Mailchimp-era** orchestrator + test suite, kept as historical record. Do **not** implement it as written: it predates the Resend rewrite (`sendCampaign` → `createAndSendBroadcast`, `mailchimp-not-configured` → `resend-not-configured`) **and** it omits the CAN-SPAM `postal-address-missing` guard entirely. The **authoritative** orchestrator diff and the **complete** test-case matrix — including `returns postal-address-missing without claiming or sending` — live in **RW-4** below. The shipped guard order is: validate input → validate Resend config → **validate `BROADCAST_POSTAL_ADDRESS` (fail closed)** → `claimBroadcast` → send.
+
 **Files:**
 
 - Create: `apps/web/src/service/broadcast.service.ts`
@@ -1114,11 +1118,27 @@ import {
     console.error(`[broadcast] resend-not-configured for ${broadcastId}`);
     return { status: "failed", reason: "resend-not-configured" };
   }
-  // ... after a successful claim:
+
+  // CAN-SPAM requires a real postal address in every broadcast, so this guard
+  // FAILS CLOSED and runs BEFORE claimBroadcast. Ordering is load-bearing:
+  // validate the address -> claim -> send. Claiming first would burn the
+  // broadcastId on a send that can never legally go out (the claim marks it
+  // `sending`, so a retry after the address is set would be skipped), and a
+  // fallback address would ship a non-compliant email. Do NOT "simplify" this
+  // into a `?? "<some address>"` default — that is the exact defect ICR-109
+  // removed from this plan.
+  const postalAddress = process.env.BROADCAST_POSTAL_ADDRESS?.trim();
+  if (!postalAddress) {
+    console.error(`[broadcast] postal-address-missing for ${broadcastId}`);
+    return { status: "failed", reason: "postal-address-missing" };
+  }
+
+  const claim = await claimBroadcast(broadcastId);
+  if (claim === "already-sent") return { status: "skipped", reason: "already-sent" };
+  if (claim === "error") return { status: "failed", reason: "dedupe-unavailable" };
+
+  // ... only now, after a successful claim, render + send:
     const chrome = BROADCAST_CHROME[locale];
-    const postalAddress =
-      process.env.BROADCAST_POSTAL_ADDRESS ??
-      "Iglesia de Cristo Redentor — Buenos Aires, Argentina";
     const wrappedHtml = renderTemplate("broadcast", {
       lang: locale,
       body: html,
@@ -1142,7 +1162,7 @@ import {
   }
 ```
 
-Update `apps/web/src/service/broadcast.service.test.ts`: change the transport mock from `./broadcast/mailchimpCampaign` to `./broadcast/resendBroadcast` (mock `createAndSendBroadcast` + `isResendBroadcastConfigured`, keep `ResendConfigError` real via importOriginal), set `process.env.RESEND_API_KEY` in `beforeEach`, and change the not-configured expectation to `reason: "resend-not-configured"`. Keep the no-secret-leak test (assert `SECRET_KEY_123` absent from console output). All other cases identical.
+Update `apps/web/src/service/broadcast.service.test.ts`: change the transport mock from `./broadcast/mailchimpCampaign` to `./broadcast/resendBroadcast` (mock `createAndSendBroadcast` + `isResendBroadcastConfigured`, keep `ResendConfigError` real via importOriginal), set `process.env.RESEND_API_KEY` in `beforeEach`, and change the not-configured expectation to `reason: "resend-not-configured"`. Keep the no-secret-leak test (assert `SECRET_KEY_123` absent from console output). **Add a case for the CAN-SPAM guard:** `returns postal-address-missing without claiming or sending when BROADCAST_POSTAL_ADDRESS is unset` — `vi.stubEnv("BROADCAST_POSTAL_ADDRESS", undefined)`, expect `{ status: "failed", reason: "postal-address-missing" }` and assert **both** `claimBroadcast` and `createAndSendBroadcast` were **not** called (that pair of negative assertions is the whole point — it proves fail-closed-before-claim). Set a valid `BROADCAST_POSTAL_ADDRESS` in `beforeEach` so every other case still reaches the send path. All other cases identical.
 
 Verify the FULL stack: `pnpm type-check && pnpm lint && pnpm test && pnpm build`. Commit: `refactor(ICR-29): wire sendBroadcast to Resend transport`
 

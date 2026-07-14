@@ -7,18 +7,34 @@ interface LikesDocument {
   updatedAt: Date;
 }
 
-interface LikesResult {
-  count: number;
-  hasLiked: boolean;
+export interface Likes {
+  readonly count: number;
+  readonly hasLiked: boolean;
 }
+
+interface LikesOk extends Likes {
+  readonly ok: true;
+}
+
+interface LikesUnavailable {
+  readonly ok: false;
+  readonly reason: "db-unavailable";
+}
+
+export type LikesOutcome = LikesOk | LikesUnavailable;
+
+const DB_UNAVAILABLE: LikesUnavailable = {
+  ok: false,
+  reason: "db-unavailable",
+};
 
 export async function getLikes(
   slug: string,
   visitorId?: string,
-): Promise<LikesResult> {
+): Promise<LikesOutcome> {
   const client = await connect();
   if (!client) {
-    throw new Error("Failed to connect to database");
+    return DB_UNAVAILABLE;
   }
 
   try {
@@ -28,22 +44,25 @@ export async function getLikes(
     const doc = await collection.findOne({ slug });
 
     return {
+      ok: true,
       count: doc?.count ?? 0,
-      hasLiked: visitorId ? (doc?.visitors?.includes(visitorId) ?? false) : false,
+      hasLiked: visitorId
+        ? (doc?.visitors?.includes(visitorId) ?? false)
+        : false,
     };
   } catch (error) {
     console.error("Error fetching likes:", error);
-    throw error;
+    return DB_UNAVAILABLE;
   }
 }
 
 export async function toggleLike(
   slug: string,
   visitorId: string,
-): Promise<LikesResult> {
+): Promise<LikesOutcome> {
   const client = await connect();
   if (!client) {
-    throw new Error("Failed to connect to database");
+    return DB_UNAVAILABLE;
   }
 
   try {
@@ -78,11 +97,12 @@ export async function toggleLike(
     }
 
     return {
+      ok: true,
       count: Math.max((existing?.count ?? 0) + (alreadyLiked ? -1 : 1), 0),
       hasLiked: !alreadyLiked,
     };
   } catch (error) {
     console.error("Error toggling like:", error);
-    throw error;
+    return DB_UNAVAILABLE;
   }
 }

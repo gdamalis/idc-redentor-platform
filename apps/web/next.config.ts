@@ -5,6 +5,7 @@ import headersConfig from "./config/headers";
 
 const withNextIntl = createNextIntlPlugin();
 const nextConfig: NextConfig = {
+  transpilePackages: ["@idcr/ui"],
   // @playwright/test is a devDependency, only ever dynamically imported behind the
   // renderSermonPdf.ts local/dev branch (ICR-114) — externalizing it here stops
   // webpack from tracing/bundling it into the Vercel function even though it's a

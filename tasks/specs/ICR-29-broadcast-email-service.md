@@ -41,6 +41,7 @@ These are Vercel/Resend setup steps the human owns; flagged on the PR + Jira. Th
 6. On create/send failure, mark the log `failed` (so a later retry with the same `broadcastId` is allowed) and return `{ status: "failed", reason }` — `reason` is a short non-secret token (`send-failed`).
 7. **No secrets/PII in logs.** Log only `broadcastId`, `locale`, `campaignId`, `status`, and `error.message` (never API keys, never subscriber data — with the broadcast transport we never even have subscriber emails).
 8. **Config guard:** if `RESEND_API_KEY` or `RESEND_AUDIENCE_ID` is missing, return `{ status: "failed", reason: "resend-not-configured" }` without attempting a send (and without claiming — Edge Cases #7).
+9. **CAN-SPAM postal-address guard (fail closed):** if `BROADCAST_POSTAL_ADDRESS` is unset/blank, return `{ status: "failed", reason: "postal-address-missing" }` **before claiming and before sending** (Edge Cases #9). A real postal address is legally required in every broadcast, so there is **no fallback value** — the send does not proceed. Order is load-bearing: validate input → validate Resend config → **validate the postal address** → `claimBroadcast` → send.
 
 ## 3. Data Model Changes
 
@@ -66,7 +67,7 @@ export type BroadcastStatus = "sent" | "skipped" | "failed";
 export interface BroadcastResult {
   status: BroadcastStatus;
   campaignId?: string; // the Resend broadcast id on success
-  reason?: string; // already-sent | invalid-input | dedupe-unavailable | resend-not-configured | send-failed
+  reason?: string; // already-sent | invalid-input | dedupe-unavailable | resend-not-configured | postal-address-missing | send-failed
 }
 ```
 
@@ -95,7 +96,7 @@ Insert-first claim semantics (the Codex-P1-fixed form): claim filter is **`{ bro
 
 | File                                                               | Change                                                                                                                                                            |
 | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/web/src/service/broadcast/types.ts`                          | reason-token comment: `resend-not-configured` (was `mailchimp-not-configured`).                                                                                   |
+| `apps/web/src/service/broadcast/types.ts`                          | reason-token comment: `resend-not-configured` (was `mailchimp-not-configured`); **plus `postal-address-missing`** for the fail-closed CAN-SPAM guard.             |
 | `apps/web/src/service/broadcast/types.test.ts`                     | unchanged.                                                                                                                                                        |
 | `apps/web/src/templates/broadcast.template.ts`                     | footer adds `{{{RESEND_UNSUBSCRIBE_URL}}}` + `{{postalAddress}}` + `{{unsubscribeLabel}}`; `BROADCAST_CHROME` gains `unsubscribeLabel` per locale.                |
 | `apps/web/src/templates/index.ts`                                  | unchanged (already registers `"broadcast"`).                                                                                                                      |
@@ -132,7 +133,7 @@ broadcast.service.ts  (sendBroadcast — orchestration, never throws)
 6. **Resend `send` returns an `error`** → same: caught → `markFailed` → `send-failed`. (A draft broadcast may remain in Resend; acceptable — the dedupe log is `failed`, retry re-creates.)
 7. **Missing Resend config** (`RESEND_API_KEY` / `RESEND_AUDIENCE_ID`) → `resend-not-configured`, no claim, no send.
 8. **Invalid input** → zod fail → `invalid-input`, no claim, no send.
-9. **`BROADCAST_POSTAL_ADDRESS` unset** → template falls back to a minimal church-name string and the unit still renders; flagged as a human prerequisite before live send (real address required for CAN-SPAM). Does not block the engine/tests.
+9. **`BROADCAST_POSTAL_ADDRESS` unset** → the engine **fails closed**: `{ status: "failed", reason: "postal-address-missing" }` returned **before** `claimBroadcast` — **no claim, no template render, no send**. There is **no fallback address**: a real postal address is a CAN-SPAM legal requirement, and validating before the claim means a retry still works once the address is set (a claim would have marked the id `sending` and caused the retry to be skipped). Setting the var is a human prerequisite for any live send, and the guard is asserted by a dedicated unit test (`returns postal-address-missing without claiming or sending`). This **does** block the engine — by design.
 10. **`input.html` contains `{{…}}`** → only our known keys are replaced; unknown braces (incl. `{{{RESEND_UNSUBSCRIBE_URL}}}`) pass through verbatim to Resend.
 
 ## 8. i18n
@@ -145,7 +146,7 @@ broadcast.service.ts  (sendBroadcast — orchestration, never throws)
 - **`broadcast.template.test.ts`** — body slot filled; `lang` matches locale; both locales' chrome; **footer contains the `{{{RESEND_UNSUBSCRIBE_URL}}}` placeholder + the postal address + the locale unsubscribe label**.
 - **`broadcastLog.test.ts`** — claim/skip/retry/connect-fail + the race guard (filter `{status:"failed"}`, in-flight→already-sent) (unchanged).
 - **`resendBroadcast.test.ts`** (mock the `resend` SDK) — success: `create` then `send` called in order with `{ audienceId, from, replyTo, subject, html, text }` and returns the broadcast id; `create` returns `{error}` → throws; `send` returns `{error}` → throws; missing config → `ResendConfigError` and the SDK is never called.
-- **`broadcast.service.test.ts`** (mock the units) — success → `sent`+id+`markSent`; dedupe `already-sent` → `skipped`, transport never called; transport throws → `markFailed`+`failed`; invalid input → `failed`/no claim/no send; not-configured → `resend-not-configured`/no claim; **no API key in `console` output**.
+- **`broadcast.service.test.ts`** (mock the units) — success → `sent`+id+`markSent`; dedupe `already-sent` → `skipped`, transport never called; transport throws → `markFailed`+`failed`; invalid input → `failed`/no claim/no send; not-configured → `resend-not-configured`/no claim; **`BROADCAST_POSTAL_ADDRESS` unset → `postal-address-missing`, asserting neither `claimBroadcast` nor the transport was called** (the fail-closed CAN-SPAM guard); **no API key in `console` output**.
 - **Manual smoke:** none against a deployed env (no trigger surface until ICR-44; staging mail policy forbids live POSTs). Verification = unit suite + `pnpm build`/`type-check`/`lint`. QA TYPE = **chore**.
 
 ## 10. Implementation (Revision 2 — transport swap on the existing branch)

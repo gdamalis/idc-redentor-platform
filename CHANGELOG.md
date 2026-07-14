@@ -1,3 +1,17 @@
+## [1.25.6](https://github.com/gdamalis/idc-redentor-web/compare/v1.25.5...v1.25.6) (2026-07-14)
+
+### Bug Fixes
+
+- **ICR-111:** fail soft when the likes DB is unavailable ([#92](https://github.com/gdamalis/idc-redentor-web/issues/92)) ([f015b1d](https://github.com/gdamalis/idc-redentor-web/commit/f015b1de7c64839e8a70c72aa82cff9bd82de5bb))
+
+## [1.25.5](https://github.com/gdamalis/idc-redentor-web/compare/v1.25.4...v1.25.5) (2026-07-14)
+
+### Bug Fixes
+
+- **ICR-103:** pin timeZone to UTC in formatDate and next-intl config ([#90](https://github.com/gdamalis/idc-redentor-web/issues/90)) ([00f0274](https://github.com/gdamalis/idc-redentor-web/commit/00f0274d65739661b1ba4fd2e440959f15a59014))
+
+## [1.25.4](https://github.com/gdamalis/idc-redentor-web/compare/v1.25.3...v1.25.4) (2026-07-14)
+
 ## [1.25.3](https://github.com/gdamalis/idc-redentor-web/compare/v1.25.2...v1.25.3) (2026-07-13)
 
 ## [1.25.2](https://github.com/gdamalis/idc-redentor-web/compare/v1.25.1...v1.25.2) (2026-07-13)

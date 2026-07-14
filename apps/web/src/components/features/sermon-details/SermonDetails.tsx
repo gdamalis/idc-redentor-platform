@@ -2,6 +2,7 @@ import { Container } from "@src/components/ui/container";
 import { getTranslations } from "next-intl/server";
 import { PostActions } from "@src/components/features/blog-post-details/PostActions";
 import type { Sermon } from "@src/types/Sermon";
+import type { Likes } from "@src/service/like.service";
 import { SermonHeader } from "./SermonHeader";
 import { SermonAudioPlayer } from "./SermonAudioPlayer";
 import { SermonContent } from "./SermonContent";
@@ -13,16 +14,14 @@ interface SermonDetailsProps {
   readonly sermon: Sermon;
   readonly relatedSermons: Sermon[];
   readonly locale: string;
-  readonly initialLikeCount: number;
-  readonly initialHasLiked: boolean;
+  readonly likes?: Likes;
 }
 
 export default async function SermonDetails({
   sermon,
   relatedSermons,
   locale,
-  initialLikeCount,
-  initialHasLiked,
+  likes,
 }: SermonDetailsProps) {
   if (!sermon) return null;
 
@@ -73,8 +72,7 @@ export default async function SermonDetails({
           likeKey={`predicas/${sermon.slug}`}
           title={sermon.title}
           featuredImageUrl={sermon.featuredImage?.url ?? ""}
-          initialLikeCount={initialLikeCount}
-          initialHasLiked={initialHasLiked}
+          likes={likes}
         />
 
         {/* 8. Related sermons */}

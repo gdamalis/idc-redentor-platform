@@ -3,7 +3,7 @@
 import { ContactDetails } from "@src/types/ContactDetails";
 import { sendContactForm } from "@src/service/contact.service";
 import { sendContactFormEmail } from "@src/service/contact-form-email.service";
-import { CONTACT_FORM_KEYS } from "./contactFormMessageKeys";
+import { CONTACT_FORM_KEYS } from "@src/i18n/messageKeys/contactForm";
 import { ContactFormState } from "./types";
 
 function isValidEmail(email: string): boolean {
@@ -14,20 +14,26 @@ function isValidEmail(email: string): boolean {
 export async function handleContactFormSubmission(
   _: ContactFormState | null,
   formData: FormData,
-  requiredFields: string[]
+  requiredFields: string[],
 ): Promise<ContactFormState> {
   try {
     const formValues = Object.fromEntries(formData.entries());
 
     for (const field of requiredFields) {
       if (!formValues[field]) {
-        return { success: false, messageKey: CONTACT_FORM_KEYS.ERROR_REQUIRED_FIELDS };
+        return {
+          success: false,
+          messageKey: CONTACT_FORM_KEYS.ERROR_REQUIRED_FIELDS,
+        };
       }
     }
 
     const email = formValues.email as string;
     if (email && !isValidEmail(email)) {
-      return { success: false, messageKey: CONTACT_FORM_KEYS.ERROR_INVALID_EMAIL };
+      return {
+        success: false,
+        messageKey: CONTACT_FORM_KEYS.ERROR_INVALID_EMAIL,
+      };
     }
 
     const contactDetails: ContactDetails = {
@@ -60,7 +66,10 @@ export async function handleContactFormSubmission(
       }
     } catch (dbError) {
       console.error("Database error:", dbError);
-      return { success: false, messageKey: CONTACT_FORM_KEYS.ERROR_SAVE_FAILED };
+      return {
+        success: false,
+        messageKey: CONTACT_FORM_KEYS.ERROR_SAVE_FAILED,
+      };
     }
   } catch (error) {
     console.error("Error submitting contact form:", error);

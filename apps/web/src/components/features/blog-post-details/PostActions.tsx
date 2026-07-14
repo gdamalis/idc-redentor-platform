@@ -1,3 +1,4 @@
+import type { Likes } from "@src/service/like.service";
 import { LikeButton } from "./LikeButton";
 import { ShareButton } from "./ShareButton";
 
@@ -7,8 +8,8 @@ interface PostActionsProps {
   readonly likeKey: string;
   readonly title: string;
   readonly featuredImageUrl: string;
-  readonly initialLikeCount: number;
-  readonly initialHasLiked: boolean;
+  /** Absent when the likes DB is unavailable — the like control is then omitted entirely. */
+  readonly likes?: Likes;
 }
 
 export function PostActions({
@@ -17,16 +18,17 @@ export function PostActions({
   likeKey,
   title,
   featuredImageUrl,
-  initialLikeCount,
-  initialHasLiked,
+  likes,
 }: PostActionsProps) {
   return (
     <div className="flex items-center gap-3 py-6 border-t border-border">
-      <LikeButton
-        slug={likeKey}
-        initialCount={initialLikeCount}
-        initialHasLiked={initialHasLiked}
-      />
+      {likes && (
+        <LikeButton
+          slug={likeKey}
+          initialCount={likes.count}
+          initialHasLiked={likes.hasLiked}
+        />
+      )}
       <ShareButton
         slug={slug}
         basePath={basePath}

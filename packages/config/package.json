@@ -1,0 +1,15 @@
+{
+  "name": "@idcr/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./eslint.base.mjs": "./eslint.base.mjs",
+    "./postcss.base.mjs": "./postcss.base.mjs",
+    "./prettier.base.json": "./prettier.base.json"
+  },
+  "dependencies": {
+    "eslint-config-next": "^16.0.1"
+  }
+}

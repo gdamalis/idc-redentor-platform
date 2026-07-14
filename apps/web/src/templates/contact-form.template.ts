@@ -1,3 +1,5 @@
+import { LOGO } from "@idcr/ui";
+
 export const CONTACT_FORM_TEMPLATE = `
 <!DOCTYPE html>
 <html lang="es-AR">
@@ -76,7 +78,7 @@ export const CONTACT_FORM_TEMPLATE = `
     <div class="email-container">
       <div class="email-header">
         <img
-          src="{{baseUrl}}/assets/img/redentor_logo.png"
+          src="{{baseUrl}}${LOGO.default}"
           alt="Logo de Iglesia de Cristo Redentor"
         />
       </div>

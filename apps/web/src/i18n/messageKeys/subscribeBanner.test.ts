@@ -2,17 +2,17 @@ import { describe, it, expect } from "vitest";
 import esAR from "@public/locales/es-AR.json";
 import enUS from "@public/locales/en-US.json";
 
-describe("subscribeBannerMessageKeys", () => {
+describe("subscribeBanner message keys", () => {
   it("exports all expected message keys as a const map", async () => {
-    const { SUBSCRIBE_BANNER_KEYS } = await import("./subscribeBannerMessageKeys");
+    const { SUBSCRIBE_BANNER_KEYS } = await import("./subscribeBanner");
 
     expect(SUBSCRIBE_BANNER_KEYS).toBeDefined();
     expect(typeof SUBSCRIBE_BANNER_KEYS).toBe("object");
     expect(SUBSCRIBE_BANNER_KEYS.ERROR_ALREADY_SUBSCRIBED).toBe(
-      "SubscribeBanner.error-already-subscribed"
+      "SubscribeBanner.error-already-subscribed",
     );
     expect(SUBSCRIBE_BANNER_KEYS.ERROR_UNEXPECTED).toBe(
-      "SubscribeBanner.error-unexpected"
+      "SubscribeBanner.error-unexpected",
     );
   });
 });
