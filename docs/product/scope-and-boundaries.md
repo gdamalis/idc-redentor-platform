@@ -35,7 +35,7 @@ privately.
 - **Bilingual UI (es-AR primary, en-US secondary)** via next-intl. Content is authored per-locale in Contentful; UI strings live in `public/locales/{es-AR,en-US}.json`.
 - **Blog** — articles with rich text, featured image, author, category, and published date; a lightweight, anonymous **"like"** (the only interactive/stateful reader feature). Related-posts surfacing.
 - **Events / announcements** — event banners and event info (day of week, date, time, note, location), e.g. the **ladies conference** and recurring **worship services**, surfaced on the relevant pages.
-- **Newsletter signup** — email capture to **Mailchimp**.
+- **Newsletter signup** — email capture to a per-locale **Resend** audience. (Mailchimp is dead code, pending removal in ICR-110 — the subscriber's email is stored at Resend, never in our own database.)
 - **Contact form** — message capture (saved to MongoDB + emailed to the church), with spam/PII discipline.
 - **SEO & shareability foundations** — per-page metadata, OpenGraph/Twitter cards, sitemap/robots, hreflang locale alternates, and structured data (JSON-LD) where it helps discovery.
 - **Accessibility & performance** — a public church site must be fast, mobile-first, and accessible to everyone.

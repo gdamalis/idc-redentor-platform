@@ -92,6 +92,14 @@ Exit:    0 card written · 2 usage/input error · 1 render failure
 
 ## Requirements
 
-Same Chromium dependency as the PDF generator: `pnpm -C apps/web exec playwright install chromium` on a fresh
+Same Chromium dependency as the PDF generator: `pnpm exec playwright install chromium` on a fresh
 checkout. The fonts (Playfair Display, Outfit) load from Google Fonts at render time; the script waits
 for `document.fonts.ready` before snapshotting.
+
+> **Where the Playwright dependency lives.** `@playwright/test` is a **root** `devDependency`
+> (pinned to the same version `apps/web` uses). The `/predica` scripts live at
+> `.claude/scripts/predica/`, and Node resolves bare specifiers by walking `node_modules` up
+> from the _importing module's own directory_ — a walk that stops at the repo root and never
+> reaches `apps/web/node_modules`. A root dep is therefore the only thing that makes
+> `import { chromium } from "@playwright/test"` resolve in these scripts (ICR-145). Provision
+> the browser from the repo root: `pnpm exec playwright install chromium`.
