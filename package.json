@@ -12,6 +12,7 @@
     "test": "turbo run test",
     "test:watch": "turbo run test:watch",
     "e2e": "turbo run e2e",
+    "predica:smoke": "node .claude/scripts/predica/__smoke__.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky"
