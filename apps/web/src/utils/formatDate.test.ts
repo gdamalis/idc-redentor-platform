@@ -42,14 +42,25 @@ describe("formatDateLong", () => {
 const UTC = "UTC";
 const BUENOS_AIRES = "America/Argentina/Buenos_Aires"; // UTC-3 — the congregation's zone
 
-/** Run `fn` with the process time zone temporarily set to `tz`, always restoring it. */
+/**
+ * Run `fn` with the process time zone temporarily set to `tz`, always restoring it.
+ *
+ * The restore must DELETE `TZ` when it was originally unset: `process.env.TZ = undefined`
+ * coerces to the literal string `"undefined"`, an invalid zone that leaves
+ * `Intl.DateTimeFormat().resolvedOptions().timeZone` undefined for the rest of the
+ * process — silently corrupting any later date-sensitive code in the same worker.
+ */
 const withTimeZone = <T>(tz: string, fn: () => T): T => {
   const original = process.env.TZ;
   process.env.TZ = tz;
   try {
     return fn();
   } finally {
-    process.env.TZ = original;
+    if (original === undefined) {
+      delete process.env.TZ;
+    } else {
+      process.env.TZ = original;
+    }
   }
 };
 
@@ -58,6 +69,26 @@ const AUTHORED_DATE = "2026-02-16";
 const AUTHORED_DAY = "16";
 
 describe("timezone stability (ICR-103)", () => {
+  it("withTimeZone restores an originally-unset TZ by deleting it, not as the string \"undefined\"", () => {
+    const original = process.env.TZ;
+    delete process.env.TZ;
+
+    try {
+      withTimeZone(BUENOS_AIRES, () => formatDate(AUTHORED_DATE, "es-AR"));
+
+      // `process.env.TZ = undefined` would coerce to the STRING "undefined" — an
+      // invalid zone that leaves the whole worker's Intl resolution broken.
+      expect(process.env.TZ).toBeUndefined();
+      expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBeTruthy();
+    } finally {
+      if (original === undefined) {
+        delete process.env.TZ;
+      } else {
+        process.env.TZ = original;
+      }
+    }
+  });
+
   it("control: an UNPINNED formatter diverges across zones (proves the tz shift is real)", () => {
     // Deliberately the old, broken shape. If this ever STOPS diverging, the
     // process time zone is not actually changing and every assertion below is
