@@ -7,11 +7,11 @@
 
 ## Scope: this is the whole database
 
-MongoDB is **not** the content store — Contentful is. Mongo exists only for the things Contentful can't do: an anonymous blog **like** counter, **saved contact-form messages**, **broadcast send tracking**, and (since ICR-114) a **dirty-queue for sermon PDF regeneration**. All four live in a database literally named **`website`**:
+MongoDB is **not** the content store — Contentful is. Mongo exists only for the things Contentful can't do: an anonymous, **slug-keyed** **like** counter (it serves **blog posts and sermons** alike — `/api/likes` is generic, not blog-specific), **saved contact-form messages**, **broadcast send tracking**, and (since ICR-114) a **dirty-queue for sermon PDF regeneration**. All four live in a database literally named **`website`**:
 
 | Collection      | Written by                                                                                      | Read by                                                   | Doc shape                                                                               |
 | --------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `likes`         | `POST /api/likes` → `like.service.ts#toggleLike`                                                | `GET /api/likes` → `getLikes`; the blog UI                | `{ slug, count, visitors: string[], updatedAt }`                                        |
+| `likes`         | `POST /api/likes` → `like.service.ts#toggleLike`                                                | `GET /api/likes` → `getLikes`; the blog + sermon UI       | `{ slug, count, visitors: string[], updatedAt }`                                        |
 | `contact`       | contact Server Action → `contact.service.ts#sendContactForm`                                    | `getContactMessages` (internal, no public route)          | `{ name, email, subject, message, createdAt }`                                          |
 | `broadcast_log` | `sendBroadcast` → `broadcast/broadcastLog.ts#claimBroadcast`                                    | never read by the public site (dedupe guard only)         | `{ broadcastId (unique), status, campaignId?, reason?, createdAt, updatedAt, sentAt? }` |
 | `pdf_jobs`      | the regen webhook (`markDirty`) + the regen cron (`claimJob`/`completeJob`/`failJob`/`dropJob`) | never read by the public site (internal dirty-queue only) | see [`pdf_jobs` collection (ICR-114)](#pdf_jobs-collection-icr-114) below               |
