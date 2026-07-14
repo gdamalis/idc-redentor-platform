@@ -18,8 +18,11 @@ import {
   OurMissionSection,
   OurMissionSectionLive,
 } from "@src/components/features/our-mission-section";
+import { routing } from "@src/i18n/routing";
 import { type Metadata } from "next";
+import { hasLocale } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
+import { notFound } from "next/navigation";
 
 export async function generateMetadata({
   params,
@@ -27,6 +30,15 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }>): Promise<Metadata> {
   const { locale } = await params;
+
+  // The App Router runs page, layout, and generateMetadata in parallel, so the
+  // layout's own notFound() guard does not stop this function from running
+  // with an invalid locale (e.g. a bare hit to /monitoring, which is excluded
+  // from the proxy matcher for the Sentry tunnel and falls through to here).
+  if (!hasLocale(routing.locales, locale)) {
+    notFound();
+  }
+
   return buildPageMetadata({ machineName: "seo-home", locale, path: "" });
 }
 
@@ -36,6 +48,14 @@ export default async function Home({
   params: Promise<{ locale: string }>;
 }>) {
   const { locale } = await params;
+
+  // See the comment in generateMetadata above: the layout's notFound() guard
+  // does not stop this page's own data fetch + render from running with an
+  // invalid locale, which is how /monitoring produced phantom Sentry errors.
+  if (!hasLocale(routing.locales, locale)) {
+    notFound();
+  }
+
   setRequestLocale(locale);
 
   const isEnabled = await shouldUseDraftMode();

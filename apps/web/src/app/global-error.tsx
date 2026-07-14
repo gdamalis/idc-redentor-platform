@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { Nunito_Sans } from "next/font/google";
 import Image from "next/image";
 import { useEffect } from "react";
@@ -17,6 +18,11 @@ interface GlobalErrorProps {
 
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
+    // Last-resort boundary: if the root layout itself failed, nothing else will
+    // have reported this error, so send it to Sentry (ICR-117).
+    Sentry.captureException(error);
+    // Kept from ICR-111: Sentry is inert when no DSN is configured (e.g. local
+    // dev), and this keeps the error visible there.
     console.error(error);
   }, [error]);
 
@@ -39,8 +45,8 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               Algo salió mal
             </h1>
             <p className="mb-8 text-lg text-gray-600">
-              Tuvimos un problema al cargar esta página. Podés intentar de nuevo o volver al
-              inicio.
+              Tuvimos un problema al cargar esta página. Podés intentar de nuevo
+              o volver al inicio.
             </p>
             <div className="flex justify-center">
               <button
