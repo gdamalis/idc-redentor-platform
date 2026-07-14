@@ -75,22 +75,60 @@ therefore:
 
 So the model promotion is **not a post-merge step. It is a pre-deploy prerequisite.**
 
-**Agreed order (human-confirmed at the design gate):**
+**REVISED order (updated 2026-07-14 after the CP6 staging-drift finding — this SUPERSEDES the
+design-gate version, which deferred the backfill until after the deploy):**
 
-| #   | Actor     | Action                                                                                                                                                                                                                   |
-| --- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | agent     | Write `13-add-sermon-audio-fields.cjs`; apply it to the **`staging`** env only                                                                                                                                           |
-| 2   | **HUMAN** | **Contentful Merge `staging` → `production`** (the 2 additive optional fields). Invisible to current prod code and to visitors — nothing queries them yet. **Must happen before preview QA and before the prod deploy.** |
-| 3   | agent     | Preview QA against the default `master` alias — now works                                                                                                                                                                |
-| 4   | human     | Merge PR → production deploy — safe, no broken window                                                                                                                                                                    |
-| 5   | **HUMAN** | Run `13b-backfill-sermon-audio.mjs` against `production`                                                                                                                                                                 |
-| 6   | **HUMAN** | `POST /api/revalidate` (flush the `site-content` tag)                                                                                                                                                                    |
+| #   | Actor     | Action                                                                                                                          |
+| --- | --------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | agent     | Write `13-add-sermon-audio-fields.cjs`; apply it to the **`staging`** env only. ✅ done (`bb6eb5a`)                             |
+| 2   | **HUMAN** | **Contentful Merge `staging` → `production`** (the 2 additive optional fields). Invisible to current prod code and to visitors. |
+| 3   | **HUMAN** | Run `13b-backfill-sermon-audio.mjs --dry-run` against `production`, eyeball the plan, then run it for real.                     |
+| 4   | agent     | Preview QA — now exercises **every** AC against real data.                                                                      |
+| 5   | human     | Merge PR → production deploy — safe, no broken window.                                                                          |
+| 6   | **HUMAN** | `POST /api/revalidate` (flush the `site-content` tag).                                                                          |
+
+### Why the backfill moved BEFORE the deploy (it is safe, and it is what makes QA real)
+
+**Why it is safe.** The code currently in production does not query `audioLanguages` or `interpreter`,
+so populating them changes nothing a visitor can see:
+
+- The **2 published** sermons gain `audioLanguages: ["es-AR"]` and are republished — an inert field the
+  live code ignores. Zero visual change.
+- The **3 drafts** (including the 2026-07-12 bilingual sermon) are **left as drafts**. The blockquote
+  removal therefore touches **no live content**.
+
+**Why it is necessary.** Preview QA renders **draft** content (`VERCEL_ENV=preview` ⇒
+`shouldUseDraftMode()` ⇒ `preview: true`). If the backfill has not run, every sermon has
+`audioLanguages` absent ⇒ the mapper defaults to `["es-AR"]` ⇒ QA can prove AC2/AC7 (no regression) but
+**cannot demonstrate AC1 (the bilingual notice) or AC3 (the interpreter credit) at all** — no entry
+carries the data. Running the backfill first is what lets preview QA exercise the feature it exists to
+test, against the real content that will ship.
+
+> ⚠️ **One constraint this creates:** do **not** publish the 2026-07-12 sermon between step 3 and the
+> production deploy (step 5). Its interpreter blockquote is gone by then, and the badge that replaces it
+> only renders once the new code is live. It is awaiting human review anyway (`/predica` Gate 2), so this
+> is the status quo — just do not publish it early.
 
 Because the fields are **additive and optional**, step 2 is a no-op for the code currently in
 production. That is what makes doing it early safe.
 
-**No agent ever performs step 2, 5, or 6.** The Contentful cutover is human-only
+**No agent ever performs step 2, 3, or 6.** The Contentful cutover is human-only
 (`.claude/config.json` → `contentful.cutover.humanGate: true`).
+
+### Staging content drift (discovered at CP6 — it changed how the backfill was validated)
+
+The `staging` Contentful env is a **model** work-env, not a content mirror: it holds **1** sermon entry,
+not production's 5, and does **not** contain the bilingual sermon. So the `13b` dry-run against staging
+could not exercise the script's two riskiest paths — the blockquote removal and the
+republish-only-if-already-published branch.
+
+Rather than defer that to "we'll eyeball it at cutover" (a deferral that lands nowhere), the matcher is
+**pinned by unit tests against the real rich-text document** copied verbatim from the live entry
+(`13b-backfill-sermon-audio.test.mjs`, 10 tests), including negative controls asserting that a
+legitimate closing scripture blockquote (Marcos 16:7) **survives**. Those tests were mutation-checked
+(`&&` → `||`) to prove they can actually fail.
+
+The human should still run `--dry-run` against production before the real run — that is step 3.
 
 ---
 

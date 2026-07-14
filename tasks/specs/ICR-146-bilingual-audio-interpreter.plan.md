@@ -54,6 +54,14 @@ The model is therefore promoted to production by a **human, BEFORE preview QA an
 deploy** (agreed at the design gate). Task 5 applies it to `staging` only, then **STOP and ask the
 human to run Contentful Merge.** Do not proceed to QA before they confirm.
 
+> **UPDATED 2026-07-14 (after the CP6 staging-drift finding).** The **backfill also moves before the
+> deploy**, for the same reason QA needs it: preview renders DRAFT content, so if `13b` has not run,
+> every sermon has `audioLanguages` absent ⇒ defaults to `["es-AR"]` ⇒ QA can prove AC2/AC7 but
+> **cannot demonstrate AC1 or AC3 at all**. Running it first is safe — the live code does not query
+> the new fields, the 2 published sermons only gain an inert field, and the 3 drafts (incl. the
+> bilingual one whose blockquote is removed) stay drafts, so no live content changes. Full revised
+> runbook: the spec's §2. Do not publish the 2026-07-12 sermon between the backfill and the deploy.
+
 ---
 
 ## File Structure
@@ -1232,8 +1240,18 @@ run().catch((error) => {
 cd apps/web && node scripts/contentful/migrations/13b-backfill-sermon-audio.mjs --dry-run
 ```
 
-**Expected output shape** — it must list **5 sermons**, mark the 2026-07-12 one bilingual with the
-interpreter and the blockquote removal, and state for each whether it would republish:
+> ⚠️ **CORRECTED 2026-07-14 — this expectation was WRONG, and the run proved it.** `staging` is a
+> **model** work-env, not a content mirror: it holds **1** sermon entry, not production's 5, and does
+> **not** contain the bilingual sermon. The dry-run below therefore reports `Found 1 sermon entries`
+> against staging — that is correct behaviour, not a script bug. **Consequence:** the staging dry-run
+> **cannot** exercise the blockquote removal or the republish-if-published branch, so those two paths
+> are instead pinned by unit tests against the REAL rich-text document (see the follow-up task after
+> this one, `13b-backfill-sermon-audio.test.mjs`). The output below describes what the human will see
+> when they dry-run against **production** at cutover — keep it as the acceptance shape for THAT run.
+
+**Expected output shape AGAINST PRODUCTION (the human's step 3)** — it must list **5 sermons**, mark
+the 2026-07-12 one bilingual with the interpreter and the blockquote removal, and state for each
+whether it would republish:
 
 ```
 == 13b backfill sermon audioLanguages/interpreter in "staging" (DRY-RUN — nothing will be written) ==
