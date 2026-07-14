@@ -3,7 +3,7 @@
 > **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
 
 > **Purpose:** The opinionated thesis for how the IDC Redentor website should be found and understood in the AI era — by people, search engines, and AI assistants. This is the lens the `product-manager` agent uses to rank discovery/SEO ideas.
-> **Last reviewed:** 2026-06-21
+> **Last reviewed:** 2026-07-14
 
 ---
 
@@ -24,18 +24,20 @@ The content needed for great structured data already exists in Contentful (see [
 - **Location & geo** — `LocationComponent` (`addressLine1`, `neighborhood`, `city`, `country`, `mapEmbedUrl`, `googleMapsUrl`, `location { lat, lon }`).
 - **Identity & socials** — `Footer` (logo, short description, social links).
 - **Articles** — `BlogPostPage` (title, author, dates, body).
+- **Sermons** — `Sermon` (title, `sermonDate`, thesis, main points, rich-text body, `durationSeconds`, a self-hosted `audio` asset, a `pdfSummary`, `preacher` → `Author`) with **structured** `BibleVerse` scripture references (`book`, `chapter`, `fromVerse`, `toVerse`, `bibleVersion`). _Already serialized: `lib/sermonMetadata.ts#buildSermonJsonLd` emits an `Article` with a nested `AudioObject` (contentUrl + duration) on `/predicas/[slug]`. Treat sermons as **done** for structured data._
 - **Per-page metadata** — inline `Page.seo` and the `Seo` content type.
 
-The gap is mostly **serialization**: turning this structured content into JSON-LD and complete metadata. That makes the early wins cheap and high-leverage.
+**The serialization is DONE.** As of 2026-07-14 the JSON-LD this site needs already ships — `buildOrganizationJsonLd` (site-wide, from `[locale]/layout.tsx`), `buildEventJsonLd` (come-meet-us), `buildArticleJsonLd` → `BlogPosting` (blog detail), and `buildSermonJsonLd` → `Article` + `AudioObject` (sermon detail). **Of the originally-planned types, only `BreadcrumbList` remains.** Do not file "add JSON-LD" tickets — check `lib/metadata.ts` + `lib/sermonMetadata.ts` first, then rank the genuinely-remaining work below.
 
 ## Priorities, in order
 
-1. **JSON-LD on the key pages.** This is the biggest, cheapest win — the content is already structured.
-   - `Church` / `Organization` on home/come-meet-us — name, `address` (from `LocationComponent`), `geo` (lat/lon), service times, `sameAs` (social links from `Footer`).
-   - `Event` for the worship services and special events (e.g. the ladies conference) — fed by `EventBanner` → `Event`.
-   - `BlogPosting` per blog article — fed by `BlogPostPage`.
-   - `BreadcrumbList` on nested routes.
-     _(These are the DEFERRED "do soon" items in [scope-and-boundaries.md](./scope-and-boundaries.md). Tie the implementation cards to this section.)_
+1. **JSON-LD — ✅ mostly SHIPPED. Do not re-ticket it.** What already renders today:
+   - ✅ `Organization` — `buildOrganizationJsonLd` (name, `address` from `LocationComponent`, `geo`, `sameAs` from `Footer`), emitted **site-wide** from `[locale]/layout.tsx`.
+   - ✅ `Event` — `buildEventJsonLd`, on come-meet-us (fed by `EventBanner` → `Event` + `LocationComponent`).
+   - ✅ `BlogPosting` — `buildArticleJsonLd`, on `/blog/[slug]`.
+   - ✅ `Article` + `AudioObject` — `buildSermonJsonLd`, on `/predicas/[slug]` (with a real duration).
+   - ❌ **`BreadcrumbList` on nested routes — the only JSON-LD gap left.** This is the one card worth filing.
+     _(Verify against `lib/metadata.ts` and `lib/sermonMetadata.ts` before ticketing anything here.)_
 2. **OG / Twitter cards on every page.** Extend `lib/metadata.ts` so every route emits complete OpenGraph + Twitter tags with a real per-page image (default 1200×630). Shared links should look right in WhatsApp, Instagram, and search previews — the channels a church actually uses.
 3. **Crawlability.** A correct `sitemap.xml` (blog slugs come from `getAllBlogPostSlugs`), a sensible `robots.txt`, stable **canonical** URLs, and correct **hreflang** alternates for es-AR / en-US so the right language surfaces for the right person.
 4. **`llms.txt`.** Publish a plain-language `llms.txt` describing the church — who it is, what it believes (summary + link to the Creed/Credo), service day/time and address, and how to make contact — so assistants have a clean, authoritative summary to read.
