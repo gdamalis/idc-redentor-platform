@@ -174,6 +174,31 @@ export function validateSermonForEntry(raw) {
       });
     }
   }
+  // ── Interpreted-sermon provenance (ICR-147) ────────────────────────────────
+  // Optional + back-compatible: absent => not interpreted. When present they must be
+  // well-formed, and interpreted:true REQUIRES a named interpreter (the WhatsApp credit
+  // and the voice-learn guard both read it).
+  if (s.interpreted != null && typeof s.interpreted !== "boolean")
+    errs.push("interpreted: must be a boolean when present");
+  if (s.interpreter != null) {
+    if (
+      typeof s.interpreter !== "object" ||
+      Array.isArray(s.interpreter) ||
+      typeof s.interpreter.name !== "string" ||
+      !s.interpreter.name.trim()
+    )
+      errs.push(
+        "interpreter: must be an object with a non-empty name when present",
+      );
+  }
+  if (
+    s.interpreted === true &&
+    (s.interpreter == null || !s.interpreter?.name?.trim?.())
+  )
+    errs.push(
+      "interpreter.name: required non-empty string when interpreted is true",
+    );
+
   if (typeof s.internalName !== "string" || !s.internalName.trim()) errs.push("internalName: required string");
   if (s.durationSeconds != null && typeof s.durationSeconds !== "number")
     errs.push("durationSeconds: must be a number when present");

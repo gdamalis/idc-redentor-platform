@@ -107,6 +107,18 @@ export interface SermonDocument {
    * `[preacher, ...additionalPreachers]`. Omitted for a normal single-preacher sermon.
    */
   additionalPreachers?: Array<{ name: string; email?: string }>;
+  /**
+   * True when the audio is a live interpretation — the preacher spoke one language while an
+   * interpreter rendered it into another, and the transcript is the INTERPRETER's speech.
+   * Human-declared via `/predica --interpreted`; never detected from audio (ICR-147).
+   * Gates the voice coach: an interpreted transcript is a valid source for NO voice profile.
+   */
+  interpreted?: boolean;
+  /**
+   * The live interpreter. NOT a preacher — never added to {@link SermonDocument.additionalPreachers}
+   * and never linked as an `author`. Required when `interpreted` is true. Drives the WhatsApp credit.
+   */
+  interpreter?: { name: string } | null;
   internalName: string;
   durationSeconds?: number;
   serviceLabel?: Record<PredicaLocale, string>;
