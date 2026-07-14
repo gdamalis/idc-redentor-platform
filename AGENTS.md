@@ -14,7 +14,7 @@ IDC Redentor is the official bilingual (es-AR / en-US) website of Iglesia de Cri
 
 ## No Auth / No AI / No Payments — public website (`apps/web`)
 
-**The public website (`apps/web`) has no authentication, no RBAC, no payments/e-commerce, and no AI/LLM features.** Do not add any of them to `apps/web` without an explicit product decision — see `docs/product/scope-and-boundaries.md`. The only write path open to a visitor is the anonymous blog "like" and the contact form; both are deliberately minimal.
+**The public website (`apps/web`) has no authentication, no RBAC, no payments/e-commerce, and no AI/LLM features.** Do not add any of them to `apps/web` without an explicit product decision — see `docs/product/scope-and-boundaries.md`. The only write path open to a visitor is the anonymous **"like"** (slug-keyed via `/api/likes` — **blog posts and sermons**) and the contact form; both are deliberately minimal.
 
 > **Admin exception (`apps/admin`).** The separate internal **Ministry Admin Panel** (`apps/admin`) _is_ a deliberate, **authenticated** product — Firebase Auth (Google + email/password) + RBAC + congregant data — and it is **in scope**; that product decision is already made. It is governed by `tasks/specs/admin-platform-brief.md` and the "Two products in this repo" section of `docs/product/scope-and-boundaries.md`, not by the boundary above. Do not reject `apps/admin` auth/RBAC work on the basis of this section.
 
