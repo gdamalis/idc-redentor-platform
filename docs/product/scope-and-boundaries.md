@@ -16,12 +16,14 @@ website only** (`apps/web`):
 - **Public website — `apps/web`** (this doc): public, read-only, content-managed, informational.
   **No auth, no RBAC, no user accounts, minimal PII** — the boundaries below are permanent and
   intentional for this surface.
-- **Ministry Admin Panel — `apps/admin`** (separate product): an internal, **authenticated,
-  access-controlled** tool for the leadership team — deliberately the inverse (write-heavy, RBAC,
-  congregant PII + later finances). It is governed by its own brief,
-  [`tasks/specs/admin-platform-brief.md`](../../tasks/specs/admin-platform-brief.md), **not** by
-  this document. The two apps share brand/UI via `packages/`, but their product boundaries are
-  separate.
+- **Ministry Admin Panel — `apps/admin`** (a separate, **planned** product —
+  **`apps/admin/` has not been created yet**; the pnpm workspace glob is ready and
+  [`tasks/specs/admin-platform-brief.md`](../../tasks/specs/admin-platform-brief.md) is a **DRAFT**
+  brief): an internal, **authenticated, access-controlled** tool for the leadership team —
+  deliberately the inverse of the public site (write-heavy, RBAC, congregant PII + later finances).
+  It will be governed by that brief, **not** by this document. It is designed to share brand/UI with
+  the website via `packages/` (which today only `apps/web` consumes), but the two products'
+  boundaries are separate.
 
 So "no login / no RBAC / no PII at scale" below means **not in the public website** — those
 capabilities are exactly what the separate `apps/admin` product exists to provide, safely and
@@ -34,7 +36,7 @@ privately.
 - **Informational pages, content-managed in Contentful** — home, "¿Quién es Jesús?" / who-is-jesus, community (mission, values, the Creed/Credo), and the worship-service "come meet us" page (service day/time + address + embedded map). Editable by non-technical editors without code changes, per locale.
 - **Bilingual UI (es-AR primary, en-US secondary)** via next-intl. Content is authored per-locale in Contentful; UI strings live in `public/locales/{es-AR,en-US}.json`.
 - **Blog** — articles with rich text, featured image, author, category, and published date; a lightweight, anonymous **"like"** (slug-keyed via `/api/likes` — the same like also serves sermons). Related-posts surfacing.
-- **Sermon archive (`/predicas`)** — sermons as Contentful content (title, thesis, main points, scripture references, rich-text body, a downloadable **PDF summary**, and a **self-hosted audio** recording played inline on the sermon's own page — **one recording per locale**, exactly like every other localized sermon field), plus the **`/predica` pipeline** that produces them. Carries the same anonymous **"like"** as blog posts.
+- **Sermon archive (`/predicas`)** — sermons as Contentful content (title, thesis, main points, scripture references, rich-text body, a downloadable **PDF summary**, and a **self-hosted audio** recording played inline on the sermon's own page), plus the **`/predica` pipeline** that produces them. Carries the same anonymous **"like"** as blog posts. _Shipped today: the recording is authored at the **default locale** (es-AR) only — `sermonEntry.ts` writes `audio` with `atDefault(…)` — and the en-US page surfaces that same file with an "audio is in Spanish" note. **Per-locale audio is IN scope but NOT yet built: it is [ICR-146](https://divinelab.atlassian.net/browse/ICR-146).** Read this bullet as the scope boundary, not as a description of what already works._
 - **Events / announcements** — event banners and event info (day of week, date, time, note, location), e.g. the **ladies conference** and recurring **worship services**, surfaced on the relevant pages.
 - **Newsletter signup** — email capture to **Resend** (per-locale audiences: `/api/subscribe` → `subscribe.service.ts` → `resendAudience.ts`).
 - **Contact form** — message capture (saved to MongoDB + emailed to the church), with spam/PII discipline.
@@ -50,7 +52,7 @@ These are intentional boundaries, not "not yet." An idea that reintroduces one s
 - **Public user-generated content** — no public comments, reviews, ratings, forums, prayer-wall posting, or public event submission. The anonymous **"like"** — slug-keyed via `/api/likes`, serving **blog posts and sermons** alike — is the only write path open to anonymous visitors, and it stores no PII beyond an anonymous visitor id. The contact form and newsletter signup are constrained, server-validated forms — not open content surfaces.
 - **AI chatbot / LLM features in-product.** No on-site AI assistant, no generated answers, no chat widget. (AI is a _tooling/discoverability_ concern — see [ai-era-strategy.md](./ai-era-strategy.md) — not a product surface.)
 - **Self-service event registration / ticketing / RSVP** with capacity, seat selection, or calendars-as-a-service. Events are informational; "register" means a link or a contact, not a booking system.
-- **Streaming / media-hosting platform, podcast backend, media app.** No transcoding service, no channels / subscriptions / RSS or podcast feeds, no video hosting, no live streaming. A sermon's **self-hosted audio** asset (one per locale), played inline on its own page, is the **ceiling** — see the sermon-archive entry under IN scope. Third-party video **embeds** (YouTube, Vimeo, etc.) on a page remain fine; **self-hosted video is not**.
+- **Streaming / media-hosting platform, podcast backend, media app.** No transcoding service, no channels / subscriptions / RSS or podcast feeds, no video hosting, no live streaming. A sermon's **self-hosted audio** — at most one recording per locale, played inline on the sermon's own page — is the **ceiling** (an upper bound on what may be built, not a claim about what ships today; see the sermon-archive entry under IN scope). Third-party video **embeds** (YouTube, Vimeo, etc.) on a page remain fine; **self-hosted video is not**.
 - **Storing congregant personal data at scale** — membership databases, pastoral records, directories, attendance tracking. The only PII this app touches is contact-form submissions and newsletter emails; minimize, protect, and don't expand that surface casually. _(Congregant data at scale is the domain of the separate, access-controlled `apps/admin` product — kept out of `apps/web` by design.)_
 
 ### How to reframe a tempting idea

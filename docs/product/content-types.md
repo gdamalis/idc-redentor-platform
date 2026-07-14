@@ -142,9 +142,12 @@ auto-publishes — a human reviews and publishes every sermon.
 - **Reader interaction:** the sermon detail page renders the **same** `PostActions` component the
   blog uses, with `likeKey` = `` `predicas/${slug}` `` — so sermons carry the anonymous
   **like** through the same slug-keyed `/api/likes` route. Likes are **not** blog-only.
-- **Structured-data note:** the richest un-exploited JSON-LD target on the site. Sermons carry a
-  date, an author, a body, a duration, and an audio asset — the raw material for
-  `AudioObject` / `Article` markup. See [ai-era-strategy.md](./ai-era-strategy.md).
+- **Structured-data note:** **already shipped** — `lib/sermonMetadata.ts#buildSermonJsonLd` emits an
+  `Article` with a nested **`AudioObject`** (contentUrl + duration), rendered as an
+  `application/ld+json` script on `/predicas/[slug]`. Sermons are the **one content type whose
+  JSON-LD already exists**; do not file it as new work. See
+  [ai-era-strategy.md](./ai-era-strategy.md) for the types still missing (`Church`/`Organization`,
+  `Event`, `BlogPosting`, `BreadcrumbList`).
 - **Editorial note:** sermon content is **preaching — leadership-owned**. The `/predica` pipeline
   writes a **draft** only; a human reviews both locales and publishes. Agents must not alter
   doctrinal meaning. See [editorial-and-content-rules.md](./editorial-and-content-rules.md).

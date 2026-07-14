@@ -24,7 +24,7 @@ The content needed for great structured data already exists in Contentful (see [
 - **Location & geo** — `LocationComponent` (`addressLine1`, `neighborhood`, `city`, `country`, `mapEmbedUrl`, `googleMapsUrl`, `location { lat, lon }`).
 - **Identity & socials** — `Footer` (logo, short description, social links).
 - **Articles** — `BlogPostPage` (title, author, dates, body).
-- **Sermons** — `Sermon` (title, `sermonDate`, thesis, main points, rich-text body, `durationSeconds`, a self-hosted `audio` asset, a `pdfSummary`, `preacher` → `Author`) with **structured** `BibleVerse` scripture references (`book`, `chapter`, `fromVerse`, `toVerse`, `bibleVersion`). _The richest un-exploited target: an `AudioObject` / `Article` with a real duration, author, and date._
+- **Sermons** — `Sermon` (title, `sermonDate`, thesis, main points, rich-text body, `durationSeconds`, a self-hosted `audio` asset, a `pdfSummary`, `preacher` → `Author`) with **structured** `BibleVerse` scripture references (`book`, `chapter`, `fromVerse`, `toVerse`, `bibleVersion`). _Already serialized — **the one JSON-LD type that ships today**: `lib/sermonMetadata.ts#buildSermonJsonLd` emits an `Article` with a nested `AudioObject` (contentUrl + duration) on `/predicas/[slug]`. Treat sermons as **done** for structured data; the gap is the types below._
 - **Per-page metadata** — inline `Page.seo` and the `Seo` content type.
 
 The gap is mostly **serialization**: turning this structured content into JSON-LD and complete metadata. That makes the early wins cheap and high-leverage.
