@@ -26,7 +26,53 @@
         "Colosenses 1:19-20",
         "Juan 17:20-23"
       ],
-      "closing": "Que este mensaje nos desafíe a vivir la paz que Cristo ya compró: a cruzar fronteras, a acoger al diferente, y a construir la nueva humanidad que Dios está edificando en medio de nosotros. Somos Iglesia de Cristo Redentor — un pueblo reconciliado, llamado a reconciliar."
+      "closing": "Que este mensaje nos desafíe a vivir la paz que Cristo ya compró: a cruzar fronteras, a acoger al diferente, y a construir la nueva humanidad que Dios está edificando en medio de nosotros. Somos Iglesia de Cristo Redentor — un pueblo reconciliado, llamado a reconciliar.",
+      "content": [
+        {
+          "type": "p",
+          "text": "Vivimos en un mundo marcado por la división: barreras nacionales, culturales, sociales y personales que nos separan unos de otros. Sin embargo, el evangelio proclama que en Cristo hay una reconciliación radical que ninguna frontera humana puede contener."
+        },
+        { "type": "h2", "text": "1. La realidad de la división humana" },
+        {
+          "type": "p",
+          "text": "Pablo comienza recordándoles a los efesios quiénes eran antes de Cristo. No suaviza el diagnóstico: la distancia era real y no se cerraba con esfuerzo humano (Efesios 2:11-12)."
+        },
+        {
+          "type": "ul",
+          "items": [
+            "Separados de Cristo.",
+            "Ajenos a la ciudadanía de Israel.",
+            "Sin esperanza y sin Dios en el mundo."
+          ]
+        },
+        { "type": "h2", "text": "2. La obra reconciliadora de Cristo" },
+        {
+          "type": "blockquote",
+          "text": "«Porque él es nuestra paz, que de ambos pueblos hizo uno, derribando la pared intermedia de separación.» — Efesios 2:14 (RVR1960)"
+        },
+        {
+          "type": "p",
+          "text": "El muro no fue escalado ni rodeado: fue derribado. En la cruz, Cristo abolió la enemistad y creó en sí mismo una nueva humanidad."
+        },
+        { "type": "h3", "text": "Tres verbos de la cruz" },
+        {
+          "type": "ol",
+          "items": [
+            "Acercó a los que estaban lejos (v. 13).",
+            "Derribó la pared intermedia de separación (v. 14).",
+            "Reconcilió a ambos con Dios en un solo cuerpo (v. 16)."
+          ]
+        },
+        { "type": "h2", "text": "3. La nueva humanidad en Cristo" },
+        {
+          "type": "blockquote",
+          "text": "«Ya no sois extranjeros ni advenedizos, sino conciudadanos de los santos, y miembros de la familia de Dios.» — Efesios 2:19 (RVR1960)"
+        },
+        {
+          "type": "p",
+          "text": "Que este mensaje nos desafíe a vivir la paz que Cristo ya compró: a cruzar fronteras, a acoger al diferente, y a construir la nueva humanidad que Dios está edificando en medio de nosotros."
+        }
+      ]
     },
     "en-US": {
       "title": "The love that breaks down walls",
@@ -47,7 +93,53 @@
         "Colossians 1:19-20",
         "John 17:20-23"
       ],
-      "closing": "May this message challenge us to live out the peace Christ has already purchased: to cross boundaries, to welcome the stranger, and to build the new humanity that God is raising up among us. We are Iglesia de Cristo Redentor — a reconciled people, called to reconcile."
+      "closing": "May this message challenge us to live out the peace Christ has already purchased: to cross boundaries, to welcome the stranger, and to build the new humanity that God is raising up among us. We are Iglesia de Cristo Redentor — a reconciled people, called to reconcile.",
+      "content": [
+        {
+          "type": "p",
+          "text": "We live in a world marked by division: national, cultural, social, and personal barriers that keep us apart. Yet the gospel proclaims that in Christ there is a radical reconciliation that no human boundary can contain."
+        },
+        { "type": "h2", "text": "1. The reality of human division" },
+        {
+          "type": "p",
+          "text": "Paul begins by reminding the Ephesians who they were before Christ. He does not soften the diagnosis: the distance was real, and no human effort could close it (Ephesians 2:11-12)."
+        },
+        {
+          "type": "ul",
+          "items": [
+            "Separated from Christ.",
+            "Excluded from citizenship in Israel.",
+            "Without hope and without God in the world."
+          ]
+        },
+        { "type": "h2", "text": "2. The reconciling work of Christ" },
+        {
+          "type": "blockquote",
+          "text": "\"For he himself is our peace, who has made the two groups one and has destroyed the barrier, the dividing wall of hostility.\" — Ephesians 2:14 (NIV)"
+        },
+        {
+          "type": "p",
+          "text": "The wall was not climbed or circled around: it was torn down. On the cross, Christ abolished the hostility and created in himself one new humanity."
+        },
+        { "type": "h3", "text": "Three verbs of the cross" },
+        {
+          "type": "ol",
+          "items": [
+            "He brought near those who were far off (v. 13).",
+            "He destroyed the dividing wall of hostility (v. 14).",
+            "He reconciled both to God in one body (v. 16)."
+          ]
+        },
+        { "type": "h2", "text": "3. The new humanity in Christ" },
+        {
+          "type": "blockquote",
+          "text": "\"Consequently, you are no longer foreigners and strangers, but fellow citizens with God's people and also members of his household.\" — Ephesians 2:19 (NIV)"
+        },
+        {
+          "type": "p",
+          "text": "May this message challenge us to live out the peace Christ has already purchased: to cross boundaries, to welcome the stranger, and to build the new humanity that God is raising up among us."
+        }
+      ]
     }
   }
 }

@@ -12,6 +12,7 @@
     "test": "turbo run test",
     "test:watch": "turbo run test:watch",
     "e2e": "turbo run e2e",
+    "predica:smoke": "node .claude/scripts/predica/__smoke__.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky"
@@ -20,6 +21,7 @@
     "*.{json,md,css,yaml,yml}": "prettier --write"
   },
   "devDependencies": {
+    "@playwright/test": "1.61.0",
     "@commitlint/cli": "^21.0.2",
     "@idcr/config": "workspace:*",
     "@commitlint/config-conventional": "^21.0.2",
