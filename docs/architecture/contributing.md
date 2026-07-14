@@ -9,7 +9,7 @@
 
 - **Node 22.14.0** (`.nvmrc` — run `nvm use`).
 - **pnpm** as the package manager. Do not use `npm` or `yarn`.
-- A `.env` with the **required** variables — copy from `CLAUDE.md`'s env tables, **not** just from `.env.example` (which is incomplete; see below). Ask @gdamalis for the Contentful / Mailchimp / Mongo / mail-provider credentials.
+- A `.env` with the **required** variables — see `CLAUDE.md`'s env tables or copy from `.env.example`. Ask @gdamalis for the Contentful / Mongo / mail-provider credentials.
 
 ```bash
 nvm use
@@ -31,6 +31,30 @@ pnpm format:check  # prettier --check .
 ```
 
 `lint-staged` (via husky `pre-commit`) auto-fixes staged files (`eslint --fix` for code, `prettier --write` for json/md/css), and commitlint (`commit-msg`) enforces the commit format. CI re-runs these gates plus the PR-title check.
+
+### CI jobs (`.github/workflows/pr.yml`)
+
+Three jobs run on every PR: `validate-pr-title`, `eslint-tsc` (lint + type-check + Vitest), and
+**`predica-scripts`**.
+
+`predica-scripts` installs Chromium (`pnpm exec playwright install --with-deps chromium`, run from the
+**repo root**) and then runs `pnpm predica:smoke`, which invokes `build-predica-pdf.mjs` and
+`build-predica-featured.mjs` against the committed fixture
+(`.claude/scripts/predica/__fixtures__/sample-sermon.json`) and asserts both exit `0` with non-empty
+output.
+
+It exists because of ICR-145: `@playwright/test` is a **root** devDependency, since the `/predica`
+scripts live at `.claude/scripts/predica/` and Node resolves bare specifiers by walking `node_modules`
+upward from the _importing module's own directory_ — a walk that stops at the repo root and never
+reaches `apps/web/node_modules`. Without the root dep, the scripts die with `ERR_MODULE_NOT_FOUND`.
+
+It runs as a CI job rather than a local test because a CI runner is a fresh clone with no parent
+`node_modules` and no symlink — the only environment that honestly verifies "works on a clean checkout".
+A local worktree nests inside the main checkout, so Node's upward walk can escape the worktree and find
+a stale workaround symlink, masking the bug.
+
+The job is hermetic: the featured-image script runs with `--no-ai`, so it makes no network call and
+needs no `GEMINI_API_KEY` or other secret.
 
 ## Branching
 

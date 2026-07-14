@@ -16,19 +16,20 @@ The **public website** (`apps/web`) is a **content-managed informational site**,
 
 > Run everything with **pnpm**. Note `type-check` is **hyphenated** (unlike some sibling projects' `typecheck`). The verifier and QA agents call `pnpm type-check`.
 
-| Command             | Purpose                                                              |
-| ------------------- | -------------------------------------------------------------------- |
-| `pnpm dev`          | Dev server (Turbopack)                                               |
-| `pnpm build`        | Production build                                                     |
-| `pnpm start`        | Serve the production build                                           |
-| `pnpm lint`         | ESLint (`eslint .`)                                                  |
-| `pnpm type-check`   | TypeScript check (`tsc --noEmit`)                                    |
-| `pnpm test`         | Vitest, single run (`vitest run`)                                    |
-| `pnpm test:watch`   | Vitest in watch mode                                                 |
-| `pnpm e2e`          | Playwright (`playwright test`) — config present, no specs in Phase 1 |
-| `pnpm format`       | Prettier write                                                       |
-| `pnpm format:check` | Prettier check                                                       |
-| `pnpm prepare`      | Husky install (runs automatically on `pnpm install`)                 |
+| Command              | Purpose                                                                                       |
+| -------------------- | --------------------------------------------------------------------------------------------- |
+| `pnpm dev`           | Dev server (Turbopack)                                                                        |
+| `pnpm build`         | Production build                                                                              |
+| `pnpm start`         | Serve the production build                                                                    |
+| `pnpm lint`          | ESLint (`eslint .`)                                                                           |
+| `pnpm type-check`    | TypeScript check (`tsc --noEmit`)                                                             |
+| `pnpm test`          | Vitest, single run (`vitest run`)                                                             |
+| `pnpm test:watch`    | Vitest in watch mode                                                                          |
+| `pnpm e2e`           | Playwright (`playwright test`) — config present, no specs in Phase 1                          |
+| `pnpm predica:smoke` | Smoke-check the /predica harness scripts (PDF + featured image) against the committed fixture |
+| `pnpm format`        | Prettier write                                                                                |
+| `pnpm format:check`  | Prettier check                                                                                |
+| `pnpm prepare`       | Husky install (runs automatically on `pnpm install`)                                          |
 
 ## graphify (query the graph before you read)
 
@@ -108,7 +109,7 @@ MongoDB    → src/service/database.service.ts (cached client) → like/contact 
 ### Email & newsletter
 
 - **Transactional email** uses an adapter pattern: `src/service/mailing.service.ts` selects `src/service/mailing/{sendgrid,resend}.adapter.ts` by the `MAIL_PROVIDER` env var. HTML bodies come from `src/templates/`.
-- **Newsletter** is **Resend** — contacts added to a **per-locale audience** via `/api/subscribe` → `src/service/subscribe.service.ts` → `resendAudience.ts` (client helper `src/service/subscribe.ts`). **Mailchimp is no longer used**; the `@mailchimp/*` dep and `MAILCHIMP_*` env vars are dead code pending removal (ICR-110).
+- **Newsletter** is **Resend** — contacts added to a **per-locale audience** via `/api/subscribe` → `src/service/subscribe.service.ts` → `resendAudience.ts` (client helper `src/service/subscribe.ts`).
 - See `docs/architecture/forms-and-email.md` for the contact + subscribe flows and the spam/PII discipline.
 
 ### Revalidation & draft mode
@@ -161,8 +162,7 @@ Sessions are named after the active Jira ticket automatically.
 > **Source of truth: `apps/web/.env.example` + `src/types/environment.d.ts`.** `.env.example` is
 > **current** — it carries every runtime variable below (it was brought up to date during ICR-114).
 > An older version of this doc claimed it was incomplete and that several vars were "missing"; that
-> is no longer true. The one thing still wrong with it: it retains the **dead** `MAILCHIMP_*` vars
-> (see the callout below) — ICR-110 removes them.
+> is no longer true.
 
 ### Required (must be set for the app to function)
 
@@ -182,11 +182,6 @@ Sessions are named after the active Jira ticket automatically.
 | `RESEND_AUDIENCE_ID_ES_AR`        | Newsletter audience for `es-AR`                                   |         ✅         |
 | `RESEND_AUDIENCE_ID_EN_US`        | Newsletter audience for `en-US`                                   |         ✅         |
 
-> ⚠️ **The `MAILCHIMP_*` vars are DEAD.** The newsletter moved to **Resend** (per-locale audiences).
-> `MAILCHIMP_API_KEY` / `MAILCHIMP_API_SERVER` / `MAILCHIMP_AUDIENCE_ID` are still declared in
-> `src/types/environment.d.ts` and listed in `.env.example`, but **nothing reads them** — setting
-> them does nothing. ICR-110 removes them. Do not provision Mailchimp for a new deploy.
->
 > `RESEND_AUDIENCE_ID` (no locale suffix) is a legacy single-audience fallback used only for the
 > **default** locale when the per-locale var is unset (`src/service/resendAudience.ts`).
 
