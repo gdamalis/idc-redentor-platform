@@ -75,6 +75,12 @@
     "description": "This page doesn't seem to exist",
     "backToHome": "Back to homepage"
   },
+  "error": {
+    "title": "Something went wrong",
+    "description": "We had a problem loading this page. You can try again or go back home.",
+    "tryAgain": "Try again",
+    "backToHome": "Back to homepage"
+  },
   "OurMissionCta": {
     "welcome-home": "Welcome Home",
     "join-us-sunday": "Join Us This Sunday"

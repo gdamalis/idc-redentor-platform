@@ -23,9 +23,19 @@ export async function GET(request: NextRequest) {
     const cookieStore = await cookies();
     const visitorId = cookieStore.get(VISITOR_COOKIE)?.value;
 
-    const result = await getLikes(slug, visitorId);
+    const outcome = await getLikes(slug, visitorId);
 
-    return NextResponse.json(result);
+    if (!outcome.ok) {
+      return NextResponse.json(
+        { error: "Service Unavailable" },
+        { status: 503 },
+      );
+    }
+
+    return NextResponse.json({
+      count: outcome.count,
+      hasLiked: outcome.hasLiked,
+    });
   } catch (error) {
     console.error("Error fetching likes:", error);
     return NextResponse.json(
@@ -54,9 +64,19 @@ export async function POST(request: NextRequest) {
       visitorId = generateVisitorId();
     }
 
-    const result = await toggleLike(slug, visitorId);
+    const outcome = await toggleLike(slug, visitorId);
 
-    const response = NextResponse.json(result);
+    if (!outcome.ok) {
+      return NextResponse.json(
+        { error: "Service Unavailable" },
+        { status: 503 },
+      );
+    }
+
+    const response = NextResponse.json({
+      count: outcome.count,
+      hasLiked: outcome.hasLiked,
+    });
 
     if (isNewVisitor) {
       response.cookies.set(VISITOR_COOKIE, visitorId, {

@@ -75,6 +75,12 @@
     "description": "Esta página no parece existir",
     "backToHome": "Volver a la página principal"
   },
+  "error": {
+    "title": "Algo salió mal",
+    "description": "Tuvimos un problema al cargar esta página. Podés intentar de nuevo o volver al inicio.",
+    "tryAgain": "Intentar de nuevo",
+    "backToHome": "Volver a la página principal"
+  },
   "OurMissionCta": {
     "welcome-home": "Bienvenido a Casa",
     "join-us-sunday": "Unite Este Domingo"
