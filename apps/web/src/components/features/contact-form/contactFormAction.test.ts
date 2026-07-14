@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { handleContactFormSubmission } from "./contactFormAction";
-import { CONTACT_FORM_KEYS } from "./contactFormMessageKeys";
+import { CONTACT_FORM_KEYS } from "@src/i18n/messageKeys/contactForm";
 
 const makeFormData = (entries: Record<string, string>): FormData => {
   const fd = new FormData();

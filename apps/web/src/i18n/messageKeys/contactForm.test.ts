@@ -3,16 +3,13 @@ import esAR from "@public/locales/es-AR.json";
 import enUS from "@public/locales/en-US.json";
 
 /**
- * Verifies that contactFormMessageKeys exports the expected const map
+ * Verifies that contactForm message keys exports the expected const map
  * and that both locale files contain the required ContactForm namespace keys.
- *
- * This test must fail until contactFormMessageKeys.ts is created and
- * the ContactForm namespace is added to both locale JSON files.
  */
 
-describe("contactFormMessageKeys", () => {
+describe("contactForm message keys", () => {
   it("exports all expected message keys as a const map", async () => {
-    const { CONTACT_FORM_KEYS } = await import("./contactFormMessageKeys");
+    const { CONTACT_FORM_KEYS } = await import("./contactForm");
 
     expect(CONTACT_FORM_KEYS).toBeDefined();
     expect(typeof CONTACT_FORM_KEYS).toBe("object");
@@ -22,19 +19,19 @@ describe("contactFormMessageKeys", () => {
 
     // contactFormAction.ts — server-side messages
     expect(CONTACT_FORM_KEYS.ERROR_REQUIRED_FIELDS).toBe(
-      "ContactForm.error-required-fields"
+      "ContactForm.error-required-fields",
     );
     expect(CONTACT_FORM_KEYS.ERROR_INVALID_EMAIL).toBe(
-      "ContactForm.error-invalid-email"
+      "ContactForm.error-invalid-email",
     );
     expect(CONTACT_FORM_KEYS.SUCCESS_MESSAGE).toBe(
-      "ContactForm.success-message"
+      "ContactForm.success-message",
     );
     expect(CONTACT_FORM_KEYS.ERROR_SAVE_FAILED).toBe(
-      "ContactForm.error-save-failed"
+      "ContactForm.error-save-failed",
     );
     expect(CONTACT_FORM_KEYS.ERROR_UNEXPECTED).toBe(
-      "ContactForm.error-unexpected"
+      "ContactForm.error-unexpected",
     );
   });
 });
