@@ -16,19 +16,20 @@ The **public website** (`apps/web`) is a **content-managed informational site**,
 
 > Run everything with **pnpm**. Note `type-check` is **hyphenated** (unlike some sibling projects' `typecheck`). The verifier and QA agents call `pnpm type-check`.
 
-| Command             | Purpose                                                              |
-| ------------------- | -------------------------------------------------------------------- |
-| `pnpm dev`          | Dev server (Turbopack)                                               |
-| `pnpm build`        | Production build                                                     |
-| `pnpm start`        | Serve the production build                                           |
-| `pnpm lint`         | ESLint (`eslint .`)                                                  |
-| `pnpm type-check`   | TypeScript check (`tsc --noEmit`)                                    |
-| `pnpm test`         | Vitest, single run (`vitest run`)                                    |
-| `pnpm test:watch`   | Vitest in watch mode                                                 |
-| `pnpm e2e`          | Playwright (`playwright test`) — config present, no specs in Phase 1 |
-| `pnpm format`       | Prettier write                                                       |
-| `pnpm format:check` | Prettier check                                                       |
-| `pnpm prepare`      | Husky install (runs automatically on `pnpm install`)                 |
+| Command              | Purpose                                                                                       |
+| -------------------- | --------------------------------------------------------------------------------------------- |
+| `pnpm dev`           | Dev server (Turbopack)                                                                        |
+| `pnpm build`         | Production build                                                                              |
+| `pnpm start`         | Serve the production build                                                                    |
+| `pnpm lint`          | ESLint (`eslint .`)                                                                           |
+| `pnpm type-check`    | TypeScript check (`tsc --noEmit`)                                                             |
+| `pnpm test`          | Vitest, single run (`vitest run`)                                                             |
+| `pnpm test:watch`    | Vitest in watch mode                                                                          |
+| `pnpm e2e`           | Playwright (`playwright test`) — config present, no specs in Phase 1                          |
+| `pnpm predica:smoke` | Smoke-check the /predica harness scripts (PDF + featured image) against the committed fixture |
+| `pnpm format`        | Prettier write                                                                                |
+| `pnpm format:check`  | Prettier check                                                                                |
+| `pnpm prepare`       | Husky install (runs automatically on `pnpm install`)                                          |
 
 ## graphify (query the graph before you read)
 
