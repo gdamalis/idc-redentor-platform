@@ -30,16 +30,18 @@
 Every claim below traces to a line of source. Where an earlier draft of the ticket disagreed with the
 code, the code wins.
 
-| Claim                                                                                                                | Source                                                                                                                               |
-| -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Contact form stores `name`/`email`/`subject`/`message`                                                               | `apps/web/src/service/contact.service.ts:11-18` (Mongo `website.contact` + `createdAt`)                                              |
-| Newsletter email lives at **Resend**, not in our database                                                            | `apps/web/src/service/subscribe.service.ts:29`                                                                                       |
-| Blog likes generate a random UUID, not tied to identity                                                              | `apps/web/src/app/api/likes/route.ts:64` (`crypto.randomUUID()`)                                                                     |
-| Six named processors: Resend, MongoDB Atlas, Vercel, Google, Sentry, Contentful                                      | See table below                                                                                                                      |
-| `_visitor_id` cookie is httpOnly, set only on first like, 1-year lifetime                                            | `apps/web/src/app/api/likes/route.ts:82-88` (`60*60*24*365`)                                                                         |
-| Declining analytics stops GA **cookies** only — not GTM cookieless pings, Vercel Analytics/Speed Insights, or Sentry | `apps/web/src/app/[locale]/layout.tsx:26-40,108-109`; `apps/web/instrumentation-client.ts`; `docs/architecture/gtm-ga4-setup.md:509` |
-| Nothing is ever auto-deleted (no TTL, no purge path)                                                                 | Grep of `apps/web/src` for `expireAfterSeconds`/`deleteMany`/`deleteOne` against `website.contact`/`website.likes`: zero hits        |
-| Sentry's PII posture is locked (no identities, no form contents)                                                     | `apps/web/src/utils/sentry/options.ts:91-92` (`sendDefaultPii: false`, `dataCollection.userInfo: false`)                             |
+| Claim                                                                                                                | Source                                                                                                                                                                       |
+| -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contact form stores `name`/`email`/`subject`/`message`                                                               | `apps/web/src/service/contact.service.ts:11-18` (Mongo `website.contact` + `createdAt`)                                                                                      |
+| Newsletter email lives at **Resend**, not in our database                                                            | `apps/web/src/service/subscribe.service.ts:29`                                                                                                                               |
+| Likes generate a random UUID, not tied to identity                                                                   | `apps/web/src/app/api/likes/route.ts:64` (`crypto.randomUUID()`)                                                                                                             |
+| Likes cover **sermons too**, not just blog posts — the copy must not say "blog"                                      | `predicas/[slug]/page.tsx:61-63` reads `_visitor_id` + `getLikes("predicas/<slug>")`; `SermonDetails.tsx:69-71` reuses the blog's `PostActions` with `basePath="predicas"`   |
+| §1 must disclose AUTOMATIC collection, not only user-submitted data                                                  | `layout.tsx:108-109,122` (Vercel Analytics/Speed Insights + GTM mount unconditionally) and `instrumentation-client.ts` (Sentry) run for a visitor who never submits anything |
+| Six named processors: Resend, MongoDB Atlas, Vercel, Google, Sentry, Contentful                                      | See table below                                                                                                                                                              |
+| `_visitor_id` cookie is httpOnly, set only on first like, 1-year lifetime                                            | `apps/web/src/app/api/likes/route.ts:82-88` (`60*60*24*365`)                                                                                                                 |
+| Declining analytics stops GA **cookies** only — not GTM cookieless pings, Vercel Analytics/Speed Insights, or Sentry | `apps/web/src/app/[locale]/layout.tsx:26-40,108-109`; `apps/web/instrumentation-client.ts`; `docs/architecture/gtm-ga4-setup.md:509`                                         |
+| Nothing is ever auto-deleted (no TTL, no purge path)                                                                 | Grep of `apps/web/src` for `expireAfterSeconds`/`deleteMany`/`deleteOne` against `website.contact`/`website.likes`: zero hits                                                |
+| Sentry's PII posture is locked (no identities, no form contents)                                                     | `apps/web/src/utils/sentry/options.ts:91-92` (`sendDefaultPii: false`, `dataCollection.userInfo: false`)                                                                     |
 
 **Only these six are named — deliberately, and two others are not.** SendGrid and Mailchimp both exist in
 the codebase, and both are excluded from the policy on purpose:
@@ -79,23 +81,40 @@ Si algo cambia, actualizaremos esta página y su fecha de vigencia.
 
 ## 1. Qué información recopilamos
 
-Recopilamos únicamente lo que usted nos envía y lo mínimo necesario para que el sitio funcione:
+Recopilamos dos clases de información: la que usted nos envía, y la que se recopila automáticamente por
+el solo hecho de visitar el sitio.
+
+**Lo que usted nos envía**
 
 - **Formulario de contacto:** su nombre, su correo electrónico, el asunto y el mensaje que escribe.
 - **Suscripción al boletín:** únicamente su correo electrónico.
-- **"Me gusta" en el blog:** cuando marca un artículo por primera vez, generamos un identificador
-  aleatorio (por ejemplo `a3f8c1e2-…`) y lo guardamos en una cookie llamada `_visitor_id`. Ese
-  identificador no contiene su nombre, su correo ni su dirección IP: sirve solo para que un mismo
-  visitante no cuente dos veces el mismo "me gusta".
+- **"Me gusta":** cuando marca por primera vez un contenido del sitio — un artículo del blog o una
+  prédica — generamos un identificador aleatorio (por ejemplo `a3f8c1e2-…`) y lo guardamos en una cookie
+  llamada `_visitor_id`. Ese identificador no contiene su nombre, su correo ni su dirección IP: sirve solo
+  para que un mismo visitante no cuente dos veces el mismo "me gusta".
 
-No le pedimos que cree una cuenta, no guardamos contraseñas y no almacenamos su dirección IP ni su
-navegador junto a los mensajes o los "me gusta".
+**Lo que se recopila automáticamente**
+
+Aunque usted no complete ningún formulario ni marque ningún "me gusta", su visita genera datos técnicos:
+
+- **Uso y rendimiento:** las herramientas de analítica y de rendimiento registran, de forma general, qué
+  páginas se visitan y cuán rápido cargan.
+- **Errores:** si algo falla, se envía un informe técnico del error para que podamos repararlo.
+- **Datos de la solicitud:** como en cualquier sitio web, los servidores que le entregan estas páginas
+  reciben su dirección IP y datos básicos de su navegador. Esto es inevitable para poder mostrarle el
+  sitio.
+
+Todos los proveedores que reciben estos datos están nombrados en la sección 3, y en la sección 5
+explicamos con precisión qué detiene y qué **no** detiene el rechazo de las cookies de analítica.
+
+No le pedimos que cree una cuenta y no guardamos contraseñas. Tampoco guardamos su dirección IP ni su
+navegador **en nuestra propia base de datos**, junto a los mensajes o los "me gusta".
 
 ## 2. Cómo usamos su información
 
 - Para responder sus consultas y ponernos en contacto con usted.
 - Para enviarle el boletín, si usted lo pidió.
-- Para contar los "me gusta" de cada artículo.
+- Para contar los "me gusta" de cada artículo y de cada prédica.
 - Para entender de forma general cómo se usa el sitio y detectar errores.
 
 No vendemos su información y no la usamos para publicidad.
@@ -197,22 +216,39 @@ changes, we will update this page and its effective date.
 
 ## 1. What information we collect
 
-We collect only what you send us, and the minimum the site needs to work:
+We collect two kinds of information: what you send us, and what is collected automatically simply because
+you visited the site.
+
+**What you send us**
 
 - **Contact form:** your name, your email address, the subject, and the message you write.
 - **Newsletter signup:** your email address only.
-- **Blog likes:** the first time you like an article we generate a random identifier (for example
-  `a3f8c1e2-…`) and store it in a cookie called `_visitor_id`. That identifier contains no name, email, or
-  IP address — it exists only so the same visitor cannot like the same post twice.
+- **Likes:** the first time you like anything on the site — a blog article or a sermon — we generate a
+  random identifier (for example `a3f8c1e2-…`) and store it in a cookie called `_visitor_id`. That
+  identifier contains no name, email, or IP address — it exists only so the same visitor cannot like the
+  same item twice.
 
-We do not ask you to create an account, we do not store passwords, and we do not store your IP address or
-browser alongside your messages or your likes.
+**What is collected automatically**
+
+Even if you never fill in a form or like anything, your visit produces technical data:
+
+- **Usage and performance:** the site's analytics and performance tools record, in general terms, which
+  pages are visited and how quickly they load.
+- **Errors:** if something goes wrong, a technical report about the error is sent so that we can fix it.
+- **Request data:** as with any website, the servers that deliver these pages receive your IP address and
+  basic information about your browser. This is unavoidable in order to show you the site.
+
+Every provider that receives this data is named in section 3, and section 5 explains precisely what
+declining analytics cookies does — and does **not** — stop.
+
+We do not ask you to create an account and we do not store passwords. We also do not store your IP address
+or browser **in our own database**, alongside your messages or your likes.
 
 ## 2. How we use your information
 
 - To answer your questions and get back to you.
 - To send you the newsletter, if you asked for it.
-- To count the likes on each article.
+- To count the likes on each article and each sermon.
 - To understand in general terms how the site is used, and to detect errors.
 
 We do not sell your information and we do not use it for advertising.

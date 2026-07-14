@@ -1,7 +1,7 @@
 # ICR-137 — Fix the published privacy policy
 
 > **The live privacy policy makes statements about our data handling that are false.** This ticket
-> rewrites both locales so the policy describes what the site *actually* does — verified against the
+> rewrites both locales so the policy describes what the site _actually_ does — verified against the
 > source, not against the ticket. The PR's substance is `docs/product/privacy-policy.md` (the canonical,
 > reviewable, version-controlled copy). A **human** then pastes both locales into Contentful and publishes.
 
@@ -9,19 +9,19 @@
 - **Commit type:** `fix` · **Branch:** `fix/ICR-137-fix-published-privacy-policy`
 - **QA depth:** standard · **QA type:** `chore` (docs-only diff; see § Testing)
 - **Sensitive areas:** `form-pii-spam`, `likes-mongo`, `email-services` — **referenced, not modified.**
-  This ticket changes **no** data-handling behaviour. It only changes what we *say* about it.
+  This ticket changes **no** data-handling behaviour. It only changes what we _say_ about it.
 
 ## 1. Dependencies Check
 
 Everything this policy describes already exists on `main` (worktree base `ea8d799`). Nothing to build first.
 
-| Must exist                              | Status | Evidence                                                        |
-| --------------------------------------- | :----: | --------------------------------------------------------------- |
-| Contentful entry `2nFd6sF9w0BbrhWrYklPVD` | ✅ | Read live from the `production` env; `churchInfoTopic`, both locales published (`publishedVersion` 6) |
-| `[locale]/[topic]` route renders it       | ✅ | `apps/web/src/app/[locale]/[topic]/page.tsx` — h1 = `name`, body = rich text |
-| Canonical email `info@idcredentor.org`    | ✅ | Only address in source: `Footer.tsx:120`, `lib/metadata.ts:167`, `resendBroadcast.ts:6` |
-| Sentry live (new processor)               | ✅ | ICR-117 merged in `ea8d799`; `instrumentation-client.ts` inits unconditionally |
-| `docs/product/` house style               | ✅ | `docs/product/README.md` — H1, bolded lede blockquote, `**Last reviewed:**` footer |
+| Must exist                                | Status | Evidence                                                                                              |
+| ----------------------------------------- | :----: | ----------------------------------------------------------------------------------------------------- |
+| Contentful entry `2nFd6sF9w0BbrhWrYklPVD` |   ✅   | Read live from the `production` env; `churchInfoTopic`, both locales published (`publishedVersion` 6) |
+| `[locale]/[topic]` route renders it       |   ✅   | `apps/web/src/app/[locale]/[topic]/page.tsx` — h1 = `name`, body = rich text                          |
+| Canonical email `info@idcredentor.org`    |   ✅   | Only address in source: `Footer.tsx:120`, `lib/metadata.ts:167`, `resendBroadcast.ts:6`               |
+| Sentry live (new processor)               |   ✅   | ICR-117 merged in `ea8d799`; `instrumentation-client.ts` inits unconditionally                        |
+| `docs/product/` house style               |   ✅   | `docs/product/README.md` — H1, bolded lede blockquote, `**Last reviewed:**` footer                    |
 
 ## 2. Verified factual basis (the whole point of this ticket)
 
@@ -30,28 +30,43 @@ code wins** — three corrections are folded in below.
 
 ### 2.1 What we actually collect
 
-| Surface        | Fields                                   | Stored where                                                   | IP / user-agent? |
-| -------------- | ---------------------------------------- | -------------------------------------------------------------- | :--------------: |
-| Contact form   | `name`, `email`, `subject`, `message`     | Mongo `website.contact` + `createdAt` (`contact.service.ts:11-18`); also emailed to us via Resend | **No** |
-| Newsletter     | `email` only                              | **Not in our database at all** — sent straight to a Resend Audience (`subscribe.service.ts:29`) | **No** |
-| Blog likes     | A server-generated random UUID (`crypto.randomUUID()`, `api/likes/route.ts:64`) | Mongo `website.likes.visitors[]`, alongside the post slug (`like.service.ts:41-42`) | **No** |
+| Surface                                                       | Fields                                                                          | Stored where                                                                                      |              IP / user-agent?               |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | :-----------------------------------------: |
+| Contact form                                                  | `name`, `email`, `subject`, `message`                                           | Mongo `website.contact` + `createdAt` (`contact.service.ts:11-18`); also emailed to us via Resend |                   **No**                    |
+| Newsletter                                                    | `email` only                                                                    | **Not in our database at all** — sent straight to a Resend Audience (`subscribe.service.ts:29`)   |                   **No**                    |
+| Likes (blog **and sermons**)                                  | A server-generated random UUID (`crypto.randomUUID()`, `api/likes/route.ts:64`) | Mongo `website.likes.visitors[]`, alongside the item's slug (`like.service.ts:41-42`)             |                   **No**                    |
+| **Automatic telemetry** (every visitor, no submission needed) | Usage/performance events + error diagnostics + request metadata (IP, browser)   | Google (GTM/GA4), Vercel (Analytics/Speed Insights), Sentry — **not** our own DB                  | **IP reaches the processors**, never our DB |
 
 > **Correction to the ticket (1/3):** the ticket implies newsletter emails are ours to hold. They are
 > not — we never store a subscriber's email; Resend does. The copy must say so.
+
+> **Correction (4/4) — added at code review (Codex, PR #95).** Two gaps in the first draft of the copy,
+> both confirmed against the source:
+>
+> 1. **Likes are not blog-only.** Sermons reuse the blog's like path — `predicas/[slug]/page.tsx:61-63`
+>    reads `_visitor_id` and calls `getLikes("predicas/<slug>")`, and `SermonDetails.tsx:69-71` renders the
+>    blog's `PostActions` with `basePath="predicas"`. Copy saying "blog likes" leaves a visitor who likes a
+>    **prédica** undisclosed. (This is the ICR-39 shared-component trap, again.)
+> 2. **§1 must disclose AUTOMATIC collection.** The first draft opened "we collect only what you send us",
+>    but GTM/GA4, Vercel Analytics/Speed Insights and Sentry all load for a visitor who never submits a
+>    form, subscribes, or likes anything (`layout.tsx:108-109,122`, `instrumentation-client.ts`). §3/§5
+>    disclosed the processors, but §1 — the section a reader trusts for "what do you collect" — stated a
+>    falsehood. §1 now has two parts: _what you send us_ and _what is collected automatically_ (usage,
+>    errors, request metadata), with the "we don't store your IP" claim narrowed to **our own database**.
 
 ### 2.2 Processors that actually receive visitor data today
 
 Per the design gate, **all** of these are named in the policy — including Sentry, which the ticket
 predates.
 
-| Processor          | What it receives                                                                 | Consent-gated? |
-| ------------------ | -------------------------------------------------------------------------------- | :------------: |
-| **Resend**         | Contact-form contents (email delivery) + newsletter subscriber emails (Audience)  | n/a (you submit it) |
-| **Google**         | GTM/GA4 analytics events; the Maps `<iframe>` on come-meet-us loads from Google   | **Partially** — see 2.4 |
-| **Vercel**         | Hosting (every request); Analytics; Speed Insights                                | **No** — always on |
-| **MongoDB Atlas**  | The `website` database (contact messages, like records)                           | n/a |
-| **Sentry**         | Error/performance telemetry from the browser and server                           | **No** — always on |
-| **Contentful**     | Serves page content + images from its CDN, so it sees the request's IP            | n/a |
+| Processor         | What it receives                                                                 |     Consent-gated?      |
+| ----------------- | -------------------------------------------------------------------------------- | :---------------------: |
+| **Resend**        | Contact-form contents (email delivery) + newsletter subscriber emails (Audience) |   n/a (you submit it)   |
+| **Google**        | GTM/GA4 analytics events; the Maps `<iframe>` on come-meet-us loads from Google  | **Partially** — see 2.4 |
+| **Vercel**        | Hosting (every request); Analytics; Speed Insights                               |   **No** — always on    |
+| **MongoDB Atlas** | The `website` database (contact messages, like records)                          |           n/a           |
+| **Sentry**        | Error/performance telemetry from the browser and server                          |   **No** — always on    |
+| **Contentful**    | Serves page content + images from its CDN, so it sees the request's IP           |           n/a           |
 
 > **Correction to the ticket (2/3):** the ticket lists **SendGrid** as a processor "while `MAIL_PROVIDER`
 > supports it". `SENDGRID_API_KEY` is set in **no** Vercel environment (Production, Preview, staging,
@@ -67,11 +82,11 @@ predates.
 
 ### 2.3 Cookies and client-side storage actually set
 
-| Name                          | Type         | Set when                       | Lifetime | Purpose                          |
-| ----------------------------- | ------------ | ------------------------------ | -------- | -------------------------------- |
-| `_visitor_id`                 | Cookie, **httpOnly**, `sameSite=lax`, `secure` in prod | Only on your **first like** (`api/likes/route.ts:82-88`) | **1 year** (`60*60*24*365`) | Stops the same visitor liking a post twice |
-| `_ga`, `_ga_*`                | Cookie (Google) | Only **after you accept**       | Google-controlled | Google Analytics |
-| `analytics-consent`           | `localStorage` | When you choose on the banner   | Until cleared | Remembers your choice (`"granted"` / `"denied"`) — `src/lib/consent.ts:1,17-19` |
+| Name                | Type                                                   | Set when                                                 | Lifetime                    | Purpose                                                                         |
+| ------------------- | ------------------------------------------------------ | -------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------- |
+| `_visitor_id`       | Cookie, **httpOnly**, `sameSite=lax`, `secure` in prod | Only on your **first like** (`api/likes/route.ts:82-88`) | **1 year** (`60*60*24*365`) | Stops the same visitor liking a post twice                                      |
+| `_ga`, `_ga_*`      | Cookie (Google)                                        | Only **after you accept**                                | Google-controlled           | Google Analytics                                                                |
+| `analytics-consent` | `localStorage`                                         | When you choose on the banner                            | Until cleared               | Remembers your choice (`"granted"` / `"denied"`) — `src/lib/consent.ts:1,17-19` |
 
 ### 2.4 What "Decline" actually does — and does not do
 
@@ -132,13 +147,13 @@ The Contentful model-change gate does **not** apply.
 
 ## 6. New / Modified Files
 
-| File                              | Change | Purpose                                                     |
-| --------------------------------- | ------ | ----------------------------------------------------------- |
-| `docs/product/privacy-policy.md`  | **new** | Canonical bilingual copy + the Contentful publish runbook   |
-| `docs/product/README.md`          | edit   | Add the policy to the reading order (keeps the index honest) |
-| `tasks/specs/ICR-137-*.md/.plan.md` | new  | Spec + plan (ride the PR)                                    |
+| File                                | Change  | Purpose                                                      |
+| ----------------------------------- | ------- | ------------------------------------------------------------ |
+| `docs/product/privacy-policy.md`    | **new** | Canonical bilingual copy + the Contentful publish runbook    |
+| `docs/product/README.md`            | edit    | Add the policy to the reading order (keeps the index honest) |
+| `tasks/specs/ICR-137-*.md/.plan.md` | new     | Spec + plan (ride the PR)                                    |
 
-**No `apps/web/**` source file changes.** If the implementer finds itself editing app code, the plan is wrong.
+**No `apps/web/**` source file changes.\*\* If the implementer finds itself editing app code, the plan is wrong.
 
 ## 7. Rendered structure (what the page becomes)
 
@@ -154,12 +169,12 @@ The Contentful model-change gate does **not** apply.
 1. **Publish slips past the effective date** → the runbook makes the publisher set the date at paste
    time; the doc's value is a default, not a hardcoded truth.
 2. **Publisher pastes markdown into a rich-text field** → Contentful's editor converts `##` to H2 and
-   `**` to bold on paste, but the runbook says to verify the H2s rendered as *headings* (not literal `##`).
+   `**` to bold on paste, but the runbook says to verify the H2s rendered as _headings_ (not literal `##`).
 3. **Only one locale gets pasted** → the page would go half-stale. The runbook requires both locales be
    pasted **and published together** (one publish action covers both, `fieldStatus.*` is per-locale).
 4. **`MAIL_PROVIDER` changes to SendGrid later** → the policy becomes wrong. Noted in the doc as a
    maintenance trigger.
-5. **A future ticket consent-gates Vercel Analytics / adds a TTL** → §2.4/§2.5 copy becomes *understated*
+5. **A future ticket consent-gates Vercel Analytics / adds a TTL** → §2.4/§2.5 copy becomes _understated_
    (safe direction), but must still be updated. Listed as maintenance triggers in the doc.
 6. **Renderer lacks hyperlink styling** → emails stay plain text; no `<a>` nodes (R9).
 
@@ -190,6 +205,7 @@ structural invariant is proven by inspection, not by a tautological test).
 ## 11. Implementation Checkpoints
 
 ### CP1 — Author the canonical policy doc
+
 - **Files:** `docs/product/privacy-policy.md` (new), `docs/product/README.md` (reading order)
 - **Verify:** content assertions in §10 pass; `pnpm type-check && pnpm lint && pnpm test` green;
   `prettier --check` clean on the two touched files (repo-wide `format:check` is pre-existing-dirty — do
@@ -197,6 +213,7 @@ structural invariant is proven by inspection, not by a tautological test).
 - **Commit:** `fix(ICR-137): rewrite the privacy policy to describe real data handling`
 
 ### CP2 — Full verify + build
+
 - **Files:** none
 - **Verify:** `pnpm build` green; test count unchanged vs `origin/main`
 - **Commit:** none (verification only)
@@ -218,7 +235,7 @@ Without this ticket the merge would leave the live page **still wrong** with not
 1. **Effective date** — doc ships `2026-07-14`; publisher confirms/adjusts at paste time (design-gate decision).
 2. **Legal review** — the copy is truthful but **not lawyer-reviewed**. It asserts no compliance status
    (R10). A real Ley 25.326 / AAIP framing is a separate, human-owned follow-up.
-3. **The policy is honest about un-gated analytics** — that honesty may make leadership *want* to change
+3. **The policy is honest about un-gated analytics** — that honesty may make leadership _want_ to change
    the behaviour (consent-gate Vercel/Sentry, add a TTL). That is explicitly **out of scope** here and is
    the right instinct for a follow-up; this ticket only stops the page from lying.
 
@@ -236,23 +253,40 @@ Si algo cambia, actualizaremos esta página y su fecha de vigencia.
 
 ## 1. Qué información recopilamos
 
-Recopilamos únicamente lo que usted nos envía y lo mínimo necesario para que el sitio funcione:
+Recopilamos dos clases de información: la que usted nos envía, y la que se recopila automáticamente por
+el solo hecho de visitar el sitio.
+
+**Lo que usted nos envía**
 
 - **Formulario de contacto:** su nombre, su correo electrónico, el asunto y el mensaje que escribe.
 - **Suscripción al boletín:** únicamente su correo electrónico.
-- **"Me gusta" en el blog:** cuando marca un artículo por primera vez, generamos un identificador
-  aleatorio (por ejemplo `a3f8c1e2-…`) y lo guardamos en una cookie llamada `_visitor_id`. Ese
-  identificador no contiene su nombre, su correo ni su dirección IP: sirve solo para que un mismo
-  visitante no cuente dos veces el mismo "me gusta".
+- **"Me gusta":** cuando marca por primera vez un contenido del sitio — un artículo del blog o una
+  prédica — generamos un identificador aleatorio (por ejemplo `a3f8c1e2-…`) y lo guardamos en una cookie
+  llamada `_visitor_id`. Ese identificador no contiene su nombre, su correo ni su dirección IP: sirve solo
+  para que un mismo visitante no cuente dos veces el mismo "me gusta".
 
-No le pedimos que cree una cuenta, no guardamos contraseñas y no almacenamos su dirección IP ni su
-navegador junto a los mensajes o los "me gusta".
+**Lo que se recopila automáticamente**
+
+Aunque usted no complete ningún formulario ni marque ningún "me gusta", su visita genera datos técnicos:
+
+- **Uso y rendimiento:** las herramientas de analítica y de rendimiento registran, de forma general, qué
+  páginas se visitan y cuán rápido cargan.
+- **Errores:** si algo falla, se envía un informe técnico del error para que podamos repararlo.
+- **Datos de la solicitud:** como en cualquier sitio web, los servidores que le entregan estas páginas
+  reciben su dirección IP y datos básicos de su navegador. Esto es inevitable para poder mostrarle el
+  sitio.
+
+Todos los proveedores que reciben estos datos están nombrados en la sección 3, y en la sección 5
+explicamos con precisión qué detiene y qué **no** detiene el rechazo de las cookies de analítica.
+
+No le pedimos que cree una cuenta y no guardamos contraseñas. Tampoco guardamos su dirección IP ni su
+navegador **en nuestra propia base de datos**, junto a los mensajes o los "me gusta".
 
 ## 2. Cómo usamos su información
 
 - Para responder sus consultas y ponernos en contacto con usted.
 - Para enviarle el boletín, si usted lo pidió.
-- Para contar los "me gusta" de cada artículo.
+- Para contar los "me gusta" de cada artículo y de cada prédica.
 - Para entender de forma general cómo se usa el sitio y detectar errores.
 
 No vendemos su información y no la usamos para publicidad.
@@ -354,22 +388,39 @@ changes, we will update this page and its effective date.
 
 ## 1. What information we collect
 
-We collect only what you send us, and the minimum the site needs to work:
+We collect two kinds of information: what you send us, and what is collected automatically simply because
+you visited the site.
+
+**What you send us**
 
 - **Contact form:** your name, your email address, the subject, and the message you write.
 - **Newsletter signup:** your email address only.
-- **Blog likes:** the first time you like an article we generate a random identifier (for example
-  `a3f8c1e2-…`) and store it in a cookie called `_visitor_id`. That identifier contains no name, email, or
-  IP address — it exists only so the same visitor cannot like the same post twice.
+- **Likes:** the first time you like anything on the site — a blog article or a sermon — we generate a
+  random identifier (for example `a3f8c1e2-…`) and store it in a cookie called `_visitor_id`. That
+  identifier contains no name, email, or IP address — it exists only so the same visitor cannot like the
+  same item twice.
 
-We do not ask you to create an account, we do not store passwords, and we do not store your IP address or
-browser alongside your messages or your likes.
+**What is collected automatically**
+
+Even if you never fill in a form or like anything, your visit produces technical data:
+
+- **Usage and performance:** the site's analytics and performance tools record, in general terms, which
+  pages are visited and how quickly they load.
+- **Errors:** if something goes wrong, a technical report about the error is sent so that we can fix it.
+- **Request data:** as with any website, the servers that deliver these pages receive your IP address and
+  basic information about your browser. This is unavoidable in order to show you the site.
+
+Every provider that receives this data is named in section 3, and section 5 explains precisely what
+declining analytics cookies does — and does **not** — stop.
+
+We do not ask you to create an account and we do not store passwords. We also do not store your IP address
+or browser **in our own database**, alongside your messages or your likes.
 
 ## 2. How we use your information
 
 - To answer your questions and get back to you.
 - To send you the newsletter, if you asked for it.
-- To count the likes on each article.
+- To count the likes on each article and each sermon.
 - To understand in general terms how the site is used, and to detect errors.
 
 We do not sell your information and we do not use it for advertising.
