@@ -45,14 +45,14 @@ Everything below was verified against the branch (`origin/main` @ `ea8d799`), no
 
 ### Code + config
 
-| File                                      | Line(s) | Change                                                                                         |
-| ----------------------------------------- | ------- | ---------------------------------------------------------------------------------------------- |
-| `apps/web/package.json`                   | 31, 67  | Delete both dependency entries                                                                 |
-| `pnpm-lock.yaml`                          | —       | Regenerate via `pnpm install` (drops `superagent@3.8.1` + `dotenv@8.6.0`)                      |
-| `apps/web/src/types/environment.d.ts`     | 23–26   | Delete the `// MailChimp` block (comment + 3 vars)                                             |
-| `apps/web/.env.example`                   | 41–44   | Delete the comment line + 3 vars                                                               |
-| `apps/web/src/service/broadcast/types.ts` | 13      | `/** Plain-text alternative (Mailchimp \`plain_text\`). _/`→`/\*\* Plain-text alternative. _/` |
-| `.claude/config.json`                     | 200     | `Mailchimp/SendGrid/Resend are presumed LIVE` → `SendGrid/Resend are presumed LIVE`            |
+| File                                      | Line(s) | Change                                                                                          |
+| ----------------------------------------- | ------- | ----------------------------------------------------------------------------------------------- |
+| `apps/web/package.json`                   | 31, 67  | Delete both dependency entries                                                                  |
+| `pnpm-lock.yaml`                          | —       | Regenerate via `pnpm install` (drops `superagent@3.8.1` + `dotenv@8.6.0`)                       |
+| `apps/web/src/types/environment.d.ts`     | 23–26   | Delete the `// MailChimp` block (comment + 3 vars)                                              |
+| `apps/web/.env.example`                   | 41–44   | Delete the comment line + 3 vars                                                                |
+| `apps/web/src/service/broadcast/types.ts` | 13      | `/** Plain-text alternative (Mailchimp \`plain*text\`). */`→`/\*\* Plain-text alternative. \_/` |
+| `.claude/config.json`                     | 200     | `Mailchimp/SendGrid/Resend are presumed LIVE` → `SendGrid/Resend are presumed LIVE`             |
 
 ### Docs
 

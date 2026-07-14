@@ -4,7 +4,7 @@
 
 **Iglesia de Cristo Redentor (IDC Redentor)** is the official bilingual (es-AR / en-US) website of the church: informational pages, a blog, community/values content (the Creed/Credo), a worship-service "come meet us" page with map + service times, a newsletter signup, and a contact form. It is the **first custom website** for the community — modern, fast, easy for non-technical editors to maintain, and welcoming to members and visitors.
 
-The **public website** (`apps/web`) is a **content-managed informational site**, not an app: it has **no authentication, no RBAC, no payments, and no in-product AI**. Almost all content is rendered from **Contentful** via hand-written GraphQL in React Server Components. The only stateful reader feature is an anonymous blog "like".
+The **public website** (`apps/web`) is a **content-managed informational site**, not an app: it has **no authentication, no RBAC, no payments, and no in-product AI**. Almost all content is rendered from **Contentful** via hand-written GraphQL in React Server Components. The only stateful reader feature is an anonymous **"like"** — slug-keyed via `/api/likes`, and shared by **blog posts and sermons**.
 
 > **Admin exception:** the separate internal **Ministry Admin Panel** (`apps/admin`) _is_ an authenticated app — Firebase Auth + RBAC + congregant data — and is deliberately **in scope**. The no-auth boundary above governs `apps/web` only. See `tasks/specs/admin-platform-brief.md` and `docs/product/scope-and-boundaries.md` § "Two products in this repo".
 

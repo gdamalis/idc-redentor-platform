@@ -51,8 +51,8 @@ the codebase, and both are excluded from the policy on purpose:
 - **SendGrid** — the alternate transactional-email adapter (`apps/web/src/service/mailing/sendgrid.adapter.ts`).
   `SENDGRID_API_KEY` is set in **no** Vercel environment (Production, Preview, staging, Development), so the
   adapter physically cannot send mail: it is dead config. The live provider is Resend.
-- **Mailchimp** — the legacy newsletter integration. No code path reads it any more; the dependency and its
-  `MAILCHIMP_*` env vars are pending removal (ICR-110).
+- **Mailchimp** — the legacy newsletter integration. No code path reads it any more, and the dependency plus
+  its `MAILCHIMP_*` env vars were **removed in ICR-110**. It is gone, not merely unused.
 
 Naming either in the policy would disclose a data flow that **does not occur** — the same category of false
 statement this document exists to remove. If SendGrid is ever given a live API key, the policy must name it
