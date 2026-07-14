@@ -112,10 +112,7 @@ function getClient(): MongoClient {
 }
 
 export async function connect() {
-  /* getClient().connect() + ping admin */
-}
-export async function disconnect() {
-  /* client.close() */
+  /* getClient().connect() — [db] console.error + Sentry.captureException on failure */
 }
 ```
 
@@ -123,8 +120,8 @@ Key points:
 
 - **Single cached client.** In development it's stashed on `globalThis._mongoClient` so Hot Module Reload doesn't open a new pool on every edit. In production it's a module-level singleton. This is the standard Next.js + MongoDB pattern and avoids connection-pool exhaustion.
 - **`MONGODB_OPTIONS`** pins the Stable API (`serverApi: { version: v1, strict: true, deprecationErrors: true }`).
-- **`connect()` returns the client or `undefined` on failure** (it catches and logs) — this contract is **unchanged**. **Most callers still null-check and throw**: `contact.service`, `predica/pdfJobs`, and `broadcast/broadcastLog` all do `if (!client) throw new Error("Failed to connect to database")` — a dropped contact message, a stuck PDF job, or a lost broadcast claim is a real bug that should be loud. **The likes path is the deliberate exception (ICR-111)** — it reacts to that same `!client` signal by failing soft instead of throwing. See [The fail-soft likes contract](#the-fail-soft-likes-contract-icr-111) below.
-- **`MONGODB_URI` is required at runtime but missing from `.env.example`.** Set it. Never commit a real URI.
+- **`connect()` returns the client or `undefined` on failure** (it catches, logs at error level with a `[db]` prefix, and reports to Sentry via `Sentry.captureException`) — this contract is **unchanged**. **Most callers still null-check and throw**: `contact.service`, `predica/pdfJobs`, and `broadcast/broadcastLog` all do `if (!client) throw new Error("Failed to connect to database")` — a dropped contact message, a stuck PDF job, or a lost broadcast claim is a real bug that should be loud. **The likes path is the deliberate exception (ICR-111)** — it reacts to that same `!client` signal by failing soft instead of throwing. See [The fail-soft likes contract](#the-fail-soft-likes-contract-icr-111) below.
+- **`MONGODB_URI` is required at runtime and is in `.env.example`.** Never commit a real URI.
 
 ## The like feature
 
@@ -176,10 +173,11 @@ Both the `!client` branch (connect failed) **and** the query `try/catch` (connec
 itself threw) resolve to the same `{ ok: false, reason: "db-unavailable" }` — still `console.error`-ing
 the underlying error, just no longer rethrowing it.
 
-**Why both branches, not just `!client`.** `connect()` pings on every call, so a Mongo that is
-reachable-but-unusable passes `connect()` and then throws at query time. Fixing only the `!client`
-branch would leave that 500 path wide open. This is not hypothetical — it is exactly what happens on
-Vercel preview today (see below).
+**Why both branches, not just `!client`.** `connect()` establishes the connection (server selection +
+auth handshake) but does not read any collection, so a Mongo that is reachable-and-authenticated but
+NOT authorized for `website.likes` still passes `connect()` and only throws at query time. Fixing only
+the `!client` branch would leave that 500 path wide open. This is not hypothetical — it is exactly what
+happens on Vercel preview today (see below).
 
 **HTTP mapping (`api/likes/route.ts`):** `!outcome.ok` → **503** `{ error: "Service Unavailable" }`
 (transient/retryable) — never a fabricated `count: 0`. The outer `try/catch` in each handler still
@@ -196,10 +194,16 @@ revert-on-`!response.ok` handling silently covers a 503 too.
 `<LikeButton>` renders at all; `<ShareButton>` always renders. This makes a fabricated `count: 0`
 **unrepresentable in the type system**, not merely discouraged by convention.
 
-**No error boundary to fall back on.** `apps/web/src/app` has no `error.tsx` / `global-error.tsx`
-anywhere, so an unguarded throw in an RSC hard-500s the whole page — there is no boundary to catch it.
-That is why the likes path fails soft at the **service** boundary rather than relying on a React error
-boundary: there isn't one to rely on. (A global error boundary is tracked as a separate, deferred ticket.)
+**An error boundary is a whole-page fallback; it cannot degrade a single widget.** If a likes failure
+threw, the nearest boundary (`[locale]/error.tsx`) would replace the ENTIRE ARTICLE with an error
+screen — the reader loses the content they came for, over a missing heart. Failing soft at the
+**service** boundary is what lets the article render completely and drop only the `<LikeButton>`.
+Error boundaries are the backstop for _unexpected_ faults; a known-unavailable likes DB is an
+_expected_ degradation and belongs in the data layer's contract, not in a boundary. Worth noting:
+`[locale]/error.tsx` does not catch a throw from its own segment's `layout.tsx` — only
+`global-error.tsx` does, and `global-error.tsx` replaces the root layout, so it has no providers (no
+i18n, no theme) and must hardcode its copy. Boundaries are a blunt instrument here, which reinforces
+the same conclusion.
 
 **Product rationale.** The like is the site's single interactive reader feature and explicitly
 "lightweight" (`docs/product/scope-and-boundaries.md`). It must never be able to take down the article.
@@ -207,9 +211,9 @@ A missing heart is invisible; a 500 is a broken site.
 
 ### Vercel preview: a real likes-DB outage, but not the one you'd guess
 
-On **Vercel preview**, `MONGODB_URI` **is** set and `connect()` **succeeds** — it pings `admin` and logs
-`Connected to database`. The failure is one level deeper: the Atlas user preview connects as is **not
-authorized to `find` on `website.likes`**, so the _query_ throws:
+On **Vercel preview**, `MONGODB_URI` **is** set and `connect()` **succeeds** — but (since ICR-113) it no
+longer pings `admin` and no longer logs anything on success. The failure is one level deeper: the Atlas
+user preview connects as is **not authorized to `find` on `website.likes`**, so the _query_ throws:
 
 ```
 Error fetching likes: MongoServerError: user is not allowed to do action [find] on [website.likes]
