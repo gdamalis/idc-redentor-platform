@@ -45,7 +45,7 @@ The container for most informational pages. A `Page` doesn't hold prose directly
   - **ComponentTextBlock** — `headline`, `subtitle`, `body` (rich text).
 - **Getter:** `lib/contentful/getPage.ts#getPage(name, locale, isDraftMode)` — looks up by `machineName`, returns `{ pageName, slug, seo, topSectionCollection, pageContent, extraSectionCollection }`.
 - **Rendered by:** the `[locale]` route segments, with a section/component resolver that switches on `__typename` to render the right component.
-- **Structured-data note:** the page's `Page.seo` drives `<head>` metadata; JSON-LD (`WebPage`, `BreadcrumbList`) would be added at the page level — see [ai-era-strategy.md](./ai-era-strategy.md).
+- **Structured-data note:** the page's `Page.seo` drives `<head>` metadata. `Organization` JSON-LD already ships **site-wide** (`buildOrganizationJsonLd`, rendered in `[locale]/layout.tsx`), so every `Page` carries it. `WebPage` / `BreadcrumbList` are **not** emitted yet — see [ai-era-strategy.md](./ai-era-strategy.md).
 
 ## 2. ContentCollection — Creed/Credo + Values
 
@@ -72,7 +72,7 @@ A banner that pairs an **Event** with a **Location**, used for the worship servi
   - `machineName` (lookup key).
 - **Getter:** `lib/contentful/getEventBanner.ts#getEventBanner(name, locale, isDraftMode)` — looks up by `machineName`. _(Note: the standalone getter requests `name`, `dayOfWeek`, `date`, `time`, `note` and the full location incl. `googleMapsUrl`; the inline EventBanner fragment inside `getPage` requests a subset — `date`, `time`, `note`, and location without `googleMapsUrl`.)_
 - **Rendered by:** come-meet-us (worship service) and any `Page` that embeds an `EventBanner` in `pageContent`.
-- **Structured-data note:** the **highest-value JSON-LD target** — `Event` (services, conferences) and `Place`/geo from `LocationComponent` feed local discovery and "service times near me" answers. See [ai-era-strategy.md](./ai-era-strategy.md).
+- **Structured-data note:** **already shipped** — `lib/metadata.ts#buildEventJsonLd` emits `Event` (with `Place`/geo from `LocationComponent`) and is rendered on `come-meet-us` (`page.tsx`). This is what feeds local discovery and "service times near me" answers. Do not file it as new work. See [ai-era-strategy.md](./ai-era-strategy.md).
 
 ## 4. Blog post (BlogPostPage) — teaching and news
 
@@ -85,7 +85,7 @@ The one content-rich, frequently-updated type, carrying the anonymous **like** (
   - `getAllBlogPostSlugs(locale)` — slugs + `publishedAt` for `generateStaticParams` / sitemap.
   - `getBlogPostPage(slug, locale, isDraftMode)` — a single post by slug.
 - **Rendered by:** `/blog` (list) and `/blog/[slug]` (detail). The anonymous **like** is the only _kind_ of stateful reader feature — and it is **not blog-only**: `/api/likes` is a generic, **slug-keyed** endpoint, so **blog posts and sermons** share it (see §8). It is the one thing in this whole content set that writes to MongoDB (`likes` collection), not Contentful.
-- **Structured-data note:** `BlogPosting` JSON-LD per post is a roadmap item (see [ai-era-strategy.md](./ai-era-strategy.md)).
+- **Structured-data note:** **already shipped** — `lib/metadata.ts#buildArticleJsonLd` emits `@type: "BlogPosting"` and is rendered on `/blog/[slug]`. Not a roadmap item. See [ai-era-strategy.md](./ai-era-strategy.md).
 
 ## 5. Footer — site chrome
 
@@ -93,7 +93,7 @@ The one content-rich, frequently-updated type, carrying the anonymous **like** (
 - **Key fields:** `shortDescription`, `logo`, `socialLinksCollection` → **SocialLink** (`url`, `platform`), and `location` → **LocationComponent** (`addressLine1`, `neighborhood`, `city`, `country`, `googleMapsUrl`).
 - **Getter:** `lib/contentful/getFooter.ts#getFooter(locale, isDraftMode)` — returns `{ logo, shortDescription, socialLinks, location }`.
 - **Rendered by:** the global footer component (every page).
-- **Structured-data note:** the footer's `location` + `socialLinks` are good inputs for `Organization`/`Church` JSON-LD `address` and `sameAs`.
+- **Structured-data note:** the footer's `location` + `socialLinks` already feed the **shipped** `Organization` JSON-LD (`lib/metadata.ts#buildOrganizationJsonLd`, rendered site-wide from `[locale]/layout.tsx`) — its `address` and `sameAs`.
 
 ## 6. NavigationMenu — the menu
 
@@ -144,10 +144,10 @@ auto-publishes — a human reviews and publishes every sermon.
   **like** through the same slug-keyed `/api/likes` route. Likes are **not** blog-only.
 - **Structured-data note:** **already shipped** — `lib/sermonMetadata.ts#buildSermonJsonLd` emits an
   `Article` with a nested **`AudioObject`** (contentUrl + duration), rendered as an
-  `application/ld+json` script on `/predicas/[slug]`. Sermons are the **one content type whose
-  JSON-LD already exists**; do not file it as new work. See
-  [ai-era-strategy.md](./ai-era-strategy.md) for the types still missing (`Church`/`Organization`,
-  `Event`, `BlogPosting`, `BreadcrumbList`).
+  `application/ld+json` script on `/predicas/[slug]`. Do not file it as new work. **Every JSON-LD
+  type this site needs already ships** — `Organization` (site-wide), `Event` (come-meet-us),
+  `BlogPosting` (blog detail), and this one; **only `BreadcrumbList` remains**. See
+  [ai-era-strategy.md](./ai-era-strategy.md).
 - **Editorial note:** sermon content is **preaching — leadership-owned**. The `/predica` pipeline
   writes a **draft** only; a human reviews both locales and publishes. Agents must not alter
   doctrinal meaning. See [editorial-and-content-rules.md](./editorial-and-content-rules.md).

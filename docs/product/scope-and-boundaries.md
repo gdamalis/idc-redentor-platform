@@ -73,7 +73,7 @@ Most out-of-scope ideas have an in-scope reframe that keeps the _intent_ (welcom
 
 Ticketable but tagged roadmap; revisit deliberately. Tie each to the discoverability thesis where relevant.
 
-- **Structured data / JSON-LD** for `Church` / `Organization` (name, address, geo, service times), `Event` (services, conferences), `BlogPosting`, and `BreadcrumbList` — high-leverage for discovery (see [ai-era-strategy.md](./ai-era-strategy.md)). **Strong candidate for "do soon."**
+- **`BreadcrumbList` JSON-LD** on nested routes. ⚠️ **The rest of the JSON-LD roadmap already SHIPPED** — `Organization` (site-wide), `Event` (come-meet-us), `BlogPosting` (blog detail), and `Article` + `AudioObject` (sermon detail) all render today via `lib/metadata.ts` / `lib/sermonMetadata.ts`, so **only `BreadcrumbList` remains** deferred. Check the code before filing a structured-data card (see [ai-era-strategy.md](./ai-era-strategy.md)).
 - **Multi-campus / multiple service locations** if the church grows. (The `LocationComponent` model already supports a single location; multi-location would be a deliberate extension.)
 - **`llms.txt` + richer OG cards** for AI-era discoverability.
 - **Online giving via an external, embedded, PCI-compliant provider** — only if leadership decides, and only as an integration/outbound link, never as in-app card handling.
