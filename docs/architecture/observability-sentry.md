@@ -27,6 +27,16 @@ thrown by Server Components, route handlers, and the proxy are captured even out
 has failed (the i18n provider is unavailable), calls `Sentry.captureException`, and is deliberately
 **not** internationalized (there's no locale context to render with at that point).
 
+There is a third, explicit capture path, and it has to be explicit: `src/service/database.service.ts#connect()`
+calls `Sentry.captureException(error)` directly in its `catch` block. `connect()` deliberately
+**swallows** its error and resolves to `undefined` instead of rethrowing — the fail-soft contract the
+likes path depends on (ICR-111, see `docs/architecture/likes-and-mongodb.md`) — so `onRequestError`
+never sees it: it only auto-captures **uncaught** errors, and this one is caught by design. Without
+the explicit `Sentry.captureException` call, a total MongoDB outage would be invisible in Sentry **and**
+produce no user-visible error — the page just renders without the like button. This was verified
+end-to-end in ICR-113: a production build run against an unreachable Mongo produced a real Sentry
+issue, culprit `GET /api/likes`.
+
 This ticket (ICR-117) exists because live-site failures — e.g. the ICR-111-class MongoDB failures —
 were previously invisible. The goal is stack traces landing somewhere a human can see them, split by
 environment, without shipping PII to a third-party processor.
