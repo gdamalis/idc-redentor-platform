@@ -54,6 +54,39 @@ describe("resolveSentryEnvironment", () => {
 
     expect(resolveSentryEnvironment()).toBe("development");
   });
+
+  // .env.example ships NEXT_PUBLIC_SENTRY_ENVIRONMENT= blank, so a developer who
+  // copies it to .env.local reaches this exact case. `??` alone does not treat ""
+  // as unset, so without normalization this would return "" instead of falling
+  // through the chain.
+  it("ignores a blank NEXT_PUBLIC_SENTRY_ENVIRONMENT override and falls through to NEXT_PUBLIC_VERCEL_ENV", () => {
+    vi.stubEnv("NEXT_PUBLIC_SENTRY_ENVIRONMENT", "");
+    vi.stubEnv("NEXT_PUBLIC_VERCEL_ENV", "preview");
+    vi.stubEnv("VERCEL_ENV", undefined);
+
+    expect(resolveSentryEnvironment()).toBe("preview");
+  });
+
+  it("ignores a whitespace-only NEXT_PUBLIC_SENTRY_ENVIRONMENT override and falls through", () => {
+    vi.stubEnv("NEXT_PUBLIC_SENTRY_ENVIRONMENT", "   ");
+    vi.stubEnv("NEXT_PUBLIC_VERCEL_ENV", "preview");
+    vi.stubEnv("VERCEL_ENV", undefined);
+
+    expect(resolveSentryEnvironment()).toBe("preview");
+  });
+
+  // This is the actual user-visible harm: a blank override must not silently
+  // degrade local dev's trace sampling from 1.0 to the conservative 0.1 fallback.
+  it("with every relevant var blank or unset (the .env.example-copied-locally scenario), resolves to development at full trace sampling", () => {
+    vi.stubEnv("NEXT_PUBLIC_SENTRY_ENVIRONMENT", "");
+    vi.stubEnv("NEXT_PUBLIC_VERCEL_ENV", "");
+    vi.stubEnv("VERCEL_ENV", undefined);
+
+    const environment = resolveSentryEnvironment();
+
+    expect(environment).toBe("development");
+    expect(resolveTracesSampleRate(environment)).toBe(1);
+  });
 });
 
 describe("resolveTracesSampleRate", () => {
@@ -92,6 +125,19 @@ describe("baseSentryOptions", () => {
 
     expect(options.enabled).toBe(true);
     expect(options.dsn).toBe("https://abc@o1.ingest.sentry.io/1");
+  });
+
+  // .env.example ships NEXT_PUBLIC_SENTRY_DSN= blank. Boolean("") happens to be
+  // false, so `enabled` is accidentally correct today, but passing dsn: "" into
+  // Sentry.init is sloppy and depends on that accident — lock down that a blank
+  // DSN normalizes to undefined, not "".
+  it("normalizes a blank NEXT_PUBLIC_SENTRY_DSN to undefined and stays disabled", () => {
+    vi.stubEnv("NEXT_PUBLIC_SENTRY_DSN", "");
+
+    const options = baseSentryOptions();
+
+    expect(options.dsn).toBeUndefined();
+    expect(options.enabled).toBe(false);
   });
 
   it("carries the environment and its matching trace sample rate", () => {

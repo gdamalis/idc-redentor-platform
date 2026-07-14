@@ -91,6 +91,18 @@ Resolution order, in full:
    `NEXT_PUBLIC_*` system var, the server side still resolves correctly).
 4. `"development"` — local fallback.
 
+Each step is read through a small `readEnv()` helper in `options.ts` that trims the value and treats a
+blank or whitespace-only string as unset, not `process.env` directly with plain `??`. This matters
+because `??` alone falls through on `null`/`undefined` only, **never on `""`** — and `apps/web/.env.example`
+ships `NEXT_PUBLIC_SENTRY_DSN=` and `NEXT_PUBLIC_SENTRY_ENVIRONMENT=` both blank by design (see "Absent
+DSN is a supported no-op" below). Without the normalization, copying `.env.example` to `.env.local`
+would resolve `environment` to the literal empty string `""` — tagging every local event with a blank
+environment and missing the `TRACES_SAMPLE_RATE_BY_ENVIRONMENT` map entirely, silently degrading local
+dev's trace sampling from `1.0` to the conservative `0.1` fallback. `options.test.ts` asserts this
+directly (blank and whitespace-only overrides both fall through; the fully-blank scenario resolves to
+`"development"` at a `1.0` trace rate) — treat a regression there as a real bug, not a test to loosen.
+**Leaving `NEXT_PUBLIC_SENTRY_ENVIRONMENT` blank is fine and expected** everywhere except staging.
+
 ## Sampling
 
 | Environment             | `tracesSampleRate`   |
@@ -202,12 +214,13 @@ the running app.
 
 ## Absent DSN is a supported no-op
 
-`baseSentryOptions().enabled` is `Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN)`. When the DSN is unset
-— local dev by default, a fork PR, any environment nobody has wired yet — `Sentry.init` runs with
-`enabled: false`, which the SDK treats as a fully inert no-op: no network calls, no console noise, no
-behavior change to the app. This is why `NEXT_PUBLIC_SENTRY_DSN` (and every other var below) is
-**optional** in `apps/web/src/types/environment.d.ts` — an absent DSN is supported, expected behavior,
-not a misconfiguration.
+`baseSentryOptions().enabled` is `Boolean(dsn)`, where `dsn` comes from the same `readEnv()` helper
+described above — a blank `NEXT_PUBLIC_SENTRY_DSN=` (exactly what `.env.example` ships) normalizes to
+`undefined`, not `""`. When the DSN is unset — local dev by default, a fork PR, any environment nobody
+has wired yet — `Sentry.init` runs with `enabled: false`, which the SDK treats as a fully inert no-op:
+no network calls, no console noise, no behavior change to the app. This is why `NEXT_PUBLIC_SENTRY_DSN`
+(and every other var below) is **optional** in `apps/web/src/types/environment.d.ts` — an absent DSN is
+supported, expected behavior, not a misconfiguration.
 
 ## Env vars
 

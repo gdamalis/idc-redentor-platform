@@ -13,6 +13,17 @@ const TRACES_SAMPLE_RATE_BY_ENVIRONMENT: Record<string, number> = {
   development: 1,
 };
 
+/**
+ * Reads an env var and treats a blank or whitespace-only value as unset. Plain
+ * `??` does not do this — it only falls through on null/undefined, not "" — and
+ * `.env.example` ships every Sentry var blank, so a developer who copies it to
+ * `.env.local` reaches the empty-string case for real, not hypothetically.
+ */
+function readEnv(name: string): string | undefined {
+  const value = process.env[name]?.trim();
+  return value ? value : undefined;
+}
+
 export interface BaseSentryOptions {
   dsn: string | undefined;
   environment: string;
@@ -35,9 +46,9 @@ export function resolveSentryEnvironment(): string {
   // NEXT_PUBLIC_VERCEL_ENV is "preview", same as any PR preview) from an actual PR
   // preview. VERCEL_ENV stays as a last, server-only fallback for robustness.
   return (
-    process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT ??
-    process.env.NEXT_PUBLIC_VERCEL_ENV ??
-    process.env.VERCEL_ENV ??
+    readEnv("NEXT_PUBLIC_SENTRY_ENVIRONMENT") ??
+    readEnv("NEXT_PUBLIC_VERCEL_ENV") ??
+    readEnv("VERCEL_ENV") ??
     "development"
   );
 }
@@ -52,7 +63,7 @@ export function resolveTracesSampleRate(
 }
 
 export function baseSentryOptions(): BaseSentryOptions {
-  const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+  const dsn = readEnv("NEXT_PUBLIC_SENTRY_DSN");
   const environment = resolveSentryEnvironment();
 
   return {
