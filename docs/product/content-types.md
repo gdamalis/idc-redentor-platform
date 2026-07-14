@@ -3,7 +3,7 @@
 > **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
 
 > **Purpose:** Define the real Contentful content types behind the site — their purpose, key fields, the getter that reads each, and the route/component that renders it. This is the shared vocabulary for tickets, content edits, and the structured-data roadmap.
-> **Last reviewed:** 2026-06-21
+> **Last reviewed:** 2026-07-14
 
 ---
 
@@ -76,15 +76,15 @@ A banner that pairs an **Event** with a **Location**, used for the worship servi
 
 ## 4. Blog post (BlogPostPage) — teaching and news
 
-The one content-rich, frequently-updated type, with the only interactive reader feature (anonymous likes).
+The one content-rich, frequently-updated type, carrying the anonymous **like** (shared with sermons via the slug-keyed `/api/likes`).
 
 - **Purpose:** publish teaching, devotionals, and church news; surface related posts; let readers leave an anonymous "like."
-- **Key fields:** `title`, `subtitle`, `category`, `slug`, `featuredImage`, `content` (rich text with embedded `links.assets` and `links.entries`, including links to other `BlogPostPage`), `author` (→ **Author**: `name`, `avatar`, `email`), `publishedDate`, SEO fields (`seoTitle`, `seoDescription`, `keywords`), `relatedBlogPostsCollection`, and `sys.publishedAt`. _(Full shape: `src/types/BlogPost.ts`.)_
+- **Key fields:** `title`, `subtitle`, `category`, `slug`, `featuredImage`, `content` (rich text with embedded `links.assets` and `links.entries`, including links to other `BlogPostPage`), `author` (→ **Author**: `name`, `avatar`, `email`), `publishedDate`, SEO fields (`seoTitle`, `seoDescription`, `keywords`), `relatedBlogPostsCollection`, and `sys.publishedAt`. _(Full shape: `src/types/BlogPost.ts`.)_ _(**Author** is also reused by the `Sermon` type for `preacher` and `additionalPreachersCollection` — see §8.)_
 - **Getters (`lib/contentful/getBlogPostPages.ts`):**
   - `getLatestBlogPostPages(locale, { slug?, isDraftMode? })` — latest 3 (optionally excluding one slug, for "related/more").
   - `getAllBlogPostSlugs(locale)` — slugs + `publishedAt` for `generateStaticParams` / sitemap.
   - `getBlogPostPage(slug, locale, isDraftMode)` — a single post by slug.
-- **Rendered by:** `/blog` (list) and `/blog/[slug]` (detail). The anonymous **like** is the only stateful reader feature — it is the one thing in this whole content set that writes to MongoDB (`likes` collection via `/api/likes`), not Contentful.
+- **Rendered by:** `/blog` (list) and `/blog/[slug]` (detail). The anonymous **like** is the only _kind_ of stateful reader feature — and it is **not blog-only**: `/api/likes` is a generic, **slug-keyed** endpoint, so **blog posts and sermons** share it (see §8). It is the one thing in this whole content set that writes to MongoDB (`likes` collection), not Contentful.
 - **Structured-data note:** `BlogPosting` JSON-LD per post is a roadmap item (see [ai-era-strategy.md](./ai-era-strategy.md)).
 
 ## 5. Footer — site chrome
@@ -111,18 +111,80 @@ Most pages carry SEO inline via `Page.seo`, but there is also a standalone `Seo`
 - **Getter:** `lib/contentful/getSeo.ts#getSeo(name, locale, isDraftMode)` — looks up by `machineName`.
 - **Rendered by:** metadata builders (`lib/metadata.ts`) that emit `<title>`, meta description, keywords, and OG/Twitter tags. See [ai-era-strategy.md](./ai-era-strategy.md) and `docs/architecture/seo-and-metadata.md`.
 
+## 8. Sermon — the prédicas archive
+
+The sermon archive at `/predicas`: each sermon is a full Contentful entry with a rich-text body, a
+downloadable PDF summary, structured scripture references, and a **self-hosted audio recording**
+played inline on its own page. Entries are produced by the local **`/predica` pipeline**
+(recording → transcript → bilingual entry → branded PDFs → a Contentful _draft_), which never
+auto-publishes — a human reviews and publishes every sermon.
+
+- **Purpose:** publish the church's teaching as durable, readable, listenable content — findable by
+  people and by AI assistants — without building a media platform. (One audio asset on its own page
+  is the deliberate **ceiling**; see [scope-and-boundaries.md](./scope-and-boundaries.md).)
+- **Key fields:** `title`, `slug`, `sermonDate`, `thesis`, `mainPoints`, `excerpt`,
+  `durationSeconds`, `content` (rich text), `featuredImage`,
+  `audio { url, title, contentType, fileName, size }` (the **self-hosted** recording — a Contentful
+  asset, **not** a YouTube/Vimeo embed), `pdfSummary` (the downloadable summary asset),
+  `preacher` (→ **Author**), `additionalPreachersCollection` (→ **Author**[]),
+  `scriptureReferencesCollection` (→ **BibleVerse**[], see §9), SEO fields (`seoTitle`,
+  `seoDescription`, `keywords`), `relatedSermonsCollection`, and `sys`.
+- **Getters (`lib/contentful/getSermons.ts`):**
+  - `getSermon(slug, locale, isDraftMode)` — a single sermon by slug.
+  - `getSermonById(id, locale, isDraftMode)` — by entry id (used by the `/predica` pipeline).
+  - `getLatestSermons(locale, …)` — the most recent sermons, for surfacing.
+  - `getAllSermons(locale, …)` / `fetchAllSermonItems(…)` — the paginated archive listing.
+  - `getAllSermonSlugs(locale)` — for `generateStaticParams` / sitemap.
+- **Rendered by:** `/predicas` (archive list — `SermonSection`, `SermonCard`) and `/predicas/[slug]`
+  (detail — `SermonDetails`, composing `SermonHeader`, **`SermonAudioPlayer`** (a native `<audio>`
+  element against the Contentful `audio.url`), `SermonContent`, `PdfDownloadButton`,
+  `ScriptureReferences`, and `RelatedSermons`).
+- **Reader interaction:** the sermon detail page renders the **same** `PostActions` component the
+  blog uses, with `likeKey` = `` `predicas/${slug}` `` — so sermons carry the anonymous
+  **like** through the same slug-keyed `/api/likes` route. Likes are **not** blog-only.
+- **Structured-data note:** the richest un-exploited JSON-LD target on the site. Sermons carry a
+  date, an author, a body, a duration, and an audio asset — the raw material for
+  `AudioObject` / `Article` markup. See [ai-era-strategy.md](./ai-era-strategy.md).
+- **Editorial note:** sermon content is **preaching — leadership-owned**. The `/predica` pipeline
+  writes a **draft** only; a human reviews both locales and publishes. Agents must not alter
+  doctrinal meaning. See [editorial-and-content-rules.md](./editorial-and-content-rules.md).
+
+## 9. BibleVerse — structured scripture references
+
+A standalone content type for a scripture citation, reused across sermons (and deduped by the
+`/predica` pipeline, which upserts by a derived version-scoped key — see
+`docs/architecture/predica-bibleverse-reuse.md`).
+
+> **⚠️ Do not confuse this with the `bibleVerse` _field_ in §2.** `Credo` and `ValueItem` each carry
+> a free-text **rich-text `bibleVerse` field** — prose on a card. **`BibleVerse` (this section) is a
+> different thing: a structured _content type_** with real coordinates (`book`, `chapter`,
+> `fromVerse`, `toVerse`), the verse text, and the translation used. Only the sermon type links to it.
+
+- **Purpose:** cite scripture with machine-readable coordinates, so a verse can be rendered
+  consistently, reused across sermons, and (later) marked up for structured data.
+- **Key fields:** `book`, `chapter`, `fromVerse`, `toVerse`, `verseContent` (the verse text), and
+  `bibleVersion` (the translation — e.g. NVI for es-AR, NIV for en-US).
+- **Getter:** no standalone getter — it is queried **inline** by `lib/contentful/getSermons.ts`, via
+  `scriptureReferencesCollection` on the sermon
+  (`... on BibleVerse { book chapter fromVerse toVerse verseContent bibleVersion }`).
+- **Rendered by:** the `ScriptureReferences` component on the sermon detail page.
+- **Structured-data note:** the cleanest path to citation markup, since the coordinates are already
+  structured rather than buried in prose.
+
 ---
 
 ## Quick reference
 
-| Content type                                  | Getter (`lib/contentful/…`) | Lookup key     | Rendered on                      |
-| --------------------------------------------- | --------------------------- | -------------- | -------------------------------- |
-| **Page** (+ Hero/Cta/Duplex/TextBlock)        | `getPage.ts`                | `machineName`  | `[locale]` informational routes  |
-| **ContentCollection** (Credo + ValueItem)     | `getContentCollection.ts`   | `machineName`  | community (Creed/Credo + values) |
-| **EventBanner** (→ Event + LocationComponent) | `getEventBanner.ts`         | `machineName`  | come-meet-us, event pages        |
-| **Blog post** (BlogPostPage → Author)         | `getBlogPostPages.ts`       | `slug`         | `/blog`, `/blog/[slug]`          |
-| **Footer** (→ SocialLink, LocationComponent)  | `getFooter.ts`              | (singleton)    | global footer                    |
-| **NavigationMenu** (→ MenuGroup)              | `getNavigationMenu.ts`      | `internalName` | global nav                       |
-| **Seo**                                       | `getSeo.ts`                 | `machineName`  | metadata/`<head>`                |
+| Content type                                  | Getter (`lib/contentful/…`) | Lookup key     | Rendered on                           |
+| --------------------------------------------- | --------------------------- | -------------- | ------------------------------------- |
+| **Page** (+ Hero/Cta/Duplex/TextBlock)        | `getPage.ts`                | `machineName`  | `[locale]` informational routes       |
+| **ContentCollection** (Credo + ValueItem)     | `getContentCollection.ts`   | `machineName`  | community (Creed/Credo + values)      |
+| **EventBanner** (→ Event + LocationComponent) | `getEventBanner.ts`         | `machineName`  | come-meet-us, event pages             |
+| **Blog post** (BlogPostPage → Author)         | `getBlogPostPages.ts`       | `slug`         | `/blog`, `/blog/[slug]`               |
+| **Sermon** (→ Author, BibleVerse)             | `getSermons.ts`             | `slug`         | `/predicas`, `/predicas/[slug]`       |
+| **BibleVerse** (scripture reference)          | `getSermons.ts` (inline)    | (linked)       | sermon detail (`ScriptureReferences`) |
+| **Footer** (→ SocialLink, LocationComponent)  | `getFooter.ts`              | (singleton)    | global footer                         |
+| **NavigationMenu** (→ MenuGroup)              | `getNavigationMenu.ts`      | `internalName` | global nav                            |
+| **Seo**                                       | `getSeo.ts`                 | `machineName`  | metadata/`<head>`                     |
 
 > **Reminder:** every getter takes `locale` and passes it to the query. es-AR is the source of truth; keep en-US in sync. Sensitive (doctrinal) content lives in **ContentCollection** (Credo/ValueItem) and the who-is-jesus/community `Page` sections — edit those with the guardrails in [editorial-and-content-rules.md](./editorial-and-content-rules.md).
