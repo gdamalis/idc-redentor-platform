@@ -66,6 +66,24 @@ flag with the `interpreted` field persisted in `sermon.json`. And if the guard s
 the pipeline **fails closed** and skips the coach: a skipped append is redone next run, a wrong append is
 forever.
 
+### Fail-closed also means: a MALFORMED flag counts as interpreted
+
+`resolveInterpreted()` treats **anything** in `sermon.json`'s `interpreted` field that is not cleanly
+absent / `null` / `false` as **interpreted** — including the string `"true"`, the number `1`, and even the
+string `"false"`.
+
+That looks pedantic until you notice who writes the file: **`sermon.json` is produced by an LLM**
+(`predica-writer`) and may be hand-edited by a human during review. Emitting `"true"` instead of `true` is an
+ordinary slip, not a contrived input. An earlier version of this guard used a strict `=== true` check, which
+read a string `"true"` as _not interpreted_ — and so, on a regenerate, would have cheerfully handed an
+interpreted transcript to the coach. **The guard's own typo would have re-opened the exact hole the guard
+exists to close.** Caught in QA on ICR-147; pinned by tests in both the canon and the twin.
+
+The cost of the strictness is one refused append that the next run redoes. The cost of leniency is a
+permanently poisoned profile. A guard that fails **open** on malformed input is worse than no guard, because
+it is _trusted_. (`validateSermonForEntry()` also rejects a non-boolean `interpreted` — but that runs at
+step 3, **after** the writer has already put the file on disk, so step 2.5 cannot lean on it.)
+
 ## Where profiles live (and why local-only)
 
 ```
