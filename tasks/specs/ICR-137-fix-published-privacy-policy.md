@@ -305,10 +305,13 @@ Estos son todos:
 - **Google** — provee las herramientas de analítica del sitio (Google Tag Manager y Google Analytics), y
   el mapa de la página "Vení a conocernos" se carga desde Google Maps, por lo que Google recibe esa
   solicitud cuando usted visita esa página.
-- **Sentry** — recibe informes técnicos de errores y de rendimiento cuando algo falla. Está configurado
-  para **no** enviarle datos personales: no recibe el contenido de los formularios ni su identidad, solo
-  información técnica del error.
-- **Contentful** — provee los textos y las imágenes del sitio desde su red de distribución de contenidos.
+- **Sentry** — recibe informes técnicos cuando algo falla y, además, una muestra de datos de rendimiento
+  y de navegación durante visitas normales, aunque no ocurra ningún error. Está configurado para **no**
+  enviarle datos personales: no recibe el contenido de los formularios ni su identidad, solo información
+  técnica.
+- **Contentful** — provee los textos, las imágenes y los archivos del sitio desde su red de distribución
+  de contenidos. En las páginas de prédicas, el audio y los PDF se descargan directamente desde
+  Contentful, por lo que su navegador se conecta a Contentful al reproducir o descargar esos archivos.
 
 Cualquier proveedor que le entrega contenido a su navegador (Vercel, Contentful, Google Maps) recibe
 inevitablemente su dirección IP y datos básicos de su navegador como parte de esa entrega técnica.
@@ -437,10 +440,12 @@ Running this site depends on outside providers, and some of them receive your da
 - **Google** — provides the site's analytics tools (Google Tag Manager and Google Analytics), and the map
   on our "Come meet us" page loads from Google Maps, so Google receives that request when you visit that
   page.
-- **Sentry** — receives technical error and performance reports when something goes wrong. It is
-  configured **not** to send it personal data: it does not receive your form contents or your identity,
-  only technical information about the error.
-- **Contentful** — serves the site's text and images from its content delivery network.
+- **Sentry** — receives technical reports when something goes wrong, and also a sample of performance and
+  navigation data during ordinary visits, even when nothing fails. It is configured **not** to send it
+  personal data: it does not receive your form contents or your identity, only technical information.
+- **Contentful** — serves the site's text, images, and files from its content delivery network. On sermon
+  pages the audio and the PDF summaries are downloaded directly from Contentful, so your browser connects
+  to Contentful when you play or download those files.
 
 Any provider that delivers content to your browser (Vercel, Contentful, Google Maps) necessarily receives
 your IP address and basic browser information as part of that technical delivery.

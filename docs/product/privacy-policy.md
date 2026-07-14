@@ -30,18 +30,20 @@
 Every claim below traces to a line of source. Where an earlier draft of the ticket disagreed with the
 code, the code wins.
 
-| Claim                                                                                                                | Source                                                                                                                                                                       |
-| -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Contact form stores `name`/`email`/`subject`/`message`                                                               | `apps/web/src/service/contact.service.ts:11-18` (Mongo `website.contact` + `createdAt`)                                                                                      |
-| Newsletter email lives at **Resend**, not in our database                                                            | `apps/web/src/service/subscribe.service.ts:29`                                                                                                                               |
-| Likes generate a random UUID, not tied to identity                                                                   | `apps/web/src/app/api/likes/route.ts:64` (`crypto.randomUUID()`)                                                                                                             |
-| Likes cover **sermons too**, not just blog posts — the copy must not say "blog"                                      | `predicas/[slug]/page.tsx:61-63` reads `_visitor_id` + `getLikes("predicas/<slug>")`; `SermonDetails.tsx:69-71` reuses the blog's `PostActions` with `basePath="predicas"`   |
-| §1 must disclose AUTOMATIC collection, not only user-submitted data                                                  | `layout.tsx:108-109,122` (Vercel Analytics/Speed Insights + GTM mount unconditionally) and `instrumentation-client.ts` (Sentry) run for a visitor who never submits anything |
-| Six named processors: Resend, MongoDB Atlas, Vercel, Google, Sentry, Contentful                                      | See table below                                                                                                                                                              |
-| `_visitor_id` cookie is httpOnly, set only on first like, 1-year lifetime                                            | `apps/web/src/app/api/likes/route.ts:82-88` (`60*60*24*365`)                                                                                                                 |
-| Declining analytics stops GA **cookies** only — not GTM cookieless pings, Vercel Analytics/Speed Insights, or Sentry | `apps/web/src/app/[locale]/layout.tsx:26-40,108-109`; `apps/web/instrumentation-client.ts`; `docs/architecture/gtm-ga4-setup.md:509`                                         |
-| Nothing is ever auto-deleted (no TTL, no purge path)                                                                 | Grep of `apps/web/src` for `expireAfterSeconds`/`deleteMany`/`deleteOne` against `website.contact`/`website.likes`: zero hits                                                |
-| Sentry's PII posture is locked (no identities, no form contents)                                                     | `apps/web/src/utils/sentry/options.ts:91-92` (`sendDefaultPii: false`, `dataCollection.userInfo: false`)                                                                     |
+| Claim                                                                                                                | Source                                                                                                                                                                                                   |
+| -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contact form stores `name`/`email`/`subject`/`message`                                                               | `apps/web/src/service/contact.service.ts:11-18` (Mongo `website.contact` + `createdAt`)                                                                                                                  |
+| Newsletter email lives at **Resend**, not in our database                                                            | `apps/web/src/service/subscribe.service.ts:29`                                                                                                                                                           |
+| Likes generate a random UUID, not tied to identity                                                                   | `apps/web/src/app/api/likes/route.ts:64` (`crypto.randomUUID()`)                                                                                                                                         |
+| Likes cover **sermons too**, not just blog posts — the copy must not say "blog"                                      | `predicas/[slug]/page.tsx:61-63` reads `_visitor_id` + `getLikes("predicas/<slug>")`; `SermonDetails.tsx:69-71` reuses the blog's `PostActions` with `basePath="predicas"`                               |
+| §1 must disclose AUTOMATIC collection, not only user-submitted data                                                  | `layout.tsx:108-109,122` (Vercel Analytics/Speed Insights + GTM mount unconditionally) and `instrumentation-client.ts` (Sentry) run for a visitor who never submits anything                             |
+| Six named processors: Resend, MongoDB Atlas, Vercel, Google, Sentry, Contentful                                      | See table below                                                                                                                                                                                          |
+| `_visitor_id` cookie is httpOnly, set only on first like, 1-year lifetime                                            | `apps/web/src/app/api/likes/route.ts:82-88` (`60*60*24*365`)                                                                                                                                             |
+| Declining analytics stops GA **cookies** only — not GTM cookieless pings, Vercel Analytics/Speed Insights, or Sentry | `apps/web/src/app/[locale]/layout.tsx:26-40,108-109`; `apps/web/instrumentation-client.ts`; `docs/architecture/gtm-ga4-setup.md:509`                                                                     |
+| Nothing is ever auto-deleted (no TTL, no purge path)                                                                 | Grep of `apps/web/src` for `expireAfterSeconds`/`deleteMany`/`deleteOne` against `website.contact`/`website.likes`: zero hits                                                                            |
+| Sentry's PII posture is locked (no identities, no form contents)                                                     | `apps/web/src/utils/sentry/options.ts:91-92` (`sendDefaultPii: false`, `dataCollection.userInfo: false`)                                                                                                 |
+| Sentry also receives **sampled performance/navigation** data on ordinary visits, not only on errors                  | `apps/web/src/utils/sentry/options.ts:93` (`tracesSampleRate`, always non-zero); `instrumentation-client.ts:8` (`onRouterTransitionStart = Sentry.captureRouterTransitionStart`)                         |
+| Contentful serves sermon **audio + PDFs** direct to the browser, not just text/images                                | `lib/contentful/getSermons.ts:35-43` (`audio { url }`, `pdfSummary { url }` are Contentful assets) → `SermonDetails.tsx:40` `src={sermon.audio.url}`, `PdfDownloadButton.tsx:21` `href={pdfSummary.url}` |
 
 **Only these six are named — deliberately, and two others are not.** SendGrid and Mailchimp both exist in
 the codebase, and both are excluded from the policy on purpose:
@@ -133,10 +135,13 @@ Estos son todos:
 - **Google** — provee las herramientas de analítica del sitio (Google Tag Manager y Google Analytics), y
   el mapa de la página "Vení a conocernos" se carga desde Google Maps, por lo que Google recibe esa
   solicitud cuando usted visita esa página.
-- **Sentry** — recibe informes técnicos de errores y de rendimiento cuando algo falla. Está configurado
-  para **no** enviarle datos personales: no recibe el contenido de los formularios ni su identidad, solo
-  información técnica del error.
-- **Contentful** — provee los textos y las imágenes del sitio desde su red de distribución de contenidos.
+- **Sentry** — recibe informes técnicos cuando algo falla y, además, una muestra de datos de rendimiento
+  y de navegación durante visitas normales, aunque no ocurra ningún error. Está configurado para **no**
+  enviarle datos personales: no recibe el contenido de los formularios ni su identidad, solo información
+  técnica.
+- **Contentful** — provee los textos, las imágenes y los archivos del sitio desde su red de distribución
+  de contenidos. En las páginas de prédicas, el audio y los PDF se descargan directamente desde
+  Contentful, por lo que su navegador se conecta a Contentful al reproducir o descargar esos archivos.
 
 Cualquier proveedor que le entrega contenido a su navegador (Vercel, Contentful, Google Maps) recibe
 inevitablemente su dirección IP y datos básicos de su navegador como parte de esa entrega técnica.
@@ -265,10 +270,12 @@ Running this site depends on outside providers, and some of them receive your da
 - **Google** — provides the site's analytics tools (Google Tag Manager and Google Analytics), and the map
   on our "Come meet us" page loads from Google Maps, so Google receives that request when you visit that
   page.
-- **Sentry** — receives technical error and performance reports when something goes wrong. It is
-  configured **not** to send it personal data: it does not receive your form contents or your identity,
-  only technical information about the error.
-- **Contentful** — serves the site's text and images from its content delivery network.
+- **Sentry** — receives technical reports when something goes wrong, and also a sample of performance and
+  navigation data during ordinary visits, even when nothing fails. It is configured **not** to send it
+  personal data: it does not receive your form contents or your identity, only technical information.
+- **Contentful** — serves the site's text, images, and files from its content delivery network. On sermon
+  pages the audio and the PDF summaries are downloaded directly from Contentful, so your browser connects
+  to Contentful when you play or download those files.
 
 Any provider that delivers content to your browser (Vercel, Contentful, Google Maps) necessarily receives
 your IP address and basic browser information as part of that technical delivery.
