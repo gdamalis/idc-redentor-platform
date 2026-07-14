@@ -59,16 +59,16 @@ The voice is **warm, hospitable, reverent-but-accessible, and Spanish-first**:
 
 The site is a small set of well-defined surfaces. Each maps to a route and to Contentful content:
 
-| Surface | Route (under `[locale]`) | What it does | Primary Contentful content |
-|---|---|---|---|
-| **Home** | `/` | Welcome + overview; routes people to who-is-Jesus, community, come-meet-us, blog | `Page` (hero, CTA, duplex, text blocks) + an `EventBanner` |
-| **¿Quién es Jesús? / Who is Jesus** | `/who-is-jesus` | Explains the gospel for seekers and newcomers | `Page` + text/duplex sections |
-| **Community** | `/community` | Mission, values, and the **Creed/Credo** | `Page` + `ContentCollection` (Credo + ValueItem) + `EventBanner` (e.g. ladies conference) |
-| **Come meet us** | `/come-meet-us` | Service day/time, address, neighborhood, and an embedded map | `Page` + `EventBanner` → `Event` + `LocationComponent` |
-| **Blog** | `/blog`, `/blog/[slug]` | Teaching and news articles; anonymous "like" | `BlogPostPage` |
-| **Newsletter signup** | (component, e.g. footer/CTA) | Email capture to Mailchimp | UI + `/api/subscribe` |
-| **Contact** | (form, e.g. on a page/footer) | Message capture (saved + emailed to the church) | UI + `/api/contact` |
-| **Footer / nav (site chrome)** | global | Logo, short description, social links, address; menu | `Footer` → `SocialLink`, `NavigationMenu` → `MenuGroup` |
+| Surface                             | Route (under `[locale]`)      | What it does                                                                     | Primary Contentful content                                                                |
+| ----------------------------------- | ----------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| **Home**                            | `/`                           | Welcome + overview; routes people to who-is-Jesus, community, come-meet-us, blog | `Page` (hero, CTA, duplex, text blocks) + an `EventBanner`                                |
+| **¿Quién es Jesús? / Who is Jesus** | `/who-is-jesus`               | Explains the gospel for seekers and newcomers                                    | `Page` + text/duplex sections                                                             |
+| **Community**                       | `/community`                  | Mission, values, and the **Creed/Credo**                                         | `Page` + `ContentCollection` (Credo + ValueItem) + `EventBanner` (e.g. ladies conference) |
+| **Come meet us**                    | `/come-meet-us`               | Service day/time, address, neighborhood, and an embedded map                     | `Page` + `EventBanner` → `Event` + `LocationComponent`                                    |
+| **Blog**                            | `/blog`, `/blog/[slug]`       | Teaching and news articles; anonymous "like"                                     | `BlogPostPage`                                                                            |
+| **Newsletter signup**               | (component, e.g. footer/CTA)  | Email capture to a per-locale Resend audience                                    | UI + `/api/subscribe`                                                                     |
+| **Contact**                         | (form, e.g. on a page/footer) | Message capture (saved + emailed to the church)                                  | UI + `/api/contact`                                                                       |
+| **Footer / nav (site chrome)**      | global                        | Logo, short description, social links, address; menu                             | `Footer` → `SocialLink`, `NavigationMenu` → `MenuGroup`                                   |
 
 See [content-types.md](./content-types.md) for the exact fields and getters behind each surface.
 
@@ -78,7 +78,7 @@ See [content-types.md](./content-types.md) for the exact fields and getters behi
 
 This file is the entry point. The rest:
 
-- **[scope-and-boundaries.md](./scope-and-boundaries.md)** — what's IN, what's deliberately OUT, and what's DEFERRED. *The hard filter.*
+- **[scope-and-boundaries.md](./scope-and-boundaries.md)** — what's IN, what's deliberately OUT, and what's DEFERRED. _The hard filter._
 - **[content-types.md](./content-types.md)** — the real Contentful content types and how they're read and rendered.
 - **[editorial-and-content-rules.md](./editorial-and-content-rules.md)** — bilingual rule, voice, the doctrinal guardrail, images, SEO copy, publish/preview.
 - **[ai-era-strategy.md](./ai-era-strategy.md)** — the discoverability thesis (structured data + clean metadata) and KPIs.
