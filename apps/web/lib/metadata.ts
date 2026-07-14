@@ -1,3 +1,4 @@
+import { LOGO } from "@idcr/ui";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import type { BlogPost } from "@src/types/BlogPost";
@@ -161,7 +162,7 @@ export function buildOrganizationJsonLd(locale: string) {
     "@id": `${baseUrl}/#church`,
     name,
     url: `${baseUrl}/${locale}`,
-    logo: `${baseUrl}/assets/img/redentor_logo.png`,
+    logo: `${baseUrl}${LOGO.default}`,
     image: `${baseUrl}/assets/img/og_default.jpeg`,
     email: "info@idcredentor.org",
     address: {

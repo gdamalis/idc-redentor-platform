@@ -2,7 +2,7 @@
 
 import { ComponentType, ReactNode } from "react";
 import { motion } from "framer-motion";
-import { cn } from "@src/utils/cn";
+import { cn } from "@idcr/ui";
 
 interface IconCardProps {
   /** Icon component (Lucide, Heroicons, or any SVG component) */

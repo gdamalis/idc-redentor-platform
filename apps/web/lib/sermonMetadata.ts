@@ -1,3 +1,4 @@
+import { LOGO } from "@idcr/ui";
 import type { Metadata } from "next";
 import type { Sermon } from "@src/types/Sermon";
 import { buildLocaleAlternates } from "@src/i18n/config";
@@ -117,7 +118,7 @@ export function buildSermonJsonLd(sermon: Sermon, locale: string) {
       name: "Iglesia de Cristo Redentor",
       logo: {
         "@type": "ImageObject" as const,
-        url: `${baseUrl}/assets/img/redentor_logo.png`,
+        url: `${baseUrl}${LOGO.default}`,
       },
     },
     mainEntityOfPage: {

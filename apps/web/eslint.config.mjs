@@ -1,14 +1,7 @@
-import { createRequire } from "module";
-
-const require = createRequire(import.meta.url);
-
-// Import Next.js ESLint configs (they are CommonJS modules)
-const nextCoreWebVitals = require("eslint-config-next/core-web-vitals");
-const nextTypescript = require("eslint-config-next/typescript");
+import { eslintBase } from "@idcr/config/eslint.base.mjs";
 
 const eslintConfig = [
-  ...nextCoreWebVitals,
-  ...nextTypescript,
+  ...eslintBase,
   {
     ignores: [
       "scripts/**/*.js",
@@ -18,20 +11,6 @@ const eslintConfig = [
       ".claude/**",
       "coverage/**",
     ],
-  },
-  {
-    // Allow require() in JavaScript config files
-    files: ["**/*.js", "**/*.mjs"],
-    rules: {
-      "@typescript-eslint/no-require-imports": "off",
-    },
-  },
-  {
-    // TypeScript-specific rule adjustments
-    files: ["**/*.ts", "**/*.tsx"],
-    rules: {
-      "@typescript-eslint/no-explicit-any": "warn", // Warn instead of error for gradual improvement
-    },
   },
 ];
 
