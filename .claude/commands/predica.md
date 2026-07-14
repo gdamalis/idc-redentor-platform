@@ -1,6 +1,6 @@
 ---
 description: Turn a sermon recording into a review-ready bilingual website post. Runs the local /predica pipeline — transcribe (whisper.cpp) → ★ correct transcript → write a bilingual sermon.json → two branded PDFs (Card C) → a Contentful DRAFT in production → a WhatsApp share text → ★ human review. Draft-only and send-only: nothing is ever auto-published or auto-sent. Two human gates.
-argument-hint: "[<audio-path>] [--dry-run]"
+argument-hint: "[<audio-path>] [--dry-run] [--interpreted] [--interpreter \"<Full Name>\"]"
 ---
 
 # /predica — sermon → bilingual Contentful draft + PDFs + WhatsApp (local, on-demand)

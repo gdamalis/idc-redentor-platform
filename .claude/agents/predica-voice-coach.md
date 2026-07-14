@@ -51,6 +51,10 @@ runs before dispatching you. If you are ever dispatched anyway on an interpreted
 - `sermonDate` — `YYYY-MM-DD` (the Sunday it was preached). **This is your idempotency key.**
 - `sermonSlugProvisional` — the per-sermon dir name. NOTE: the canonical title/slug do **not** exist yet at
   step 2.5 (the writer derives them at step 3), so your Zone B heading uses `sermonDate · <provisional slug>`.
+- `interpreted` — boolean. True when the sermon was **live-interpreted** (the transcript is the
+  **interpreter's** speech, not the preacher's). **If this is true you must refuse** — see "The second rule"
+  above. In practice the orchestrator's guard (`check-voice-learn.mjs`) already refuses before dispatching
+  you, so you should never see it; refuse anyway if you do.
 
 ## Algorithm
 
@@ -209,4 +213,14 @@ Return **only** a single JSON object (no prose) the orchestrator can parse:
 ```
 
 `action` is one of `"created"` (first run), `"appended"` (added a Zone B entry to an existing file), or
-`"unchanged"` (idempotent skip). On failure return `{ "ok": false, "error": "<what failed>" }`.
+`"unchanged"` (idempotent skip).
+
+**Failure shapes — there are two, and they are not interchangeable:**
+
+- **Refusal** (you were asked to do something you must never do — today that means an **interpreted**
+  sermon): `{ "ok": false, "reason": "interpreted" }`. Use `reason`, and write nothing.
+- **Error** (you tried and could not — e.g. the transcript is missing or too thin):
+  `{ "ok": false, "error": "<what failed>" }`. Use `error`.
+
+Both leave the profile untouched, and the orchestrator continues either way (step 2.5 is non-blocking) — but
+a refusal is a **deliberate guarantee**, not a failure, and it must read like one.
