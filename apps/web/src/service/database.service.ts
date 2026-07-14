@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { MongoClient, ServerApiVersion } from "mongodb";
 
 const MONGODB_OPTIONS = {
@@ -34,23 +35,15 @@ function getClient(): MongoClient {
   return client;
 }
 
-export async function connect() {
+// The driver de-dupes concurrent connect() calls internally (connectionLock) and
+// no-ops on a warm topology, so repeat calls are free — no memoization needed here.
+export async function connect(): Promise<MongoClient | undefined> {
   try {
     const mongoClient = getClient();
     await mongoClient.connect();
-    await mongoClient.db("admin").command({ ping: 1 });
-
-    console.log("Connected to database");
-
     return mongoClient;
   } catch (error) {
-    console.error("Error connecting to database", error);
-  }
-}
-
-export async function disconnect() {
-  if (client) {
-    await client.close();
-    console.log("Disconnected from database");
+    console.error("[db] Failed to connect to MongoDB", error);
+    Sentry.captureException(error);
   }
 }
