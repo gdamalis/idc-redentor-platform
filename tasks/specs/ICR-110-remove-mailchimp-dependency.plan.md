@@ -36,32 +36,41 @@
 
 It carries **negative** assertions (zero Mailchimp hits) _and_ **positive** assertions. The positives are what stop an over-delete: the `RESEND_AUDIENCE_ID` prose being removed sits _inside_ the same blockquotes as the Mailchimp callouts, and the `.husky`/`docs/product` mentions must SURVIVE.
 
+> ⚠️ **Every search below uses `git grep` (TRACKED files only), never `grep -r`.** This is load-bearing, not
+> style. An untracked, gitignored `apps/web/.env.local` holds the developer's **real Mailchimp credentials**.
+> A recursive `grep -r` over `apps/` sweeps it up, which (a) prints live secret values into a report bound for
+> a PR body and a Jira comment, and (b) makes GREEN **structurally unreachable** — `.env.local` is a local file
+> that keeps its `MAILCHIMP_*` values until the human unsets them in **ICR-156**. `git grep` searches only what
+> the repo actually ships, which is exactly what the ACs are about. (Found the hard way in CP1.)
+
 ```bash
 cat > "${TMPDIR:-/tmp}/icr110-check.sh" <<'EOF'
 #!/usr/bin/env bash
 # ICR-110 acceptance harness. Throwaway — not committed.
+# ALL searches use `git grep` => TRACKED files only. Never `grep -r`: it would sweep up the
+# untracked, gitignored .env.local (real local secrets) and make GREEN unreachable.
 cd "$(git rev-parse --show-toplevel)" || exit 2
 fail=0
 pass() { printf '  ✅ %s\n' "$1"; }
 bad()  { printf '  ❌ %s\n' "$1"; fail=1; }
 
 echo "== POSITIVE CONTROL (proves the search works at all) =="
-ctl=$(grep -rliI 'resend' apps packages docs CLAUDE.md AGENTS.md 2>/dev/null | wc -l | tr -d ' ')
-[ "$ctl" -ge 5 ] && pass "control: 'resend' matched in $ctl files" \
+ctl=$(git grep -lI -i 'resend' -- apps packages docs CLAUDE.md AGENTS.md 2>/dev/null | wc -l | tr -d ' ')
+[ "$ctl" -ge 5 ] && pass "control: 'resend' matched in $ctl tracked files" \
                  || { bad "control matched $ctl files — THE SEARCH IS BROKEN, not the tree clean"; exit 2; }
 
-echo "== NEGATIVE: zero 'mailchimp' in the AC2 footprint =="
-hits=$(grep -rniI 'mailchimp' apps packages docs/architecture CLAUDE.md AGENTS.md 2>/dev/null)
+echo "== NEGATIVE: zero 'mailchimp' in the AC2 footprint (tracked files only) =="
+hits=$(git grep -nI -i 'mailchimp' -- apps packages docs/architecture CLAUDE.md AGENTS.md 2>/dev/null)
 if [ -z "$hits" ]; then pass "AC2: 0 hits in apps/, packages/, docs/architecture/, CLAUDE.md, AGENTS.md"
-else bad "AC2: $(printf '%s' "$hits" | wc -l | tr -d ' ') hit(s) remain:"; printf '%s\n' "$hits" | sed 's/^/       /'; fi
+else bad "AC2: $(printf '%s\n' "$hits" | wc -l | tr -d ' ') hit(s) remain:"; printf '%s\n' "$hits" | sed 's/^/       /'; fi
 
 echo "== NEGATIVE: zero 'mailchimp' in the harness config (the agent-harness.md twin) =="
-if grep -qiI 'mailchimp' .claude/config.json 2>/dev/null; then bad ".claude/config.json still names Mailchimp"
+if git grep -qI -i 'mailchimp' -- .claude/config.json 2>/dev/null; then bad ".claude/config.json still names Mailchimp"
 else pass ".claude/config.json: clean"; fi
 
 echo "== NEGATIVE: packages + lockfile =="
-grep -qi 'mailchimp' apps/web/package.json && bad "apps/web/package.json still declares a mailchimp package" || pass "package.json: clean"
-grep -qi 'mailchimp' pnpm-lock.yaml       && bad "pnpm-lock.yaml still resolves a mailchimp package"      || pass "pnpm-lock.yaml: clean"
+git grep -qI -i 'mailchimp' -- apps/web/package.json && bad "apps/web/package.json still declares a mailchimp package" || pass "package.json: clean"
+git grep -qI -i 'mailchimp' -- pnpm-lock.yaml        && bad "pnpm-lock.yaml still resolves a mailchimp package"        || pass "pnpm-lock.yaml: clean"
 for dead in 'superagent@3.8.1' 'dotenv@8.6.0'; do
   grep -q "$dead" pnpm-lock.yaml && bad "transitive $dead still in the lockfile" || pass "transitive $dead: gone"
 done
@@ -97,12 +106,15 @@ chmod +x "${TMPDIR:-/tmp}/icr110-check.sh"
 
 Run: `"${TMPDIR:-/tmp}/icr110-check.sh" 2>&1 | tee "${TMPDIR:-/tmp}/icr110-RED.txt"`
 
-**Expected: `RESULT: RED`, exit 1.** Specifically: the AC2 negative lists ~15 hits, `.claude/config.json` is flagged, `package.json`/`pnpm-lock.yaml`/both transitives are flagged — while **every positive assertion already passes** (the prose, the `.husky` net, and `docs/product/` are all currently intact).
+**Expected: `RESULT: RED`, exit 1.** Specifically: the AC2 negative lists ~25 hits across the ~12 tracked files in the Task 3 worklist, `.claude/config.json` is flagged, and `package.json`/`pnpm-lock.yaml`/both transitives are flagged — while **every positive assertion already passes** (the prose, the `.husky` net, and `docs/product/` are all currently intact), and the `ICR-156` positive correctly fails (that's Task 3's job).
 
 **STOP CONDITIONS — do not proceed, report instead:**
 
 - If the **positive control** fails (`< 5` files match `resend`), the search itself is broken. Fix the harness; a broken grep prints nothing and reads exactly like a clean tree.
 - If it reports **GREEN** on the untouched tree, the premise is wrong — stop and report.
+- If **any hit is in an untracked file** (e.g. `apps/web/.env.local`), the harness has regressed to `grep -r`. Untracked files are out of scope by construction and may contain **real secrets** — never print their contents. Restore the `git grep` form.
+
+> Capture the RED output for the PR body — but **read it before pasting it anywhere.** It is destined for a public PR and a Jira comment; no secret value may appear in it. With `git grep` this is safe by construction, since `.env*` is gitignored and therefore never searched.
 
 Save the RED output verbatim; it goes in the PR body.
 
