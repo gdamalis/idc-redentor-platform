@@ -3,7 +3,7 @@
 > **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
 
 > **Purpose:** The opinionated thesis for how the IDC Redentor website should be found and understood in the AI era — by people, search engines, and AI assistants. This is the lens the `product-manager` agent uses to rank discovery/SEO ideas.
-> **Last reviewed:** 2026-06-21
+> **Last reviewed:** 2026-07-14
 
 ---
 
@@ -24,6 +24,7 @@ The content needed for great structured data already exists in Contentful (see [
 - **Location & geo** — `LocationComponent` (`addressLine1`, `neighborhood`, `city`, `country`, `mapEmbedUrl`, `googleMapsUrl`, `location { lat, lon }`).
 - **Identity & socials** — `Footer` (logo, short description, social links).
 - **Articles** — `BlogPostPage` (title, author, dates, body).
+- **Sermons** — `Sermon` (title, `sermonDate`, thesis, main points, rich-text body, `durationSeconds`, a self-hosted `audio` asset, a `pdfSummary`, `preacher` → `Author`) with **structured** `BibleVerse` scripture references (`book`, `chapter`, `fromVerse`, `toVerse`, `bibleVersion`). _The richest un-exploited target: an `AudioObject` / `Article` with a real duration, author, and date._
 - **Per-page metadata** — inline `Page.seo` and the `Seo` content type.
 
 The gap is mostly **serialization**: turning this structured content into JSON-LD and complete metadata. That makes the early wins cheap and high-leverage.
