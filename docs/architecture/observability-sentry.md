@@ -72,6 +72,18 @@ NEXT_PUBLIC_SENTRY_ENVIRONMENT ??
 >    Sentry** — preview and staging become indistinguishable. This is not hypothetical: it happened
 >    during ICR-117 QA. Double-check the Vercel environment-variable scope (Production / Preview /
 >    Development / Custom Environments), not just the variable's presence.
+> 3. **Every `process.env.*` read in `options.ts` must be a STATIC property access, never a computed
+>    lookup.** The inlining described in trap 1 (`NEXT_PUBLIC_*` survives into the client bundle,
+>    everything else is stripped) is a **build-time static text-substitution pass** — Next.js scans
+>    the source for the literal pattern `process.env.NEXT_PUBLIC_SOMETHING` and replaces it inline.
+>    A helper that takes the var **name** as a string and does `process.env[name]` is invisible to
+>    that pass: it survives into the client bundle as a real runtime `process.env[name]` access,
+>    which resolves to `undefined` in the browser because Next.js never ships a full `process.env`
+>    object client-side — only the specific literals it found and substituted. This is not
+>    hypothetical either: it shipped in PR #87, silently killing client-side Sentry outright (no DSN
+>    literal in any client chunk, zero `/monitoring` requests on a real page load) until caught in
+>    review. `normalizeEnv()` in `options.ts` normalizes the blank/whitespace **value** after a static
+>    read — it must never be handed the var name and asked to do the lookup itself.
 
 `VERCEL_ENV` alone is **not enough** even once `NEXT_PUBLIC_VERCEL_ENV` is added to the chain. Vercel
 only ever sets it to `production`, `preview`, or `development` — there is no native `staging` value.

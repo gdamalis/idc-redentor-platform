@@ -14,14 +14,27 @@ const TRACES_SAMPLE_RATE_BY_ENVIRONMENT: Record<string, number> = {
 };
 
 /**
- * Reads an env var and treats a blank or whitespace-only value as unset. Plain
- * `??` does not do this — it only falls through on null/undefined, not "" — and
- * `.env.example` ships every Sentry var blank, so a developer who copies it to
- * `.env.local` reaches the empty-string case for real, not hypothetically.
+ * Treats a blank or whitespace-only value as unset. Plain `??` does not do this —
+ * it only falls through on null/undefined, not "" — and `.env.example` ships every
+ * Sentry var blank, so a developer who copies it to `.env.local` reaches the
+ * empty-string case for real, not hypothetically.
+ *
+ * NOTE: callers MUST pass a STATIC `process.env.X` property read (e.g.
+ * `process.env.NEXT_PUBLIC_SENTRY_DSN`), never a computed `process.env[name]`
+ * lookup. This module is bundled into the browser via
+ * `src/instrumentation-client.ts`, and Next.js's client env-inlining is a static
+ * text-substitution pass keyed on literal `process.env.NEXT_PUBLIC_*` property
+ * accesses — a computed lookup is invisible to it and survives into the bundle as
+ * a real runtime `process.env[name]` access, which is always undefined in the
+ * browser. A prior version of this helper took the var NAME and did the lookup
+ * internally; that silently killed client-side Sentry entirely (DSN literal
+ * absent from every client chunk, zero /monitoring requests on page load —
+ * confirmed on a deployed preview). Caught in PR #87 review — do not "simplify"
+ * this back into a name-keyed lookup.
  */
-function readEnv(name: string): string | undefined {
-  const value = process.env[name]?.trim();
-  return value ? value : undefined;
+function normalizeEnv(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
 }
 
 export interface BaseSentryOptions {
@@ -45,10 +58,13 @@ export function resolveSentryEnvironment(): string {
   // way to distinguish the staging deploy (a Vercel custom environment whose
   // NEXT_PUBLIC_VERCEL_ENV is "preview", same as any PR preview) from an actual PR
   // preview. VERCEL_ENV stays as a last, server-only fallback for robustness.
+  //
+  // Every read below MUST stay a static `process.env.X` property access (see the
+  // normalizeEnv doc comment) — the client bundle depends on it.
   return (
-    readEnv("NEXT_PUBLIC_SENTRY_ENVIRONMENT") ??
-    readEnv("NEXT_PUBLIC_VERCEL_ENV") ??
-    readEnv("VERCEL_ENV") ??
+    normalizeEnv(process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT) ??
+    normalizeEnv(process.env.NEXT_PUBLIC_VERCEL_ENV) ??
+    normalizeEnv(process.env.VERCEL_ENV) ??
     "development"
   );
 }
@@ -63,7 +79,7 @@ export function resolveTracesSampleRate(
 }
 
 export function baseSentryOptions(): BaseSentryOptions {
-  const dsn = readEnv("NEXT_PUBLIC_SENTRY_DSN");
+  const dsn = normalizeEnv(process.env.NEXT_PUBLIC_SENTRY_DSN);
   const environment = resolveSentryEnvironment();
 
   return {

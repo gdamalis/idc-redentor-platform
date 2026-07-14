@@ -6,6 +6,14 @@ import {
   resolveTracesSampleRate,
 } from "./options";
 
+// NOTE: `vi.stubEnv` mutates the real `process.env` at runtime, which is enough to
+// exercise the blank/whitespace-normalization behavior below, but it CANNOT catch
+// the PR #87 regression (a computed `process.env[name]` lookup silently failing to
+// be inlined into the client bundle). That failure mode only exists in a bundled
+// browser build — Next.js's client env-inlining is a static text-substitution pass
+// at build time, invisible to a Node test runner reading the real process.env at
+// runtime. The static-property-read requirement is a bundler constraint, guarded
+// by the doc comment on `normalizeEnv` in options.ts, not by a test here.
 afterEach(() => {
   vi.unstubAllEnvs();
 });
