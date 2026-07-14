@@ -21,22 +21,13 @@
 // Usage:
 //   node scripts/contentful/migrations/13b-backfill-sermon-audio.mjs --dry-run
 //   CONTENTFUL_ENVIRONMENT=production node scripts/contentful/migrations/13b-backfill-sermon-audio.mjs
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { createClient } from "contentful-management";
-
-const client = createClient(
-  { accessToken: process.env.CONTENTFUL_MANAGEMENT_ACCESS_TOKEN },
-  { type: "plain" },
-);
 
 const spaceId = process.env.CONTENTFUL_SPACE_ID;
 const environmentId = process.env.CONTENTFUL_ENVIRONMENT ?? "staging";
 const DRY = process.argv.includes("--dry-run");
-
-if (environmentId === "master" || environmentId.startsWith("master-")) {
-  throw new Error(
-    "Refusing to run against the `master` alias. Target the concrete environment (staging | production).",
-  );
-}
 
 /** Contentful stores NON-LOCALIZED field values under the default-locale key. */
 const DEFAULT_LOCALE = "es-AR";
@@ -52,21 +43,21 @@ const INTERPRETER_AUTHOR_ID = "32VynQChlpA00VsRMtNGJu"; // Jonathan Hanegan (aut
  * Requires BOTH the interpreter's name AND interpretation wording, so an unrelated
  * closing blockquote can never match.
  */
-function isInterpreterNote(node) {
+export function isInterpreterNote(node) {
   if (node?.nodeType !== "blockquote") return false;
   const text = JSON.stringify(node);
   return text.includes("Jonathan Hanegan") && /interpret/i.test(text);
 }
 
 /** Removes the trailing interpreter note from a rich-text document, if present. */
-function stripInterpreterNote(doc) {
+export function stripInterpreterNote(doc) {
   if (!doc?.content?.length) return { doc, removed: false };
   const last = doc.content[doc.content.length - 1];
   if (!isInterpreterNote(last)) return { doc, removed: false };
   return { doc: { ...doc, content: doc.content.slice(0, -1) }, removed: true };
 }
 
-async function getAllSermons() {
+async function getAllSermons(client) {
   const out = [];
   let skip = 0;
   for (;;) {
@@ -83,11 +74,24 @@ async function getAllSermons() {
 }
 
 async function run() {
+  if (environmentId === "master" || environmentId.startsWith("master-")) {
+    throw new Error(
+      "Refusing to run against the `master` alias. Target the concrete environment (staging | production).",
+    );
+  }
+
+  // Created lazily (not at module scope) so importing this module for its pure
+  // helpers (see the test file) never requires a real Contentful token.
+  const client = createClient(
+    { accessToken: process.env.CONTENTFUL_MANAGEMENT_ACCESS_TOKEN },
+    { type: "plain" },
+  );
+
   console.log(
     `== 13b backfill sermon audioLanguages/interpreter in "${environmentId}"${DRY ? " (DRY-RUN — nothing will be written)" : ""} ==`,
   );
 
-  const sermons = await getAllSermons();
+  const sermons = await getAllSermons(client);
   console.log(`Found ${sermons.length} sermon entries.\n`);
 
   let changed = 0;
@@ -187,7 +191,12 @@ async function run() {
   }
 }
 
-run().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+const invokedAsScript =
+  process.argv[1] &&
+  realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
+if (invokedAsScript) {
+  run().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}
