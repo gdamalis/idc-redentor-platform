@@ -73,6 +73,43 @@ describe("resolveInterpreted", () => {
       expect(resolveInterpreted({ sermon: { interpreted: undefined } })).toBe(false);
     });
   });
+
+  // Regression: a SUPPLIED sermon.json whose top-level value is not a usable object (a corrupt or
+  // truncated file parses fine as an array / string / number) carries no readable provenance. A
+  // strict property read (`sermon?.interpreted`) yields undefined and would wrongly read as "not
+  // interpreted" — failing OPEN on exactly the malformed persisted state this guard must survive.
+  describe("fails CLOSED on a non-object sermon.json", () => {
+    it.each([
+      ["an array", ["not", "an", "object"]],
+      ["a bare string", "just a string"],
+      ["a bare number", 42],
+    ])("treats %s as INTERPRETED (a supplied file we cannot read is not a clean 'no')", (_label, value) => {
+      expect(resolveInterpreted({ sermon: value })).toBe(true);
+    });
+
+    it("still treats NO persisted sermon (undefined/null) as a clean first run (flag decides)", () => {
+      expect(resolveInterpreted({ sermon: undefined })).toBe(false);
+      expect(resolveInterpreted({ sermon: null })).toBe(false);
+      expect(resolveInterpreted({ flag: true, sermon: null })).toBe(true);
+    });
+  });
+
+  // Regression: `interpreter` recorded WITHOUT `interpreted: true` is a schema-legal half-populated
+  // document (a hand-edit that dropped one line). Reading it as "not interpreted" would hand the
+  // coach an interpreted transcript with the interpreter's own name sitting unused in the same file.
+  describe("treats a recorded interpreter as a declaration, even without `interpreted: true`", () => {
+    it("refuses when interpreter.name is present but interpreted is absent", () => {
+      expect(
+        resolveInterpreted({ sermon: { interpreter: { name: "Jonathan Hanegan" } } }),
+      ).toBe(true);
+    });
+
+    it("does NOT refuse for an empty/blank interpreter (nothing was actually declared)", () => {
+      expect(resolveInterpreted({ sermon: { interpreter: { name: "  " } } })).toBe(false);
+      expect(resolveInterpreted({ sermon: { interpreter: {} } })).toBe(false);
+      expect(resolveInterpreted({ sermon: { interpreter: null } })).toBe(false);
+    });
+  });
 });
 
 describe("canLearnVoiceFrom", () => {

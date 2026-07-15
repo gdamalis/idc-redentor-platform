@@ -39,6 +39,10 @@ function die(code, msg) {
 
 // ── Mirrored from voiceProfile.ts ────────────────────────────────────────────
 
+function isPlainObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export function slugifyPersonName(name) {
   return (name ?? "")
     .normalize("NFD")
@@ -49,19 +53,37 @@ export function slugifyPersonName(name) {
 }
 
 /**
- * FAIL-CLOSED on a malformed `interpreted` field. sermon.json is written by an LLM and may be
- * hand-edited, so the field can arrive as the STRING "true", as 1, or as anything else. A strict
- * `=== true` check would read those as NOT interpreted and let the coach learn from an
- * interpreted transcript — the very hole this guard exists to close, re-opened by a typo.
- * Anything not cleanly absent/null/false is therefore treated as INTERPRETED.
+ * FAIL-CLOSED on malformed persisted state. sermon.json is written by an LLM and may be
+ * hand-edited, so its shape and its `interpreted` field cannot be trusted. Anything we cannot read
+ * as a clean "not interpreted" is treated as INTERPRETED (refuse). See voiceProfile.ts for the full
+ * rationale — this is a hand-mirror of it and the parity test enforces the match.
  */
 export function resolveInterpreted(input) {
   if (input.flag === true) return true;
 
-  const persisted = input.sermon?.interpreted;
-  if (persisted === undefined || persisted === null || persisted === false) return false;
+  const { sermon } = input;
 
-  return true;
+  if (sermon === undefined || sermon === null) return false;
+
+  // A supplied-but-non-object sermon.json (corrupt/truncated → parses as an array/string/number)
+  // carries no readable provenance; do not conclude "not interpreted" from it.
+  if (!isPlainObject(sermon)) return true;
+
+  const interpreted = sermon.interpreted;
+  if (interpreted !== undefined && interpreted !== null && interpreted !== false) return true;
+
+  // An interpreter recorded WITHOUT `interpreted: true` is half-populated; their presence is itself
+  // a declaration that this was interpreted.
+  const { interpreter } = sermon;
+  if (
+    isPlainObject(interpreter) &&
+    typeof interpreter.name === "string" &&
+    interpreter.name.trim() !== ""
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 export function canLearnVoiceFrom(run) {
@@ -75,11 +97,22 @@ export function canLearnVoiceFrom(run) {
 
 // ── CLI ──────────────────────────────────────────────────────────────────────
 
+const KNOWN_FLAGS = new Set(["--interpreted", "--interpreter", "--preacher", "--sermon"]);
+
 function main() {
   const argv = process.argv.slice(2);
   let preacher = "";
   let flag = false;
   let sermonPath = null;
+
+  // Consume the value token for an option, refusing to silently swallow the NEXT flag as a value.
+  // Without this, `--preacher --interpreted` would set preacher="--interpreted" and DROP the guard
+  // flag — degrading the guard instead of erroring. A missing/flag-looking value is a usage error.
+  const takeValue = (i, opt) => {
+    const next = argv[i + 1];
+    if (next === undefined || KNOWN_FLAGS.has(next)) die(2, `${opt}: expected a value\n${USAGE}`);
+    return next;
+  };
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -90,11 +123,14 @@ function main() {
       // refused for every name. Naming one still IMPLIES the run is interpreted, and the
       // implication only ever runs toward MORE guarding, never less.
       flag = true;
+      takeValue(i, "--interpreter");
       i++;
     } else if (arg === "--preacher") {
-      preacher = argv[++i] ?? "";
+      preacher = takeValue(i, "--preacher");
+      i++;
     } else if (arg === "--sermon") {
-      sermonPath = argv[++i] ?? null;
+      sermonPath = takeValue(i, "--sermon");
+      i++;
     } else {
       die(2, `unknown argument: ${arg}\n${USAGE}`);
     }

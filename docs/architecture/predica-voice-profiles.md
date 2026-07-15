@@ -66,23 +66,34 @@ flag with the `interpreted` field persisted in `sermon.json`. And if the guard s
 the pipeline **fails closed** and skips the coach: a skipped append is redone next run, a wrong append is
 forever.
 
-### Fail-closed also means: a MALFORMED flag counts as interpreted
+### Fail-closed also means: MALFORMED persisted state counts as interpreted
 
-`resolveInterpreted()` treats **anything** in `sermon.json`'s `interpreted` field that is not cleanly
-absent / `null` / `false` as **interpreted** — including the string `"true"`, the number `1`, and even the
-string `"false"`.
+**`sermon.json` is produced by an LLM** (`predica-writer`) and may be hand-edited by a human during review,
+so on a regenerate `resolveInterpreted()` cannot trust either the **shape** of the file or the **value** of
+its `interpreted` field. It fails closed on all of it — anything it cannot read as a clean "not interpreted"
+is treated as **interpreted** (refuse):
 
-That looks pedantic until you notice who writes the file: **`sermon.json` is produced by an LLM**
-(`predica-writer`) and may be hand-edited by a human during review. Emitting `"true"` instead of `true` is an
-ordinary slip, not a contrived input. An earlier version of this guard used a strict `=== true` check, which
-read a string `"true"` as _not interpreted_ — and so, on a regenerate, would have cheerfully handed an
-interpreted transcript to the coach. **The guard's own typo would have re-opened the exact hole the guard
-exists to close.** Caught in QA on ICR-147; pinned by tests in both the canon and the twin.
+- **A malformed `interpreted` value** — the string `"true"`, the number `1`, even the string `"false"` (a
+  boolean was required). An earlier version used a strict `=== true` check, which read a string `"true"` as
+  _not interpreted_ and would have handed an interpreted transcript to the coach — **the guard's own typo
+  re-opening the exact hole it exists to close.**
+- **A non-object top-level document** — a corrupt or truncated `sermon.json` parses cleanly as an array, a
+  bare string, or a number. A plain property read (`sermon?.interpreted`) yields `undefined` on all of them,
+  which would look like a clean "no". A supplied file we cannot read is not a clean no.
+- **An `interpreter` recorded without `interpreted: true`** — a half-populated document (e.g. a hand-edit
+  that deleted one line). The interpreter's presence is itself the declaration; reading it as "not
+  interpreted" would poison the profile with the interpreter's name sitting unused in the same file.
 
-The cost of the strictness is one refused append that the next run redoes. The cost of leniency is a
-permanently poisoned profile. A guard that fails **open** on malformed input is worse than no guard, because
-it is _trusted_. (`validateSermonForEntry()` also rejects a non-boolean `interpreted` — but that runs at
-step 3, **after** the writer has already put the file on disk, so step 2.5 cannot lean on it.)
+The CLI twin additionally refuses to **swallow a following flag as an argument value**: `--preacher
+--interpreted …` is a usage error (exit 2), never a run with `preacher = "--interpreted"` and the guard flag
+silently dropped.
+
+All three fail-open gaps (plus the scalar case) were surfaced by the ICR-147 adversarial QA pass and are
+pinned by regression tests in **both** the canonical TS and the `.mjs` twin. The cost of the strictness is one
+refused append that the next run redoes; the cost of leniency is a permanently poisoned profile. A guard that
+fails **open** on malformed input is worse than no guard, because it is _trusted_. (`validateSermonForEntry()`
+also rejects a non-boolean `interpreted`, but that runs at step 3, **after** the writer has already put the
+file on disk, so step 2.5 cannot lean on it.)
 
 ## Where profiles live (and why local-only)
 

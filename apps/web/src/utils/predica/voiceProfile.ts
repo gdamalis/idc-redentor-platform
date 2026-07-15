@@ -34,6 +34,11 @@ export type VoiceLearnDecision =
   | { ok: true; preacherSlug: string }
   | { ok: false; reason: "interpreted" | "missing-preacher" };
 
+/** A non-null, non-array object we can safely read keys off. */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 /**
  * Transliterate → lowercase → dash-collapse. The profile filename must be ASCII-stable
  * ("Jonathan Hanegán" → "jonathan-hanegan"), so accents are stripped rather than encoded.
@@ -67,16 +72,37 @@ export function slugifyPersonName(name: string): string {
  * runs at step 3, AFTER the writer has already put the file on disk, so step 2.5 cannot rely
  * on it having run.
  */
-export function resolveInterpreted(input: {
-  flag?: boolean;
-  sermon?: { interpreted?: unknown } | null;
-}): boolean {
+export function resolveInterpreted(input: { flag?: boolean; sermon?: unknown }): boolean {
   if (input.flag === true) return true;
 
-  const persisted = input.sermon?.interpreted;
-  if (persisted === undefined || persisted === null || persisted === false) return false;
+  const { sermon } = input;
 
-  return true;
+  // No persisted state at all (a first run) — the flag alone decides.
+  if (sermon === undefined || sermon === null) return false;
+
+  // A sermon.json WAS supplied but is not a usable object (a corrupt/truncated file parses fine as
+  // an array, a string, a number...). We cannot read provenance out of it, so we must not conclude
+  // "not interpreted" — that is failing OPEN on exactly the malformed persisted state this guard is
+  // meant to survive.
+  if (!isPlainObject(sermon)) return true;
+
+  const interpreted = sermon.interpreted;
+  if (interpreted !== undefined && interpreted !== null && interpreted !== false) return true;
+
+  // An interpreter recorded WITHOUT `interpreted: true` is a half-populated document — e.g. a
+  // hand-edit that deleted one line, or a writer that emitted only half the pair. It is schema-legal
+  // today, and reading it as "not interpreted" would hand the coach an interpreted transcript while
+  // the interpreter's own name sits unused in the very same file. Their presence IS the declaration.
+  const { interpreter } = sermon;
+  if (
+    isPlainObject(interpreter) &&
+    typeof interpreter.name === "string" &&
+    interpreter.name.trim() !== ""
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 /**

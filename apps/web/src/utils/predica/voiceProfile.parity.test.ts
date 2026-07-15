@@ -144,6 +144,42 @@ describe("check-voice-learn.mjs CLI contract", () => {
     expect(status).toBe(3);
   });
 
+  it("REFUSES a sermon.json whose top-level value is NOT an object (corrupt/truncated file) — fail closed", () => {
+    const sermon = path.join(
+      REPO_ROOT,
+      "apps/web/src/utils/predica/__fixtures__/nonobject-sermon.json",
+    );
+    const { decision, status } = runTwin(["--preacher", "Doug Wagner", "--sermon", sermon]);
+    expect(decision).toEqual({ ok: false, reason: "interpreted" });
+    expect(status).toBe(3);
+  });
+
+  it("REFUSES when a sermon.json records an interpreter but omits `interpreted` (half-populated, flag forgotten)", () => {
+    const sermon = path.join(
+      REPO_ROOT,
+      "apps/web/src/utils/predica/__fixtures__/interpreter-no-flag-sermon.json",
+    );
+    const { decision, status } = runTwin(["--preacher", "Doug Wagner", "--sermon", sermon]);
+    expect(decision).toEqual({ ok: false, reason: "interpreted" });
+    expect(status).toBe(3);
+  });
+
+  it("exits 2 rather than swallowing a following flag as --preacher's value (does not silently drop the guard)", () => {
+    // `--preacher --interpreted <plain sermon>` must NOT set preacher="--interpreted" and drop the
+    // --interpreted flag; that would degrade the guard on a malformed invocation. It is a usage error.
+    const plain = path.join(
+      REPO_ROOT,
+      "apps/web/src/utils/predica/__fixtures__/plain-sermon.json",
+    );
+    const res = spawnSync(
+      "node",
+      [TWIN, "--preacher", "--interpreted", "--sermon", plain],
+      { encoding: "utf8" },
+    );
+    expect(res.status).toBe(2);
+    expect(res.stderr).toMatch(/--preacher: expected a value/);
+  });
+
   it("exits 2 on an unreadable --sermon path (a usage error, distinct from a refusal)", () => {
     const res = spawnSync(
       "node",
