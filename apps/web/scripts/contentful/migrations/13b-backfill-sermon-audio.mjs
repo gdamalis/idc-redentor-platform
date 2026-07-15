@@ -1,7 +1,7 @@
 // ICR-146 (13b): backfill `sermon.audioLanguages` + `sermon.interpreter`, and remove the
 // now-redundant hand-written interpreter blockquote from the 2026-07-12 sermon (prose -> data).
 //
-// SAFETY INVARIANTS (all four matter):
+// SAFETY INVARIANTS (all five matter):
 //  1. Refuses the `master` ALIAS by name. Write the concrete env (staging | production), never the
 //     alias — the alias is repointed by humans at cutover.
 //  2. PUBLISH-SAFE. Republishes ONLY entries that were ALREADY published; NEVER publishes a draft.
@@ -14,6 +14,11 @@
 //  4. CONTENT-MATCHED node removal. The interpreter note is found by matching its TEXT, never by
 //     index — an index-based delete would silently destroy a legitimate closing blockquote if the
 //     entry is edited before cutover.
+//  5. NEVER SHIPS PENDING EDITS. `entry.get()` returns any unpublished draft edits an editor made
+//     since the last publish. A published entry is only republished when it is CLEAN
+//     (`sys.version === sys.publishedVersion + 1`); if it has pending edits
+//     (`sys.version > sys.publishedVersion + 1`), this script leaves it untouched entirely — no
+//     field update, no publish — and logs a warning for a human. See `classifyPublishState()`.
 //
 // Every sermon is enumerated (not a hardcoded id list) so a sermon published between now and cutover
 // still gets its default. Only the known bilingual sermon deviates from the ["es-AR"] default.
@@ -37,6 +42,20 @@ const BILINGUAL = ["es-AR", "en-US"];
 /** 2026-07-12 — Doug Wagner preached in English; Jonathan Hanegan interpreted live into Spanish. */
 const BILINGUAL_SERMON_ID = "4Tp4Qg3SGEIEIJn09w5OjW";
 const INTERPRETER_AUTHOR_ID = "32VynQChlpA00VsRMtNGJu"; // Jonathan Hanegan (author entry)
+
+/**
+ * How to handle an entry's publish state after the field update.
+ *   "leave-draft"  — never published -> update fields, DO NOT publish.
+ *   "republish"    — published AND clean (version === publishedVersion + 1) -> safe to republish.
+ *   "skip-pending" — published BUT has unpublished editor edits (version > publishedVersion + 1):
+ *                    republishing would ship those unreviewed edits, so DO NOT touch the entry.
+ * @param {{publishedVersion?: number|null, version: number}} sys
+ */
+export function classifyPublishState(sys) {
+  if (sys.publishedVersion == null) return "leave-draft";
+  if (sys.version > sys.publishedVersion + 1) return "skip-pending";
+  return "republish";
+}
 
 /**
  * True for the hand-written interpreter note that this migration replaces with data.
@@ -97,13 +116,15 @@ async function run() {
   let changed = 0;
   let republished = 0;
   let skipped = 0;
+  let skippedPending = 0;
 
   for (const entry of sermons) {
     const id = entry.sys.id;
     const slug = entry.fields.slug?.[DEFAULT_LOCALE] ?? "(no slug)";
     // Capture BEFORE any update: entry.update() bumps sys.version but leaves
-    // publishedVersion alone, so this stays a correct "was it live?" answer.
-    const wasPublished = entry.sys.publishedVersion != null;
+    // publishedVersion alone, so this stays a correct classification of the entry's
+    // publish state (never published / published-and-clean / published-with-pending-edits).
+    const publishState = classifyPublishState(entry.sys);
     const isBilingual = id === BILINGUAL_SERMON_ID;
 
     const existing = entry.fields.audioLanguages?.[DEFAULT_LOCALE];
@@ -152,17 +173,28 @@ async function run() {
       continue;
     }
 
+    if (publishState === "skip-pending") {
+      skippedPending++;
+      console.log(
+        `  ${DRY ? "WOULD SKIP" : "SKIPPING"} ${slug} (${id}) — published with pending editor edits; needs human`,
+      );
+      console.log(
+        `      · WARNING: entry has unpublished changes since its last publish — republishing would ship unreviewed content, so this migration will NOT touch it`,
+      );
+      continue;
+    }
+
     console.log(`  ${DRY ? "WOULD UPDATE" : "UPDATING"} ${slug} (${id})`);
     for (const action of actions) console.log(`      · ${action}`);
     console.log(
-      wasPublished
+      publishState === "republish"
         ? `      · published entry → WILL REPUBLISH`
         : `      · draft entry → leaving as a DRAFT (never published by this script)`,
     );
 
     if (DRY) {
       changed++;
-      if (wasPublished) republished++;
+      if (publishState === "republish") republished++;
       continue;
     }
 
@@ -172,7 +204,7 @@ async function run() {
     );
     changed++;
 
-    if (wasPublished) {
+    if (publishState === "republish") {
       await client.entry.publish(
         { spaceId, environmentId, entryId: id },
         updated,
@@ -182,7 +214,7 @@ async function run() {
   }
 
   console.log(
-    `\n${DRY ? "PLAN" : "DONE"}: ${changed} updated, ${republished} republished, ${skipped} already done.`,
+    `\n${DRY ? "PLAN" : "DONE"}: ${changed} updated, ${republished} republished, ${skipped} already done, ${skippedPending} skipped (pending editor edits).`,
   );
   if (!DRY && republished > 0) {
     console.log(

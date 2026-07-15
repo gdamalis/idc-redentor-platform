@@ -9,6 +9,7 @@ import { describe, it, expect } from "vitest";
 import {
   isInterpreterNote,
   stripInterpreterNote,
+  classifyPublishState,
 } from "./13b-backfill-sermon-audio.mjs";
 
 // --- Real payloads, copied verbatim from the live entry -------------------------------
@@ -167,5 +168,43 @@ describe("stripInterpreterNote", () => {
       doc: { content: [] },
       removed: false,
     });
+  });
+});
+
+describe("classifyPublishState", () => {
+  it("returns leave-draft for a never-published entry", () => {
+    expect(classifyPublishState({ publishedVersion: null, version: 1 })).toBe(
+      "leave-draft",
+    );
+  });
+
+  it("returns leave-draft for a never-published entry with several draft saves", () => {
+    expect(classifyPublishState({ publishedVersion: null, version: 3 })).toBe(
+      "leave-draft",
+    );
+  });
+
+  it("returns republish for the real la-paradoja shape (published, clean)", () => {
+    expect(classifyPublishState({ publishedVersion: 65, version: 66 })).toBe(
+      "republish",
+    );
+  });
+
+  it("returns republish for the real el-deseo shape (published, clean)", () => {
+    expect(classifyPublishState({ publishedVersion: 16, version: 17 })).toBe(
+      "republish",
+    );
+  });
+
+  it("returns skip-pending when published then 4 draft edits", () => {
+    expect(classifyPublishState({ publishedVersion: 65, version: 70 })).toBe(
+      "skip-pending",
+    );
+  });
+
+  it("returns skip-pending when published with one pending edit", () => {
+    expect(classifyPublishState({ publishedVersion: 5, version: 7 })).toBe(
+      "skip-pending",
+    );
   });
 });
