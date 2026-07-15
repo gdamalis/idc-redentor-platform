@@ -32,8 +32,8 @@ Pre-requisites:
 
 1. **Clone the repository**
    ```bash
-   git clone git@github.com:gdamalis/idc-redentor-web.git
-   cd idc-redentor-web
+   git clone git@github.com:gdamalis/idc-redentor-platform.git
+   cd idc-redentor-platform
    ```
 2. **Copy the Environment Variables**
    Create a local env file from the example (it now lives under `apps/web/`):
