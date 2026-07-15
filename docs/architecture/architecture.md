@@ -14,7 +14,7 @@ The one stateful reader feature is an anonymous blog "like", and the contact for
 ## Directory map
 
 ```
-idc-redentor-website/
+idc-redentor-platform/
 ├── src/
 │   ├── app/
 │   │   ├── [locale]/                # locale-scoped pages (es-AR | en-US)

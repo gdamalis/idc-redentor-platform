@@ -1,4 +1,4 @@
-# CLAUDE.md — idc-redentor-website
+# CLAUDE.md — idc-redentor-platform
 
 ## Project Overview
 

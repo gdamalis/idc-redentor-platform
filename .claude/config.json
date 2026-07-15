@@ -1,7 +1,7 @@
 {
   "_monorepoNote": "pnpm + Turborepo workspace: the site lives under apps/web/. App paths in any descriptive note below (src/..., lib/..., public/..., config/..., scripts/contentful/..., .env.local) resolve under apps/web/ (e.g. apps/web/src/utils/predica/sermonEntry.ts, apps/web/.env.local). Only .claude/, docs/, and tasks/ stay at the repo root. The script/output/dir paths actually executed by the harness (commands.*, predica.*.script, predica.*.logo, predica.voices.dir, etc.) are already correct as written; this note only governs the prose references.",
   "project": {
-    "name": "idc-redentor-web",
+    "name": "idc-redentor-platform",
     "ticketPrefix": "ICR",
     "ticketPrefixAliases": ["IDCR"],
     "ticketLinkBase": "https://divinelab.atlassian.net/browse/",

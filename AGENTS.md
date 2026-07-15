@@ -1,4 +1,4 @@
-# AGENTS.md — idc-redentor-website
+# AGENTS.md — idc-redentor-platform
 
 > This file is the authoritative agent guide for this repository and **supersedes `.cursorrules`**. The conventions below are the distilled, current version of those rules. Where `.cursorrules` and this file disagree, this file wins. (`.cursorrules` remains for editor tooling that reads it, but do not treat it as the source of truth.)
 
