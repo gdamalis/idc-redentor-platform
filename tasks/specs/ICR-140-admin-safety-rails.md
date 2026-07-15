@@ -24,10 +24,11 @@ The admin data-layer decision is **LOCKED** (obs 2026-07-14): four DBs on one M0
 ## Requirements
 
 ### R1 — Sensitive-paths parity for `apps/admin` (AC1)
+
 Add these 7 globs to `qa.autoMerge.sensitivePaths` (the ticket's 6 + one `apps/web`-mirror addition):
 
 ```
-apps/admin/src/app/api/**        # session cookie / auth routes
+apps/admin/src/app/**            # ALL admin app routes: api handlers, (app) protected RSC loaders + Server Actions (requirePermission), (auth) pages
 apps/admin/src/middleware.ts     # route protection (admin's proxy.ts analog)
 apps/admin/src/service/**        # Mongo + RBAC enforcement (requirePermission)
 apps/admin/src/lib/auth/**       # Firebase Admin SDK / session verify
@@ -36,14 +37,23 @@ apps/admin/package.json          # dep surface
 apps/admin/next.config.*         # mirrors apps/web/next.config.* already guarded
 ```
 
+This broadening (from an earlier `apps/admin/src/app/api/**`-only glob) resolves a verified Codex P2
+finding on PR #100: per `tasks/specs/admin-mvp.md:208,230,244`, admin uses Next route groups
+`(auth)`/`(app)`, `requirePermission(key)` is enforced in every Server Action, route handler, and
+protected RSC loader, and protected pages/Server Actions live under `apps/admin/src/app/(app)/...` —
+none of which the narrower `api/**` glob matched, so an authz regression there would have bypassed the
+design gate. `apps/admin/src/app/**` covers the whole app-router surface in one glob and avoids the
+fragility of matching literal `(app)` parentheses in a glob pattern.
+
 Because these join the **same array** by the **same mechanism** as `apps/web/src/service/**`, editing an admin auth/RBAC/session/service file trips the design gate **exactly as** a web service edit does today — that is the deliverable (parity). QA _depth_ (light/standard/heavy) remains the per-ticket dial (label/token/default) it is for every sensitive ticket; sensitivePaths forces the **design gate**, and heavy QA is set by the PM per the sensitivity — unchanged, and identical to the web paths.
 
 ### R2 — Admin DB-name allowlists, deny prod/reserved/test by construction (AC2)
+
 Replace each env's single-app `dbNameAllow` regex with a combined default-deny regex that admits the website **and** `ministry-admin` test DBs:
 
-| env | current `dbNameAllow` | new `dbNameAllow` |
-|-----|-----------------------|-------------------|
-| `preview` | `^website-(test\|qa\|e2e)$` | `^(website\|ministry-admin)-(test\|qa\|e2e)$` |
+| env       | current `dbNameAllow`                | new `dbNameAllow`                                      |
+| --------- | ------------------------------------ | ------------------------------------------------------ |
+| `preview` | `^website-(test\|qa\|e2e)$`          | `^(website\|ministry-admin)-(test\|qa\|e2e)$`          |
 | `staging` | `^website-(test\|qa\|e2e\|staging)$` | `^(website\|ministry-admin)-(staging\|test\|qa\|e2e)$` |
 
 By construction these deny — in **every** env — every dangerous target: bare `website`, bare `ministry-admin` (both prod), the literal `test` (the mongodb driver's silent no-DB-in-URI fallback), and the reserved system DBs `admin` / `local` / `config` (none carry the required `-(env)` suffix). Document the explicit deny set + the "QA resolves the DB name from `client.db().databaseName` (the `MONGODB_URI` path), not an env var" rule in the env's `*Note` string (`dbNote` for preview, `dbNameAllowNote` for staging). **No structured `dbNameDeny` field** (canon `additionalProperties:false`).
@@ -51,6 +61,7 @@ By construction these deny — in **every** env — every dangerous target: bare
 `mongoMcp` is unchanged (out of scope — this ticket is about allowlists, not MCP wiring).
 
 ### R3 — `playwrightProjectMap` admin entries (AC3)
+
 Add forward-declared `apps/admin/*` → suite mappings (placeholder suites `apiAdmin` / `e2eAdmin`, provisioned by ICR-124), plus a note recording they're stubs so the choice is explicit, not silent:
 
 ```jsonc
@@ -66,6 +77,7 @@ Add forward-declared `apps/admin/*` → suite mappings (placeholder suites `apiA
 Mirrors the `apps/web` map's type split (api→api suite, pages→e2e suite, service/auth→both).
 
 ### R4 — Canon validity (AC4)
+
 `.claude/config.json` must still validate against the `divinelab:canon` schema after the edits. All three edits are chosen to stay inside the schema (open array, open map with note-keys, `*Note` strings — no new structured fields). Verify with the `divinelab:canon` skill + a JSON-parse.
 
 ## Data Model Changes
@@ -78,11 +90,11 @@ None.
 
 ## New / Modified Files
 
-| File | Change |
-|------|--------|
-| `.claude/config.json` | R1: +7 globs in `qa.autoMerge.sensitivePaths`. R2: rewrite both `qa.env.{preview,staging}.dbNameAllow` + extend their `*Note`. R3: +6 `apps/admin/*` keys + `_adminNote` in `playwrightProjectMap`. |
-| `tasks/specs/ICR-140-admin-safety-rails.md` | this spec (rides the PR) |
-| `tasks/specs/ICR-140-admin-safety-rails.plan.md` | the plan (rides the PR) |
+| File                                             | Change                                                                                                                                                                                              |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.claude/config.json`                            | R1: +7 globs in `qa.autoMerge.sensitivePaths`. R2: rewrite both `qa.env.{preview,staging}.dbNameAllow` + extend their `*Note`. R3: +6 `apps/admin/*` keys + `_adminNote` in `playwrightProjectMap`. |
+| `tasks/specs/ICR-140-admin-safety-rails.md`      | this spec (rides the PR)                                                                                                                                                                            |
+| `tasks/specs/ICR-140-admin-safety-rails.plan.md` | the plan (rides the PR)                                                                                                                                                                             |
 
 No app code, no docs/architecture change required (the config's own inline notes carry the rationale). Docs eval happens at step 13.5.
 
@@ -110,6 +122,7 @@ N/A (harness config, no user-facing strings).
 ## Implementation Checkpoints
 
 **CP1 — the config edits (single checkpoint).**
+
 - Files: `.claude/config.json`.
 - Do R1, R2, R3 exactly as specified above.
 - Verify: (a) `divinelab:canon` validation passes; (b) JSON parses; (c) the regex-assertion script passes (accept/reject sets above); (d) grep confirms all new entries present; (e) `pnpm type-check && pnpm lint && pnpm test` green.
@@ -120,6 +133,7 @@ N/A (harness config, no user-facing strings).
 ## Open Questions
 
 None. The three design decisions (glob precision, DB-deny expression, Playwright deferral vs. stub) were resolved at the design gate:
+
 - Sensitive globs: ticket's 6 + `apps/admin/next.config.*`.
 - DB deny: default-deny combined regex + `*Note` (canon-forced; no upstream `dbNameDeny` ticket).
 - Playwright: **stub** `apiAdmin` / `e2eAdmin` now (forward-declared, `_adminNote` records ICR-124 provisions them).

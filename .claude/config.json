@@ -236,7 +236,7 @@
         "pnpm-workspace.yaml",
         ".env*",
         ".github/**",
-        "apps/admin/src/app/api/**",
+        "apps/admin/src/app/**",
         "apps/admin/src/middleware.ts",
         "apps/admin/src/service/**",
         "apps/admin/src/lib/auth/**",

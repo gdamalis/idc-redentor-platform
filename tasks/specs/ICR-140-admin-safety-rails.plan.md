@@ -21,10 +21,12 @@
 ### Task 1: The three config edits (single checkpoint)
 
 **Files:**
+
 - Modify: `.claude/config.json` — `qa.autoMerge.sensitivePaths` (~L222–239), `qa.env.preview.dbNameAllow`+`dbNote` (L181–182), `qa.env.staging.dbNameAllow`+`dbNameAllowNote` (L202–203), `playwrightProjectMap` (~L358–377).
 - Test: none committed — the meaningful gates are the canon-validate + regex-proof scripts run inline (Steps 5–8). `.claude/config.json` is not imported by app code, so a Vitest unit would assert nothing.
 
 **Interfaces:**
+
 - Consumes: nothing from prior tasks (first + only task).
 - Produces: a config that (a) validates against `divinelab:canon`, (b) lists 7 `apps/admin/*` globs in `sensitivePaths`, (c) has combined default-deny `dbNameAllow` regexes admitting `ministry-admin` test DBs, (d) maps `apps/admin/*` → `apiAdmin`/`e2eAdmin` with an `_adminNote`.
 
@@ -43,7 +45,7 @@ with:
 
 ```json
         ".github/**",
-        "apps/admin/src/app/api/**",
+        "apps/admin/src/app/**",
         "apps/admin/src/middleware.ts",
         "apps/admin/src/service/**",
         "apps/admin/src/lib/auth/**",
@@ -53,7 +55,11 @@ with:
       ],
 ```
 
-(Note: the `.github/**` line gains a trailing comma; the 7 admin globs follow. This anchor is unique to the `sensitivePaths` block — the identical `.github/**` string appears only here.)
+(Note: the `.github/**` line gains a trailing comma; the 7 admin globs follow. This anchor is unique to
+the `sensitivePaths` block — the identical `.github/**` string appears only here. `apps/admin/src/app/**`
+(broadened from an `api/**`-only glob per Codex P2 on PR #100) covers the entire admin app-router
+surface — api route handlers, the `(app)` protected RSC loaders + co-located Server Actions enforcing
+`requirePermission`, and the `(auth)` pages — in one glob.)
 
 - [ ] **Step 2: Edit R2a — preview `dbNameAllow` regex + `dbNote`.**
 
@@ -115,14 +121,17 @@ with:
 - [ ] **Step 5: Verify JSON parses.**
 
 Run:
+
 ```bash
 node -e "JSON.parse(require('fs').readFileSync('.claude/config.json','utf8')); console.log('JSON OK')"
 ```
+
 Expected: `JSON OK` (no SyntaxError).
 
 - [ ] **Step 6: Regex accept/reject proof (AC2 evidence).**
 
 Run this throwaway node assertion (paste its output into the PR body):
+
 ```bash
 node -e '
 const cfg = JSON.parse(require("fs").readFileSync(".claude/config.json","utf8"));
@@ -142,17 +151,20 @@ console.log(ok ? "REGEX PROOF PASS" : "REGEX PROOF FAIL");
 process.exit(ok?0:1);
 '
 ```
+
 Expected: `REGEX PROOF PASS` (note: `ministry-admin-staging` must be REJECTED by preview, ACCEPTED by staging).
 
 - [ ] **Step 7: Grep parity checks (AC1/AC3 evidence).**
 
 Run:
+
 ```bash
 grep -c "apps/admin/" .claude/config.json          # expect >= 13 (7 sensitivePaths + 6 map keys)
 grep -q '"apps/admin/src/lib/auth/\*\*"' .claude/config.json && echo "sensitivePath auth glob OK"
 grep -q '"_adminNote"' .claude/config.json && echo "adminNote OK"
 grep -q '"apiAdmin"' .claude/config.json && grep -q '"e2eAdmin"' .claude/config.json && echo "admin suites OK"
 ```
+
 Expected: count `>= 13`, then `sensitivePath auth glob OK`, `adminNote OK`, `admin suites OK`.
 
 - [ ] **Step 8: Canon schema validation (AC4).**
@@ -162,9 +174,11 @@ Validate `.claude/config.json` against the `divinelab:canon` schema (invoke the 
 - [ ] **Step 9: Standard verify stack (sanity only).**
 
 Run from the worktree root:
+
 ```bash
 pnpm type-check && pnpm lint && pnpm test && pnpm build
 ```
+
 Expected: all green (config isn't compiled/tested/built — this only confirms no pre-existing breakage). If `pnpm build` fails with `ERR_INVALID_URL`/`NEXT_PUBLIC_BASE_URL undefined`, that's the known fresh-worktree env trap — `apps/web/.env.local` was pre-copied during worktree setup; confirm it's present, don't re-dispatch on an env failure.
 
 - [ ] **Step 10: Commit.**
