@@ -1,0 +1,19 @@
+{
+  "shell": {
+    "appName": "Admin Panel",
+    "tagline": "Iglesia de Cristo Redentor"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "The page you're looking for doesn't exist or was moved.",
+    "backToHome": "Back to home"
+  },
+  "home": {
+    "title": "Admin Panel",
+    "subtitle": "Coming soon: manage people, families, and activities."
+  },
+  "theme": {
+    "toggleLight": "Switch to light mode",
+    "toggleDark": "Switch to dark mode"
+  }
+}

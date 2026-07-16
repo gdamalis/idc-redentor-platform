@@ -1,0 +1,19 @@
+{
+  "shell": {
+    "appName": "Panel de Administración",
+    "tagline": "Iglesia de Cristo Redentor"
+  },
+  "notFound": {
+    "title": "Página no encontrada",
+    "description": "La página que buscás no existe o fue movida.",
+    "backToHome": "Volver al inicio"
+  },
+  "home": {
+    "title": "Panel de Administración",
+    "subtitle": "Próximamente: gestión de personas, familias y actividades."
+  },
+  "theme": {
+    "toggleLight": "Cambiar a modo claro",
+    "toggleDark": "Cambiar a modo oscuro"
+  }
+}
