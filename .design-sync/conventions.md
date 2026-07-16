@@ -29,19 +29,20 @@ below has a dark value already; you don't restyle for it.
 Style with **utility classes**, never raw hex or ad-hoc CSS. The palette is **semantic, not literal**
 — use `bg-primary`, never `bg-blue-700`. Each surface token has a paired `-foreground` for text on it.
 
-| Family           | Classes                                                                             |
-| ---------------- | ----------------------------------------------------------------------------------- | --- | ---- | --- | --- | --- | ---------------------------- | --- | --- | ----------------- | ------ | -------- | ----- |
-| Surfaces         | `bg-background` `bg-card` `bg-popover` `bg-muted` `bg-accent`                       |
-| Brand            | `bg-primary` (blue) `bg-secondary` (warm sand) `bg-destructive`                     |
-| Text on surfaces | `text-foreground` `text-muted-foreground` `text-card-foreground`                    |
-| Text on brand    | `text-primary-foreground` `text-secondary-foreground` `text-destructive-foreground` |
-| Opacity          | `bg-primary/10` … `/90` (steps of 10)                                               |
-| Borders          | `border` `border-border` `border-input` `ring`                                      |
-| Radius           | `rounded-sm                                                                         | md  | lg   | xl  | 2xl | 3xl | full`(scaled from`--radius`) |
-| Type             | `font-sans` (Outfit — body) · `font-serif` (Playfair Display — headings)            |
-| Size/weight      | `text-xs                                                                            | sm  | base | lg  | xl  | 2xl | 3xl                          | 4xl | 5xl | 6xl`·`font-normal | medium | semibold | bold` |
-| Layout           | `flex` `grid` `grid-cols-1..6` `gap-*` `items-*` `justify-*` `max-w-*`              |
-| Responsive       | `sm:` `md:` `lg:` prefixes on layout/spacing/type                                   |
+| Family           | Classes                                                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Surfaces         | `bg-background` `bg-card` `bg-popover` `bg-muted` `bg-accent`                                                           |
+| Brand            | `bg-primary` (blue) · `bg-secondary` (warm sand) · `bg-destructive`                                                     |
+| Text on surfaces | `text-foreground` `text-muted-foreground` `text-card-foreground`                                                        |
+| Text on brand    | `text-primary-foreground` `text-secondary-foreground` `text-destructive-foreground`                                     |
+| Opacity          | `bg-primary/10` … `bg-primary/90` (steps of 10)                                                                         |
+| Borders          | `border` `border-border` `border-input` `ring`                                                                          |
+| Radius           | `rounded-sm` `rounded-md` `rounded-lg` `rounded-xl` `rounded-2xl` `rounded-3xl` `rounded-full` (scaled from `--radius`) |
+| Type             | `font-sans` (Outfit — body) · `font-serif` (Playfair Display — headings)                                                |
+| Size             | `text-xs` `text-sm` `text-base` `text-lg` `text-xl` `text-2xl` `text-3xl` `text-4xl` `text-5xl` `text-6xl`              |
+| Weight           | `font-normal` `font-medium` `font-semibold` `font-bold`                                                                 |
+| Layout           | `flex` `grid` `grid-cols-1`…`grid-cols-6` `gap-*` `items-*` `justify-*` `max-w-*`                                       |
+| Responsive       | `sm:` `md:` `lg:` prefixes on layout/spacing/type                                                                       |
 
 **Pairing rule:** whenever you set a surface, take its `-foreground` for the text
 (`bg-primary` → `text-primary-foreground`). That's what keeps contrast correct in both themes.
