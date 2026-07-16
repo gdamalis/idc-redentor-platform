@@ -1,0 +1,50 @@
+{
+  "shell": {
+    "appName": "Panel de Administración",
+    "tagline": "Iglesia de Cristo Redentor"
+  },
+  "notFound": {
+    "title": "Página no encontrada",
+    "description": "La página que buscás no existe o fue movida.",
+    "backToHome": "Volver al inicio"
+  },
+  "dashboard": {
+    "title": "Panel de Administración",
+    "subtitle": "Próximamente: gestión de personas, familias y actividades."
+  },
+  "theme": {
+    "toggleLight": "Cambiar a modo claro",
+    "toggleDark": "Cambiar a modo oscuro"
+  },
+  "nav": {
+    "dashboard": "Inicio",
+    "people": "Personas",
+    "families": "Familias",
+    "activities": "Actividades",
+    "calendar": "Calendario",
+    "users": "Usuarios",
+    "roles": "Roles",
+    "settings": "Configuración"
+  },
+  "topbar": {
+    "userMenuPlaceholder": "Cuenta"
+  },
+  "localeSwitcher": {
+    "ariaLabel": "Cambiar idioma",
+    "es": "ES",
+    "en": "EN"
+  },
+  "pages": {
+    "comingSoon": "Próximamente",
+    "login": {
+      "title": "Iniciar sesión"
+    },
+    "resetPassword": {
+      "title": "Restablecer contraseña"
+    },
+    "noAccess": {
+      "title": "Sin acceso",
+      "description": "No tenés permiso para ver esta sección."
+    }
+  }
+}

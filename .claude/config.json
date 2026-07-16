@@ -237,9 +237,10 @@
         ".env*",
         ".github/**",
         "apps/admin/src/app/**",
-        "apps/admin/src/middleware.ts",
+        "apps/admin/src/proxy.ts",
         "apps/admin/src/service/**",
         "apps/admin/src/lib/auth/**",
+        "apps/admin/src/lib/firebase/**",
         "apps/admin/**/permissions*",
         "apps/admin/package.json",
         "apps/admin/next.config.*"
@@ -383,9 +384,10 @@
     "apps/web/config/headers.js": ["e2ePublic"],
     "apps/admin/src/app/api": ["apiAdmin"],
     "apps/admin/src/app": ["e2eAdmin"],
-    "apps/admin/src/middleware.ts": ["e2eAdmin"],
+    "apps/admin/src/proxy.ts": ["e2eAdmin"],
     "apps/admin/src/service": ["apiAdmin", "e2eAdmin"],
     "apps/admin/src/lib/auth": ["apiAdmin", "e2eAdmin"],
+    "apps/admin/src/lib/firebase": ["apiAdmin"],
     "apps/admin/src/components": ["e2eAdmin"],
     "_adminNote": "apps/admin/* -> apiAdmin / e2eAdmin are FORWARD-DECLARED: apps/admin and its Playwright project/config do not exist until ICR-124. Until then no admin path exists to match these keys (inert), and qa-runner degrades gracefully (reports an absent suite rather than inventing one). ICR-124 provisions the apiAdmin + e2eAdmin Playwright projects."
   },

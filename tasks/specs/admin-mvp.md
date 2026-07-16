@@ -34,7 +34,7 @@ Ship the first usable slice of the Ministry Admin Panel: leadership signs in (in
 
 - **[DECIDED]** `apps/admin` lives in the monorepo (post-M1a).
 - **[DECIDED]** Firebase Auth (Google + email/password) on a new dedicated Firebase project; reset/invite emails via Resend.
-- **[DECIDED]** MongoDB, **same cluster as the website, separate database**; single shared DB user for now.
+- **[DECIDED]** MongoDB, **same cluster as the website, dedicated `ministry-admin` database**; **two asymmetric Atlas users** — the website user is `readWrite` on `website` only, the admin user is `readWrite` on `ministry-admin` **and** `website` (see §3).
 - **[DECIDED]** Bilingual (es-AR + en-US) admin UI from the start.
 - **[DECIDED]** Invite/admin-provisioned accounts only — no public sign-up.
 - **[DECIDED]** Granular, per-feature permissions with a management UI; catalog grows per feature.
@@ -44,14 +44,14 @@ Ship the first usable slice of the Ministry Admin Panel: leadership signs in (in
 
 ## 3. Dependencies check
 
-| Requirement        | Note                                                                                                                                                   |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| M1a merged         | `apps/*` workspace exists; `@idcr/config` + `@idcr/ui` available.                                                                                      |
-| Firebase project   | Created by leadership; need client config (`NEXT_PUBLIC_FIREBASE_*`) + Admin SDK service-account (`FIREBASE_*`). **Names only — never commit values.** |
-| MongoDB            | `MONGODB_URI` (same cluster); new `ADMIN_DB_NAME` (e.g. `admin`).                                                                                      |
-| Resend             | `RESEND_API_KEY` + `FROM_EMAIL` (church sending domain).                                                                                               |
-| shadcn/ui          | Tokens already shadcn-shaped; deps `class-variance-authority`, `tailwind-merge`, `@radix-ui/*` present in the web app and liftable to `@idcr/ui`.      |
-| Reference patterns | `divinelab/toulmin-lab` (Firebase Auth + session cookie + Mongo + RBAC) — scout and lift before CP2.                                                   |
+| Requirement        | Note                                                                                                                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M1a merged         | `apps/*` workspace exists; `@idcr/config` + `@idcr/ui` available.                                                                                                                |
+| Firebase project   | Created by leadership; need client config (`NEXT_PUBLIC_FIREBASE_*`) + Admin SDK service-account (`FIREBASE_*`). **Names only — never commit values.**                           |
+| MongoDB            | `MONGODB_URI` (same cluster) — the DB name rides in the URI **path** (`ministry-admin`), with `authSource=admin` + `maxPoolSize` explicit; there is no separate DB-name env var. |
+| Resend             | `RESEND_API_KEY` + `FROM_EMAIL` (church sending domain).                                                                                                                         |
+| shadcn/ui          | Tokens already shadcn-shaped; deps `class-variance-authority`, `tailwind-merge`, `@radix-ui/*` present in the web app and liftable to `@idcr/ui`.                                |
+| Reference patterns | `divinelab/toulmin-lab` (Firebase Auth + session cookie + Mongo + RBAC) — scout and lift before CP2.                                                                             |
 
 ---
 
@@ -64,18 +64,18 @@ Browser ──(Firebase JS SDK: Google / email+password)──> Firebase Auth
 apps/admin /api/auth/session  ──(Firebase Admin: createSessionCookie)──> httpOnly session cookie
    │
    ▼ (every request)
-middleware.ts ── verifySessionCookie ── redirect to /login if absent/invalid
+proxy.ts ── verifySessionCookie ── redirect to /login if absent/invalid
    │
    ▼
 RSC loaders / Server Actions / Route handlers
    ├── getCurrentUser() → session → Mongo `users` (+ role)
    ├── requirePermission("people:write") → 403 if denied
-   └── Mongo data layer (apps/admin db, separate database)
+   └── Mongo data layer (getAdminDb() → `ministry-admin` DB)
 ```
 
 - **RSC-first.** Pages load data in server components; mutations are **Server Actions** (Zod-validated). Minimal `'use client'` (auth widgets, forms, theme/locale toggles, the permission matrix).
 - **Session:** Firebase Admin `createSessionCookie` (httpOnly, secure, sameSite=lax), verified with `verifySessionCookie`. No client-trusted role claims — roles come from Mongo, server-side.
-- **Data layer:** a cached Mongo client (mirror the website's `database.service.ts`), pointed at `ADMIN_DB_NAME`. Never touches the public `website` DB.
+- **Data layer:** a cached Mongo client (mirror the website's `database.service.ts`) exposing a fail-closed `getAdminDb()` accessor — the DB name is read from the `MONGODB_URI` path (`client.db().databaseName`) and asserted against a denylist (empty/`test`/`admin`/`local`/`config`/`^website`). Never touches the public `website` DB.
 - **i18n:** next-intl, default `es-AR`, secondary `en-US`; admin strings in `apps/admin/messages/{es-AR,en-US}.json` (separate from the website's `public/locales`).
 - **Email:** reuse the website's Resend adapter shape (`src/service/mailing/resend.adapter.ts`) for invite + reset emails, with admin templates.
 
@@ -83,7 +83,7 @@ RSC loaders / Server Actions / Route handlers
 
 ## 5. Data model (TS interfaces + Mongo)
 
-Collections in the `admin` database. All timestamps ISO strings; all writes audited.
+Collections in the `ministry-admin` database. All timestamps ISO strings; all writes audited.
 
 ```ts
 // --- Auth / RBAC ---
@@ -212,7 +212,7 @@ export type PermissionKey = keyof typeof PERMISSIONS;
 ## 7. Auth flows
 
 - **Sign-in:** Firebase JS SDK (Google popup / email+password) → ID token → `POST /api/auth/session` → Admin `createSessionCookie` → httpOnly cookie. `DELETE /api/auth/session` clears it (sign-out).
-- **Route protection:** `apps/admin/src/middleware.ts` verifies the session cookie; unauthenticated → `/login`. Authenticated-but-no-`User`-record (no invite) → `/no-access`.
+- **Route protection:** `apps/admin/src/proxy.ts` verifies the session cookie; unauthenticated → `/login`. Authenticated-but-no-`User`-record (no invite) → `/no-access`.
 - **Invite-only provisioning:** Admin creates an `Invite` (email + roles) on `/users` → Resend sends a branded invite link. On first successful Firebase sign-in, the server matches `email` to a `pending` Invite, creates the `User` with the invited roles, marks the invite `accepted`. **No invite → no `User` → no access** (the safeguard for the closed door).
 - **Password reset:** Firebase Admin `generatePasswordResetLink(email)` → send via **Resend** with an admin-branded template (not Firebase's default email). Ties into `email-services`.
 
@@ -287,7 +287,7 @@ Visual system: shadcn/ui components themed with the website's tokens (Playfair h
 ## 11. Testing strategy
 
 - **Unit (Vitest):** RBAC helpers (`requirePermission`, role→permission resolution), Zod schemas, birthday-month derivation, age-from-DOB, relationship symmetry.
-- **Integration:** Server Actions for People/Activities/Invite against a **test DB** (`admin-test`, never the real `admin` DB — mirror the website's DB-name allowlist).
+- **Integration:** Server Actions for People/Activities/Invite against a **test DB** (`ministry-admin-test`, never the real `ministry-admin` DB — mirror the website's DB-name allowlist).
 - **Auth:** session create/verify happy-path + no-invite rejection + permission-denied (403) paths.
 - **E2E (Playwright, later):** login → create person → see them on the calendar → print. Authored per-checkpoint by `qa-runner` once the app is deployable to a preview.
 - **Print:** manual A4 print-preview check (Chrome print emulation) for the calendar.
@@ -298,12 +298,12 @@ Visual system: shadcn/ui components themed with the website's tokens (Playfair h
 
 Each is independently verifiable, committed (Conventional Commits, scope `admin`, header ≤100), on a feature branch off `main` (post-M1a). TDD-first where logic is non-trivial (RBAC, schemas, calendar math).
 
-**CP1 — Scaffold `apps/admin`.** Next.js App Router app; `@idcr/ui` tokens + shadcn/ui; next-intl bilingual; AppShell (Sidebar/Topbar/theme/locale); cached Mongo client → `admin` DB; Firebase client+admin config (env-driven). No features yet.
+**CP1 — Scaffold `apps/admin`.** Next.js App Router app; `@idcr/ui` tokens + shadcn/ui; next-intl bilingual; AppShell (Sidebar/Topbar/theme/locale); cached Mongo client → `ministry-admin` DB via a fail-closed `getAdminDb()` accessor; Firebase client+admin config (env-driven). No features yet.
 
 - _Verify:_ `pnpm --filter @idcr/admin {type-check,lint,test,build,dev}` green; shell renders in both locales + dark mode.
 - _Commit:_ `feat(admin): scaffold apps/admin shell (i18n, theme, shadcn, mongo client)`
 
-**CP2 — Auth.** Firebase sign-in (Google + email/password); session cookie via Admin SDK; `middleware.ts` protection; invite-only provisioning; password reset via Resend.
+**CP2 — Auth.** Firebase sign-in (Google + email/password); session cookie via Admin SDK; `proxy.ts` protection; invite-only provisioning; password reset via Resend.
 
 - _Verify:_ invited user signs in → provisioned; non-invited → `/no-access`; reset email sends (Resend); protected routes redirect.
 - _Commit:_ `feat(admin): firebase auth, session cookies, invite-only provisioning, resend reset`
@@ -334,14 +334,13 @@ Each is independently verifiable, committed (Conventional Commits, scope `admin`
 
 ## 13. Environment variables (names only — never commit values)
 
-| Variable                                                                 | Purpose                                                |
-| ------------------------------------------------------------------------ | ------------------------------------------------------ |
-| `MONGODB_URI`                                                            | Same cluster as the website                            |
-| `ADMIN_DB_NAME`                                                          | Separate DB (e.g. `admin`)                             |
-| `NEXT_PUBLIC_FIREBASE_API_KEY` … `_APP_ID`                               | Firebase client config                                 |
-| `FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` | Admin SDK (session cookies, reset links, provisioning) |
-| `RESEND_API_KEY` / `FROM_EMAIL`                                          | Invite + reset emails                                  |
-| `NEXT_PUBLIC_ADMIN_BASE_URL`                                             | Links in emails, redirects                             |
+| Variable                                                                 | Purpose                                                                                                                                                       |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MONGODB_URI`                                                            | Same cluster as the website; DB name rides in the URI path (`ministry-admin`), with `authSource=admin` + `maxPoolSize` explicit — no separate DB-name env var |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` … `_APP_ID`                               | Firebase client config                                                                                                                                        |
+| `FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` | Admin SDK (session cookies, reset links, provisioning)                                                                                                        |
+| `RESEND_API_KEY` / `FROM_EMAIL`                                          | Invite + reset emails                                                                                                                                         |
+| `NEXT_PUBLIC_ADMIN_BASE_URL`                                             | Links in emails, redirects                                                                                                                                    |
 
 > Add these to `apps/admin/.env.example` (names only) and document them in the admin app's CLAUDE.md. Secret hygiene per the website convention.
 
