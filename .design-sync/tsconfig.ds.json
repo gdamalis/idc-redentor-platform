@@ -1,0 +1,130 @@
+{
+  // Bundle-time module resolution for design-sync (cfg.tsconfig).
+  //
+  // lib/bundle.mjs#tsconfigPathsPlugin builds its esbuild resolve filter from
+  // whatever prefixes appear below — it is NOT hardcoded to "@/"-style aliases.
+  // That lets bare Next framework imports be redirected to local shims with no
+  // fork of the converter.
+  //
+  // ORDER MATTERS: the plugin returns the FIRST matching rule, so every exact
+  // entry must stay above the "@src/*" wildcard.
+  //
+  // The long block of directory -> index.ts entries is not boilerplate: the
+  // plugin resolves by trying extensions ['', '.ts', '.tsx', ...] in order, and
+  // existsSync() is TRUE for a directory, so a bare directory import (e.g.
+  // "@src/components/ui/dropdown") resolves to the DIRECTORY and esbuild fails
+  // with "Cannot read file ...: is a directory". The app's own components import
+  // these dirs, so this must be fixed in the resolver, not by editing product
+  // source. Regenerate with the snippet in .design-sync/NOTES.md when a
+  // component directory is added.
+  "compilerOptions": {
+    "baseUrl": ".",
+    "jsx": "react-jsx",
+    "paths": {
+      "framer-motion": ["./shims/framer-motion.tsx"],
+      "next/image": ["./shims/next-image.tsx"],
+      "@src/i18n/routing": ["./shims/i18n-routing.tsx"],
+      "@src/service/contact.service": ["./shims/contact-services.tsx"],
+      "@src/service/contact-form-email.service": [
+        "./shims/contact-services.tsx"
+      ],
+      "@src/components/features/blog-post-details": [
+        "../apps/web/src/components/features/blog-post-details/index.ts"
+      ],
+      "@src/components/features/blog-section": [
+        "../apps/web/src/components/features/blog-section/index.ts"
+      ],
+      "@src/components/features/community-event": [
+        "../apps/web/src/components/features/community-event/index.ts"
+      ],
+      "@src/components/features/component-cta": [
+        "../apps/web/src/components/features/component-cta/index.ts"
+      ],
+      "@src/components/features/contact-form": [
+        "../apps/web/src/components/features/contact-form/index.ts"
+      ],
+      "@src/components/features/creed-section": [
+        "../apps/web/src/components/features/creed-section/index.ts"
+      ],
+      "@src/components/features/info-community": [
+        "../apps/web/src/components/features/info-community/index.ts"
+      ],
+      "@src/components/features/info-connect": [
+        "../apps/web/src/components/features/info-connect/index.ts"
+      ],
+      "@src/components/features/our-mission-cta": [
+        "../apps/web/src/components/features/our-mission-cta/index.ts"
+      ],
+      "@src/components/features/our-mission-section": [
+        "../apps/web/src/components/features/our-mission-section/index.ts"
+      ],
+      "@src/components/features/photo-grid": [
+        "../apps/web/src/components/features/photo-grid/index.ts"
+      ],
+      "@src/components/features/sermon-details": [
+        "../apps/web/src/components/features/sermon-details/index.ts"
+      ],
+      "@src/components/features/sermon-section": [
+        "../apps/web/src/components/features/sermon-section/index.ts"
+      ],
+      "@src/components/shared/bible-verse": [
+        "../apps/web/src/components/shared/bible-verse/index.ts"
+      ],
+      "@src/components/shared/contentful-preview": [
+        "../apps/web/src/components/shared/contentful-preview/index.ts"
+      ],
+      "@src/components/shared/footer": [
+        "../apps/web/src/components/shared/footer/index.ts"
+      ],
+      "@src/components/shared/header": [
+        "../apps/web/src/components/shared/header/index.ts"
+      ],
+      "@src/components/shared/json-ld": [
+        "../apps/web/src/components/shared/json-ld/index.ts"
+      ],
+      "@src/components/shared/main-menu": [
+        "../apps/web/src/components/shared/main-menu/index.ts"
+      ],
+      "@src/components/shared/navbar": [
+        "../apps/web/src/components/shared/navbar/index.ts"
+      ],
+      "@src/components/shared/portal": [
+        "../apps/web/src/components/shared/portal/index.ts"
+      ],
+      "@src/components/shared/social-links": [
+        "../apps/web/src/components/shared/social-links/index.ts"
+      ],
+      "@src/components/shared/subscribe-banner": [
+        "../apps/web/src/components/shared/subscribe-banner/index.ts"
+      ],
+      "@src/components/ui/button": [
+        "../apps/web/src/components/ui/button/index.ts"
+      ],
+      "@src/components/ui/container": [
+        "../apps/web/src/components/ui/container/index.ts"
+      ],
+      "@src/components/ui/content": [
+        "../apps/web/src/components/ui/content/index.ts"
+      ],
+      "@src/components/ui/divider": [
+        "../apps/web/src/components/ui/divider/index.ts"
+      ],
+      "@src/components/ui/dropdown": [
+        "../apps/web/src/components/ui/dropdown/index.ts"
+      ],
+      "@src/components/ui/icon-card": [
+        "../apps/web/src/components/ui/icon-card/index.ts"
+      ],
+      "@src/components/ui/section-header": [
+        "../apps/web/src/components/ui/section-header/index.ts"
+      ],
+      "@src/components/ui/typography": [
+        "../apps/web/src/components/ui/typography/index.ts"
+      ],
+      "@src/*": ["../apps/web/src/*"],
+      "@lib/*": ["../apps/web/lib/*"],
+      "@public/*": ["../apps/web/public/*"],
+      "@icons/*": ["../apps/web/public/assets/svg/*"]
+    }
+  }
+}

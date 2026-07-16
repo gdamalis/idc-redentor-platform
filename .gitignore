@@ -97,3 +97,12 @@ qa-icr*.png
 **/playwright-report/
 **/blob-report/
 **/.playwright/
+
+# design-sync (generated / machine-local; durable inputs under .design-sync/ ARE committed)
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
+apps/web/.ds-css/
+apps/web/dist/

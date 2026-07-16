@@ -1,0 +1,125 @@
+/* Standalone stylesheet source for the design-sync bundle.
+ *
+ * The app's real styling (apps/web/src/app/globals.css) is only ever compiled
+ * by the Next build, so the DS bundle has no CSS of its own. This file is the
+ * standalone equivalent, compiled by the Tailwind v4 CLI into
+ * .design-sync/.cache/ds-tailwind.css, which cfg.cssEntry points at.
+ *
+ * Keep this in sync with apps/web/src/app/globals.css — it deliberately mirrors
+ * it, plus the two things Next would otherwise provide (fonts + font vars).
+ */
+
+/* ---------------------------------------------------------------------------
+ * BRAND FONTS — do not remove.
+ *
+ * next/font/google self-hosts Outfit + Playfair at Next BUILD time and injects
+ * --font-outfit / --font-playfair onto <body> via a generated className. In a
+ * plain browser neither the @font-face rules nor those two vars exist.
+ *
+ * That matters more than it looks: tokens.css declares
+ *     --font-sans: var(--font-outfit), "Outfit", sans-serif;
+ * If --font-outfit is undefined, `var(--font-outfit)` has no fallback, so
+ * `font-family: var(--font-sans)` becomes INVALID AT COMPUTED-VALUE TIME — the
+ * "Outfit" later in that list never applies and every preview silently renders
+ * in the browser default font. Defining the vars below is what makes the token
+ * chain resolve.
+ * ------------------------------------------------------------------------- */
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap");
+
+/* Tailwind and tokens are imported by RELATIVE PATH, not by package name.
+ * globals.css can write `@import "tailwindcss"` because it sits inside
+ * apps/web, where pnpm installed it; this file lives at the repo root in
+ * .design-sync/, which has no node_modules of its own (pnpm doesn't hoist).
+ * Resolving explicitly avoids symlinking .design-sync/node_modules, a name the
+ * design-sync skill reserves for lib-override forks.
+ *
+ * source(none) disables Tailwind's automatic content detection so the scan is
+ * exactly the two @source trees below, not the whole monorepo. */
+@import "../apps/web/node_modules/tailwindcss/index.css" source(none);
+@import "../packages/ui/src/tokens.css";
+
+@source "../apps/web/src/components";
+@source "./previews";
+
+/* ---------------------------------------------------------------------------
+ * SAFELIST — required, not an optimisation.
+ *
+ * Tailwind only emits rules for classes it SCANS. The two @source trees above
+ * cover the church's own components and previews — but the claude.ai/design
+ * agent writes its OWN layout glue when composing these components into new
+ * screens. Any class it writes that no app component happens to already use
+ * would have NO RULE and render silently unstyled.
+ *
+ * This is also what makes .design-sync/conventions.md honest: that file names a
+ * class vocabulary to the design agent, and every name it lists must resolve.
+ * `bg-accent` was the tell — the --accent token is defined, but no component
+ * used the class, so the utility didn't exist.
+ *
+ * Keep this in sync with the family table in conventions.md.
+ * ------------------------------------------------------------------------- */
+
+/* Semantic brand colours — the design language. Paired *-foreground tokens. */
+@source inline("{hover:,focus:,dark:,}{bg,text,border}-{background,foreground,card,popover,primary,secondary,muted,accent,destructive,border,input,ring}");
+@source inline("{hover:,dark:,}{bg,text}-{card,popover,primary,secondary,muted,accent,destructive}-foreground");
+@source inline("{hover:,}bg-{primary,secondary,accent,muted,destructive}/{5,10,20,30,40,50,60,70,80,90}");
+
+/* Typography */
+@source inline("font-{sans,serif}");
+@source inline("text-{2xs,xs,sm,base,lg,xl,2xl,3xl,4xl,5xl,6xl}");
+@source inline("font-{light,normal,medium,semibold,bold}");
+@source inline("{sm:,md:,lg:,}text-{left,center,right}");
+@source inline("leading-{none,tight,tighter,snug,normal,relaxed,loose}");
+@source inline("tracking-{tighter,tight,snug,normal,wide}");
+
+/* Spacing — the scale the app actually uses, plus the common gaps between. */
+@source inline("{sm:,md:,lg:,}{p,px,py,pt,pb,pl,pr}-{0,1,2,3,4,5,6,8,10,12,16,20,24,32}");
+@source inline("{sm:,md:,lg:,}{m,mx,my,mt,mb}-{0,1,2,3,4,5,6,8,10,12,16,auto}");
+@source inline("{sm:,md:,lg:,}gap-{0,1,2,3,4,5,6,8,10,12,16}");
+
+/* Layout */
+@source inline("{sm:,md:,lg:,}{flex,grid,block,inline-block,hidden}");
+@source inline("{sm:,md:,lg:,}flex-{row,col,wrap,nowrap,1}");
+@source inline("{sm:,md:,lg:,}grid-cols-{1,2,3,4,5,6,12}");
+@source inline("{sm:,md:,lg:,}col-span-{1,2,3,4,6,12}");
+@source inline("items-{start,center,end,baseline,stretch}");
+@source inline("justify-{start,center,end,between,around,evenly}");
+@source inline("{sm:,md:,lg:,}{w,h}-{full,auto,screen,fit}");
+@source inline("{sm:,md:,lg:,}max-w-{xs,sm,md,lg,xl,2xl,3xl,4xl,5xl,6xl,7xl,full,prose,none}");
+@source inline("min-h-{screen,full}");
+@source inline("{relative,absolute,fixed,sticky,static}");
+@source inline("inset-0,top-0,bottom-0,left-0,right-0");
+@source inline("z-{0,10,20,30,40,50}");
+@source inline("overflow-{hidden,auto,visible}");
+@source inline("object-{cover,contain,center}");
+
+/* Surfaces */
+@source inline("rounded-{none,sm,md,lg,xl,2xl,3xl,full}");
+@source inline("{hover:,}shadow-{none,sm,md,lg,xl,2xl}");
+@source inline("border,border-{0,2,4},border-{t,b,l,r}");
+@source inline("{sm:,md:,lg:,}space-{x,y}-{0,1,2,3,4,6,8}");
+@source inline("transition,transition-{all,colors,transform},duration-{150,200,300,500}");
+
+/* Stand in for what next/font injects on <body>. */
+:root {
+  --font-outfit: "Outfit";
+  --font-playfair: "Playfair Display";
+}
+
+/* Mirrors apps/web/src/app/globals.css @layer base */
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-serif font-bold tracking-tight;
+  }
+}

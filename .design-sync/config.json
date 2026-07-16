@@ -1,0 +1,131 @@
+{
+  "pkg": "@idcr/web",
+  "globalName": "IDCR",
+  "projectId": "7329c8ed-3ed2-46c0-bb2c-4f6edd7aca07",
+  "shape": "package",
+  "srcDir": "src",
+  "buildCmd": "npx --yes @tailwindcss/cli@4.1.16 -i .design-sync/ds-styles.css -o apps/web/.ds-css/ds-tailwind.css && rm -rf apps/web/dist/types && (cd apps/web && npx tsc -p tsconfig.json --declaration --emitDeclarationOnly --noEmit false --outDir dist/types)",
+  "tsconfig": "../../.design-sync/tsconfig.ds.json",
+  "cssEntry": ".ds-css/ds-tailwind.css",
+  "extraEntries": ["../../.design-sync/ds-provider.tsx"],
+  "provider": {
+    "component": "NextIntlClientProvider",
+    "props": {
+      "locale": "es-AR",
+      "messages": {
+        "$ref": "dsMessages"
+      }
+    }
+  },
+  "overrides": {
+    "CreedSection": {
+      "cardMode": "column",
+      "viewport": "1280x1250"
+    },
+    "ContactForm": {
+      "cardMode": "column",
+      "viewport": "1280x1050"
+    },
+    "Navbar": {
+      "cardMode": "single",
+      "primaryStory": "Solid"
+    },
+    "Footer": {
+      "cardMode": "column"
+    },
+    "SubscribeBanner": {
+      "cardMode": "column"
+    },
+    "Toast": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "Toaster": {
+      "cardMode": "single",
+      "primaryStory": "CopyLink"
+    },
+    "IconCard": {
+      "cardMode": "column"
+    },
+    "LanguageSwitcher": {
+      "cardMode": "column"
+    }
+  },
+  "componentSrcMap": {
+    "AuthorInfo": "src/components/features/blog-post-details/AuthorInfo.tsx",
+    "BibleVerse": "src/components/shared/bible-verse/BibleVerse.tsx",
+    "BlogPostCard": "src/components/features/blog-section/BlogPostCard.tsx",
+    "BlogPostContent": "src/components/features/blog-post-details/BlogPostContent.tsx",
+    "BlogPostDetails": "src/components/features/blog-post-details/BlogPostDetails.tsx",
+    "BlogPostHeader": "src/components/features/blog-post-details/BlogPostHeader.tsx",
+    "BlogSection": "src/components/features/blog-section/BlogSection.tsx",
+    "Button": "src/components/ui/button/Button.tsx",
+    "Card": "src/components/ui/card.tsx",
+    "CardContent": "src/components/ui/card.tsx",
+    "CardDescription": "src/components/ui/card.tsx",
+    "CardFooter": "src/components/ui/card.tsx",
+    "CardHeader": "src/components/ui/card.tsx",
+    "CardTitle": "src/components/ui/card.tsx",
+    "CommunityEvent": "src/components/features/community-event/CommunityEvent.tsx",
+    "ComponentCta": "src/components/features/component-cta/ComponentCta.tsx",
+    "ConsentBanner": "src/components/shared/consent-banner/ConsentBanner.tsx",
+    "ContactForm": "src/components/features/contact-form/ContactForm.tsx",
+    "Container": "src/components/ui/container/Container.tsx",
+    "CreedSection": "src/components/features/creed-section/CreedSection.tsx",
+    "Divider": "src/components/ui/divider/Divider.tsx",
+    "Dropdown": "src/components/ui/dropdown/Dropdown.tsx",
+    "FeaturedImage": "src/components/features/blog-post-details/FeaturedImage.tsx",
+    "Footer": "src/components/shared/footer/Footer.tsx",
+    "Form": "src/components/ui/form.tsx",
+    "FormControl": "src/components/ui/form.tsx",
+    "FormDescription": "src/components/ui/form.tsx",
+    "FormField": "src/components/ui/form.tsx",
+    "FormItem": "src/components/ui/form.tsx",
+    "FormLabel": "src/components/ui/form.tsx",
+    "FormMessage": "src/components/ui/form.tsx",
+    "Header": "src/components/shared/header/Header.tsx",
+    "IconCard": "src/components/ui/icon-card/IconCard.tsx",
+    "InfoCommunity": "src/components/features/info-community/InfoCommunity.tsx",
+    "InfoConnect": "src/components/features/info-connect/InfoConnect.tsx",
+    "Input": "src/components/ui/input.tsx",
+    "Label": "src/components/ui/label.tsx",
+    "LanguageSwitcher": "src/components/shared/language-switcher/LanguageSwitcher.tsx",
+    "LikeButton": "src/components/features/blog-post-details/LikeButton.tsx",
+    "LoadingSpinner": "src/components/ui/LoadingSpinner.tsx",
+    "MainMenuDesktop": "src/components/shared/main-menu/MainMenuDesktop.tsx",
+    "MainMenuMobile": "src/components/shared/main-menu/MainMenuMobile.tsx",
+    "Navbar": "src/components/shared/navbar/Navbar.tsx",
+    "NavbarWrapper": "src/components/shared/navbar/NavbarWrapper.tsx",
+    "OurMissionCta": "src/components/features/our-mission-cta/OurMissionCta.tsx",
+    "OurMissionSection": "src/components/features/our-mission-section/OurMissionSection.tsx",
+    "PdfDownloadButton": "src/components/features/sermon-details/PdfDownloadButton.tsx",
+    "PhotoGrid": "src/components/features/photo-grid/PhotoGrid.tsx",
+    "PostActions": "src/components/features/blog-post-details/PostActions.tsx",
+    "RelatedArticleLink": "src/components/features/blog-post-details/RelatedArticleLink.tsx",
+    "RelatedArticles": "src/components/features/blog-post-details/RelatedArticles.tsx",
+    "RelatedSermons": "src/components/features/sermon-details/RelatedSermons.tsx",
+    "ScriptureReferences": "src/components/features/sermon-details/ScriptureReferences.tsx",
+    "SectionHeader": "src/components/ui/section-header/SectionHeader.tsx",
+    "SermonAudioPlayer": "src/components/features/sermon-details/SermonAudioPlayer.tsx",
+    "SermonByline": "src/components/features/sermon-details/SermonByline.tsx",
+    "SermonCard": "src/components/features/sermon-section/SermonCard.tsx",
+    "SermonContent": "src/components/features/sermon-details/SermonContent.tsx",
+    "SermonHeader": "src/components/features/sermon-details/SermonHeader.tsx",
+    "SermonInterpreter": "src/components/features/sermon-details/SermonInterpreter.tsx",
+    "SermonSection": "src/components/features/sermon-section/SermonSection.tsx",
+    "ShareButton": "src/components/features/blog-post-details/ShareButton.tsx",
+    "SocialLinks": "src/components/shared/social-links/SocialLinks.tsx",
+    "SubscribeBanner": "src/components/shared/subscribe-banner/SubscribeBanner.tsx",
+    "Textarea": "src/components/ui/textarea.tsx",
+    "Toast": "src/components/ui/toast.tsx",
+    "ToastAction": "src/components/ui/toast.tsx",
+    "ToastClose": "src/components/ui/toast.tsx",
+    "ToastDescription": "src/components/ui/toast.tsx",
+    "ToastProvider": "src/components/ui/toast.tsx",
+    "ToastTitle": "src/components/ui/toast.tsx",
+    "ToastViewport": "src/components/ui/toast.tsx",
+    "Toaster": "src/components/ui/toaster.tsx",
+    "Typography": "src/components/ui/typography/Typography.tsx"
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}
