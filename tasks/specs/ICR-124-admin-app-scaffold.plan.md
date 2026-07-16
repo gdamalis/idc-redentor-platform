@@ -16,7 +16,7 @@ The minimum coherent green _build_ unit (a next-intl-plugin app with no `request
 - `postcss.config.mjs` (`export { default } from "@idcr/config/postcss.base.mjs";`).
 - `vitest.config.ts` (react + tsconfigPaths plugins; jsdom; globals; setup `./vitest.setup.ts`; include `src/**/*.{test,spec}.{ts,tsx}`) + `vitest.setup.ts` (`import "@testing-library/jest-dom/vitest";`).
 - `vercel.json` (`framework:"nextjs"`, `installCommand:"pnpm install --frozen-lockfile"`, `buildCommand:"next build"`, `outputDirectory:".next"`).
-- `src/types/environment.d.ts` (`NodeJS.ProcessEnv`: `MONGODB_URI`, `NEXT_PUBLIC_ADMIN_BASE_URL`, Firebase client+admin vars — **no `ADMIN_DB_NAME`**).
+- `src/types/environment.d.ts` (`NodeJS.ProcessEnv`: `MONGODB_URI`, `NEXT_PUBLIC_ADMIN_BASE_URL`, Firebase client+admin vars — **no separate DB-name env var**).
 - `src/i18n/routing.ts` (`defineRouting({locales:["es-AR","en-US"],defaultLocale:"es-AR"})` + `createNavigation`), `src/i18n/request.ts` (`getRequestConfig`, import `../../messages/${locale}.json`), `src/i18n/config.ts` (locales const, `isValidLocale`), `src/i18n/messages.test.ts` (parity: identical flattened key sets).
 - `src/proxy.ts` (`export const proxy = createMiddleware(routing)` + `config.matcher = ["/((?!_next|_vercel|api|trpc).*)"]`).
 - `messages/es-AR.json` + `messages/en-US.json` (minimal keys for the shell/not-found; both identical key sets).
@@ -37,7 +37,7 @@ Commit: `feat(ICR-124): add fail-closed getAdminDb accessor + cached admin Mongo
 - `src/service/database.service.ts` — mirror web (lazy singleton, `globalThis._adminMongoClient` dev cache, ServerApi v1 strict) + `maxPoolSize: 10`; `connect()` (console.error, no Sentry); exported `assertAdminDbName(name)` + sync `getAdminDb(): Db`.
 - `src/service/database.service.test.ts` — denylist matrix (empty, whitespace, `test`, `admin`, `local`, `config`, `website`, `website-staging`) + no-path-URI→`test` + happy path (`ministry-admin` → `Db`). Mock `MongoClient`/`client.db()`.
 - `eslint.config.mjs` — add `no-restricted-syntax` rule blocking `CallExpression[callee.property.name='db'][arguments.length=0]`, in a block whose `ignores:["src/service/database.service.ts"]`.
-- `.env.example` — DB section only. Mirror `apps/web/.env.example`: set `MONGODB_URI=` **empty** with a prose comment documenting the path+query shape (`…/ministry-admin?authSource=admin&retryWrites=true&w=majority&maxPoolSize=10`). Do **not** write a full connection string with embedded `user:pass@host` credentials — the husky pre-commit secret-scan rejects any Mongo URI carrying credentials. No `ADMIN_DB_NAME`.
+- `.env.example` — DB section only. Mirror `apps/web/.env.example`: set `MONGODB_URI=` **empty** with a prose comment documenting the path+query shape (`…/ministry-admin?authSource=admin&retryWrites=true&w=majority&maxPoolSize=10`). Do **not** write a full connection string with embedded `user:pass@host` credentials — the husky pre-commit secret-scan rejects any Mongo URI carrying credentials. No separate DB-name env var.
 
 **Verify:** type-check + lint + test green; lint rule fails on a planted bare `.db()` (revert the plant).
 
@@ -68,9 +68,9 @@ Commit: `feat(ICR-124): add AppShell, shadcn primitives, locale switcher, route-
 
 Commit: `docs(ICR-124): correct admin-mvp.md data-layer model (ministry-admin, URI-carried DB, two Atlas users)`
 
-- `tasks/specs/admin-mvp.md`: §2 (L37 single-user → two asymmetric Atlas users, `ministry-admin`), §3 (L51 `ADMIN_DB_NAME (e.g. admin)` → DB-in-URI + `authSource=admin` + `maxPoolSize`), §4 (L78 "pointed at `ADMIN_DB_NAME`" → `getAdminDb()` + fail-closed denylist), §5 (L86 "the `admin` database" → `ministry-admin`), §11 (L290 `admin-test` → `ministry-admin-test`), §13 (drop `ADMIN_DB_NAME` row; document DB-in-URI + `authSource` + `maxPoolSize`). Also scrub **any other** `ADMIN_DB_NAME` / stale "`admin` database" / `admin-test` occurrence (Plan agent flagged §12/§14) and stale `middleware.ts`→`proxy.ts` naming.
+- `tasks/specs/admin-mvp.md`: §2 (L37 single-user → two asymmetric Atlas users, `ministry-admin`), §3 (L51 the cancelled separate DB-name env var's row → DB-in-URI + `authSource=admin` + `maxPoolSize`), §4 (L78 "pointed at [the cancelled separate DB-name env var]" → `getAdminDb()` + fail-closed denylist), §5 (L86 "the `admin` database" → `ministry-admin`), §11 (L290 `admin-test` → `ministry-admin-test`), §13 (drop the cancelled separate DB-name env var's row; document DB-in-URI + `authSource` + `maxPoolSize`). Also scrub **any other** mention of that cancelled env var / stale "`admin` database" / `admin-test` occurrence (Plan agent flagged §12/§14) and stale `middleware.ts`→`proxy.ts` naming.
 
-**Verify:** `grep -rin admin_db_name .` (repo-wide) → **zero** (AC5); type-check + lint + test unaffected.
+**Verify:** a repo-wide, case-insensitive search for the literal name of the cancelled separate DB-name env var → **zero** (AC5); type-check + lint + test unaffected.
 
 ## Verify-loop discipline
 

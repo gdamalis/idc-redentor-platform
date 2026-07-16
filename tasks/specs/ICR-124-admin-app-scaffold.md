@@ -5,7 +5,7 @@
 
 ## 1. Context & dependencies check
 
-CP1 of the Ministry Admin Panel — the **second app** (`apps/admin`, package `@idcr/admin`) in the pnpm + Turborepo workspace, alongside `apps/web`. Unlike the public site (no auth), `apps/admin` is an authenticated app that will hold **congregant PII**. That drives a **locked data-layer decision** (verified 2026-07-14): one Atlas M0 cluster, four DBs split by sensitivity — `website` / `website-staging` / `ministry-admin` / `ministry-admin-staging` — with the DB name carried in the `MONGODB_URI` **path** (not an env var), `authSource=admin` and `maxPoolSize` explicit. `ADMIN_DB_NAME` is **cancelled**.
+CP1 of the Ministry Admin Panel — the **second app** (`apps/admin`, package `@idcr/admin`) in the pnpm + Turborepo workspace, alongside `apps/web`. Unlike the public site (no auth), `apps/admin` is an authenticated app that will hold **congregant PII**. That drives a **locked data-layer decision** (verified 2026-07-14): one Atlas M0 cluster, four DBs split by sensitivity — `website` / `website-staging` / `ministry-admin` / `ministry-admin-staging` — with the DB name carried in the `MONGODB_URI` **path** (not an env var), `authSource=admin` and `maxPoolSize` explicit. The once-proposed separate DB-name env var is **cancelled** — no such variable exists.
 
 **Dependencies:**
 
@@ -31,8 +31,8 @@ CP1 of the Ministry Admin Panel — the **second app** (`apps/admin`, package `@
 5. **AppShell** — Sidebar (`--sidebar` tokens, static nav placeholders) + Topbar (user-menu placeholder, LocaleSwitcher, ThemeToggle) + `<main>`.
 6. **Cached Mongo client + fail-closed `getAdminDb()`** (+ unit tests). See §4.
 7. **Firebase client + Admin config** — env-driven, **lazy, build-safe** (no init at import); Zod at the env boundary; `server-only` on the admin module.
-8. **`apps/admin/.env.example`** — variable names only, no `ADMIN_DB_NAME`, with the required `MONGODB_URI` query-param shape documented.
-9. **Spec correction** to `tasks/specs/admin-mvp.md` (§2, §3, §4, §5, §11, §13 + any other stale `ADMIN_DB_NAME` / `admin` DB / `admin-test` / `middleware.ts` reference).
+8. **`apps/admin/.env.example`** — variable names only, no separate DB-name env var, with the required `MONGODB_URI` query-param shape documented.
+9. **Spec correction** to `tasks/specs/admin-mvp.md` (§2, §3, §4, §5, §11, §13 + any other stale separate-DB-name-env-var / `admin` DB / `admin-test` / `middleware.ts` reference).
 
 ## 4. Data layer — the fail-closed accessor (load-bearing)
 
@@ -47,13 +47,13 @@ export async function connect(): Promise<MongoClient | undefined>; // console.er
 - **Denylist** — `assertAdminDbName` throws when the name is empty/whitespace, **or** exactly `test` / `admin` / `local` / `config` (Mongo reserved/system DBs), **or** matches `/^website/` (wrong sensitivity tier — catches `website`, `website-staging`, `website-*`). `ministry-admin` passes.
 - **mongodb-6.21 semantics:** `client.db()` with no arg resolves the URI-path DB; a URI **with no path DB defaults to `test`** → caught by the `test` case → **fails closed naming `test`**. `client.db()` is synchronous and needs no live connection to read `.databaseName`, so `getAdminDb()` is **synchronous** and separate from `connect()`.
 - **Assertion runs every call** (O(1) string compares + one regex) — **no** module-level memo flag (immune to the dev HMR client swap).
-- **Failure = plain `Error`** — the one documented exception to the repo functional-first "no `Error` subclasses / outcomes as return values" rule. A misconfigured DB name is a **deployment defect**, not a branchable outcome; a returnable refusal a caller can `??` past reintroduces the silent-`test`-DB failure we delete `ADMIN_DB_NAME` to prevent. Precedent: `database.service.ts:18`.
+- **Failure = plain `Error`** — the one documented exception to the repo functional-first "no `Error` subclasses / outcomes as return values" rule. A misconfigured DB name is a **deployment defect**, not a branchable outcome; a returnable refusal a caller can `??` past reintroduces the silent-`test`-DB failure that dropping the separate DB-name env var (in favor of the URI-carried name + denylist) exists to prevent. Precedent: `database.service.ts:18`.
 - **`assertAdminDbName` is exported standalone** so ICR-155's plain Node/tsx seed script can reuse the guard without a Next runtime.
 - **AC2 enforced** by an ESLint `no-restricted-syntax` rule banning the bare `client.db()` (empty args) everywhere in `apps/admin` **except** `src/service/database.service.ts` (the one sanctioned occurrence). Reviewer grep: `grep -rEn '\.db\(\s*\)' apps/admin/src` → exactly one hit.
 
 ## 5. Env vars (names only)
 
-`MONGODB_URI` — the admin DB name rides in the URI **path** (`…/ministry-admin?authSource=admin&retryWrites=true&w=majority&maxPoolSize=10`); document the path+query shape only, **never** a literal `scheme://credentials@host` form (the husky secret-scan regex `mongodb(\+srv)?://…@` rejects it, and `apps/web/.env.example` sets `MONGODB_URI=` empty for the same reason). Plus `NEXT_PUBLIC_FIREBASE_API_KEY … NEXT_PUBLIC_FIREBASE_APP_ID` (client), `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, `NEXT_PUBLIC_ADMIN_BASE_URL`, plus `RESEND_API_KEY` / `FROM_EMAIL` (marked CP2-auth-forthcoming). **No `ADMIN_DB_NAME`.** Mirror the convention in `apps/admin/src/types/environment.d.ts`. **Names only in every artifact** (env-secrets gate).
+`MONGODB_URI` — the admin DB name rides in the URI **path** (`…/ministry-admin?authSource=admin&retryWrites=true&w=majority&maxPoolSize=10`); document the path+query shape only, **never** a literal `scheme://credentials@host` form (the husky secret-scan regex `mongodb(\+srv)?://…@` rejects it, and `apps/web/.env.example` sets `MONGODB_URI=` empty for the same reason). Plus `NEXT_PUBLIC_FIREBASE_API_KEY … NEXT_PUBLIC_FIREBASE_APP_ID` (client), `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, `NEXT_PUBLIC_ADMIN_BASE_URL`, plus `RESEND_API_KEY` / `FROM_EMAIL` (marked CP2-auth-forthcoming). **No separate DB-name env var.** Mirror the convention in `apps/admin/src/types/environment.d.ts`. **Names only in every artifact** (env-secrets gate).
 
 ## 6. Acceptance criteria (verbatim from the ticket)
 
@@ -61,7 +61,7 @@ export async function connect(): Promise<MongoClient | undefined>; // console.er
 2. No bare `client.db()` in `apps/admin` (except inside `getAdminDb`); cross-DB reads use explicit `client.db("website")`. Greppable + review-enforced.
 3. `maxPoolSize` set on the admin `MongoClient` (10).
 4. `authSource=admin` explicit in the `.env.example` `MONGODB_URI` shape.
-5. `grep -ri admin_db_name` repo-wide → nothing (code, `.env.example`, `environment.d.ts`, `admin-mvp.md`).
+5. A repo-wide, case-insensitive search for the literal name of the cancelled separate DB-name env var → nothing (code, `.env.example`, `environment.d.ts`, `admin-mvp.md`).
 6. Shell renders `/es-AR` + `/en-US` with no missing-message warnings; theme toggle flips; `@idcr/ui` tokens apply.
 7. `pnpm --filter @idcr/admin` type-check/lint/test/build green + `dev` boots.
 8. `pnpm --filter @idcr/admin build` succeeds with **no** Firebase/Mongo env (lazy config).

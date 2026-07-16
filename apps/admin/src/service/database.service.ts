@@ -45,7 +45,8 @@ const DENIED_DB_NAME_PATTERN = /^website/;
  * branchable outcome, so this throws a plain `Error` naming the offending
  * database instead of returning a discriminated result a caller could `??`
  * past. A returnable refusal would silently reintroduce exactly the
- * mis-wired-DB failure mode that killed `ADMIN_DB_NAME` in the first place.
+ * mis-wired-DB failure mode this denylist — and the deliberate absence of a
+ * separate DB-name env var — exists to prevent.
  * Precedent: `apps/web/src/service/database.service.ts`'s
  * `throw new Error("MONGODB_URI is not defined")` for the same class of
  * problem. No `Error` subclass is introduced.

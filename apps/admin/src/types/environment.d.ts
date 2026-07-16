@@ -1,8 +1,8 @@
 declare namespace NodeJS {
   interface ProcessEnv {
     // MongoDB — Ministry Admin Panel (congregant PII). The DB name rides in the
-    // URI PATH (see .env.example), never a separate env var — ADMIN_DB_NAME is
-    // cancelled (docs/architecture/contentful-environments.md's sibling data-layer
+    // URI PATH (see .env.example) — there is deliberately no separate DB-name
+    // env var (docs/architecture/contentful-environments.md's sibling data-layer
     // decision; see src/service/database.service.ts).
     MONGODB_URI: string;
 
