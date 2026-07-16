@@ -27,6 +27,74 @@ If the loop learned from our own output, it would reinforce _our_ style and slow
 preacher — a feedback loop / style collapse dressed up as "learning." The transcript is the gold source; the
 post is not. This is non-negotiable and is enforced in the agent's hard rules.
 
+## The second rule: an interpreted sermon teaches NOBODY's voice
+
+When a preacher speaks one language and an **interpreter renders it live** into another, Whisper locks onto
+whoever is louder — and that is the interpreter. `transcript.txt` is then the **interpreter's** speech.
+
+Such a transcript is a valid source for **nobody's** voice profile:
+
+- **Not the preacher's** — the words are not theirs. Learning from it would write the interpreter's rhetoric
+  into the preacher's profile, and Zone B is **append-only**, so every later sermon by that preacher would be
+  written in a voice learned from the wrong person. Silent, and it compounds.
+- **Not the interpreter's** — they are rendering someone else's content, not preaching their own.
+
+So `/predica` **refuses to learn** from an interpreted run. The refusal is **code, not prose**:
+`apps/web/src/utils/predica/voiceProfile.ts` (`canLearnVoiceFrom`) refuses whenever the run is interpreted —
+**for any name passed to it** — and the orchestrator executes its `.mjs` twin
+(`.claude/scripts/predica/check-voice-learn.mjs`) at step 2.5 before dispatching the coach. The two impls are
+bound by a parity test. `predica-voice-coach`'s own refusal is only a backstop; a pure-prose agent cannot
+enforce a guarantee.
+
+The guard blocks **writes**, not **reads**: if the preacher already has a profile learned from sermons they
+preached _themselves_, the writer may still read it — that profile **is** their authentic voice.
+
+### Why it is HUMAN-DECLARED, and why you must not build a detector
+
+Interpretation is declared by the human: `/predica --interpreted --interpreter "<Full Name>"`. It is **not**
+inferred from the audio, and **must not be**.
+
+A whisper language-ID sweep over a known interpreted sermon (2026-07-12, 21:32, English preacher + live
+Spanish interpreter), in 30-second windows across the **entire** recording, reported **Spanish at p ≈ 0.999 in
+43 of 43 windows** and missed the preacher's English **entirely** — because the interpreter dominates the mic.
+Exactly one English fragment ever surfaced in the transcript. A detector built on this signal would report
+"not interpreted" with total confidence on the very case it exists to catch, and the guard would be worse than
+useless: it would be _trusted_.
+
+A forgotten `--interpreted` on a **regenerate** cannot re-open the hole either — `resolveInterpreted()` ORs the
+flag with the `interpreted` field persisted in `sermon.json`. And if the guard script is missing or crashes,
+the pipeline **fails closed** and skips the coach: a skipped append is redone next run, a wrong append is
+forever.
+
+### Fail-closed also means: MALFORMED persisted state counts as interpreted
+
+**`sermon.json` is produced by an LLM** (`predica-writer`) and may be hand-edited by a human during review,
+so on a regenerate `resolveInterpreted()` cannot trust either the **shape** of the file or the **value** of
+its `interpreted` field. It fails closed on all of it — anything it cannot read as a clean "not interpreted"
+is treated as **interpreted** (refuse):
+
+- **A malformed `interpreted` value** — the string `"true"`, the number `1`, even the string `"false"` (a
+  boolean was required). An earlier version used a strict `=== true` check, which read a string `"true"` as
+  _not interpreted_ and would have handed an interpreted transcript to the coach — **the guard's own typo
+  re-opening the exact hole it exists to close.**
+- **A non-object top-level document** — a corrupt or truncated `sermon.json` parses cleanly as an array, a
+  bare string, or a number. A plain property read (`sermon?.interpreted`) yields `undefined` on all of them,
+  which would look like a clean "no". A supplied file we cannot read is not a clean no.
+- **An `interpreter` recorded without `interpreted: true`** — a half-populated document (e.g. a hand-edit
+  that deleted one line). The interpreter's presence is itself the declaration; reading it as "not
+  interpreted" would poison the profile with the interpreter's name sitting unused in the same file.
+
+The CLI twin additionally refuses to **swallow a following flag as an argument value**: `--preacher
+--interpreted …` is a usage error (exit 2), never a run with `preacher = "--interpreted"` and the guard flag
+silently dropped.
+
+All three fail-open gaps (plus the scalar case) were surfaced by the ICR-147 adversarial QA pass and are
+pinned by regression tests in **both** the canonical TS and the `.mjs` twin. The cost of the strictness is one
+refused append that the next run redoes; the cost of leniency is a permanently poisoned profile. A guard that
+fails **open** on malformed input is worse than no guard, because it is _trusted_. (`validateSermonForEntry()`
+also rejects a non-boolean `interpreted`, but that runs at step 3, **after** the writer has already put the
+file on disk, so step 2.5 cannot lean on it.)
+
 ## Where profiles live (and why local-only)
 
 ```
@@ -145,6 +213,9 @@ transcribe → ★ Gate 1 (human corrects transcript) ★ → [2.5 voice-coach] 
   say. The transcript stays the source of truth for content; the writer's no-fabrication rules still win.
 - **Privacy.** Profiles are never committed. After any run, `git status` should show nothing new tracked
   under `_voices/`.
+- **Interpreted sermons are never learned from** — not for the preacher, not for the interpreter. Enforced in
+  code (`canLearnVoiceFrom`), executed by the orchestrator at step 2.5, and backstopped in the agent's prose.
+  Human-declared (`--interpreted`); never detected from audio.
 
 ## Files involved
 
@@ -155,3 +226,5 @@ transcribe → ★ Gate 1 (human corrects transcript) ★ → [2.5 voice-coach] 
 | `.claude/agents/predica-writer.md`                                        | Reads `voiceProfilePath` (optional input + editorial rule #1).                                            |
 | `.claude/config.json` → `predica.{agents.voiceCoach, voices, voiceCoach}` | Agent name, profiles dir, step config.                                                                    |
 | `tasks/predicas/_voices/<preacher-slug>.md`                               | The per-preacher profile (local-only, gitignored).                                                        |
+| `apps/web/src/utils/predica/voiceProfile.ts`                              | The voice-learn guard (canonical, typed, unit-tested).                                                    |
+| `.claude/scripts/predica/check-voice-learn.mjs`                           | The twin the orchestrator executes at step 2.5 (exit 0 = learn, 3 = refuse).                              |
