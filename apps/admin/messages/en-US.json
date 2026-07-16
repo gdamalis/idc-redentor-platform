@@ -8,12 +8,43 @@
     "description": "The page you're looking for doesn't exist or was moved.",
     "backToHome": "Back to home"
   },
-  "home": {
+  "dashboard": {
     "title": "Admin Panel",
     "subtitle": "Coming soon: manage people, families, and activities."
   },
   "theme": {
     "toggleLight": "Switch to light mode",
     "toggleDark": "Switch to dark mode"
+  },
+  "nav": {
+    "dashboard": "Home",
+    "people": "People",
+    "families": "Families",
+    "activities": "Activities",
+    "calendar": "Calendar",
+    "users": "Users",
+    "roles": "Roles",
+    "settings": "Settings"
+  },
+  "topbar": {
+    "userMenuPlaceholder": "Account"
+  },
+  "localeSwitcher": {
+    "ariaLabel": "Switch language",
+    "es": "ES",
+    "en": "EN"
+  },
+  "pages": {
+    "comingSoon": "Coming soon",
+    "login": {
+      "title": "Sign in"
+    },
+    "resetPassword": {
+      "title": "Reset password"
+    },
+    "noAccess": {
+      "title": "No access",
+      "description": "You don't have permission to view this section."
+    }
   }
 }
