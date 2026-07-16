@@ -15,8 +15,8 @@ Everything below exists to bridge that gap. See "Re-sync risks" at the bottom.
 
 - **PKG_DIR is `apps/web`, deliberately.** The converter walks up from `--entry` to the first named
   `package.json`. The entry therefore lives at **`apps/web/ds-entry.tsx`**, NOT under `.design-sync/`.
-  This is load-bearing: `lib/dts.mjs` derives `node_modules` from PKG_DIR (NOT from `--node-modules`)
-  and walks _up_ looking for `@types/react`. From the repo root that walk fails (pnpm doesn't hoist;
+  This is load-bearing: `lib/dts.mjs` derives `node_modules` from PKG*DIR (NOT from `--node-modules`)
+  and walks \_up* looking for `@types/react`. From the repo root that walk fails (pnpm doesn't hoist;
   root `node_modules` has no `@types` at all) → `[DTS_REACT]` → every prop body emits EMPTY.
   From `apps/web` it finds `apps/web/node_modules/@types/react` immediately.
   Moving the entry back under `.design-sync/` will silently gut every `.d.ts`.
@@ -309,6 +309,51 @@ overrides are silently NOT applying anywhere on the site, and anyone who reaches
 
 **This affects the live site identically** (`globals.css` imports the same `tokens.css`), so the DS
 is faithful to production either way — fixing it would change both together, which is the point.
+
+## 🐛 Repo finding: `<Divider variant="vertical" />` renders nothing (worth an ICR ticket)
+
+`apps/web/src/components/ui/divider/Divider.tsx:18`:
+
+```ts
+variant === "horizontal" ? "my-4 w-full" : "mx-2 h-full";
+```
+
+The **vertical branch sets no width and no `border-l`**. The element is an `<hr>`, which Tailwind's
+preflight styles as `height: 0; border-top-width: 1px`. So as a flex item the vertical variant is a
+**zero-width box drawing a _top_ border** — it renders nothing at all. Confirmed by capture; this is a
+genuine component defect, not a preview artifact (`h-full` and `mx-2` both resolve in the compiled CSS).
+
+**Severity: low — 0 call sites** (`grep -rn 'variant="vertical"' apps/web/src packages` → none), so
+nothing on the site is broken today. But it's a broken public API on an exported component, and the DS
+now advertises that prop to the design agent via `DividerProps`.
+
+Suggested fix (component code — deliberately NOT made as part of the sync, which ships what the repo
+builds rather than editing it):
+
+```ts
+variant === "horizontal"
+  ? "my-4 w-full"
+  : "mx-2 h-full w-0 border-l border-t-0";
+```
+
+The preview drops the vertical story rather than ship a permanently blank cell, and uses the real
+leading-rule shape from `KeywordTags.tsx` instead.
+
+## Preview vocabulary that actually resolves (audited)
+
+Confirmed available (use these; others silently no-op — see the stale-CSS trap above):
+
+- `max-w`: **xs, sm, 2xl–6xl only** (md/lg/xl absent unless the safelist covers them)
+- `py`: 0, 1, 2, 4, 6, 12, 16, 20, 24
+- `bg-primary`: /10, /20, /90 · `bg-secondary`: /30
+
+> Since the safelist was added to `ds-styles.css`, the vocabulary named in `conventions.md` is
+> guaranteed to resolve. This list is the pre-safelist reality and still matters for anything
+> OUTSIDE the safelist. Audit a preview's classes against the compiled CSS before trusting them.
+
+**`Container.Sizes` is honest but partial**: the capture stage is ~844px, so only `sm` (768px) visibly
+caps; `md` (1024) and `default` (1152) both exceed the stage and render identically. Showing all three
+steps would need a `viewport` override wider than 1152px.
 
 ## Environment
 
