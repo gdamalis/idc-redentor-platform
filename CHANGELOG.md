@@ -1,3 +1,9 @@
+# [1.27.0](https://github.com/gdamalis/idc-redentor-platform/compare/v1.26.0...v1.27.0) (2026-07-16)
+
+### Features
+
+- **ICR-124:** scaffold apps/admin (App Router + i18n + theme + Mongo guard + Firebase config) ([#102](https://github.com/gdamalis/idc-redentor-platform/issues/102)) ([a5e03b0](https://github.com/gdamalis/idc-redentor-platform/commit/a5e03b019ecd319e24c79350cab4f3f9a1c8a0c1))
+
 # [1.26.0](https://github.com/gdamalis/idc-redentor-platform/compare/v1.25.8...v1.26.0) (2026-07-16)
 
 ### Bug Fixes
