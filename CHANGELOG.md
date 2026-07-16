@@ -1,3 +1,13 @@
+# [1.26.0](https://github.com/gdamalis/idc-redentor-platform/compare/v1.25.8...v1.26.0) (2026-07-16)
+
+### Bug Fixes
+
+- **ICR-147:** guard /predica against voice-profile poisoning on interpreted sermons ([#98](https://github.com/gdamalis/idc-redentor-platform/issues/98)) ([9e3e22c](https://github.com/gdamalis/idc-redentor-platform/commit/9e3e22c0f383b6596a1be650fe0c5338edf63c15))
+
+### Features
+
+- **ICR-146:** express bilingual sermon audio and credit the live interpreter ([#99](https://github.com/gdamalis/idc-redentor-platform/issues/99)) ([223f51c](https://github.com/gdamalis/idc-redentor-platform/commit/223f51cfb6e55b1c476e4afe131c3ac7cbbd394a))
+
 ## [1.25.8](https://github.com/gdamalis/idc-redentor-web/compare/v1.25.7...v1.25.8) (2026-07-14)
 
 ## [1.25.7](https://github.com/gdamalis/idc-redentor-web/compare/v1.25.6...v1.25.7) (2026-07-14)
