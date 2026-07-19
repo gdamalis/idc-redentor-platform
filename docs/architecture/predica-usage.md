@@ -126,9 +126,14 @@ message.
 top-level **`additionalPreachers`** array (`{ name, email? }[]`); the publisher resolves each to an `author`
 (creating missing ones) and the byline renders `[preacher, ...additionalPreachers]`. But the **standard
 single-audio `/predica` run never sets it**, and there is **no `--additional` flag**. The only time this has
-shipped, it was assembled by a **bespoke one-off script**:
-`tasks/predicas/2026-06-28_consuelo-venezuela/assemble-multi-sermon.mjs` (the 4-preacher "Consuelo en medio
-del dolor" post), which interleaves per-segment `embeddedAsset` audio + PDF blocks into one `content[]`.
+shipped, it was assembled by a **local, one-off glue script that was never committed** — it lived under the
+gitignored artifacts tree (`tasks/predicas/` → `.gitignore:74`) as
+`…/2026-06-28_consuelo-venezuela/assemble-multi-sermon.mjs` for the 4-preacher "Consuelo en medio del dolor"
+post, interleaving per-segment `embeddedAsset` audio + PDF blocks into one `content[]`. **That script is not in
+the repo — no operator should assume they have it**; it survives only as a private reference for the ICR-165
+build. The building blocks that _are_ committed are `.claude/scripts/predica/build-predica-segment-pdf.mjs`
+(per-segment PDFs) and `build-sermon-entry.mjs`'s `additionalPreachers` + `embeddedAsset` support — ICR-165 is
+the orchestration glue that ties them together.
 
 **Planned standardization (recommended design in ICR-165):** a **repeatable additional-audio flag** —
 
@@ -148,21 +153,24 @@ del dolor" post), which interleaves per-segment `embeddedAsset` audio + PDF bloc
   blocks + the deduped union of `scriptureReferences` — then one featured image, one WhatsApp message, one
   combined DRAFT.
 
-**Until ICR-165 is built:** a multi-preacher Sunday is handled by adapting the `consuelo-venezuela` one-off, or
-by running each segment as its own `/predica` and hand-assembling. Implementation is **deferred by design** —
-low priority, to be picked up when the next genuine multi-preacher Sunday arrives (see the ticket for the full
-proposed approach, alternatives, and acceptance criteria).
+**Until ICR-165 is built, there is no committed one-command path to a single combined post.** The reproducible
+interim from a clean checkout is to **publish each preacher as their own ordinary Case-1 `/predica` post** (each
+gets its own audio player + both PDFs + its own draft) — this yields **N separate posts, not one combined
+post**. A genuine single combined post currently requires ICR-165's assembly glue, so if the combined format
+matters for a given Sunday, treat **ICR-165 as its prerequisite** rather than following a manual workaround.
+Implementation is **deferred by design** — low priority, to be picked up when the next genuine multi-preacher
+Sunday arrives (see the ticket for the full proposed approach, alternatives, and acceptance criteria).
 
 ---
 
 ## Quick-reference matrix
 
-| Scenario                              | Invocation                                         | Byline                                       | Audio-language notice                      | Manual step                                                                                    |
-| ------------------------------------- | -------------------------------------------------- | -------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| **Spanish sermon** (Case 1)           | `/predica "<audio>"`                               | 1 preacher                                   | EN page: "audio in Spanish"; ES page: none | None — fully automatic                                                                         |
-| **Interpreted** (Case 2)              | `/predica "<audio>" --interpreter "<Name>"`        | 1 preacher (interpreter credited separately) | bilingual (both pages)                     | **Yes** — set `interpreter` + `audioLanguages` in Contentful at Gate 2 until **ICR-149** lands |
-| **Multi-preacher, N audios** (Case 3) | _planned:_ `/predica "<a1>" --additional "<a2>" …` | `[preacher, …additionalPreachers]`           | same as Spanish                            | **Yes (today)** — no flag; adapt the `consuelo-venezuela` assembly. Tracked in **ICR-165**     |
-| **Preview only**                      | add `--dry-run` to any of the above                | —                                            | —                                          | Stops after PDFs; no Contentful/WhatsApp                                                       |
+| Scenario                              | Invocation                                         | Byline                                       | Audio-language notice                      | Manual step                                                                                                  |
+| ------------------------------------- | -------------------------------------------------- | -------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| **Spanish sermon** (Case 1)           | `/predica "<audio>"`                               | 1 preacher                                   | EN page: "audio in Spanish"; ES page: none | None — fully automatic                                                                                       |
+| **Interpreted** (Case 2)              | `/predica "<audio>" --interpreter "<Name>"`        | 1 preacher (interpreter credited separately) | bilingual (both pages)                     | **Yes** — set `interpreter` + `audioLanguages` in Contentful at Gate 2 until **ICR-149** lands               |
+| **Multi-preacher, N audios** (Case 3) | _planned:_ `/predica "<a1>" --additional "<a2>" …` | `[preacher, …additionalPreachers]`           | same as Spanish                            | **No committed path yet** — interim: publish each preacher as a separate Case-1 post. Tracked in **ICR-165** |
+| **Preview only**                      | add `--dry-run` to any of the above                | —                                            | —                                          | Stops after PDFs; no Contentful/WhatsApp                                                                     |
 
 ## Related
 
