@@ -1,3 +1,10 @@
+> **Legacy changelog — frozen at v1.27.0.** This is the historical, single-version release record
+> from the `semantic-release` era, when the whole repo shared one version line. As of **ICR-164** the
+> repo uses **Changesets** with **independent per-app versioning**: each app now keeps its own
+> changelog (`apps/web/CHANGELOG.md`, `apps/admin/CHANGELOG.md`) and the root version is frozen.
+> Entries below are preserved for history and are no longer updated. See
+> [`docs/architecture/versioning.md`](docs/architecture/versioning.md).
+
 # [1.27.0](https://github.com/gdamalis/idc-redentor-platform/compare/v1.26.0...v1.27.0) (2026-07-16)
 
 ### Features
