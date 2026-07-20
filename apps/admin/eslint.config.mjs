@@ -7,7 +7,6 @@ const eslintConfig = [
   },
   {
     files: ["src/**/*.{ts,tsx}"],
-    ignores: ["src/service/database.service.ts"],
     rules: {
       "no-restricted-syntax": [
         "error",

@@ -166,12 +166,18 @@ export function assertWebsiteDbName(name: string | null | undefined): void {
  * connection, so these assert-and-return without awaiting `connect()`.
  */
 export function getAdminDb(): Db {
+  // Sanctioned call site #1/2: assertAdminDbName() on the next line is what makes
+  // this bare client.db() safe.
+  // eslint-disable-next-line no-restricted-syntax
   const db = getAdminClient().db();
   assertAdminDbName(db.databaseName);
   return db;
 }
 
 export function getContentDb(): Db {
+  // Sanctioned call site #2/2: assertWebsiteDbName() on the next line is what makes
+  // this bare client.db() safe.
+  // eslint-disable-next-line no-restricted-syntax
   const db = getWebsiteClient().db();
   assertWebsiteDbName(db.databaseName);
   return db;
