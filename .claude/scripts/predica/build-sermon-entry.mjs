@@ -194,8 +194,13 @@ export function validateSermonForEntry(raw) {
       errs.push(
         "interpreter: must be an object with a non-empty name when present",
       );
-    if (s.interpreter.email != null && typeof s.interpreter.email !== "string")
-      errs.push("interpreter.email: must be a string when present");
+    if (
+      s.interpreter.email != null &&
+      (typeof s.interpreter.email !== "string" || !s.interpreter.email.trim())
+    )
+      errs.push(
+        "interpreter.email: must be a non-empty string when present (omit it to use the info@idcredentor.org fallback).",
+      );
   }
   if (
     s.interpreted === true &&
@@ -203,6 +208,13 @@ export function validateSermonForEntry(raw) {
   )
     errs.push(
       "interpreter.name: required non-empty string when interpreted is true",
+    );
+  // A named interpreter without interpreted:true is a forgotten-flag half-populated sermon
+  // (mirrors the voice guard, check-voice-learn.mjs). Fail closed so it is fixed + re-dispatched
+  // rather than silently publishing a bilingual sermon missing its badge/credit.
+  if (s.interpreter?.name?.trim?.() && s.interpreted !== true)
+    errs.push(
+      'interpreter present but interpreted is not true — add "interpreted": true (a named interpreter requires the flag).',
     );
 
   if (typeof s.internalName !== "string" || !s.internalName.trim()) errs.push("internalName: required string");
