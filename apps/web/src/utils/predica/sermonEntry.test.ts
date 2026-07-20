@@ -319,4 +319,33 @@ describe("buildSermonEntryFields", () => {
       "es-AR": { sys: { type: "Link", linkType: "Asset", id: "IMG1" } },
     });
   });
+
+  it("derives audioLanguages + links the interpreter for an interpreted sermon", () => {
+    const fields = buildSermonEntryFields(
+      { ...sermon, interpreted: true, interpreter: { name: "Jonathan Hanegan" } },
+      { preacherId: "PRE1", interpreterId: "INT1" },
+    );
+    expect(fields.audioLanguages).toEqual({ "es-AR": ["es-AR", "en-US"] });
+    expect(fields.interpreter).toEqual({
+      "es-AR": { sys: { type: "Link", linkType: "Entry", id: "INT1" } },
+    });
+  });
+
+  it("sets audioLanguages but omits the interpreter link when no interpreterId resolved", () => {
+    const fields = buildSermonEntryFields(
+      { ...sermon, interpreted: true, interpreter: { name: "Jonathan Hanegan" } },
+      { preacherId: "PRE1" },
+    );
+    expect(fields.audioLanguages).toEqual({ "es-AR": ["es-AR", "en-US"] });
+    expect(fields.interpreter).toBeUndefined();
+  });
+
+  it("emits NEITHER field for a non-interpreted sermon (byte-identical baseline, AC4)", () => {
+    const fields = buildSermonEntryFields(sermon, {
+      preacherId: "PRE1",
+      interpreterId: "INT1",
+    });
+    expect(fields.audioLanguages).toBeUndefined();
+    expect(fields.interpreter).toBeUndefined();
+  });
 });

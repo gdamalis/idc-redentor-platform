@@ -126,6 +126,10 @@ export function buildSermonEntryFields(sermon, links, options = {}) {
   if (links.scriptureRefIds?.length) fields.scriptureReferences = atDefault(links.scriptureRefIds.map(entryLink));
   if (links.featuredImageAssetId) fields.featuredImage = atDefault(assetLink(links.featuredImageAssetId));
   if (links.audioAssetId) fields.audio = atDefault(assetLink(links.audioAssetId));
+  if (sermon.interpreted) {
+    fields.audioLanguages = atDefault(["es-AR", "en-US"]);
+    if (links.interpreterId) fields.interpreter = atDefault(entryLink(links.interpreterId));
+  }
 
   fields.title = localizedFrom(sermon, (l) => l.title);
   fields.thesis = localizedFrom(sermon, (l) => l.thesis);
@@ -190,6 +194,13 @@ export function validateSermonForEntry(raw) {
       errs.push(
         "interpreter: must be an object with a non-empty name when present",
       );
+    if (
+      s.interpreter.email != null &&
+      (typeof s.interpreter.email !== "string" || !s.interpreter.email.trim())
+    )
+      errs.push(
+        "interpreter.email: must be a non-empty string when present (omit it to use the info@idcredentor.org fallback).",
+      );
   }
   if (
     s.interpreted === true &&
@@ -197,6 +208,13 @@ export function validateSermonForEntry(raw) {
   )
     errs.push(
       "interpreter.name: required non-empty string when interpreted is true",
+    );
+  // A named interpreter without interpreted:true is a forgotten-flag half-populated sermon
+  // (mirrors the voice guard, check-voice-learn.mjs). Fail closed so it is fixed + re-dispatched
+  // rather than silently publishing a bilingual sermon missing its badge/credit.
+  if (s.interpreter?.name?.trim?.() && s.interpreted !== true)
+    errs.push(
+      'interpreter present but interpreted is not true — add "interpreted": true (a named interpreter requires the flag).',
     );
 
   if (typeof s.internalName !== "string" || !s.internalName.trim()) errs.push("internalName: required string");

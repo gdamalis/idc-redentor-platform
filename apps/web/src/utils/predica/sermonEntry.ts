@@ -115,10 +115,15 @@ export interface SermonDocument {
    */
   interpreted?: boolean;
   /**
-   * The live interpreter. NOT a preacher — never added to {@link SermonDocument.additionalPreachers}
-   * and never linked as an `author`. Required when `interpreted` is true. Drives the WhatsApp credit.
+   * The live interpreter (ICR-147). NOT a preacher — never added to
+   * {@link SermonDocument.additionalPreachers} and never rendered in the byline.
+   * Since ICR-149 the interpreter IS linked as an `author` entry via the sermon's
+   * dedicated, non-localized `interpreter` field (distinct from `preacher`). Required when
+   * `interpreted` is true; drives the WhatsApp credit. `email` is optional and used only to
+   * create the author entry when none with this name exists (publisher falls back to
+   * info@idcredentor.org).
    */
-  interpreter?: { name: string } | null;
+  interpreter?: { name: string; email?: string } | null;
   internalName: string;
   durationSeconds?: number;
   serviceLabel?: Record<PredicaLocale, string>;
@@ -136,6 +141,11 @@ export interface ResolvedLinks {
    * renders `[preacher, ...additionalPreachers]`. Empty/absent for normal sermons.
    */
   additionalPreacherIds?: string[];
+  /**
+   * The interpreter's `author` entry id (ICR-149). Populated by the publisher ONLY for an
+   * interpreted run; links the dedicated non-localized `interpreter` field (NOT a preacher).
+   */
+  interpreterId?: string;
   scriptureRefIds?: string[];
   pdfAssetIds?: Partial<Record<PredicaLocale, string>>;
   audioAssetId?: string;
@@ -343,6 +353,12 @@ export function buildSermonEntryFields(
   }
   if (links.audioAssetId) {
     fields.audio = atDefault(assetLink(links.audioAssetId));
+  }
+  if (sermon.interpreted) {
+    fields.audioLanguages = atDefault(["es-AR", "en-US"]);
+    if (links.interpreterId) {
+      fields.interpreter = atDefault(entryLink(links.interpreterId));
+    }
   }
 
   // Localized text (both locales)

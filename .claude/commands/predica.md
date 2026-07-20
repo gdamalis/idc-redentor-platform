@@ -44,8 +44,9 @@ or auto-skip them. See `tasks/specs/sermon-pipeline.md` §7–§9.
    - `--interpreter "<Full Name>"` → string. **Implies `--interpreted`** (the implication only ever runs
      toward _more_ guarding, never less). If `--interpreted` is given without a name, the guard still fires —
      ask the human for the interpreter's name once, because `sermon.json` and the WhatsApp credit need it.
-     The interpreter is **not** a preacher: never add them to `additionalPreachers`, never link them as an
-     `author`.
+     The interpreter is **not** a preacher: never add them to `additionalPreachers` and never put them in the
+     byline. They ARE credited via the sermon's dedicated `interpreter` field — an `author` entry the
+     publisher resolves or creates (ICR-149) — which drives the on-page interpreter credit.
    - Resolve `sermonDate`: parse a leading `YYYYMMDD` in the filename → `YYYY-MM-DD`; else use the file's
      mtime date and note the assumption.
    - Resolve `preacher`: parse the filename (e.g. `… - Prédica - Jonathan.m4a` → `Jonathan …`); if only a
