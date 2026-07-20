@@ -79,7 +79,9 @@ recording is bilingual and the transcript is the **interpreter's** words.
 - Interpretation is **human-declared, never detected**: a whisper language sweep of a known interpreted
   sermon reported Spanish at p≈0.999 in 43/43 windows and missed the preacher's English entirely — so there is
   deliberately **no** audio detector. You must pass the flag.
-- The interpreter is **not a preacher** — never added to `additionalPreachers`, never a co-author.
+- The interpreter is **not a preacher** — never added to `additionalPreachers`, never in the byline. (They
+  ARE linked as an `author` **entry** via the sermon's dedicated `interpreter` field — that is a credit, not a
+  byline authorship; see item 6 below.)
 
 **What the flag does today** (1–5 verified on `main`; 6–8 as of ICR-149):
 
