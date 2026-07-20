@@ -3,12 +3,14 @@
 `apps/admin` reaches **two** MongoDB databases with **two independent connection
 strings**, each authenticating as its own single-database Atlas user.
 
-| Env var               | Path database (prod / non-prod)             | Holds                          | Accessor         |
-| --------------------- | ------------------------------------------- | ------------------------------ | ---------------- |
-| `MONGODB_URI`         | `ministry-admin` / `ministry-admin-staging` | congregant PII + admin auth    | `getAdminDb()`   |
-| `WEBSITE_MONGODB_URI` | `website` / `website-staging`               | public content, likes, contact | `getContentDb()` |
+| Env var               | Path database (prod / non-prod, QA)                       | Holds                          | Accessor         |
+| --------------------- | --------------------------------------------------------- | ------------------------------ | ---------------- |
+| `MONGODB_URI`         | `ministry-admin` / `ministry-admin-{staging,test,qa,e2e}` | congregant PII + admin auth    | `getAdminDb()`   |
+| `WEBSITE_MONGODB_URI` | `website` / `website-{staging,test,qa,e2e}`               | public content, likes, contact | `getContentDb()` |
 
-Both URIs set `authSource=admin` explicitly and `maxPoolSize=10`.
+Both URIs set `authSource=admin` explicitly and `maxPoolSize=10`. The non-prod suffix set
+(`staging`/`test`/`qa`/`e2e`) exactly mirrors `.claude/config.json`'s
+`qa.env.{preview,staging}.dbNameAllow` — see **Amendment** below.
 
 ## Why not a single URI
 
@@ -60,8 +62,8 @@ only `website`. Blast radius halved. `apps/web` still never receives any grant o
 
 ```
 
-getAdminDb() -> adminClient.db() -> assert /^ministry-admin(-staging)?$/
-getContentDb() -> websiteClient.db() -> assert /^website(-staging)?$/
+getAdminDb() -> adminClient.db() -> assert /^ministry-admin(-staging|-test|-qa|-e2e)?$/
+getContentDb() -> websiteClient.db() -> assert /^website(-staging|-test|-qa|-e2e)?$/
 
 ```
 
@@ -82,13 +84,14 @@ getContentDb() -> websiteClient.db() -> assert /^website(-staging)?$/
 
 ## Fail-closed behavior
 
-| Condition                        | Behavior                                                                  |
-| -------------------------------- | ------------------------------------------------------------------------- |
-| Either variable unset            | throws naming the missing variable                                        |
-| URI has no path database         | `client.db()` resolves `test` → assertion throws naming `test`            |
-| URIs swapped                     | assertion throws naming the offending database; the grant would also deny |
-| Reserved system database in path | assertion throws (matches neither allowlist)                              |
-| Connection failure               | `connect()` logs and returns `undefined`                                  |
+| Condition                                                                        | Behavior                                                                                             |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Either variable unset                                                            | throws naming the missing variable                                                                   |
+| URI has no path database                                                         | `client.db()` resolves `test` → assertion throws naming `test`                                       |
+| URIs swapped                                                                     | assertion throws naming the offending database; the grant would also deny                            |
+| Reserved system database in path                                                 | assertion throws (matches neither allowlist)                                                         |
+| Prod credential misconfigured to a QA-suffixed name (e.g. `ministry-admin-test`) | **assertion PASSES** (accepted tradeoff — see Amendment below); only the Atlas grant still denies it |
+| Connection failure                                                               | `connect()` logs and returns `undefined`                                                             |
 
 ### Driver facts (verified against installed `mongodb@6.21.0`)
 
@@ -122,5 +125,29 @@ getContentDb() -> websiteClient.db() -> assert /^website(-staging)?$/
 
 **Secret hygiene:** variable **names** only — never paste a real connection string
 into docs, commits, or PRs.
+
+## Amendment (2026-07-20, post-review): allowlists widened to match the QA contract
+
+A PR review on ICR-166 (Codex, P2, maintainer-approved) flagged that
+`.claude/config.json`'s `qa.env.{preview,staging}.dbNameAllow` sanctions
+`{website,ministry-admin}-{staging,test,qa,e2e}` as QA-touchable databases, but the
+code allowlists above (as originally shipped) accepted only bare or `-staging` — two
+guards disagreeing on identical input. The maintainer decided to **widen the code
+allowlists** to agree with the QA contract rather than narrow the QA config, since the
+QA harness legitimately needs to address `-test`/`-qa`/`-e2e` databases.
+
+`ADMIN_DB_NAME_PATTERN` and `WEBSITE_DB_NAME_PATTERN` (and the `getAdminDb() ->`/
+`getContentDb() ->` shapes above) now accept the optional suffix `-staging`, `-test`,
+`-qa`, or `-e2e` — superseding the narrower `(-staging)?` pattern stated earlier in
+this doc and in the original design.
+
+**Accepted tradeoff, stated plainly:** this is a real widening, not a strictly safer
+change. A production deployment misconfigured to, say, `ministry-admin-test` is now
+**accepted** by the code-layer assertion where it previously **failed closed**. The
+Atlas grant (per environment — see "The two-layer safety argument" above) is what
+actually prevents a prod credential from reaching a `-test`/`-qa`/`-e2e` database now;
+the code layer alone no longer catches that specific misconfiguration. Reserved Mongo
+system databases (`test`/`admin`/`local`/`config`) and cross-tier names are still
+rejected — the widening only adds the four QA suffixes to each prefix's own allowlist.
 
 Design record: `tasks/specs/ICR-166-admin-per-db-connection-strings.md`.

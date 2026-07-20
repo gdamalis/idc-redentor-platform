@@ -5,8 +5,12 @@ declare namespace NodeJS {
     // DB-name env var. Each is read by exactly one accessor in
     // src/service/database.service.ts, which asserts the resolved name.
     // See docs/architecture/admin-database.md.
-    MONGODB_URI: string; // -> ministry-admin | ministry-admin-staging (getAdminDb)
-    WEBSITE_MONGODB_URI: string; // -> website | website-staging (getContentDb)
+    // -> ministry-admin | ministry-admin-staging | ministry-admin-test |
+    //    ministry-admin-qa | ministry-admin-e2e (getAdminDb)
+    MONGODB_URI: string;
+    // -> website | website-staging | website-test | website-qa | website-e2e
+    //    (getContentDb)
+    WEBSITE_MONGODB_URI: string;
 
     // Base URL
     NEXT_PUBLIC_ADMIN_BASE_URL: string;

@@ -64,13 +64,16 @@ describe("assertAdminDbName", () => {
     },
   );
 
-  it.each(["ministry-admin", "ministry-admin-staging"])(
-    "accepts %s",
-    async (name) => {
-      const { assertAdminDbName } = await loadService();
-      expect(() => assertAdminDbName(name)).not.toThrow();
-    },
-  );
+  it.each([
+    "ministry-admin",
+    "ministry-admin-staging",
+    "ministry-admin-test",
+    "ministry-admin-qa",
+    "ministry-admin-e2e",
+  ])("accepts %s", async (name) => {
+    const { assertAdminDbName } = await loadService();
+    expect(() => assertAdminDbName(name)).not.toThrow();
+  });
 
   it("rejects a name that merely starts with the allowed prefix", async () => {
     const { assertAdminDbName } = await loadService();
@@ -103,7 +106,13 @@ describe("assertWebsiteDbName", () => {
     },
   );
 
-  it.each(["website", "website-staging"])("accepts %s", async (name) => {
+  it.each([
+    "website",
+    "website-staging",
+    "website-test",
+    "website-qa",
+    "website-e2e",
+  ])("accepts %s", async (name) => {
     const { assertWebsiteDbName } = await loadService();
     expect(() => assertWebsiteDbName(name)).not.toThrow();
   });

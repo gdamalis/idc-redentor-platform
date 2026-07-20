@@ -70,8 +70,8 @@ const getWebsiteClient = createClientAccessor(
   "_websiteMongoClient",
 );
 
-const ADMIN_DB_NAME_PATTERN = /^ministry-admin(-staging)?$/;
-const WEBSITE_DB_NAME_PATTERN = /^website(-staging)?$/;
+const ADMIN_DB_NAME_PATTERN = /^ministry-admin(-staging|-test|-qa|-e2e)?$/;
+const WEBSITE_DB_NAME_PATTERN = /^website(-staging|-test|-qa|-e2e)?$/;
 
 /**
  * Functional-first exception (documented, not a precedent to reuse casually):
@@ -92,6 +92,19 @@ const WEBSITE_DB_NAME_PATTERN = /^website(-staging)?$/;
  * no path database (connection_string.js:323-326), which is why a missing
  * path fails closed.
  *
+ * The optional suffix accepts `-staging`, `-test`, `-qa`, and `-e2e` (in
+ * addition to bare, i.e. production) — this deliberately WIDENS the original
+ * `(-staging)?` shape to match `.claude/config.json`'s `qa.env.*.dbNameAllow`
+ * exactly, so the QA harness's contract and this assertion agree on what
+ * counts as a legitimate database name (post-review widening, ICR-166).
+ * ACCEPTED TRADEOFF: this is a real widening, not a strictly safer change — a
+ * production deployment accidentally pointed at `ministry-admin-test` (or any
+ * other QA-suffixed name) now PASSES this assertion where the narrower
+ * `(-staging)?` pattern would have failed closed. The Atlas grant (per
+ * environment, see docs/architecture/admin-database.md) is what actually
+ * prevents a prod credential from reaching a `-test`/`-qa`/`-e2e` database;
+ * this code layer alone no longer catches that specific misconfiguration.
+ *
  * Runs on every call (one anchored regex) with no memoization, so a dev-mode
  * HMR client swap can never bypass it. Has no Next.js runtime dependency —
  * ICR-155's plain Node/tsx seed script can import these directly.
@@ -102,20 +115,21 @@ function assertDbName(
   clientLabel: string,
   envVar: string,
   expected: string,
+  examplePath: string,
 ): void {
   const trimmed = (name ?? "").trim();
 
   if (!trimmed) {
     throw new Error(
       `Refusing to use the ${clientLabel} Mongo client: ${envVar} resolved no database name ` +
-        `(empty or whitespace). Carry the DB name in the URI path, e.g. ".../${expected}?authSource=admin".`,
+        `(empty or whitespace). Carry the DB name in the URI path, e.g. ".../${examplePath}?authSource=admin".`,
     );
   }
 
   if (!pattern.test(trimmed)) {
     throw new Error(
       `Refusing to use the ${clientLabel} Mongo client against database "${trimmed}" — ` +
-        `${envVar}'s path database must be exactly ${expected}. Reserved Mongo system databases ` +
+        `${envVar}'s path database must be one of ${expected}. Reserved Mongo system databases ` +
         `(test/admin/local/config) and the other tier's databases are rejected by construction.`,
     );
   }
@@ -127,7 +141,9 @@ export function assertAdminDbName(name: string | null | undefined): void {
     ADMIN_DB_NAME_PATTERN,
     "Ministry Admin",
     "MONGODB_URI",
-    '"ministry-admin" or "ministry-admin-staging"',
+    '"ministry-admin", "ministry-admin-staging", "ministry-admin-test", ' +
+      '"ministry-admin-qa", or "ministry-admin-e2e"',
+    "ministry-admin",
   );
 }
 
@@ -137,7 +153,8 @@ export function assertWebsiteDbName(name: string | null | undefined): void {
     WEBSITE_DB_NAME_PATTERN,
     "website content",
     "WEBSITE_MONGODB_URI",
-    '"website" or "website-staging"',
+    '"website", "website-staging", "website-test", "website-qa", or "website-e2e"',
+    "website",
   );
 }
 

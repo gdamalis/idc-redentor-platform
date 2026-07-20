@@ -122,3 +122,22 @@ ICR-141 §2 describes two admin users each holding **two** grants. That model is
 ## Open questions
 
 None blocking. The dedicated-vs-reused website user is settled (reuse); revisit only if independent revocation becomes desirable.
+
+## Amendment (2026-07-20, post-review): allowlists widened to match the QA contract
+
+A PR review on ICR-166 (Codex, P2, maintainer-approved) flagged that `.claude/config.json`'s
+`qa.env.{preview,staging}.dbNameAllow` sanctions `{website,ministry-admin}-{staging,test,qa,e2e}` as
+QA-touchable databases, but the code allowlists as designed and shipped above (`^ministry-admin(-staging)?$`,
+`^website(-staging)?$`) accepted only bare or `-staging` — two guards disagreeing on identical input. The
+maintainer decided to **widen the code allowlists** to agree with the QA contract (rather than narrow
+`dbNameAllow`), since the QA harness legitimately needs to address `-test`/`-qa`/`-e2e` databases. This
+supersedes the "Code shape" pattern in this doc (§ "Code shape" above): both regexes now accept the
+optional suffix `-staging`, `-test`, `-qa`, or `-e2e`.
+
+**Accepted tradeoff, stated plainly:** this is a real widening, not a strictly safer change. A production
+deployment misconfigured to, say, `ministry-admin-test` is now **accepted** by the code-layer assertion
+where the originally-designed pattern would have **failed closed**. The Atlas grant (§ "Why this is safer
+than the shared-user model" above) is what now actually prevents a prod credential from reaching a
+`-test`/`-qa`/`-e2e` database — the code layer alone no longer catches that specific misconfiguration.
+Reserved system databases and cross-tier names are still rejected; only the four QA suffixes were added to
+each prefix's own allowlist. Full detail: `docs/architecture/admin-database.md` § Amendment.

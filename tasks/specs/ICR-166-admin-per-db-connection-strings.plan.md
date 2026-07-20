@@ -887,3 +887,21 @@ git commit -m "docs(ICR-166): document the admin two-connection database model"
 
 - **Atlas provisioning and Vercel env vars** — human-only, tracked on **ICR-141** (re-scope admin users to a single grant each; set `WEBSITE_MONGODB_URI` in all three admin environments). This branch ships code only and is safe to land first: nothing consumes `getContentDb()` yet, so an unset `WEBSITE_MONGODB_URI` cannot break the app — it only throws if called.
 - A content-side `connectContent()` twin — deliberately omitted (approved at the plan gate): the driver connects lazily on first operation, so `getContentDb()` needs no warmup and an unused export would be speculative.
+
+## Amendment (2026-07-20, post-review): allowlists widened to match the QA contract
+
+A PR review on ICR-166 (Codex, P2, maintainer-approved) flagged that the code allowlists planned above
+(`ADMIN_DB_NAME_PATTERN = /^ministry-admin(-staging)?$/`, `WEBSITE_DB_NAME_PATTERN = /^website(-staging)?$/`
+— see Task 1 Step 3–4 and the AC-traceability row `getContentDb()` ... asserts `^website(-staging)?$`)
+disagreed with `.claude/config.json`'s `qa.env.{preview,staging}.dbNameAllow`, which sanctions
+`{website,ministry-admin}-{staging,test,qa,e2e}` as QA-touchable databases. The maintainer decided to
+**widen the code allowlists** to agree with the QA contract, rather than narrow `dbNameAllow`. Both
+regexes now accept the optional suffix `-staging`, `-test`, `-qa`, or `-e2e` — superseding the narrower
+`(-staging)?` shape planned and shipped in Task 1 above. Test coverage in Task 1 Step 2 gained accept-cases
+for the four QA suffixes on both prefixes; the reserved-name rejections, cross-wiring cases, and
+prefix-boundary cases (`ministry-admin-evil` / `website-evil`) were kept, not weakened.
+
+**Accepted tradeoff:** a production deployment misconfigured to a QA-suffixed name (e.g.
+`ministry-admin-test`) is now accepted by the code-layer assertion where the originally-planned pattern
+would have failed closed — the Atlas grant is what now solely enforces that boundary. Full detail:
+`docs/architecture/admin-database.md` § Amendment and this spec's own Amendment section.
