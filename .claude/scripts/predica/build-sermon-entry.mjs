@@ -126,6 +126,10 @@ export function buildSermonEntryFields(sermon, links, options = {}) {
   if (links.scriptureRefIds?.length) fields.scriptureReferences = atDefault(links.scriptureRefIds.map(entryLink));
   if (links.featuredImageAssetId) fields.featuredImage = atDefault(assetLink(links.featuredImageAssetId));
   if (links.audioAssetId) fields.audio = atDefault(assetLink(links.audioAssetId));
+  if (sermon.interpreted) {
+    fields.audioLanguages = atDefault(["es-AR", "en-US"]);
+    if (links.interpreterId) fields.interpreter = atDefault(entryLink(links.interpreterId));
+  }
 
   fields.title = localizedFrom(sermon, (l) => l.title);
   fields.thesis = localizedFrom(sermon, (l) => l.thesis);
@@ -190,6 +194,8 @@ export function validateSermonForEntry(raw) {
       errs.push(
         "interpreter: must be an object with a non-empty name when present",
       );
+    if (s.interpreter.email != null && typeof s.interpreter.email !== "string")
+      errs.push("interpreter.email: must be a string when present");
   }
   if (
     s.interpreted === true &&
