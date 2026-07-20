@@ -61,7 +61,8 @@ This is the ordinary weekly flow and it produces exactly the desired bilingual b
 - **Byline** — the single `preacher`, parsed from the filename and matched to a Contentful `author`.
 
 **Key point:** the "audio is in Spanish on the English page" behavior needs no flag and no field — it is the
-default. You only ever set `audioLanguages` explicitly for a **bilingual** recording (Case 2).
+default. For a bilingual/interpreted recording (Case 2), `/predica` sets `audioLanguages` **automatically** —
+derived from the `--interpreted` flag — you never set it by hand (as of ICR-149).
 
 ---
 
@@ -80,7 +81,7 @@ recording is bilingual and the transcript is the **interpreter's** words.
   deliberately **no** audio detector. You must pass the flag.
 - The interpreter is **not a preacher** — never added to `additionalPreachers`, never a co-author.
 
-**What the flag does today (verified on `main`):**
+**What the flag does today** (1–5 verified on `main`; 6–8 as of ICR-149):
 
 1. Records `interpreted: true` + `interpreter: { name }` in `sermon.json`.
 2. **Skips the voice coach** (pipeline step 2.5). An interpreted transcript is a valid source for **no** voice
@@ -94,23 +95,17 @@ recording is bilingual and the transcript is the **interpreter's** words.
    (`.claude/agents/predica-whatsapp.md`).
 5. The entry builder **validates** the two fields (`interpreted` must be boolean; `interpreted:true` requires a
    named interpreter).
-
-### ⚠️ Known gap — the on-page badge/credit is not written yet (ICR-149)
-
-`/predica` does **not** currently write the `interpreter` link or the `audioLanguages` field onto the
-Contentful draft. `buildSermonEntryFields()` (`.claude/scripts/predica/build-sermon-entry.mjs` /
-`apps/web/src/utils/predica/sermonEntry.ts`) validates them but does not persist them. Consequently the
-website's **interpreter-credit block** and **bilingual-audio badge** will **not** auto-populate from an
-interpreted run.
-
-This is deliberately scoped out of ICR-147 and tracked as **[ICR-149 — Populate the sermon interpreter +
-audio-language fields from /predica](https://divinelab.atlassian.net/browse/ICR-149)** (status: Backlog). The
-content-model fields and the rendering already shipped in ICR-146, and the one existing interpreted sermon was
-backfilled by hand. Until ICR-149 lands, set the two fields manually in Contentful at **Gate 2**:
-
-- link the `interpreter` `author`, and
-- set `audioLanguages` to `["es-AR", "en-US"]` for a bilingual recording → the badge then renders on **both**
-  locales (a `> 1`-language recording is "never exactly the page language", so it is always announced).
+6. The **publisher** links the interpreter to an `author` entry — reusing an existing author by name, or
+   creating one from `interpreter.email` when present, else the fixed **`info@idcredentor.org`** (the church
+   general address; a placeholder the human corrects at Gate 2). It links the sermon's dedicated
+   **`interpreter`** field (an `author` Link), **never** `additionalPreachers`
+   (`.claude/agents/predica-publisher.md`).
+7. The **entry builder** derives and writes `audioLanguages: ["es-AR", "en-US"]` onto the Contentful draft for
+   an interpreted sermon — both `sermonEntry.ts` and its `.mjs` twin, kept in sync by
+   `sermonEntry.parity.test.ts`. So ICR-146's on-page **bilingual-audio badge** and **interpreter-credit
+   block** now auto-populate from an interpreted `/predica` run — no hand-editing in Contentful.
+8. The **writer** no longer emits any "interpreted live" provenance blockquote in the body — that fact lives
+   in the `audioLanguages` + `interpreter` fields from items 6–7, not in prose.
 
 ---
 
@@ -168,7 +163,7 @@ Sunday arrives (see the ticket for the full proposed approach, alternatives, and
 | Scenario                              | Invocation                                         | Byline                                       | Audio-language notice                      | Manual step                                                                                                  |
 | ------------------------------------- | -------------------------------------------------- | -------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
 | **Spanish sermon** (Case 1)           | `/predica "<audio>"`                               | 1 preacher                                   | EN page: "audio in Spanish"; ES page: none | None — fully automatic                                                                                       |
-| **Interpreted** (Case 2)              | `/predica "<audio>" --interpreter "<Name>"`        | 1 preacher (interpreter credited separately) | bilingual (both pages)                     | **Yes** — set `interpreter` + `audioLanguages` in Contentful at Gate 2 until **ICR-149** lands               |
+| **Interpreted** (Case 2)              | `/predica "<audio>" --interpreter "<Name>"`        | 1 preacher (interpreter credited separately) | bilingual (both pages)                     | None — `/predica` sets `interpreter` + `audioLanguages` on the draft automatically (ICR-149)                 |
 | **Multi-preacher, N audios** (Case 3) | _planned:_ `/predica "<a1>" --additional "<a2>" …` | `[preacher, …additionalPreachers]`           | same as Spanish                            | **No committed path yet** — interim: publish each preacher as a separate Case-1 post. Tracked in **ICR-165** |
 | **Preview only**                      | add `--dry-run` to any of the above                | —                                            | —                                          | Stops after PDFs; no Contentful/WhatsApp                                                                     |
 
@@ -180,5 +175,5 @@ Sunday arrives (see the ticket for the full proposed approach, alternatives, and
 - Entry builder: `.claude/scripts/predica/build-sermon-entry.mjs` ↔ `apps/web/src/utils/predica/sermonEntry.ts`
 - Tickets: [ICR-146](https://divinelab.atlassian.net/browse/ICR-146) (fields + UI, shipped) ·
   [ICR-147](https://divinelab.atlassian.net/browse/ICR-147) (flags + voice guard, shipped) ·
-  [ICR-149](https://divinelab.atlassian.net/browse/ICR-149) (write interpreter/audio fields — Backlog) ·
+  [ICR-149](https://divinelab.atlassian.net/browse/ICR-149) (write interpreter/audio fields, shipped) ·
   [ICR-165](https://divinelab.atlassian.net/browse/ICR-165) (multi-audio assembly — Backlog)
