@@ -46,6 +46,14 @@ could catch it. Now a swapped URI fails at the credential _and_ at the assertion
 only `website`. Blast radius halved. `apps/web` still never receives any grant on
 `ministry-admin*`.
 
+> ⚠️ **Both layers are live only once ICR-141 ships.** The **code** layer — the
+> allowlist assertions below — is enforced from the moment this lands. The **grant**
+> layer depends on the human-only Atlas work tracked on **ICR-141** (re-scoping each
+> admin user to a single database, dropping its `website` grant). Until that is done
+> the admin credential still reaches both databases, so the in-code assertion is the
+> **only** thing standing between content code and congregant PII. Read the table
+> above as the design's end state, not as today's deployed posture.
+
 ## Code shape
 
 `src/service/database.service.ts`:
