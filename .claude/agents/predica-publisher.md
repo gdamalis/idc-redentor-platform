@@ -73,6 +73,15 @@ email:{["es-AR"]:email} }` (avatar optional — omit) and create it via
      way — reuse the author by `name`, or create it from `{ name, email }` when missing — and collect the ids
      **in order** as `additionalPreacherIds`. Absent/empty for a normal single-preacher sermon. The byline then
      renders `[preacher, ...additionalPreachers]`.
+   - **Interpreter (interpreted sermons).** When `sermon.json.interpreted === true`, resolve the
+     `interpreter.name` to an `author` the same way as the preacher: `search_entries({ content_type:"author",
+"fields.name": "<interpreter.name>", limit:5, environmentId:"production" })` → reuse the matching id.
+     If none, create it via `node <entryCreator> --content-type author --fields <file> --space <s> --env <e>`
+     with `{ internalName:{["es-AR"]:name}, name:{["es-AR"]:name}, email:{["es-AR"]:<email>} }`, where
+     `<email> = interpreter.email` when present, else the fixed **`info@idcredentor.org`** (the church general
+     address — a clear placeholder the human corrects at Gate 2; **never** a name-derived slug). Collect the id
+     as `interpreterId`. **Never** add the interpreter to `additionalPreacherIds` — they did not preach; it links
+     the dedicated `interpreter` field only. Absent/skip for a non-interpreted sermon.
 4. **bibleVerse refs (idempotent upsert).** `node <entryBuilder> <sermonJson> --bible` → a JSON array of
    `{ internalName, fields }`, where `internalName` is the **derived, version-scoped dedup key**
    (e.g. `"Joel 2:13 (NVI)"`). For each: write its `fields` to a temp file and
@@ -88,10 +97,11 @@ email:{["es-AR"]:email} }` (avatar optional — omit) and create it via
      the prior `featuredImage` asset id from step 2's snapshot.
    - Each upload prints `{ assetId, url }`. Collect the ids.
 6. **Build the entry fields.** Write `links.json` to `slugDir`:
-   `{ preacherId, additionalPreacherIds?:[...], scriptureRefIds:[...], pdfAssetIds:{ "es-AR":…, "en-US":… }, audioAssetId:…, featuredImageAssetId:…, sourceSha256? }`
+   `{ preacherId, additionalPreacherIds?:[...], interpreterId?, scriptureRefIds:[...], pdfAssetIds:{ "es-AR":…, "en-US":… }, audioAssetId:…, featuredImageAssetId:…, sourceSha256? }`
    (include `additionalPreacherIds` from step 3 when there are co-preachers — omit/empty otherwise; the entry
-   builder only emits the `additionalPreachers` field when the array is non-empty. Use the reused featured id
-   when `replaceFeatured === false`). Then
+   builder only emits the `additionalPreachers` field when the array is non-empty. Include `interpreterId` from
+   step 3 only for an interpreted sermon; the entry builder emits the sermon's dedicated `interpreter` field
+   from it. Use the reused featured id when `replaceFeatured === false`). Then
    `node <entryBuilder> <sermonJson> --entry --links <slugDir>/links.json > <slugDir>/contentful-entry.fields.json`.
 7. **Write the DRAFT** sermon:
    - `mode = "create"`: `node <entryCreator> --content-type sermon --fields <…>/contentful-entry.fields.json --space <s> --env <e>` → `{ entryId, editUrl }`.
@@ -125,6 +135,7 @@ Return **only** a JSON object:
   "editUrl": "https://app.contentful.com/spaces/<space>/environments/production/entries/<id>",
   "preacherId": "<id>",
   "additionalPreacherIds": [],
+  "interpreterId": "<id>",
   "bibleVerseIds": ["<id>"],
   "assetIds": {
     "audio": "<id>",
@@ -139,6 +150,9 @@ Return **only** a JSON object:
   "warnings": []
 }
 ```
+
+`interpreterId` is present only when `sermon.json.interpreted === true`; omit it entirely for a
+non-interpreted run.
 
 For an update set `"mode":"update"`, `"updated":true`, and list what step 8 removed in
 `"cleanedUp": { "assets":[…], "verses":[…] }` (plus any guard-skipped shared verses in `warnings`).

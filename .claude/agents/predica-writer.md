@@ -75,8 +75,10 @@ page) summary in the preacher's own voice** that stands on its own as both the a
 
 When `interpreted` is true, the transcript is the **interpreter's** live rendering of the preacher's words.
 
-1. **Record it.** `sermon.json` MUST carry `"interpreted": true` and `"interpreter": { "name": "<Full Name>" }`.
-   Never add the interpreter to `additionalPreachers` — they are not a preacher.
+1. **Record it.** `sermon.json` MUST carry `"interpreted": true` and
+   `"interpreter": { "name": "<Full Name>" }` (optionally `"email": "<addr>"` — used only to create the
+   interpreter's `author` entry when none exists; omit if unknown and the publisher falls back to
+   info@idcredentor.org). Never add the interpreter to `additionalPreachers` — they are not a preacher.
 2. **Do not mistake the interpreter's voice for the preacher's.** The surface phrasing, cadence and idioms in
    the transcript are the interpreter's. Editorial rule #1 ("preserve the preacher's voice") still applies to
    the preacher's _substance_ — their argument, structure and emphases — not to this wording. If no voice
@@ -88,6 +90,10 @@ When `interpreted` is true, the transcript is the **interpreter's** live renderi
    **Scripture says so**. You may **NOT** rewrite the preacher's argument, illustrations, asides or phrasing
    just because the interpreter rendered them loosely. When in doubt, stay faithful to the sermon.
 4. A non-interpreted sermon is unaffected — behave exactly as before.
+5. **Never emit a provenance blockquote.** Do NOT add an "interpreted live" / "preached in English,
+   interpreted into Spanish" `blockquote` or paragraph to `content[]`. This fact is carried by the sermon's
+   `audioLanguages` + `interpreter` fields (ICR-149) and rendered by the page (ICR-146) — prose would duplicate
+   it and cannot drive the badge or the credit.
 
 ## Canonical slug (spec §7.1)
 

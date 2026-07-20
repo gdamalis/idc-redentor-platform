@@ -96,4 +96,65 @@ describe("validateSermonForEntry — interpreted provenance", () => {
     expect(status).toBe(2);
     expect(stderr).toMatch(/interpreted/);
   });
+
+  it("REJECTS a named interpreter with `interpreted` absent — a forgotten flag must not silently publish without the badge/credit", () => {
+    const { status, stderr } = validate(
+      makeSermon({ interpreter: { name: "Jonathan Hanegan" } }),
+    );
+    expect(status).toBe(2);
+    expect(stderr).toMatch(/interpreter/);
+  });
+
+  it("REJECTS a named interpreter with `interpreted:false` — mirrors the voice guard's fail-closed rule", () => {
+    const { status, stderr } = validate(
+      makeSermon({
+        interpreted: false,
+        interpreter: { name: "Jonathan Hanegan" },
+      }),
+    );
+    expect(status).toBe(2);
+    expect(stderr).toMatch(/interpreter/);
+  });
+
+  it("REJECTS interpreted:true with a blank interpreter email", () => {
+    const { status, stderr } = validate(
+      makeSermon({
+        interpreted: true,
+        interpreter: { name: "Jonathan Hanegan", email: "" },
+      }),
+    );
+    expect(status).toBe(2);
+    expect(stderr).toMatch(/interpreter\.email/);
+  });
+
+  it("REJECTS interpreted:true with a whitespace-only interpreter email", () => {
+    const { status, stderr } = validate(
+      makeSermon({
+        interpreted: true,
+        interpreter: { name: "Jonathan Hanegan", email: "   " },
+      }),
+    );
+    expect(status).toBe(2);
+    expect(stderr).toMatch(/interpreter\.email/);
+  });
+
+  it("accepts interpreted:true with a real interpreter email", () => {
+    const { status } = validate(
+      makeSermon({
+        interpreted: true,
+        interpreter: { name: "Jonathan Hanegan", email: "doug@example.org" },
+      }),
+    );
+    expect(status).toBe(0);
+  });
+
+  it("accepts interpreted:true with no interpreter email (fallback path)", () => {
+    const { status } = validate(
+      makeSermon({
+        interpreted: true,
+        interpreter: { name: "Jonathan Hanegan" },
+      }),
+    );
+    expect(status).toBe(0);
+  });
 });
