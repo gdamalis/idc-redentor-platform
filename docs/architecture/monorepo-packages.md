@@ -12,10 +12,11 @@
 
 ## 1. The two packages and their surface
 
-Both packages are **`"private": true`**, **`"version": "0.0.0"`**, and consumed only via the
-`workspace:*` protocol — they are never published and never bump independently. The release
-stream (`semantic-release`, `.releaserc.json`) stays entirely on the root `package.json`;
-`apps/web` keeps its own released version.
+Both packages are **`"private": true`**, start at **`"version": "0.0.0"`**, and are consumed only via
+the `workspace:*` protocol — they are never published to a registry. Under **Changesets**
+(`docs/architecture/versioning.md`) they still version: a change to `@idcr/config`/`@idcr/ui` bumps
+that package and cascades a patch to the apps that consume it. Each app (`@idcr/web`, `@idcr/admin`)
+keeps its own independent version line; the root `package.json` is frozen.
 
 **`packages/config`** (`@idcr/config`) — four base configs, each exposed as its own subpath
 export, no default export:

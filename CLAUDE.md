@@ -8,7 +8,7 @@ The **public website** (`apps/web`) is a **content-managed informational site**,
 
 > **Admin exception:** the separate internal **Ministry Admin Panel** (`apps/admin`) _is_ an authenticated app — Firebase Auth + RBAC + congregant data — and is deliberately **in scope**. The no-auth boundary above governs `apps/web` only. See `tasks/specs/admin-platform-brief.md` and `docs/product/scope-and-boundaries.md` § "Two products in this repo".
 
-**Version**: 1.10.0 (read from `package.json`) | **Node**: 22.14.0 (`.nvmrc`) | **Package Manager**: pnpm | **Host**: Vercel (production + per-PR preview deploys)
+**Versioning**: independent per-app via Changesets — `@idcr/web` (`apps/web/package.json`) + `@idcr/admin` (`apps/admin/package.json`); root frozen. See `docs/architecture/versioning.md`. | **Node**: 22.14.0 (`.nvmrc`) | **Package Manager**: pnpm | **Host**: Vercel (production + per-PR preview deploys)
 
 > **Monorepo layout (since the admin-platform migration):** this repo is a **pnpm + Turborepo workspace**. The public website now lives entirely under **`apps/web/`** — every app path in this doc (`src/`, `lib/`, `public/`, `config/`, `next.config.ts`, `tsconfig.json`, …) is **under `apps/web/`** unless stated otherwise. The repo root holds the workspace files (`pnpm-workspace.yaml`, `turbo.json`, root `package.json` with Turbo-proxy scripts + the released version + `pnpm.overrides`), the `.claude/` harness, `docs/`, and `tasks/`. Workspace members also include two shared packages `apps/web` consumes — **`packages/config`** (`@idcr/config`: base tsconfig/eslint/postcss/prettier) and **`packages/ui`** (`@idcr/ui`: `cn()`, `LOGO` path constants, `tokens.css`) — see `docs/architecture/monorepo-packages.md`. Run commands at root (they proxy through Turbo across the workspace) or scope to the site with `pnpm --filter @idcr/web <task>`. Vercel builds the site with **Root Directory = `apps/web`**. The future admin app will be `apps/admin/`.
 
@@ -139,7 +139,7 @@ Distilled from `.cursorrules` (which `AGENTS.md` supersedes). Apply these by def
 - **Naming**: auxiliary-verb booleans (`isLoading`, `hasError`); `handle*` event handlers; **lowercase-dash directories**; **named exports** for components.
 - **UI**: Headless UI + Heroicons / Lucide + Framer Motion; **Tailwind CSS v4**; compose classes with `cn()` (`@idcr/ui`). Validate external input with **Zod** at boundaries (`react-hook-form` + `@hookform/resolvers`).
 - **Default site language is `es-AR`**, secondary `en-US`.
-- **Commits**: Conventional Commits (`feat`, `fix`, `chore`, `refactor`, `perf`, `docs`, `test`, `ci`), header ≤ 100 chars. `semantic-release` runs on `main`. See `docs/architecture/contributing.md`.
+- **Commits**: Conventional Commits (`feat`, `fix`, `chore`, `refactor`, `perf`, `docs`, `test`, `ci`), header ≤ 100 chars. Releases use **Changesets** (independent per-app) — the bump comes from a `.changeset/*.md` file, not the commit type. See `docs/architecture/versioning.md` + `docs/architecture/contributing.md`.
 
 ## Session naming (ticket-aware)
 
@@ -261,5 +261,6 @@ A human always merges the PR and closes the issue (transitions it to **Done**). 
   - `predica-bibleverse-reuse.md` — how `/predica` dedups scripture: the derived, version-scoped `bibleVerse` `internalName` (`"Joel 2:13 (NVI)"`) + the `--upsert-by-internal-name` CMA flag; cross-sermon reuse + sermon re-run safety.
   - `predica-rerun-idempotency.md` — re-running `/predica` safely: pre-flight transcript reuse by audio hash, **Gate 0** existing-sermon detection, regenerate by **update-in-place** (`--id`) instead of duplicating, and the guarded `delete-contentful.mjs` cleanup of superseded assets + orphaned legacy verses.
   - `predica-voice-profiles.md` — the per-preacher voice-coach learning loop: `predica-voice-coach` (step 2.5) learns the preacher's style from the **corrected transcript only** and maintains a local-only (gitignored), human-curatable two-zone profile (`tasks/predicas/_voices/<preacher-slug>.md`: Zone A human-curated + Zone B append-only log) that the writer reads to compound voice quality. Idempotent, non-blocking, style-only.
-  - `contributing.md` — branch/commit/PR conventions, semantic-release, husky/CI gates, the worktree flow.
+  - `contributing.md` — branch/commit/PR conventions, releases (Changesets), husky/CI gates, the worktree flow.
+  - `versioning.md` — the Changesets per-app versioning model: independent lines, cascading internal packages, frozen root, the bump mapping, the direct-push release flow.
   - `gtm-ga4-setup.md` — _(existing)_ GTM/GA4 analytics + consent setup.

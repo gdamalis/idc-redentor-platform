@@ -2,8 +2,8 @@
 
 > **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
 
-> **Purpose:** The day-to-day contributor flow — prerequisites, branch naming (`<type>/ICR-N-<slug>`), conventional commits, the PR-title rule and CI gates, semantic-release behavior, and the git-worktree workflow the agent harness uses.
-> **Last reviewed:** 2026-06-21
+> **Purpose:** The day-to-day contributor flow — prerequisites, branch naming (`<type>/ICR-N-<slug>`), conventional commits, the PR-title rule and CI gates, Changesets release behavior, and the git-worktree workflow the agent harness uses.
+> **Last reviewed:** 2026-07-20
 
 ## Prerequisites
 
@@ -86,19 +86,31 @@ needs no `GEMINI_API_KEY` or other secret.
 - The harness `pr-author` opens the PR, flips it to ready, comments the PR link on the issue, and transitions the issue **In Progress → In Review**. If you're doing it by hand, do the same and transition the issue yourself.
 - **A human reviews and merges.** No agent merges or transitions an issue to **Done** — Done means merged-and-closed by a person. See [`agent-harness.md`](./agent-harness.md).
 
-## Releases (semantic-release)
+## Releases (Changesets)
 
-`semantic-release` runs on **`main`** (`.releaserc.json`). On each push to main it analyzes the merged commits and cuts a version + changelog automatically. The release rules are **customized** — note the non-defaults:
+Releases use **[Changesets](https://github.com/changesets/changesets)** with **independent per-app
+versioning** — `@idcr/web` and `@idcr/admin` each have their own version line; internal
+`@idcr/config`/`@idcr/ui` version and cascade; the repo root is frozen. Full model:
+[`versioning.md`](./versioning.md).
 
-| Commit type | Release                                                 |
-| ----------- | ------------------------------------------------------- |
-| `feat`      | **minor**                                               |
-| `fix`       | **patch**                                               |
-| `perf`      | **patch**                                               |
-| `docs`      | **patch** ← non-standard: docs cut a patch release here |
-| `chore`     | **none**                                                |
+**The bump is decided by a `.changeset/*.md` file, not the commit type.** A PR with no changeset cuts
+no release, whatever its title. Conventional Commit messages/PR titles still stand (enforced by
+`amannn/action-semantic-pull-request`) — they drive history; only the _bump decision_ lives in
+changeset files. The commit-type → bump mapping (standard preset):
 
-So a `docs:` or `perf:` commit on main **will** produce a release. Be deliberate with commit types. The release commit is `chore(release): <version> [skip ci]`; it updates `CHANGELOG.md` and `package.json`, tags the version, and creates a GitHub release. npm publishing is disabled (`npmPublish: false`). Types not listed (`refactor`, `test`, `ci`) don't trigger a release.
+| Commit type                          | Changeset bump                                                                   |
+| ------------------------------------ | -------------------------------------------------------------------------------- |
+| `feat`                               | **minor**                                                                        |
+| `fix`                                | **patch**                                                                        |
+| `perf`                               | **patch**                                                                        |
+| `docs`                               | **none** ← standardized: docs no longer cut a release (was a non-standard patch) |
+| `chore` / `refactor` / `test` / `ci` | **none**                                                                         |
+
+On push to `main`, `.github/workflows/release.yml` versions + tags + pushes atomically if changesets
+are present (a no-changeset merge is a no-op). The release commit is
+`chore(release): version packages [skip ci]`; per-app tags are `@idcr/web@<v>` etc. Nothing is
+published to a registry (`private: true` everywhere). GitHub Releases are not created — per-app
+`CHANGELOG.md` is the release-notes surface.
 
 ## The worktree workflow (harness default)
 
