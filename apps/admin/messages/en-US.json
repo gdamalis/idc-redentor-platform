@@ -51,8 +51,7 @@
       "forgotPassword": "Forgot your password?",
       "orSeparator": "or",
       "errors": {
-        "wrongPassword": "That password is incorrect. Please try again.",
-        "userNotFound": "We couldn't find an account with that email.",
+        "wrongPassword": "The email or password is incorrect.",
         "noInvite": "Your account doesn't have an active invite. Contact an administrator.",
         "inviteExpired": "Your invite has expired. Contact an administrator.",
         "sessionExpired": "Your session expired. Please sign in again.",

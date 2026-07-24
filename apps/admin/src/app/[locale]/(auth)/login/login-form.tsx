@@ -25,7 +25,6 @@ interface LoginFormProps {
 
 type LoginErrorKey =
   | "wrongPassword"
-  | "userNotFound"
   | "noInvite"
   | "inviteExpired"
   | "sessionExpired"
@@ -38,9 +37,15 @@ type LoginErrorKey =
 // Maps both Firebase Auth error codes (`auth/...`) and our own
 // `POST /api/auth/session` failure reasons to a localized `auth.login.errors.*`
 // key. The two code spaces never collide, so one lookup table covers both.
+//
+// `auth/wrong-password`, `auth/user-not-found`, and `auth/invalid-credential`
+// (the modern Firebase code that collapses the first two under
+// email-enumeration-protection) all resolve to the same generic
+// `wrongPassword` copy — never reveal whether an email is registered.
 const ERROR_KEY_BY_CODE: Record<string, LoginErrorKey> = {
   "auth/wrong-password": "wrongPassword",
-  "auth/user-not-found": "userNotFound",
+  "auth/user-not-found": "wrongPassword",
+  "auth/invalid-credential": "wrongPassword",
   "auth/popup-blocked": "popupBlocked",
   "auth/popup-closed-by-user": "popupClosed",
   "auth/network-request-failed": "network",
@@ -81,8 +86,11 @@ function stripLocalePrefix(path: string): string {
 
 /**
  * Best-effort cleanup for a Firebase credential that provisioning refused
- * (no matching invite / disabled) — nothing else was ever written for it, so
- * deleting it just prevents an orphaned sign-in-only Firebase account.
+ * for lack of a matching invite (`no-invite`) — nothing else was ever
+ * written for it, so deleting it just prevents an orphaned sign-in-only
+ * Firebase account. Must NEVER be called for a `disabled` user: that
+ * account is a real, provisioned `AdminUser` and deleting its Firebase
+ * credential would break re-enablement.
  */
 async function cleanupOrphanFirebaseAccount(auth: Auth): Promise<void> {
   try {
@@ -117,8 +125,14 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
     }
 
     if (response.status === 403) {
+      const json = (await response.json().catch(() => null)) as { reason?: string } | null;
       const auth = getFirebaseAuth();
-      await cleanupOrphanFirebaseAccount(auth);
+      // Only a never-provisioned orphan (`no-invite`) gets its Firebase
+      // credential deleted. A `disabled` user is a real, provisioned
+      // `AdminUser` — deleting their credential would break re-enablement.
+      if (json?.reason === "no-invite") {
+        await cleanupOrphanFirebaseAccount(auth);
+      }
       await signOut(auth);
       router.push("/no-access");
       return;

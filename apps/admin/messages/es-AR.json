@@ -51,8 +51,7 @@
       "forgotPassword": "¿Olvidaste tu contraseña?",
       "orSeparator": "o",
       "errors": {
-        "wrongPassword": "La contraseña es incorrecta. Probá de nuevo.",
-        "userNotFound": "No encontramos una cuenta con ese correo.",
+        "wrongPassword": "El correo electrónico o la contraseña son incorrectos.",
         "noInvite": "Tu cuenta no tiene una invitación activa. Consultá con un administrador.",
         "inviteExpired": "Tu invitación venció. Consultá con un administrador.",
         "sessionExpired": "Tu sesión expiró. Iniciá sesión de nuevo.",
