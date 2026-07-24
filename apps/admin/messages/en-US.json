@@ -36,15 +36,38 @@
   },
   "pages": {
     "comingSoon": "Coming soon",
-    "login": {
-      "title": "Sign in"
-    },
     "resetPassword": {
       "title": "Reset password"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Sign in",
+      "subtitle": "Sign in with your church account to access the panel.",
+      "googleButton": "Continue with Google",
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "submit": "Sign in",
+      "forgotPassword": "Forgot your password?",
+      "orSeparator": "or",
+      "errors": {
+        "wrongPassword": "That password is incorrect. Please try again.",
+        "userNotFound": "We couldn't find an account with that email.",
+        "noInvite": "Your account doesn't have an active invite. Contact an administrator.",
+        "inviteExpired": "Your invite has expired. Contact an administrator.",
+        "sessionExpired": "Your session expired. Please sign in again.",
+        "popupBlocked": "Your browser blocked the pop-up. We tried another sign-in method.",
+        "popupClosed": "You closed the window before finishing. Please try again.",
+        "network": "There was a connection problem. Check your internet and try again.",
+        "tooManyRequests": "Too many attempts. Wait a few minutes and try again.",
+        "generic": "We couldn't sign you in. Please try again."
+      }
     },
     "noAccess": {
       "title": "No access",
-      "description": "You don't have permission to view this section."
+      "description": "Your account doesn't have permission to enter the panel. If you think this is a mistake, contact an administrator.",
+      "backToLogin": "Back to sign in",
+      "signOut": "Sign out"
     }
   }
 }

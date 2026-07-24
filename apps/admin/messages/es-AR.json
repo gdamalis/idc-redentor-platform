@@ -36,15 +36,38 @@
   },
   "pages": {
     "comingSoon": "Próximamente",
-    "login": {
-      "title": "Iniciar sesión"
-    },
     "resetPassword": {
       "title": "Restablecer contraseña"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Iniciá sesión",
+      "subtitle": "Ingresá con tu cuenta de la iglesia para acceder al panel.",
+      "googleButton": "Continuar con Google",
+      "emailLabel": "Correo electrónico",
+      "passwordLabel": "Contraseña",
+      "submit": "Iniciar sesión",
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "orSeparator": "o",
+      "errors": {
+        "wrongPassword": "La contraseña es incorrecta. Probá de nuevo.",
+        "userNotFound": "No encontramos una cuenta con ese correo.",
+        "noInvite": "Tu cuenta no tiene una invitación activa. Consultá con un administrador.",
+        "inviteExpired": "Tu invitación venció. Consultá con un administrador.",
+        "sessionExpired": "Tu sesión expiró. Iniciá sesión de nuevo.",
+        "popupBlocked": "El navegador bloqueó la ventana emergente. Probamos con otro método.",
+        "popupClosed": "Cerraste la ventana antes de terminar. Intentá de nuevo.",
+        "network": "Hubo un problema de conexión. Revisá tu internet e intentá de nuevo.",
+        "tooManyRequests": "Hiciste demasiados intentos. Esperá unos minutos y probá de nuevo.",
+        "generic": "No pudimos iniciar tu sesión. Intentá de nuevo."
+      }
     },
     "noAccess": {
       "title": "Sin acceso",
-      "description": "No tenés permiso para ver esta sección."
+      "description": "Tu cuenta no tiene permiso para ingresar al panel. Si creés que es un error, consultá con un administrador.",
+      "backToLogin": "Volver a iniciar sesión",
+      "signOut": "Cerrar sesión"
     }
   }
 }
