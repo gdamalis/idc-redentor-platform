@@ -35,10 +35,7 @@
     "en": "EN"
   },
   "pages": {
-    "comingSoon": "Próximamente",
-    "resetPassword": {
-      "title": "Restablecer contraseña"
-    }
+    "comingSoon": "Próximamente"
   },
   "auth": {
     "login": {
@@ -62,11 +59,39 @@
         "generic": "No pudimos iniciar tu sesión. Intentá de nuevo."
       }
     },
+    "resetPassword": {
+      "title": "Restablecer contraseña",
+      "subtitle": "Ingresá tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.",
+      "emailLabel": "Correo electrónico",
+      "submit": "Enviar enlace",
+      "successGeneric": "Si el correo está registrado, vas a recibir un enlace para restablecer tu contraseña en unos minutos.",
+      "backToLogin": "Volver a iniciar sesión"
+    },
     "noAccess": {
       "title": "Sin acceso",
       "description": "Tu cuenta no tiene permiso para ingresar al panel. Si creés que es un error, consultá con un administrador.",
       "backToLogin": "Volver a iniciar sesión",
       "signOut": "Cerrar sesión"
+    },
+    "email": {
+      "invite": {
+        "subject": "Te invitamos al Panel de Administración de IDC Redentor",
+        "heading": "¡Bienvenido/a al equipo!",
+        "greeting": "Hola,",
+        "body": "Te invitamos a sumarte al Panel de Administración de la Iglesia de Cristo Redentor. Hacé clic en el botón de abajo para crear tu contraseña y comenzar.",
+        "cta": "Crear mi contraseña",
+        "expiryNote": "Este enlace es válido por tiempo limitado, por tu seguridad.",
+        "footer": "Si no esperabas esta invitación, podés ignorar este correo."
+      },
+      "reset": {
+        "subject": "Restablecé tu contraseña — Panel de Administración",
+        "heading": "Restablecé tu contraseña",
+        "body": "Recibimos una solicitud para restablecer la contraseña de tu cuenta en el Panel de Administración de IDC Redentor. Hacé clic en el botón de abajo para elegir una nueva contraseña.",
+        "cta": "Restablecer contraseña",
+        "expiryNote": "Este enlace es válido por tiempo limitado, por tu seguridad.",
+        "ignoreNote": "Si no solicitaste este cambio, podés ignorar este correo: tu contraseña actual sigue siendo válida.",
+        "footer": "Equipo del Panel de Administración de IDC Redentor."
+      }
     }
   }
 }
