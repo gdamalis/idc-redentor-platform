@@ -87,4 +87,44 @@ describe("requestPasswordReset", () => {
     expect(generatePasswordResetLink).toHaveBeenCalledTimes(1);
     expect(sendPasswordResetEmail).toHaveBeenCalledTimes(1);
   });
+
+  it("normalizes email casing before the throttle key and the reset link, so a case variant of the same address shares one throttle claim", async () => {
+    const { requestPasswordReset } = await import("./actions");
+    generatePasswordResetLink.mockResolvedValue(
+      "https://admin.example.org/es-AR/login?oobCode=abc",
+    );
+    sendPasswordResetEmail.mockResolvedValue(true);
+
+    tryAcquireResetThrottle.mockResolvedValueOnce(true);
+    const first = await requestPasswordReset("User@Bar.com", "es-AR");
+
+    expect(first).toEqual({ ok: true });
+    expect(tryAcquireResetThrottle).toHaveBeenNthCalledWith(1, "user@bar.com");
+    expect(generatePasswordResetLink).toHaveBeenNthCalledWith(
+      1,
+      "user@bar.com",
+      expect.anything(),
+    );
+
+    tryAcquireResetThrottle.mockResolvedValueOnce(false);
+    const second = await requestPasswordReset("USER@BAR.COM", "es-AR");
+
+    expect(second).toEqual({ ok: true });
+    expect(tryAcquireResetThrottle).toHaveBeenNthCalledWith(2, "user@bar.com");
+    // Throttled as the SAME claim as the first request — no second send.
+    expect(generatePasswordResetLink).toHaveBeenCalledTimes(1);
+    expect(sendPasswordResetEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("catches a throttle-store failure (e.g. Mongo down) and still resolves ok:true without sending", async () => {
+    const { requestPasswordReset } = await import("./actions");
+    tryAcquireResetThrottle.mockRejectedValueOnce(new Error("mongo down"));
+
+    const result = await requestPasswordReset("user@bar.com", "es-AR");
+
+    expect(result).toEqual({ ok: true });
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    expect(generatePasswordResetLink).not.toHaveBeenCalled();
+    expect(sendPasswordResetEmail).not.toHaveBeenCalled();
+  });
 });

@@ -115,16 +115,25 @@ Given a verified `DecodedIdToken`:
    — nothing to match, so nothing is looked up.
 2. `findUserByFirebaseUid(decoded.uid)` — a **returning** user. `active` ⇒ `{ ok:true, user }`
    (invite untouched); `disabled` ⇒ `{ ok:false, reason:"disabled" }`.
-3. First sign-in (no matching `AdminUser` yet): `findPendingInvite(email)` — the query itself
-   excludes expired (`expiresAt <= now`) and non-`pending` (`accepted`/`revoked`) invites, so those
-   collapse into the same outcome as no invite at all: `{ ok:false, reason:"no-invite" }`, and
-   **nothing is written**. A match creates the `AdminUser` (seeding `roleIds` and `preferredLocale`
-   from the invite — see below), accepts the invite (`status: "accepted"`, stamps `acceptedAt`),
-   and returns `{ ok:true, user }`.
+3. First sign-in (no matching `AdminUser` yet): `claimPendingInvite(email)` **atomically** finds
+   and accepts a pending, unexpired invite in a single `findOneAndUpdate` (filter: pending +
+   unexpired + normalized email; update: `status: "accepted"`, stamps `acceptedAt`;
+   `returnDocument: "after"`). Folding the find and the accept into one Mongo operation closes a
+   TOCTOU window a separate read-then-write left open: an invite revoked or expired **between** the
+   two steps could otherwise still provision a user. No match — which now also covers an
+   invite that was concurrently revoked/expired/claimed — collapses into the same outcome as no
+   invite at all: `{ ok:false, reason:"no-invite" }`, and **nothing is written**. A claimed invite
+   creates the `AdminUser` (seeding `roleIds` and `preferredLocale` from the invite — see below) and
+   returns `{ ok:true, user }`. If that create fails for any reason other than the duplicate-key
+   race below, the claim is reverted (`revertInviteClaim`: back to `status: "pending"`, `acceptedAt`
+   unset) so the invite isn't left `"accepted"` with no corresponding user.
 
 A duplicate-key error (E11000) on the `users.firebaseUid` unique index during the create — two
 concurrent first sign-ins racing — is treated as "someone else just provisioned this user":
-re-read via `findUserByFirebaseUid` and return that, rather than surfacing the conflict.
+re-read via `findUserByFirebaseUid` and return that, rather than surfacing the conflict. If that
+internal recovery ever comes back empty (an exceedingly rare inconsistency), the error propagates
+out of `resolveOrProvision` unchanged rather than reverting a claim a user may have genuinely (if
+racily) already consumed.
 
 ### The `no-invite` orphan cleanup — and why `disabled` is different
 
@@ -206,8 +215,12 @@ rendering in **both** `es-AR` and `en-US`.
   hosted reset page) — **Firebase's own reset email is never triggered**; only the admin-branded
   Resend template is sent.
 - **Enumeration-safe by construction**: `requestPasswordReset` always returns `{ ok: true }`.
-  `auth/user-not-found` from `generatePasswordResetLink` (and any send failure) is caught and
-  logged server-side only — the caller can never distinguish "no such account" from "email sent."
+  `auth/user-not-found` from `generatePasswordResetLink` (and any send failure — including a
+  throttle-store outage, e.g. Mongo down) is caught and logged server-side only — the caller can
+  never distinguish "no such account" from "email sent" from "the throttle store is unavailable."
+- The address is `normalizeEmail`'d (trim + lowercase) **before** the throttle acquisition and the
+  reset-link generation, so `user@x.com` and `User@X.com` — the same mailbox, per Firebase — share
+  one throttle claim (`reset-throttle.service.ts`) instead of each getting its own 60s cooldown.
 
 ## Functional-first, end to end
 
