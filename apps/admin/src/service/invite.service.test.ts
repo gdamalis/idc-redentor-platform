@@ -47,6 +47,40 @@ describe("findPendingInvite", () => {
     expect(invite?.email).toBe("foo@bar.com");
     expect(invite?.locale).toBe("en-US");
   });
+
+  it("defaults a legacy/seeded invite doc with no locale to es-AR instead of throwing (edge case 18)", async () => {
+    const { findPendingInvite } = await import("./invite.service");
+    const now = new Date();
+    findOne.mockResolvedValueOnce({
+      _id: { toHexString: () => "x" },
+      email: "legacy@bar.com",
+      roleIds: ["r1"],
+      // locale intentionally omitted — legacy/seeded invite doc.
+      status: "pending",
+      expiresAt: new Date(now.getTime() + 1000),
+      createdAt: now,
+    });
+
+    const invite = await findPendingInvite("legacy@bar.com");
+    expect(invite?.locale).toBe("es-AR");
+  });
+
+  it("defaults an invite doc with an invalid locale to es-AR instead of throwing", async () => {
+    const { findPendingInvite } = await import("./invite.service");
+    const now = new Date();
+    findOne.mockResolvedValueOnce({
+      _id: { toHexString: () => "x" },
+      email: "bad-locale@bar.com",
+      roleIds: ["r1"],
+      locale: "fr-FR",
+      status: "pending",
+      expiresAt: new Date(now.getTime() + 1000),
+      createdAt: now,
+    });
+
+    const invite = await findPendingInvite("bad-locale@bar.com");
+    expect(invite?.locale).toBe("es-AR");
+  });
 });
 
 describe("acceptInvite", () => {

@@ -51,6 +51,12 @@ const objectIdSchema = z.custom<ObjectId>(
 
 const localeSchema = z.enum(i18n.locales);
 
+// Legacy/seeded invite docs may omit `locale` (or carry a stale/invalid
+// value) — spec edge case 18 says that should default to the app's default
+// locale, not throw. `.catch()` preserves the parsed output type as `Locale`
+// (not `Locale | undefined`): `ZodCatch<T>`'s output type is `T["_output"]`.
+const inviteLocaleSchema = localeSchema.catch(i18n.defaultLocale);
+
 export const adminUserSchema = z.object({
   _id: objectIdSchema,
   firebaseUid: z.string().min(1),
@@ -63,14 +69,19 @@ export const adminUserSchema = z.object({
   updatedAt: z.date(),
 }) satisfies z.ZodType<AdminUser>;
 
+// `Input` is relaxed to `unknown` (vs. `adminUserSchema`'s default `Input = Output`
+// above): `.catch()` on `locale` deliberately accepts input broader than `Locale`
+// (missing/invalid values it repairs to the default), so the schema's inferred
+// input type is no longer exactly `Invite` — only its parsed OUTPUT still is,
+// which is what `.parse()`/`.safeParse()` callers actually rely on.
 export const inviteSchema = z.object({
   _id: objectIdSchema,
   email: z.string().min(1),
   roleIds: z.array(z.string()),
-  locale: localeSchema,
+  locale: inviteLocaleSchema,
   status: z.enum(["pending", "accepted", "revoked"]),
   expiresAt: z.date(),
   createdAt: z.date(),
   acceptedAt: z.date().optional(),
   invitedByUserId: z.string().optional(),
-}) satisfies z.ZodType<Invite>;
+}) satisfies z.ZodType<Invite, z.ZodTypeDef, unknown>;
