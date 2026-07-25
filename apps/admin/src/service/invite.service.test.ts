@@ -113,6 +113,7 @@ describe("claimPendingInvite", () => {
     expect(update.$set.acceptedAt).toBeInstanceOf(Date);
     expect(options).toEqual({ returnDocument: "after" });
     expect(invite?.email).toBe("foo@bar.com");
+    expect(invite?.acceptedAt).toBeInstanceOf(Date);
   });
 
   it("returns null when no still-pending, unexpired invite matched (already claimed/revoked/expired)", async () => {
@@ -126,19 +127,59 @@ describe("claimPendingInvite", () => {
 });
 
 describe("revertInviteClaim", () => {
-  it("sets status back to pending and unsets acceptedAt", async () => {
+  it("issues a guarded update: sets pending/unsets acceptedAt ONLY when status is still accepted with the claim's own acceptedAt", async () => {
     const { revertInviteClaim } = await import("./invite.service");
     updateOne.mockResolvedValueOnce({ matchedCount: 1 });
     const fakeId = { toHexString: () => "x" } as unknown as import(
       "mongodb"
     ).ObjectId;
+    const claimedAt = new Date("2026-01-01T00:00:00.000Z");
 
-    await revertInviteClaim(fakeId);
+    await revertInviteClaim(fakeId, claimedAt);
 
     expect(updateOne).toHaveBeenCalledTimes(1);
     const [filter, update] = updateOne.mock.calls[0] ?? [];
-    expect(filter).toEqual({ _id: fakeId });
+    expect(filter).toEqual({
+      _id: fakeId,
+      status: "accepted",
+      acceptedAt: claimedAt,
+    });
     expect(update.$set.status).toBe("pending");
     expect(update.$unset).toEqual({ acceptedAt: "" });
+  });
+
+  it("does not revert (matchedCount 0, no-op) an invite whose status moved to revoked since the claim (Codex round-3 P2)", async () => {
+    const { revertInviteClaim } = await import("./invite.service");
+    const fakeId = { toHexString: () => "x" } as unknown as import(
+      "mongodb"
+    ).ObjectId;
+    const claimedAt = new Date("2026-01-01T00:00:00.000Z");
+
+    // Simulates real Mongo conditional-update semantics: the guarded filter
+    // (status: "accepted" + this claim's acceptedAt) no longer matches a
+    // document an admin has since revoked — so the update matches nothing.
+    const revokedDoc = { _id: fakeId, status: "revoked" };
+    interface RevertFilter {
+      _id: unknown;
+      status: string;
+      acceptedAt: Date;
+    }
+    updateOne.mockImplementationOnce((filter: RevertFilter) => {
+      const matches =
+        filter._id === revokedDoc._id && filter.status === revokedDoc.status;
+      return Promise.resolve({ matchedCount: matches ? 1 : 0 });
+    });
+
+    await revertInviteClaim(fakeId, claimedAt);
+
+    const [filter] = updateOne.mock.calls[0] ?? [];
+    expect(filter).toEqual({
+      _id: fakeId,
+      status: "accepted",
+      acceptedAt: claimedAt,
+    });
+    await expect(updateOne.mock.results[0]?.value).resolves.toEqual({
+      matchedCount: 0,
+    });
   });
 });

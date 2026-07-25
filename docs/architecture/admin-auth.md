@@ -120,13 +120,28 @@ Given a verified `DecodedIdToken`:
    unexpired + normalized email; update: `status: "accepted"`, stamps `acceptedAt`;
    `returnDocument: "after"`). Folding the find and the accept into one Mongo operation closes a
    TOCTOU window a separate read-then-write left open: an invite revoked or expired **between** the
-   two steps could otherwise still provision a user. No match — which now also covers an
-   invite that was concurrently revoked/expired/claimed — collapses into the same outcome as no
-   invite at all: `{ ok:false, reason:"no-invite" }`, and **nothing is written**. A claimed invite
-   creates the `AdminUser` (seeding `roleIds` and `preferredLocale` from the invite — see below) and
-   returns `{ ok:true, user }`. If that create fails for any reason other than the duplicate-key
-   race below, the claim is reverted (`revertInviteClaim`: back to `status: "pending"`, `acceptedAt`
-   unset) so the invite isn't left `"accepted"` with no corresponding user.
+   two steps could otherwise still provision a user. No match can mean a genuine `no-invite`
+   (expired/revoked/mismatched) — **or** a lost race: a concurrent same-uid exchange claimed this
+   exact invite and provisioned the `AdminUser` a moment earlier. `resolveOrProvision` re-reads
+   `findUserByFirebaseUid(decoded.uid)` before concluding `no-invite`; if the concurrent winner's
+   user now exists it resolves exactly like the returning-user path (step 2 — `active` ⇒ `ok`,
+   `disabled` ⇒ `{ ok:false, reason:"disabled" }`). Only when that re-read also comes back empty is
+   it genuinely `{ ok:false, reason:"no-invite" }`, and **nothing is written**. Getting this re-read
+   wrong is not cosmetic: the client deletes the Firebase credential on `no-invite` (see below) —
+   for a lost race that credential is the WINNER's just-provisioned account (same `firebaseUid`),
+   so skipping the re-read would delete it out from under them: a permanent lockout plus an
+   orphaned `AdminUser` with no usable Firebase credential.
+
+   A claimed invite creates the `AdminUser` (seeding `roleIds` and `preferredLocale` from the
+   invite — see below) and returns `{ ok:true, user }`. If that create fails for any reason other
+   than the duplicate-key race below, the claim is reverted via `revertInviteClaim(invite._id,
+invite.acceptedAt)`: back to `status: "pending"`, `acceptedAt` unset — but the underlying
+   `updateOne` is **conditional**, guarded by `{ _id, status: "accepted", acceptedAt }` (the exact
+   triple this claim itself set), not `_id` alone. An `_id`-only revert would blindly overwrite
+   whatever the invite's CURRENT status is; the guard means a newer transition that happened
+   between the claim and this revert — e.g. an admin concurrently revoking the invite — can never
+   be clobbered back to `"pending"` (which would make a revoked invite usable again). A mismatched
+   filter simply matches zero documents — a safe no-op — instead of a blind revert.
 
 A duplicate-key error (E11000) on the `users.firebaseUid` unique index during the create — two
 concurrent first sign-ins racing — is treated as "someone else just provisioned this user":
@@ -186,6 +201,10 @@ in the lifecycle:
    `/{locale}` prefix already on `callbackUrl` first, so next-intl's router doesn't double it).
    This makes the stored preference the **cross-device** default — a fresh browser with no
    `NEXT_LOCALE` cookie still lands in the user's stored language right after signing in.
+   `stripLocalePrefix` splits off any query string (e.g. `?tab=roles`) **before** parsing the
+   leading path segment: parsing the whole string in one pass would treat `es-AR?tab=roles` as a
+   single (invalid) locale token, silently skip the strip, and let the stored-locale push double
+   the prefix (`/en-US/es-AR?tab=roles` — a 404).
 3. **Switcher-persisted.** `components/shell/locale-switcher.tsx` keeps its existing
    URL/`NEXT_LOCALE` behavior and additionally fires `setPreferredLocale(locale)` (a `"use server"`
    action, `components/shell/locale-actions.ts`) — **non-blocking** (`void`-called; the visual

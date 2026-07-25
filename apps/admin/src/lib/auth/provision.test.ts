@@ -103,29 +103,70 @@ describe("resolveOrProvision", () => {
     );
   });
 
-  it("creates nothing and returns no-invite when claimPendingInvite finds no still-pending, unexpired invite", async () => {
-    // Covers expired/revoked/mismatched AND the round-2 P1 TOCTOU scenario
-    // (an invite revoked/expired concurrently with the claim attempt) — all
-    // collapse to the same atomic `null` result at the query layer.
+  it("creates nothing and returns no-invite when claimPendingInvite finds no still-pending, unexpired invite AND no concurrent winner exists", async () => {
+    // Covers expired/revoked/mismatched — a genuine no-invite, not a lost
+    // race: the round-3 P1 re-read also comes back empty.
     const { resolveOrProvision } = await import("./provision");
-    findUserByFirebaseUid.mockResolvedValueOnce(null);
+    findUserByFirebaseUid.mockResolvedValueOnce(null); // initial existing-user check
     claimPendingInvite.mockResolvedValueOnce(null);
+    findUserByFirebaseUid.mockResolvedValueOnce(null); // round-3 re-read after lost claim
 
     const result = await resolveOrProvision(decodedToken());
 
     expect(result).toEqual({ ok: false, reason: "no-invite" });
     expect(createUserFromInvite).not.toHaveBeenCalled();
     expect(revertInviteClaim).not.toHaveBeenCalled();
+    expect(findUserByFirebaseUid).toHaveBeenCalledTimes(2);
   });
 
   it("treats an email mismatch (no invite for the normalized email) as no-invite", async () => {
     const { resolveOrProvision } = await import("./provision");
     findUserByFirebaseUid.mockResolvedValueOnce(null);
     claimPendingInvite.mockResolvedValueOnce(null);
+    findUserByFirebaseUid.mockResolvedValueOnce(null);
 
     await resolveOrProvision(decodedToken({ email: "someone-else@bar.com" }));
 
     expect(claimPendingInvite).toHaveBeenCalledWith("someone-else@bar.com");
+  });
+
+  it("re-reads by uid and returns the concurrent winner's active user when claimPendingInvite loses the race (Codex round-3 P1)", async () => {
+    // Two concurrent same-uid first-login exchanges: both see no existing
+    // user, both call claimPendingInvite — only one wins. The loser must
+    // resolve to the winner's user, NOT no-invite (which would make the
+    // client delete the winner's just-provisioned Firebase credential too).
+    const { resolveOrProvision } = await import("./provision");
+    findUserByFirebaseUid.mockResolvedValueOnce(null); // initial existing-user check: neither has a User yet
+    claimPendingInvite.mockResolvedValueOnce(null); // this call lost the race
+    const winnerUser = {
+      firebaseUid: "uid1",
+      status: "active",
+      preferredLocale: "en-US",
+    };
+    findUserByFirebaseUid.mockResolvedValueOnce(winnerUser); // re-read finds the winner's User
+
+    const result = await resolveOrProvision(decodedToken());
+
+    expect(result).toEqual({ ok: true, user: winnerUser });
+    expect(createUserFromInvite).not.toHaveBeenCalled();
+    expect(revertInviteClaim).not.toHaveBeenCalled();
+    expect(findUserByFirebaseUid).toHaveBeenNthCalledWith(1, "uid1");
+    expect(findUserByFirebaseUid).toHaveBeenNthCalledWith(2, "uid1");
+  });
+
+  it("returns disabled (not ok) when the concurrent winner's user is disabled", async () => {
+    const { resolveOrProvision } = await import("./provision");
+    findUserByFirebaseUid.mockResolvedValueOnce(null);
+    claimPendingInvite.mockResolvedValueOnce(null);
+    findUserByFirebaseUid.mockResolvedValueOnce({
+      firebaseUid: "uid1",
+      status: "disabled",
+    });
+
+    const result = await resolveOrProvision(decodedToken());
+
+    expect(result).toEqual({ ok: false, reason: "disabled" });
+    expect(createUserFromInvite).not.toHaveBeenCalled();
   });
 
   it("returns no-invite without any DB lookup when the token carries no email", async () => {
@@ -200,16 +241,17 @@ describe("resolveOrProvision", () => {
     expect(revertInviteClaim).not.toHaveBeenCalled();
   });
 
-  it("reverts the claim and returns no-invite when createUserFromInvite fails for a non-duplicate reason after a successful claim", async () => {
+  it("reverts the claim (with its acceptedAt) and returns no-invite when createUserFromInvite fails for a non-duplicate reason after a successful claim", async () => {
     const { resolveOrProvision } = await import("./provision");
     findUserByFirebaseUid.mockResolvedValueOnce(null);
-    const invite = { _id: "invite1", roleIds: ["r1"], locale: "en-US" };
+    const acceptedAt = new Date("2026-01-01T00:00:00.000Z");
+    const invite = { _id: "invite1", roleIds: ["r1"], locale: "en-US", acceptedAt };
     claimPendingInvite.mockResolvedValueOnce(invite);
     createUserFromInvite.mockRejectedValueOnce(new Error("mongo write failed"));
 
     const result = await resolveOrProvision(decodedToken());
 
-    expect(revertInviteClaim).toHaveBeenCalledWith("invite1");
+    expect(revertInviteClaim).toHaveBeenCalledWith("invite1", acceptedAt);
     expect(result).toEqual({ ok: false, reason: "no-invite" });
   });
 

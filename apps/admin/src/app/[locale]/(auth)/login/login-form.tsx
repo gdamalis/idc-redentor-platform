@@ -74,14 +74,27 @@ function sanitizeCallbackUrl(callbackUrl: string | undefined): string {
 }
 
 // `callbackUrl` arrives with its original `/{locale}` prefix (the proxy built
-// it from the full request pathname). next-intl's own router re-adds the
-// locale prefix itself, so an already-prefixed path must be stripped first —
-// otherwise the resulting URL would double the locale segment.
+// it from the full request pathname) and may carry a query string (e.g.
+// `?tab=roles`). next-intl's own router re-adds the locale prefix itself, so
+// an already-prefixed path must be stripped first — otherwise the resulting
+// URL would double the locale segment.
+//
+// The query string MUST be split off BEFORE the leading path segment is
+// parsed (Codex round-3 P2 fix): naively splitting the whole string on `/`
+// treats `es-AR?tab=roles` as a single (invalid) locale token, so
+// `isValidLocale` fails, the strip never fires, and the stored-locale push
+// prepends a SECOND locale onto the untouched original
+// (`/en-US/es-AR?tab=roles` — a 404).
 function stripLocalePrefix(path: string): string {
-  const [maybeLocale, ...rest] = path.split("/").filter(Boolean);
+  const queryIndex = path.indexOf("?");
+  const pathname = queryIndex === -1 ? path : path.slice(0, queryIndex);
+  const search = queryIndex === -1 ? "" : path.slice(queryIndex);
+
+  const [maybeLocale, ...rest] = pathname.split("/").filter(Boolean);
   if (!isValidLocale(maybeLocale)) return path;
-  const appPath = `/${rest.join("/")}`;
-  return appPath === "/" ? "/" : appPath;
+
+  const appPath = rest.length > 0 ? `/${rest.join("/")}` : "/";
+  return `${appPath}${search}`;
 }
 
 /**

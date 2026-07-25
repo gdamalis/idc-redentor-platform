@@ -157,4 +157,50 @@ describe("LoginForm", () => {
     expect(await screen.findByText("auth.login.errors.wrongPassword")).toBeDefined();
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("strips the locale from a query-string callbackUrl BEFORE parsing it, avoiding a doubled locale segment (Codex round-3 P2)", async () => {
+    // Bug: naively splitting "/es-AR?tab=roles" on "/" yields the single
+    // token "es-AR?tab=roles", which fails isValidLocale — so the strip
+    // never fires and the stored-locale push doubles the prefix into
+    // "/en-US/es-AR?tab=roles" (a 404). The fix must split the query off
+    // first and push "/?tab=roles", leaving next-intl's router to prepend
+    // exactly one locale.
+    const getIdToken = vi.fn().mockResolvedValue("id-token-5");
+    signInWithEmailAndPasswordMock.mockResolvedValue({ user: { getIdToken } });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ ok: true, preferredLocale: "en-US" }),
+    });
+
+    const user = userEvent.setup();
+    render(<LoginForm callbackUrl="/es-AR?tab=roles" />);
+    await user.type(screen.getByLabelText("auth.login.emailLabel"), "person@example.com");
+    await user.type(screen.getByLabelText("auth.login.passwordLabel"), "secret123");
+    await user.click(screen.getByRole("button", { name: "auth.login.submit" }));
+
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith("/?tab=roles", { locale: "en-US" });
+    });
+  });
+
+  it("still strips a normal locale-prefixed path with no query correctly", async () => {
+    const getIdToken = vi.fn().mockResolvedValue("id-token-6");
+    signInWithEmailAndPasswordMock.mockResolvedValue({ user: { getIdToken } });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ ok: true, preferredLocale: "en-US" }),
+    });
+
+    const user = userEvent.setup();
+    render(<LoginForm callbackUrl="/es-AR/people" />);
+    await user.type(screen.getByLabelText("auth.login.emailLabel"), "person@example.com");
+    await user.type(screen.getByLabelText("auth.login.passwordLabel"), "secret123");
+    await user.click(screen.getByRole("button", { name: "auth.login.submit" }));
+
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith("/people", { locale: "en-US" });
+    });
+  });
 });

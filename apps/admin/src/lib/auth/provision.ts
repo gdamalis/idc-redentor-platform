@@ -8,7 +8,7 @@ import {
   claimPendingInvite,
   revertInviteClaim,
 } from "@src/service/invite.service";
-import type { SessionResult } from "@src/service/types";
+import type { AdminUser, SessionResult } from "@src/service/types";
 import { normalizeEmail } from "./email";
 
 interface MongoDuplicateKeyError {
@@ -40,18 +40,39 @@ function isDuplicateKeyError(error: unknown): error is MongoDuplicateKeyError {
  *    normalized email (`claimPendingInvite`, Codex round-2 P1 fix — closes a
  *    TOCTOU window a separate find + accept left open, where an invite
  *    revoked/expired between the two steps could still provision a user). No
- *    match (also covers expired/revoked/mismatched/already-claimed — all
- *    excluded at the query layer) ⇒ `no-invite`, **creating nothing**. A
- *    claimed invite creates the `User` (seeding `preferredLocale` from the
- *    invite, defaulting to the app's default locale). If that create fails
- *    for any reason OTHER than the duplicate-key race `createUserFromInvite`
- *    already recovers from internally, the claim is reverted back to
- *    `"pending"` so the invite isn't stranded `"accepted"` with no user.
+ *    match can also mean a LOST RACE, not just expired/revoked/mismatched: a
+ *    concurrent same-uid exchange may have claimed the invite and provisioned
+ *    the `User` a moment earlier. Codex round-3 P1 fix: re-read
+ *    `findUserByFirebaseUid` before concluding `no-invite` — if the
+ *    concurrent winner's `User` now exists, resolve exactly like the
+ *    returning-user path (step 2) instead of returning `no-invite`. Getting
+ *    this wrong is not cosmetic: the client deletes the Firebase credential
+ *    on `no-invite` (see below), which for a lost race would delete the
+ *    WINNER's just-provisioned account too (same `firebaseUid`/browser
+ *    session) — a permanent lockout plus an orphaned Mongo `User`. Only when
+ *    that re-read also comes back empty is it genuinely `no-invite`
+ *    (expired/revoked/mismatched), **creating nothing**. A claimed invite
+ *    creates the `User` (seeding `preferredLocale` from the invite,
+ *    defaulting to the app's default locale). If that create fails for any
+ *    reason OTHER than the duplicate-key race `createUserFromInvite` already
+ *    recovers from internally, the claim is reverted back to `"pending"`
+ *    (Codex round-3 P2 fix: the revert is now CONDITIONAL on the invite
+ *    still being in the exact `"accepted"` state this claim left it in — see
+ *    `revertInviteClaim` — so it can never clobber a newer transition, e.g.
+ *    a concurrent revoke) so the invite isn't stranded `"accepted"` with no
+ *    user.
  *
  * Every outcome is a `SessionResult` return value — never thrown control
  * flow. Roles/locale come from the created/existing Mongo `User`, never the
  * token.
  */
+function resultForExistingUser(user: AdminUser): SessionResult {
+  if (user.status === "disabled") {
+    return { ok: false, reason: "disabled" };
+  }
+  return { ok: true, user };
+}
+
 export async function resolveOrProvision(
   decoded: DecodedIdToken,
 ): Promise<SessionResult> {
@@ -59,12 +80,7 @@ export async function resolveOrProvision(
   if (!email) return { ok: false, reason: "no-invite" };
 
   const existing = await findUserByFirebaseUid(decoded.uid);
-  if (existing) {
-    if (existing.status === "disabled") {
-      return { ok: false, reason: "disabled" };
-    }
-    return { ok: true, user: existing };
-  }
+  if (existing) return resultForExistingUser(existing);
 
   // First-time provisioning only, gated BEFORE any invite lookup: an
   // unverified email never gets to consume — or even see whether it
@@ -74,7 +90,19 @@ export async function resolveOrProvision(
   }
 
   const invite = await claimPendingInvite(email);
-  if (!invite) return { ok: false, reason: "no-invite" };
+  if (!invite) {
+    // Lost-race check (Codex round-3 P1 fix): a concurrent same-uid exchange
+    // may have claimed this exact invite and provisioned the `User` a moment
+    // ago — re-read before concluding `no-invite`, so the loser resolves
+    // like a returning user instead of triggering the client's orphan
+    // cleanup against the winner's just-created account (see doc comment
+    // above).
+    const concurrentlyProvisioned = await findUserByFirebaseUid(decoded.uid);
+    if (concurrentlyProvisioned) {
+      return resultForExistingUser(concurrentlyProvisioned);
+    }
+    return { ok: false, reason: "no-invite" };
+  }
 
   try {
     const user = await createUserFromInvite({
@@ -90,10 +118,11 @@ export async function resolveOrProvision(
     // empty — an exceedingly rare inconsistency that predates this fix.
     // Propagate it unchanged rather than reverting a claim a user may have
     // genuinely (if racily) already consumed. Any OTHER failure means the
-    // invite was claimed but no user was created — revert the claim so it
-    // isn't stranded.
+    // invite was claimed but no user was created — revert the claim
+    // (Codex round-3 P2 fix: conditionally, on the claim's own `acceptedAt`
+    // — see `revertInviteClaim`) so it isn't stranded.
     if (isDuplicateKeyError(error)) throw error;
-    await revertInviteClaim(invite._id);
+    await revertInviteClaim(invite._id, invite.acceptedAt);
     return { ok: false, reason: "no-invite" };
   }
 }

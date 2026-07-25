@@ -20,6 +20,14 @@ export async function findPendingInvite(email: string): Promise<Invite | null> {
   return doc ? inviteSchema.parse(doc) : null;
 }
 
+// A successfully claimed invite always carries `acceptedAt` — the `$set`
+// below just stamped it on this exact document — so this narrows the shared
+// `Invite` type's optional `acceptedAt` to required for callers (namely
+// `revertInviteClaim`'s guarded predicate) that need a concrete Date.
+export interface ClaimedInvite extends Invite {
+  acceptedAt: Date;
+}
+
 /**
  * Atomically claims a pending, unexpired invite for `email` in a single
  * `findOneAndUpdate` (Codex round-2 P1 fix). The previous flow — a separate
@@ -33,7 +41,9 @@ export async function findPendingInvite(email: string): Promise<Invite | null> {
  * `status: "accepted"`) or `null` when no still-pending, unexpired invite
  * matched.
  */
-export async function claimPendingInvite(email: string): Promise<Invite | null> {
+export async function claimPendingInvite(
+  email: string,
+): Promise<ClaimedInvite | null> {
   await ensureAuthIndexes();
   const doc = await getAdminDb()
     .collection(INVITES_COLLECTION)
@@ -47,23 +57,40 @@ export async function claimPendingInvite(email: string): Promise<Invite | null> 
       { returnDocument: "after" },
     );
 
-  return doc ? inviteSchema.parse(doc) : null;
+  if (!doc) return null;
+  const invite = inviteSchema.parse(doc);
+  // Non-null: see the `ClaimedInvite` comment above.
+  return { ...invite, acceptedAt: invite.acceptedAt! };
 }
 
 /**
  * Reverts a claim made by `claimPendingInvite` back to `"pending"` (clearing
- * `acceptedAt`). Used by `resolveOrProvision` when the user-creation step
- * that was supposed to follow a successful claim fails for a reason OTHER
- * than the duplicate-key race `createUserFromInvite` already recovers from
- * internally — otherwise the invite would be stuck `"accepted"` with no
- * corresponding `AdminUser`, permanently unusable.
+ * `acceptedAt`) — but ONLY if the invite is still in the exact state that
+ * claim left it in (Codex round-3 P2 fix). The update is guarded by
+ * `status: "accepted"` AND the claim's own `acceptedAt`, not `_id` alone: an
+ * `_id`-only update would blindly overwrite whatever the invite's CURRENT
+ * status is, so a newer transition that happened between the claim and this
+ * revert — e.g. an admin concurrently revoking the invite — would get
+ * clobbered back to `"pending"`, making a revoked invite usable again. A
+ * mismatched filter (status no longer `"accepted"`, or a different
+ * `acceptedAt` from a since-superseded claim) simply matches zero documents
+ * — a safe no-op — rather than a blind revert.
+ *
+ * Used by `resolveOrProvision` when the user-creation step that was
+ * supposed to follow a successful claim fails for a reason OTHER than the
+ * duplicate-key race `createUserFromInvite` already recovers from internally
+ * — otherwise the invite would be stuck `"accepted"` with no corresponding
+ * `AdminUser`, permanently unusable.
  */
-export async function revertInviteClaim(id: ObjectId): Promise<void> {
+export async function revertInviteClaim(
+  id: ObjectId,
+  acceptedAt: Date,
+): Promise<void> {
   await ensureAuthIndexes();
   await getAdminDb()
     .collection(INVITES_COLLECTION)
     .updateOne(
-      { _id: id },
+      { _id: id, status: "accepted", acceptedAt },
       { $set: { status: "pending" }, $unset: { acceptedAt: "" } },
     );
 }
