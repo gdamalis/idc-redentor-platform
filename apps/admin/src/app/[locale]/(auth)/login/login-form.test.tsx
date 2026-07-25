@@ -131,6 +131,24 @@ describe("LoginForm", () => {
     expect(deleteUserMock).not.toHaveBeenCalled();
   });
 
+  it("on a 403 email-unverified response, signs out and redirects to /no-access WITHOUT deleting the credential", async () => {
+    const getIdToken = vi.fn().mockResolvedValue("id-token-4");
+    signInWithEmailAndPasswordMock.mockResolvedValue({ user: { getIdToken } });
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: () => Promise.resolve({ ok: false, reason: "email-unverified" }),
+    });
+
+    await fillAndSubmit();
+
+    await waitFor(() => {
+      expect(signOutMock).toHaveBeenCalledWith(fakeAuth);
+    });
+    expect(pushMock).toHaveBeenCalledWith("/no-access");
+    expect(deleteUserMock).not.toHaveBeenCalled();
+  });
+
   it("shows the localized wrong-password error when Firebase rejects with auth/wrong-password", async () => {
     signInWithEmailAndPasswordMock.mockRejectedValue({ code: "auth/wrong-password" });
 

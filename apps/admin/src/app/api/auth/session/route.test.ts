@@ -129,6 +129,24 @@ describe("POST /api/auth/session", () => {
     expect(res.headers.get("set-cookie")).toBeNull();
   });
 
+  it("403 email-unverified, and sets no cookie", async () => {
+    verifyIdToken.mockResolvedValueOnce({
+      uid: "uid1",
+      auth_time: authTimeNow(),
+    });
+    resolveOrProvision.mockResolvedValueOnce({
+      ok: false,
+      reason: "email-unverified",
+    });
+
+    const res = await POST(postReq({ idToken: "id-token" }));
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ ok: false, reason: "email-unverified" });
+    expect(res.headers.get("set-cookie")).toBeNull();
+    expect(createSession).not.toHaveBeenCalled();
+  });
+
   it("400 on a malformed body, without calling verifyIdToken", async () => {
     const res = await POST(rawPostReq("{not json"));
 

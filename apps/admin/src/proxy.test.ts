@@ -106,4 +106,22 @@ describe("proxy", () => {
     expect(intlMiddlewareMock).toHaveBeenCalledTimes(1);
     expect(response.headers.get("location")).toContain("/es-AR");
   });
+
+  it("injects an x-pathname header (pathname+search) into the request passed to intl middleware on an authenticated pass-through", async () => {
+    verifySessionMock.mockResolvedValueOnce({ uid: "uid1" });
+
+    await proxy(makeRequest("/es-AR/people?tab=roles", "__session=valid-cookie"));
+
+    const [forwardedRequest] = intlMiddlewareMock.mock.calls[0] as [NextRequest];
+    expect(forwardedRequest.headers.get("x-pathname")).toBe(
+      "/es-AR/people?tab=roles",
+    );
+  });
+
+  it("also injects the x-pathname header on the public-auth-path bypass", async () => {
+    await proxy(makeRequest("/es-AR/login"));
+
+    const [forwardedRequest] = intlMiddlewareMock.mock.calls[0] as [NextRequest];
+    expect(forwardedRequest.headers.get("x-pathname")).toBe("/es-AR/login");
+  });
 });

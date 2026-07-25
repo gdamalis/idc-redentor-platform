@@ -128,8 +128,11 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
       const json = (await response.json().catch(() => null)) as { reason?: string } | null;
       const auth = getFirebaseAuth();
       // Only a never-provisioned orphan (`no-invite`) gets its Firebase
-      // credential deleted. A `disabled` user is a real, provisioned
-      // `AdminUser` — deleting their credential would break re-enablement.
+      // credential deleted. Every other refusal reason — `disabled` (a real,
+      // provisioned `AdminUser`; deleting the credential would break
+      // re-enablement) and `email-unverified` (a real invite may still be
+      // pending; the user just needs to verify their email and sign in
+      // again) — leaves the credential alone.
       if (json?.reason === "no-invite") {
         await cleanupOrphanFirebaseAccount(auth);
       }

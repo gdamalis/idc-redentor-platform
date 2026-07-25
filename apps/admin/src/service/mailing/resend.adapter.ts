@@ -13,13 +13,24 @@ export function createResendAdapter(): EmailAdapter {
   return {
     async sendEmail(content: EmailContent): Promise<boolean> {
       try {
-        await resend.emails.send({
+        // `resend.emails.send()` does NOT reject on an API-level failure —
+        // it always resolves with `{ data, error }` (installed `resend`
+        // `.d.ts`: `CreateEmailResponse = { data; error: null } | { data:
+        // null; error: ErrorResponse }`). The `error` field must be
+        // inspected explicitly, or a failed send silently reports success.
+        const { error } = await resend.emails.send({
           to: content.to,
           from: content.from!,
           subject: content.subject,
           text: content.text,
           html: content.html,
         });
+
+        if (error) {
+          console.error("Error sending email via Resend:", error);
+          return false;
+        }
+
         return true;
       } catch (error) {
         console.error("Error sending email via Resend:", error);

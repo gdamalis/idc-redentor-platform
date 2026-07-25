@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const generatePasswordResetLink = vi.fn();
 const sendPasswordResetEmail = vi.fn();
+const tryAcquireResetThrottle = vi.fn();
 const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
 vi.mock("@src/lib/firebase/admin", () => ({
@@ -9,9 +10,11 @@ vi.mock("@src/lib/firebase/admin", () => ({
 }));
 
 vi.mock("@src/service/auth-email", () => ({ sendPasswordResetEmail }));
+vi.mock("@src/service/reset-throttle.service", () => ({ tryAcquireResetThrottle }));
 
 beforeEach(() => {
   vi.clearAllMocks();
+  tryAcquireResetThrottle.mockResolvedValue(true);
 });
 
 describe("requestPasswordReset", () => {
@@ -58,5 +61,30 @@ describe("requestPasswordReset", () => {
     expect(result).toEqual({ ok: true });
     expect(generatePasswordResetLink).not.toHaveBeenCalled();
     expect(sendPasswordResetEmail).not.toHaveBeenCalled();
+    expect(tryAcquireResetThrottle).not.toHaveBeenCalled();
+  });
+
+  it("throttles an immediate repeat request for the same email — first call allowed (sends), second call throttled (no send), both ok:true", async () => {
+    const { requestPasswordReset } = await import("./actions");
+    generatePasswordResetLink.mockResolvedValue(
+      "https://admin.example.org/es-AR/login?oobCode=abc",
+    );
+    sendPasswordResetEmail.mockResolvedValue(true);
+
+    tryAcquireResetThrottle.mockResolvedValueOnce(true);
+    const first = await requestPasswordReset("user@bar.com", "es-AR");
+
+    expect(first).toEqual({ ok: true });
+    expect(generatePasswordResetLink).toHaveBeenCalledTimes(1);
+    expect(sendPasswordResetEmail).toHaveBeenCalledTimes(1);
+
+    tryAcquireResetThrottle.mockResolvedValueOnce(false);
+    const second = await requestPasswordReset("user@bar.com", "es-AR");
+
+    expect(second).toEqual({ ok: true });
+    // Still just the one call from the first (allowed) request — the
+    // throttled second request never reaches Firebase or Resend.
+    expect(generatePasswordResetLink).toHaveBeenCalledTimes(1);
+    expect(sendPasswordResetEmail).toHaveBeenCalledTimes(1);
   });
 });

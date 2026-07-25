@@ -2,8 +2,28 @@ import createMiddleware from "next-intl/middleware";
 import { NextRequest, NextResponse } from "next/server";
 import { routing } from "./i18n/routing";
 import { SESSION_COOKIE_NAME, verifySession } from "@src/lib/auth/session";
+import { REQUEST_PATHNAME_HEADER } from "@src/lib/http/request-pathname";
 
 const intlMiddleware = createMiddleware(routing);
+
+/**
+ * Clones `request` with an added `x-pathname` header carrying the current
+ * `pathname + search`. next-intl's own `next()`/rewrite composition derives
+ * the headers it forwards downstream from `new Headers(request.headers)` —
+ * i.e. from the request object it's GIVEN, not from anything on its
+ * response — so passing this clone into `intlMiddleware` means the header
+ * survives into whatever response it builds. Used so the `(app)` RSC layout
+ * can rebuild `callbackUrl` on its own redirect (see
+ * `lib/http/request-pathname.ts`).
+ */
+function withRequestPathnameHeader(request: NextRequest): NextRequest {
+  const headers = new Headers(request.headers);
+  headers.set(
+    REQUEST_PATHNAME_HEADER,
+    request.nextUrl.pathname + request.nextUrl.search,
+  );
+  return new NextRequest(request, { headers });
+}
 
 // Locale-relative (app) paths reachable without a session: the sign-in
 // surface itself, the password-reset request flow, and the "you're signed
@@ -72,7 +92,7 @@ export async function proxy(request: NextRequest) {
   const { locale, appPath } = splitLocaleAndAppPath(pathname);
 
   if (isPublicAuthPath(appPath)) {
-    return intlMiddleware(request);
+    return intlMiddleware(withRequestPathnameHeader(request));
   }
 
   // Fast, local verification only (`checkRevoked: false`) — this is a
@@ -89,7 +109,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  return intlMiddleware(request);
+  return intlMiddleware(withRequestPathnameHeader(request));
 }
 
 export const config = {

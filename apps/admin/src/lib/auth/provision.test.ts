@@ -18,10 +18,15 @@ vi.mock("@src/service/invite.service", () => ({
 
 beforeEach(() => vi.clearAllMocks());
 
+// Defaults to a VERIFIED email — most tests below exercise the ordinary
+// first-time-provisioning happy path, which now requires `email_verified` to
+// be strictly `true` (finding P1). Tests for the unverified-email gate
+// itself override this explicitly.
 function decodedToken(overrides: Partial<DecodedIdToken> = {}): DecodedIdToken {
   return {
     uid: "uid1",
     email: "foo@bar.com",
+    email_verified: true,
     auth_time: Math.floor(Date.now() / 1000),
     ...overrides,
   } as DecodedIdToken;
@@ -151,6 +156,52 @@ describe("resolveOrProvision", () => {
     expect(result).toEqual({ ok: false, reason: "no-invite" });
     expect(findUserByFirebaseUid).not.toHaveBeenCalled();
     expect(findPendingInvite).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unverified email on first sign-in even with a matching invite, creating nothing", async () => {
+    const { resolveOrProvision } = await import("./provision");
+    findUserByFirebaseUid.mockResolvedValueOnce(null);
+
+    const result = await resolveOrProvision(
+      decodedToken({ email_verified: false }),
+    );
+
+    expect(result).toEqual({ ok: false, reason: "email-unverified" });
+    expect(findPendingInvite).not.toHaveBeenCalled();
+    expect(createUserFromInvite).not.toHaveBeenCalled();
+    expect(acceptInvite).not.toHaveBeenCalled();
+  });
+
+  it("treats a missing email_verified claim as unverified (fail closed)", async () => {
+    const { resolveOrProvision } = await import("./provision");
+    findUserByFirebaseUid.mockResolvedValueOnce(null);
+
+    const result = await resolveOrProvision(
+      decodedToken({ email_verified: undefined }),
+    );
+
+    expect(result).toEqual({ ok: false, reason: "email-unverified" });
+    expect(createUserFromInvite).not.toHaveBeenCalled();
+  });
+
+  it("provisions a new user on first sign-in when the email IS verified (happy path stays green)", async () => {
+    const { resolveOrProvision } = await import("./provision");
+    findUserByFirebaseUid.mockResolvedValueOnce(null);
+    findPendingInvite.mockResolvedValueOnce({
+      _id: "invite1",
+      roleIds: ["r1"],
+      locale: "en-US",
+    });
+    const createdUser = { firebaseUid: "uid1", preferredLocale: "en-US" };
+    createUserFromInvite.mockResolvedValueOnce(createdUser);
+
+    const result = await resolveOrProvision(
+      decodedToken({ email_verified: true }),
+    );
+
+    expect(createUserFromInvite).toHaveBeenCalled();
+    expect(acceptInvite).toHaveBeenCalledWith("invite1");
+    expect(result).toEqual({ ok: true, user: createdUser });
   });
 
   it("re-reads and returns the concurrently-created user (E11000 idempotency is user.service's job)", async () => {

@@ -37,7 +37,8 @@ export type SessionResult =
         | "revoked" // refresh tokens revoked (checkRevoked:true)
         | "no-user" // valid cookie, no matching Mongo User
         | "disabled" // User exists but status = disabled
-        | "no-invite"; // (provisioning) authenticated but no pending invite
+        | "no-invite" // (provisioning) authenticated but no pending invite
+        | "email-unverified"; // (provisioning, first sign-in only) decoded.email_verified !== true
     };
 
 // Untrusted-shape defense: parse every Mongo document through these before use.

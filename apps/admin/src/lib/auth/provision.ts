@@ -14,11 +14,19 @@ import { normalizeEmail } from "./email";
  * 1. No usable email on the token ⇒ nothing to match ⇒ `no-invite`.
  * 2. A `User` already exists for this `firebaseUid` ⇒ returning sign-in:
  *    `active` → `ok`; `disabled` → `disabled`. The invite is left untouched.
- * 3. First sign-in: look up a pending invite by normalized email. No match
- *    (also covers expired/revoked/mismatched — all excluded at the query
- *    layer in `findPendingInvite`) ⇒ `no-invite`, **creating nothing**. A
- *    match creates the `User` (seeding `preferredLocale` from the invite,
- *    defaulting to the app's default locale) and accepts the invite.
+ * 3. First sign-in, unverified email ⇒ `email-unverified`, **creating
+ *    nothing**. Firebase's public email/password signup lets anyone create
+ *    an account for ANY email address with `email_verified: false` — without
+ *    this gate, an attacker could self-report someone else's invited address
+ *    and inherit that invite's `roleIds`. Google sign-in always carries
+ *    `email_verified: true`, so it's never affected; neither is a returning
+ *    user (step 2 already resolved before this check runs).
+ * 4. First sign-in, verified email: look up a pending invite by normalized
+ *    email. No match (also covers expired/revoked/mismatched — all excluded
+ *    at the query layer in `findPendingInvite`) ⇒ `no-invite`, **creating
+ *    nothing**. A match creates the `User` (seeding `preferredLocale` from
+ *    the invite, defaulting to the app's default locale) and accepts the
+ *    invite.
  *
  * Every outcome is a `SessionResult` return value — never thrown control
  * flow. Roles/locale come from the created/existing Mongo `User`, never the
@@ -36,6 +44,13 @@ export async function resolveOrProvision(
       return { ok: false, reason: "disabled" };
     }
     return { ok: true, user: existing };
+  }
+
+  // First-time provisioning only, gated BEFORE any invite lookup: an
+  // unverified email never gets to consume — or even see whether it
+  // matches — a pending invite.
+  if (decoded.email_verified !== true) {
+    return { ok: false, reason: "email-unverified" };
   }
 
   const invite = await findPendingInvite(email);
