@@ -198,6 +198,7 @@ a {
 
 /* ===== Sidebar ===== */
 .sidebar {
+  width: 264px; /* explicit for standalone preview — v1 set this via .app's grid track */
   background: hsl(var(--sidebar));
   border-right: 1px solid hsl(var(--sidebar-border));
   color: hsl(var(--sidebar-foreground));
@@ -206,6 +207,31 @@ a {
   position: sticky;
   top: 0;
   height: 100vh;
+}
+/* Collapsed icon-rail — new for Primitives B, not present in v1. Labels are
+   wrapped in `.nav-item-label` so the rail can hide them without touching
+   the icons; group headers, the "Pronto" chip and the footer name/role hide
+   the same way. */
+.sidebar.collapsed {
+  width: 76px;
+}
+.sidebar.collapsed .brand {
+  justify-content: center;
+  padding: 18px 0 14px;
+}
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+}
+.sidebar.collapsed .side-foot {
+  justify-content: center;
+}
+.sidebar.collapsed .brand-name,
+.sidebar.collapsed .brand-sub,
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .nav-item-label,
+.sidebar.collapsed .soon,
+.sidebar.collapsed .side-foot .who {
+  display: none;
 }
 .brand {
   display: flex;
@@ -649,6 +675,42 @@ tbody tr:last-child td {
 tbody tr:hover {
   background: hsl(var(--accent) / 0.55);
 }
+/* ===== Table extensions — not present in v1 (Primitives B) =====
+   `.is-hover` mirrors :hover so a static artifact can SHOW the hovered look
+   (same reasoning as Input's `.is-focus`). `.selected` and `.dense` are new
+   row states; `.empty-state` is the table's empty-results layout. */
+.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+.th-sort svg {
+  width: 10px;
+  height: 10px;
+  stroke: currentColor;
+}
+tbody tr.is-hover {
+  background: hsl(var(--accent) / 0.55);
+}
+tbody tr.selected {
+  background: hsl(var(--primary) / 0.08);
+}
+tbody tr.dense td {
+  padding: 6px 16px;
+}
+.empty-state {
+  padding: 56px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+.empty-state p {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+}
 .person {
   display: flex;
   align-items: center;
@@ -927,6 +989,19 @@ tbody tr:hover {
   gap: 10px;
 }
 
+/* Positions an open .menu under its trigger (e.g. a .kebab button) — a static
+   stand-in for the real component's popover anchoring. New for Primitives B. */
+.menu-anchor {
+  position: relative;
+  display: inline-block;
+}
+.menu-anchor .menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 10;
+}
+
 .menu {
   display: inline-flex;
   flex-direction: column;
@@ -978,7 +1053,8 @@ tbody tr:hover {
   color: hsl(var(--muted-foreground));
   cursor: pointer;
 }
-.tab:hover {
+.tab:hover,
+.tab.is-hover {
   color: hsl(var(--foreground));
 }
 .tab.on {
