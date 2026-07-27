@@ -67,6 +67,26 @@ Every task's requirements implicitly include this section. Values are copied ver
   origen** in all new artifacts.
 - **Every task commits AND pushes.** The draft PR reflects only what is pushed.
 
+### Conventions established during implementation (binding from CP5 on)
+
+Recorded here as they were discovered, so later tasks don't re-decide them. All three came from
+implementer reports.
+
+- **`.preview.flush` for screen artifacts.** `.preview` carries 24px padding, which is right for a
+  primitive grid but wrong for a full `.app` shell — the chrome must reach the frame edge. CP4 solved
+  this with an inline `style="padding: 0"` on each block. **Promote it to a `.preview.flush` class in
+  `styles.css`** and use that for every screen artifact: at 7 screens × 2 themes the inline form would
+  mean 14 copies of the same override, against this plan's own DRY rule. CP5 adds the class and
+  retrofits CP4's two screens.
+- **`.badge.b-neutral` is the informational (non-status) pill.** Base `.badge` has no colour of its own
+  outside the three status-dot modifiers, so a plain badge needs it. Added in CP4 for
+  `Requiere permiso`. **The roles-matrix `Sensible` badge in CP6 must reuse it** — do not invent a
+  second neutral variant.
+- **Person-detail `Relaciones` sample rows** (the plan gave the four role options but no people):
+  `Marisol Peña` → `Cónyuge`, `Tomás Peña` → `Hijo/a`. Invented in CP4 because no other Peña-family
+  member appears in the sample data; recorded now as canonical so they stay stable if the screen is
+  re-rendered.
+
 ### The token palette (verbatim — use these exact values)
 
 ```css
