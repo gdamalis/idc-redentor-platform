@@ -21,20 +21,32 @@ export async function findPendingInvite(email: string): Promise<Invite | null> {
 }
 
 /**
- * Looks up an invite by normalized email in ANY status (Codex round-4 P1
- * fix) — used by `resolveOrProvision` to distinguish a PROVABLE `no-invite`
- * (no invite doc at all, or one that's revoked/expired) from an ambiguous
+ * Looks up an ACCEPTED invite by normalized email (Codex round-5 P1 fix) —
+ * used by `resolveOrProvision` to distinguish a PROVABLE `no-invite` (no
+ * `accepted` invite exists for this email) from an ambiguous
  * `provisioning-conflict` (an `accepted` invite whose owning `User` isn't
  * visible yet — either a concurrent same-uid winner still mid-provision, or
- * an earlier acceptance). Unlike `findPendingInvite`, this deliberately does
- * NOT filter by `status`/`expiresAt` — the caller needs to see an `accepted`
- * invite precisely to avoid concluding `no-invite` on it.
+ * an earlier acceptance).
+ *
+ * The round-4 version of this lookup (`findInviteByEmail`) queried by email
+ * ALONE, in any status, then branched on the returned doc's `status`. That
+ * was unsound: `{email, status}` is not a unique key, so an email with
+ * historical invite records — e.g. an original invite that was `revoked`,
+ * followed by a re-invite that was `accepted` — can have MULTIPLE docs for
+ * the same email, and an unqualified `findOne({email})` returns whichever
+ * one Mongo happens to match first, not necessarily the newest. If that
+ * happened to be the older `revoked` doc, the "provable negative" wasn't
+ * actually provable, and a legitimately re-invited (and already-provisioned)
+ * user could be wrongly classified `no-invite` and dead-ended at
+ * `/no-access`. Querying `status: "accepted"` directly closes that gap: it
+ * finds the accepted doc whenever one exists, regardless of how many other
+ * (revoked/expired) docs also match this email.
  */
-export async function findInviteByEmail(email: string): Promise<Invite | null> {
+export async function findAcceptedInviteByEmail(email: string): Promise<Invite | null> {
   await ensureAuthIndexes();
   const doc = await getAdminDb()
     .collection(INVITES_COLLECTION)
-    .findOne({ email: normalizeEmail(email) });
+    .findOne({ email: normalizeEmail(email), status: "accepted" });
 
   return doc ? inviteSchema.parse(doc) : null;
 }

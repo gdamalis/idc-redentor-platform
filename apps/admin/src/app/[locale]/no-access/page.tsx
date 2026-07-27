@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@src/i18n/routing";
-import { SignOutButton } from "./sign-out-button";
+import { SignOutButton } from "@src/components/shell/sign-out-button";
 
 export default async function NoAccessPage() {
   const t = await getTranslations("auth.noAccess");

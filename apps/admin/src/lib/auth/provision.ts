@@ -6,7 +6,7 @@ import {
 } from "@src/service/user.service";
 import {
   claimPendingInvite,
-  findInviteByEmail,
+  findAcceptedInviteByEmail,
   revertInviteClaim,
 } from "@src/service/invite.service";
 import type { AdminUser, SessionResult } from "@src/service/types";
@@ -53,12 +53,16 @@ import { normalizeEmail } from "./email";
  *    administrator" when simply retrying would have worked. That user-facing
  *    bug is exactly what this split prevents.
  *
- *    So when the re-read comes back empty, look up the invite by email
- *    (`findInviteByEmail`, any status) and branch: `status === "accepted"` ⇒
- *    someone claimed it — a concurrent winner still mid-provision, or an
- *    earlier acceptance — either way we cannot prove "never invited", so
- *    `{ ok:false, reason:"provisioning-conflict" }`; no invite doc at all, or
- *    one that's `revoked`/expired `pending` ⇒ provably `no-invite`.
+ *    So when the re-read comes back empty, look up an ACCEPTED invite by
+ *    email directly (`findAcceptedInviteByEmail`, Codex round-5 P1 fix —
+ *    queries `status: "accepted"` in the filter itself, rather than
+ *    fetching by email alone and branching on whatever doc happens to come
+ *    back, which an email with multiple historical invite docs could make
+ *    unsound): a match ⇒ someone claimed it — a concurrent winner still
+ *    mid-provision, or an earlier acceptance — either way we cannot prove
+ *    "never invited", so `{ ok:false, reason:"provisioning-conflict" }`; no
+ *    match ⇒ no `accepted` invite exists for this email ⇒ provably
+ *    `no-invite`.
  *
  *    A claimed invite creates the `User` (seeding `preferredLocale` from the
  *    invite, defaulting to the app's default locale). Codex round-4 P2 fix:
@@ -113,18 +117,21 @@ export async function resolveOrProvision(
 
     // Codex round-4 P1 fix: the re-read above is unproven against the
     // winner's concurrent `insertOne` — an empty result here does NOT prove
-    // `no-invite` by itself. Check the invite doc directly (any status) to
-    // make the distinction provable, no sleeps/polling required.
-    const inviteByEmail = await findInviteByEmail(email);
-    if (inviteByEmail?.status === "accepted") {
+    // `no-invite` by itself. Query for an ACCEPTED invite directly (Codex
+    // round-5 P1 fix — `findAcceptedInviteByEmail` filters on
+    // `status: "accepted"` in the query itself, so it can't be shadowed by
+    // an older revoked/expired doc for the same email; see that function's
+    // doc comment) to make the distinction provable, no sleeps/polling
+    // required.
+    const acceptedInvite = await findAcceptedInviteByEmail(email);
+    if (acceptedInvite) {
       // Claimed by someone — a concurrent winner still mid-provision, or an
       // earlier acceptance. We cannot prove "never invited", so this must
       // never resolve as `no-invite` — that would wrongly dead-end a
       // legitimately-invited user at `/no-access`.
       return { ok: false, reason: "provisioning-conflict" };
     }
-    // No invite doc at all, or one that's `revoked`/expired `pending`:
-    // provably no-invite.
+    // No accepted invite exists for this email: provably no-invite.
     return { ok: false, reason: "no-invite" };
   }
 

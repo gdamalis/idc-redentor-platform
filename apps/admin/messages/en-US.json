@@ -26,9 +26,6 @@
     "roles": "Roles",
     "settings": "Settings"
   },
-  "topbar": {
-    "userMenuPlaceholder": "Account"
-  },
   "localeSwitcher": {
     "ariaLabel": "Switch language",
     "es": "ES",

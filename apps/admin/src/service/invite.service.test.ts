@@ -84,9 +84,9 @@ describe("findPendingInvite", () => {
   });
 });
 
-describe("findInviteByEmail", () => {
-  it("queries by normalized email, any status, and returns the parsed invite", async () => {
-    const { findInviteByEmail } = await import("./invite.service");
+describe("findAcceptedInviteByEmail", () => {
+  it("queries by normalized email AND status: accepted, and returns the parsed invite", async () => {
+    const { findAcceptedInviteByEmail } = await import("./invite.service");
     const now = new Date();
     findOne.mockResolvedValueOnce({
       _id: { toHexString: () => "x" },
@@ -99,21 +99,48 @@ describe("findInviteByEmail", () => {
       acceptedAt: now,
     });
 
-    const invite = await findInviteByEmail("  Foo@Bar.COM ");
+    const invite = await findAcceptedInviteByEmail("  Foo@Bar.COM ");
 
     expect(findOne).toHaveBeenCalledTimes(1);
     const query = findOne.mock.calls[0]?.[0];
-    expect(query).toEqual({ email: "foo@bar.com" });
+    expect(query).toEqual({ email: "foo@bar.com", status: "accepted" });
     expect(invite?.status).toBe("accepted");
   });
 
   it("returns null when no invite doc matches the email at all", async () => {
-    const { findInviteByEmail } = await import("./invite.service");
+    const { findAcceptedInviteByEmail } = await import("./invite.service");
     findOne.mockResolvedValueOnce(null);
 
-    const invite = await findInviteByEmail("nobody@bar.com");
+    const invite = await findAcceptedInviteByEmail("nobody@bar.com");
 
     expect(invite).toBeNull();
+  });
+
+  it("filters out an older revoked invite for the same email so it never shadows a newer accepted one (Codex round-5 P1)", async () => {
+    // The bug this guards against: an unqualified findOne({email}) can match
+    // WHICHEVER doc Mongo happens to return first when multiple invite docs
+    // share an email (e.g. an original invite revoked, then a re-invite
+    // accepted). Querying status: "accepted" in the filter itself means the
+    // mock only ever resolves the doc a real Mongo query with that filter
+    // would return — the revoked doc is never a candidate.
+    const { findAcceptedInviteByEmail } = await import("./invite.service");
+    const now = new Date();
+    findOne.mockResolvedValueOnce({
+      _id: { toHexString: () => "y" },
+      email: "reinvited@bar.com",
+      roleIds: ["r1"],
+      locale: "es-AR",
+      status: "accepted",
+      expiresAt: new Date(now.getTime() + 1000),
+      createdAt: now,
+      acceptedAt: now,
+    });
+
+    const invite = await findAcceptedInviteByEmail("reinvited@bar.com");
+
+    const query = findOne.mock.calls[0]?.[0];
+    expect(query).toEqual({ email: "reinvited@bar.com", status: "accepted" });
+    expect(invite?.status).toBe("accepted");
   });
 });
 

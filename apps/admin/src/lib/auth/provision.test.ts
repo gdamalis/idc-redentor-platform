@@ -5,7 +5,7 @@ const findUserByFirebaseUid = vi.fn();
 const createUserFromInvite = vi.fn();
 const claimPendingInvite = vi.fn();
 const revertInviteClaim = vi.fn();
-const findInviteByEmail = vi.fn();
+const findAcceptedInviteByEmail = vi.fn();
 
 vi.mock("@src/service/user.service", () => ({
   findUserByFirebaseUid,
@@ -15,7 +15,7 @@ vi.mock("@src/service/user.service", () => ({
 vi.mock("@src/service/invite.service", () => ({
   claimPendingInvite,
   revertInviteClaim,
-  findInviteByEmail,
+  findAcceptedInviteByEmail,
 }));
 
 beforeEach(() => vi.clearAllMocks());
@@ -105,12 +105,12 @@ describe("resolveOrProvision", () => {
     );
   });
 
-  it("creates nothing and returns no-invite when the null claim's re-read finds no user AND no invite doc exists at all (Codex round-4 P1)", async () => {
+  it("creates nothing and returns no-invite when the null claim's re-read finds no user AND no accepted invite exists at all (Codex round-4/5 P1)", async () => {
     const { resolveOrProvision } = await import("./provision");
     findUserByFirebaseUid.mockResolvedValueOnce(null); // initial existing-user check
     claimPendingInvite.mockResolvedValueOnce(null);
     findUserByFirebaseUid.mockResolvedValueOnce(null); // round-3 re-read after lost claim
-    findInviteByEmail.mockResolvedValueOnce(null); // round-4: provably no invite for this email
+    findAcceptedInviteByEmail.mockResolvedValueOnce(null); // round-5: provably no accepted invite for this email
 
     const result = await resolveOrProvision(decodedToken());
 
@@ -118,20 +118,18 @@ describe("resolveOrProvision", () => {
     expect(createUserFromInvite).not.toHaveBeenCalled();
     expect(revertInviteClaim).not.toHaveBeenCalled();
     expect(findUserByFirebaseUid).toHaveBeenCalledTimes(2);
-    expect(findInviteByEmail).toHaveBeenCalledWith("foo@bar.com");
+    expect(findAcceptedInviteByEmail).toHaveBeenCalledWith("foo@bar.com");
   });
 
-  it("creates nothing and returns no-invite when the invite doc exists but is revoked (or expired pending) — provably no-invite (Codex round-4 P1)", async () => {
+  it("creates nothing and returns no-invite when only a revoked (or expired pending) invite exists for this email — provably no-invite (Codex round-4/5 P1)", async () => {
+    // findAcceptedInviteByEmail queries status: "accepted" directly, so a
+    // revoked (or expired-pending) invite doc for this email never matches
+    // and the mock correctly resolves null here — it's never a candidate.
     const { resolveOrProvision } = await import("./provision");
     findUserByFirebaseUid.mockResolvedValueOnce(null);
     claimPendingInvite.mockResolvedValueOnce(null);
     findUserByFirebaseUid.mockResolvedValueOnce(null);
-    findInviteByEmail.mockResolvedValueOnce({
-      _id: "invite1",
-      email: "foo@bar.com",
-      roleIds: [],
-      status: "revoked",
-    });
+    findAcceptedInviteByEmail.mockResolvedValueOnce(null);
 
     const result = await resolveOrProvision(decodedToken());
 
@@ -139,7 +137,7 @@ describe("resolveOrProvision", () => {
     expect(createUserFromInvite).not.toHaveBeenCalled();
   });
 
-  it("returns provisioning-conflict (never no-invite) when the invite doc is accepted but no user was found yet — cannot prove no-invite (Codex round-4 P1)", async () => {
+  it("returns provisioning-conflict (never no-invite) when an accepted invite exists but no user was found yet — cannot prove no-invite (Codex round-4 P1)", async () => {
     // A concurrent same-uid winner may have claimed this invite and be
     // mid-provision (its own insertOne not yet visible to this read), or an
     // unrelated uid accepted it earlier. Either way we cannot PROVE
@@ -150,7 +148,7 @@ describe("resolveOrProvision", () => {
     findUserByFirebaseUid.mockResolvedValueOnce(null);
     claimPendingInvite.mockResolvedValueOnce(null);
     findUserByFirebaseUid.mockResolvedValueOnce(null);
-    findInviteByEmail.mockResolvedValueOnce({
+    findAcceptedInviteByEmail.mockResolvedValueOnce({
       _id: "invite1",
       email: "foo@bar.com",
       roleIds: [],
@@ -164,17 +162,44 @@ describe("resolveOrProvision", () => {
     expect(revertInviteClaim).not.toHaveBeenCalled();
   });
 
-  it("treats an email mismatch (no invite for the normalized email) as no-invite", async () => {
+  it("returns provisioning-conflict when an OLDER revoked invite AND a NEWER accepted invite both exist for the same email (Codex round-5 P1 regression)", async () => {
+    // This is exactly the defect findAcceptedInviteByEmail fixes: the
+    // round-4 `findInviteByEmail` queried by email alone (any status) and
+    // could resolve the older `revoked` doc instead of the newer `accepted`
+    // one — since {email, status} isn't unique — wrongly concluding
+    // `no-invite` for a legitimately re-invited (and already-provisioned)
+    // user. The mock stands in for a real Mongo `findOne({email,
+    // status:"accepted"})`, which finds the accepted doc regardless of how
+    // many revoked docs also share this email.
     const { resolveOrProvision } = await import("./provision");
     findUserByFirebaseUid.mockResolvedValueOnce(null);
     claimPendingInvite.mockResolvedValueOnce(null);
     findUserByFirebaseUid.mockResolvedValueOnce(null);
-    findInviteByEmail.mockResolvedValueOnce(null);
+    findAcceptedInviteByEmail.mockResolvedValueOnce({
+      _id: "invite2-reinvited",
+      email: "foo@bar.com",
+      roleIds: ["r1"],
+      status: "accepted",
+    });
+
+    const result = await resolveOrProvision(decodedToken());
+
+    expect(result).toEqual({ ok: false, reason: "provisioning-conflict" });
+    expect(createUserFromInvite).not.toHaveBeenCalled();
+    expect(revertInviteClaim).not.toHaveBeenCalled();
+  });
+
+  it("treats an email mismatch (no accepted invite for the normalized email) as no-invite", async () => {
+    const { resolveOrProvision } = await import("./provision");
+    findUserByFirebaseUid.mockResolvedValueOnce(null);
+    claimPendingInvite.mockResolvedValueOnce(null);
+    findUserByFirebaseUid.mockResolvedValueOnce(null);
+    findAcceptedInviteByEmail.mockResolvedValueOnce(null);
 
     await resolveOrProvision(decodedToken({ email: "someone-else@bar.com" }));
 
     expect(claimPendingInvite).toHaveBeenCalledWith("someone-else@bar.com");
-    expect(findInviteByEmail).toHaveBeenCalledWith("someone-else@bar.com");
+    expect(findAcceptedInviteByEmail).toHaveBeenCalledWith("someone-else@bar.com");
   });
 
   it("re-reads by uid and returns the concurrent winner's active user when claimPendingInvite loses the race (Codex round-3 P1)", async () => {
