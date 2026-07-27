@@ -181,6 +181,14 @@ a {
   overflow: hidden;
 }
 
+/* Screen artifacts ship their own shell chrome (.app/.sidebar/.topbar) that
+   must reach the frame edge — the 24px padding above is right for a
+   primitive grid but wrong for a full shell. Use on every screens/*.html
+   preview instead of an inline `style="padding: 0"` override. */
+.preview.flush {
+  padding: 0;
+}
+
 /* ==========================================================================
    Primitive + shell classes — ported verbatim from
    tasks/specs/design-mockups/people-list.html lines 60-181, with two
