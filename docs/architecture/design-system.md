@@ -143,6 +143,14 @@ are the spec; the code ticket builds the real component):
 | Pagination      | (no direct shadcn equivalent — compose from `Button`)                | —                                                                          |
 | SegmentedToggle | (no direct shadcn equivalent — compose from `Button`/`toggle-group`) | `@radix-ui/react-toggle-group` (optional)                                  |
 | Sidebar         | `sidebar`                                                            | — (mostly plain markup + `@radix-ui/react-tooltip` for the collapsed rail) |
+| DropdownMenu    | `dropdown-menu`                                                      | `@radix-ui/react-dropdown-menu`                                            |
+
+**`Dropdown` and `DropdownMenu` are different components — do not conflate them.** The existing
+`apps/web/src/components/ui/dropdown/Dropdown.tsx` is a Headless-UI `Listbox` single-select form
+control, i.e. the functional equivalent of shadcn's `select`; it is legacy web inventory, not one
+of the 14 system primitives. `DropdownMenu` is the kebab-anchored contextual action menu
+(shadcn `dropdown-menu`). When the code ticket builds `Select`, `Dropdown.tsx` is the component
+it supersedes.
 
 ## 6. Implementation prerequisites for the code ticket
 
@@ -167,6 +175,17 @@ are the spec; the code ticket builds the real component):
   "preset" _is_ `tokens.css`, consumed via `@import`. A `tailwind.config.ts` with no `@config`
   directive is dead code; one already existed in `apps/web` and was deleted for exactly this reason
   (`monorepo-packages.md` §4). Don't reintroduce the pattern in `packages/config` either.
+
+- **None of the eight Radix packages named in §5's "New" table are installed anywhere in the repo
+  yet.** Verified against both apps' `package.json`: `apps/web` has only `@radix-ui/react-label`,
+  `@radix-ui/react-slot`, and `@radix-ui/react-toast`; `apps/admin` has only
+  `@radix-ui/react-slot`. `react-dialog`, `react-tabs`, `react-select`, `react-checkbox`,
+  `react-avatar`, `react-toggle-group`, `react-tooltip`, and `react-dropdown-menu` all still need
+  to be added. Because the primitives live in `@idcr/ui`, these deps — plus
+  `class-variance-authority` for the `cva` variants — belong in `packages/ui/package.json`, not in
+  either app's `package.json`. `packages/ui/package.json` currently has no `peerDependencies`
+  section; the code ticket adds one with `react` as a peer dependency (the primitives are consumed,
+  not bundled, by each app's own React copy).
 
 ## 7. Known defects for the code ticket
 
