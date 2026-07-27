@@ -224,14 +224,30 @@ const BANNED = [
   },
 ];
 
-function walk(dir) {
+function walk(dir, exts = [".html"]) {
   const out = [];
   for (const entry of readdirSync(dir)) {
     const abs = join(dir, entry);
-    if (statSync(abs).isDirectory()) out.push(...walk(abs));
-    else if (extname(abs) === ".html") out.push(abs);
+    if (statSync(abs).isDirectory()) out.push(...walk(abs, exts));
+    else if (exts.includes(extname(abs))) out.push(abs);
   }
   return out;
+}
+
+// The fonts are declared ONCE, in the shared stylesheet — not in every artifact.
+// Asserting them per-HTML would force every artifact to embed a decorative
+// font-family purely to satisfy the gate. Assert them where they actually live,
+// and run the BANNED list over the stylesheet too — otherwise a gradient added
+// to styles.css (the likeliest place) bypasses the whole quality gate.
+function checkStyles() {
+  const src = readFileSync(join(ROOT, "styles.css"), "utf8");
+  if (src.trim().length === 0) return ["styles.css: EMPTY file"];
+  const problems = [];
+  if (!/"Outfit"/.test(src)) problems.push('missing "Outfit" font-family');
+  if (!/"Playfair Display"/.test(src))
+    problems.push('missing "Playfair Display" font-family');
+  for (const { re, why } of BANNED) if (re.test(src)) problems.push(why);
+  return problems.map((p) => `styles.css: ${p}`);
 }
 
 function checkHtml(abs) {
@@ -242,11 +258,9 @@ function checkHtml(abs) {
   // A negative assertion must first prove it observed something (lesson ICR-144).
   if (src.trim().length === 0) return [`${rel}: EMPTY file`];
 
+  // Linking the shared stylesheet IS an artifact's font contract.
   if (!/<link[^>]+href=["'][^"']*styles\.css/.test(src))
     problems.push("does not link the shared styles.css");
-  if (!/"Outfit"/.test(src)) problems.push('missing "Outfit" font-family');
-  if (!/"Playfair Display"/.test(src))
-    problems.push('missing "Playfair Display" font-family');
   if (!/lang=["']es-AR["']/.test(src)) problems.push('missing lang="es-AR"');
 
   if (PRINT_ONLY.has(rel)) {
@@ -279,8 +293,10 @@ if (files.length === 0) {
   process.exit(1);
 }
 
-const failures = files.flatMap(checkHtml);
-console.log(`checked ${files.length} artifact(s)`);
+// The stylesheet is always checked, even with --only: it is shared by every
+// artifact, so a defect there affects all of them.
+const failures = [...checkStyles(), ...files.flatMap(checkHtml)];
+console.log(`checked styles.css + ${files.length} artifact(s)`);
 for (const f of failures) console.error("  ✗ " + f);
 if (failures.length) {
   console.error(`FAIL: ${failures.length} problem(s)`);
@@ -288,6 +304,15 @@ if (failures.length) {
 }
 console.log("PASS");
 ```
+
+> **Corrected 2026-07-27 after CP1.** The first draft of this checker scanned only `.html` and
+> asserted the two font families **per artifact**. That was wrong twice over: (1) the fonts live in
+> `styles.css`, so `foundations.html` passed only incidentally (its type-ramp inlines
+> `font-family: "Outfit"` as content) while `Button.html` would have failed — pushing authors to embed
+> a decorative font declaration just to satisfy the gate; (2) `styles.css` was never scanned at all,
+> so a gradient added to the **shared stylesheet** — the likeliest place one would appear — bypassed
+> the entire quality bar. Both holes are closed above. Found by the CP1 implementer; the defect was in
+> this plan, not in its work.
 
 - [ ] **[IMPL] Step 2: Run it and watch it fail**
 
@@ -531,9 +556,11 @@ Each `.preview` contains four `.ds-section` blocks:
    `gold`. Label the derived ones **"derivado — no está en tokens.css"**.
 2. **`<h2>Tipografía</h2>`** — the ramp, using the **correct Tailwind v4 namespaces** as labels
    (`--text-*`, `--tracking-*`, `--leading-*`), **not** the dead v3 names. Show Playfair at
-   h1/h2/h3/h4 and Outfit at body/sm/xs. Add a note: _"`tokens.css:56-60` declara estos con
-   namespaces v3 (`--font-size-_`, `--letter-spacing-_`, `--line-height-_`) que Tailwind v4 ignora —
-   corregir en el ticket de código."\*
+   h1/h2/h3/h4 and Outfit at body/sm/xs. Add this note, in es-AR, as plain (non-italic) text so the
+   wildcards survive markdown formatting — the three dead token families are
+   `--font-size-` + `*`, `--letter-spacing-` + `*`, `--line-height-` + `*`:
+   "`tokens.css:56-60` declara estos con namespaces v3 (`--font-size-*`, `--letter-spacing-*`,
+   `--line-height-*`) que Tailwind v4 ignora — corregir en el ticket de código."
 3. **`<h2>Espaciado</h2>`** — the gap/padding scale actually used (4, 6, 8, 10, 12, 16, 20, 24, 26px).
 4. **`<h2>Radio</h2>`** — `--radius-sm` `calc(0.75rem - 4px)`, `--radius-md` `calc(0.75rem - 2px)`,
    `--radius-lg` `0.75rem`, `--radius-xl` `calc(0.75rem + 4px)`, plus `999px` for pills.
@@ -1091,7 +1118,8 @@ R11→every `[ORCH]` readback step · R12→T8S1§7 · R13→the checker's `BANN
 Spec §2 prerequisites→T8S1§6. Spec §9 i18n→T8S1§9. Spec §10 no-changeset→Global Constraints.
 Spec §12's 7 checkpoints map to Tasks 2–8 (Task 1 is the harness the spec folded into CP1).
 Edge cases: E1→T2S4.1 · E2→T2S4.3 · E3→one `write_files` per task, all under 256 · E4→T2S1 keeps
-foundations small · E5→checker's `.dark` assertion · E6→checker's Outfit/Playfair assertion ·
+foundations small · E5→checker's `.dark` assertion · E6→`checkStyles()`'s Outfit/Playfair assertion
+on the shared stylesheet, plus each artifact's required `styles.css` link ·
 E7→T7S2 · E8→T7S1+T7S2 monochrome markers · E9→verbatim strings in every task · E10→no task writes to
 the existing project · E11→checker's EMPTY guard · E12→T8S1§5 divergence column.
 
