@@ -27,8 +27,8 @@
             <input type="checkbox" checked />
             Puede ver datos sensibles
           </label>
-          <label class="checkbox">
-            <input type="checkbox" data-indeterminate />
+          <label class="checkbox is-indeterminate">
+            <input type="checkbox" />
             Puede ver datos sensibles
           </label>
           <label class="checkbox is-disabled">
@@ -53,8 +53,8 @@
             <input type="checkbox" checked />
             Puede ver datos sensibles
           </label>
-          <label class="checkbox">
-            <input type="checkbox" data-indeterminate />
+          <label class="checkbox is-indeterminate">
+            <input type="checkbox" />
             Puede ver datos sensibles
           </label>
           <label class="checkbox is-disabled">
@@ -64,14 +64,5 @@
         </div>
       </section>
     </div>
-
-    <script>
-      // A native checkbox's indeterminate state has no HTML attribute — it is
-      // an IDL property only reachable via script. This is the one artifact
-      // in the system that needs it, kept minimal and non-interactive.
-      document.querySelectorAll("[data-indeterminate]").forEach((el) => {
-        el.indeterminate = true;
-      });
-    </script>
   </body>
 </html>

@@ -855,6 +855,7 @@ tbody tr:hover {
   border: 1px solid hsl(var(--input));
   background: hsl(var(--card));
   accent-color: hsl(var(--primary));
+  position: relative;
 }
 .checkbox input[disabled] {
   opacity: 0.5;
@@ -863,6 +864,30 @@ tbody tr:hover {
 .checkbox.is-disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* CSS-only indeterminate state. A native checkbox's `indeterminate` is an
+   IDL property with no HTML attribute — reachable only via <script>, which
+   is invisible to readback verification and to any renderer that screenshots
+   before scripts execute (spec E5, same reasoning as the .dark duplication
+   rule). This class fakes the look statically instead: native rendering is
+   suppressed for just this instance and a dash is drawn with a pseudo-element,
+   using only token-derived colours. */
+.checkbox.is-indeterminate input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}
+.checkbox.is-indeterminate input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 10px;
+  height: 2px;
+  border-radius: 1px;
+  background: hsl(var(--primary-foreground));
 }
 
 .dialog-scrim {

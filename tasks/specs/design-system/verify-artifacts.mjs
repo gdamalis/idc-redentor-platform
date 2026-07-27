@@ -67,6 +67,17 @@ function checkHtml(abs) {
     problems.push("does not link the shared styles.css");
   if (!/lang=["']es-AR["']/.test(src)) problems.push('missing lang="es-AR"');
 
+  // Artifacts must render STATICALLY. A JS-dependent variant — e.g. a native
+  // checkbox's `indeterminate`, which is an IDL property with no HTML attribute
+  // — is invisible both to readback verification and to any renderer that
+  // screenshots before scripts execute. That is the same reason .dark must be a
+  // duplicated tree rather than a toggle (spec E5). Represent such states with a
+  // CSS class in styles.css instead.
+  if (/<script[\s>]/i.test(src))
+    problems.push(
+      "contains <script> — artifacts must render statically (spec E5)",
+    );
+
   if (PRINT_ONLY.has(rel)) {
     if (!/@page\s*\{[^}]*size:\s*A4/i.test(src))
       problems.push("print artifact lacks @page { size: A4 }");
