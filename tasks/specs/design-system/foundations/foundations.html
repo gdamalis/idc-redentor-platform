@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="es-AR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fundamentos — Sistema de Diseño IDC Redentor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body>
+    <div class="preview">
+      <!-- LIGHT: full foundations content -->
+
+      <section class="ds-section">
+        <h2>Color</h2>
+        <div class="ds-grid">
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--background))"></div>
+            <div class="name">--background</div>
+            <div class="val">210 20% 98%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--foreground))"></div>
+            <div class="name">--foreground</div>
+            <div class="val">222 47% 11%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--card))"></div>
+            <div class="name">--card</div>
+            <div class="val">0 0% 100%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--card-foreground))"></div>
+            <div class="name">--card-foreground</div>
+            <div class="val">222 47% 11%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--popover))"></div>
+            <div class="name">--popover</div>
+            <div class="val">0 0% 100%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--popover-foreground))"></div>
+            <div class="name">--popover-foreground</div>
+            <div class="val">222 47% 11%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--primary))"></div>
+            <div class="name">--primary</div>
+            <div class="val">210 100% 35%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--primary-foreground))"></div>
+            <div class="name">--primary-foreground</div>
+            <div class="val">210 40% 98%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--secondary))"></div>
+            <div class="name">--secondary</div>
+            <div class="val">35 30% 90%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--secondary-foreground))"></div>
+            <div class="name">--secondary-foreground</div>
+            <div class="val">24 10% 10%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--muted))"></div>
+            <div class="name">--muted</div>
+            <div class="val">210 40% 96.1%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--muted-foreground))"></div>
+            <div class="name">--muted-foreground</div>
+            <div class="val">215.4 16.3% 46.9%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--accent))"></div>
+            <div class="name">--accent</div>
+            <div class="val">210 40% 96.1%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--accent-foreground))"></div>
+            <div class="name">--accent-foreground</div>
+            <div class="val">222.2 47.4% 11.2%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--destructive))"></div>
+            <div class="name">--destructive</div>
+            <div class="val">0 84.2% 60.2%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--destructive-foreground))"></div>
+            <div class="name">--destructive-foreground</div>
+            <div class="val">210 40% 98%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--border))"></div>
+            <div class="name">--border</div>
+            <div class="val">214.3 31.8% 91.4%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--input))"></div>
+            <div class="name">--input</div>
+            <div class="val">214.3 31.8% 91.4%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--ring))"></div>
+            <div class="name">--ring</div>
+            <div class="val">210 100% 35%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--sidebar))"></div>
+            <div class="name">--sidebar</div>
+            <div class="val">0 0% 98%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--sidebar-foreground))"></div>
+            <div class="name">--sidebar-foreground</div>
+            <div class="val">240 5.3% 26.1%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--sidebar-primary))"></div>
+            <div class="name">--sidebar-primary</div>
+            <div class="val">240 5.9% 10%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--sidebar-primary-foreground))"></div>
+            <div class="name">--sidebar-primary-foreground</div>
+            <div class="val">0 0% 98%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--sidebar-accent))"></div>
+            <div class="name">--sidebar-accent</div>
+            <div class="val">240 4.8% 95.9%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--sidebar-accent-foreground))"></div>
+            <div class="name">--sidebar-accent-foreground</div>
+            <div class="val">240 5.9% 10%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--sidebar-border))"></div>
+            <div class="name">--sidebar-border</div>
+            <div class="val">220 13% 91%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--sidebar-ring))"></div>
+            <div class="name">--sidebar-ring</div>
+            <div class="val">217.2 91.2% 59.8%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--chart-1))"></div>
+            <div class="name">--chart-1</div>
+            <div class="val">12 76% 61%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--chart-2))"></div>
+            <div class="name">--chart-2</div>
+            <div class="val">173 58% 39%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--chart-3))"></div>
+            <div class="name">--chart-3</div>
+            <div class="val">197 37% 24%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--chart-4))"></div>
+            <div class="name">--chart-4</div>
+            <div class="val">43 74% 66%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--chart-5))"></div>
+            <div class="name">--chart-5</div>
+            <div class="val">27 87% 67%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--gold))"></div>
+            <div class="name">--gold</div>
+            <div class="val">35 45% 62%</div>
+            <div class="val">derivado — no está en tokens.css</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ds-section">
+        <h2>Tipografía</h2>
+        <div class="ds-grid" style="align-items: flex-start; gap: 28px">
+          <div style="min-width: 240px">
+            <div
+              style='font-family: "Playfair Display", Georgia, serif; font-weight: 700; font-size: 2.5rem; letter-spacing: -0.011em; line-height: 1.1'
+            >
+              Personas
+            </div>
+            <div class="val">h1 · --text-4xl (2.5rem, custom)</div>
+            <div class="val">--tracking-snug (-0.011em, custom)</div>
+            <div class="val">--leading-tighter (1.1, custom)</div>
+          </div>
+          <div style="min-width: 240px">
+            <div
+              style='font-family: "Playfair Display", Georgia, serif; font-weight: 700; font-size: 1.75rem; letter-spacing: -0.011em; line-height: 1.25'
+            >
+              Fundamentos
+            </div>
+            <div class="val">h2 · --text-3xl (1.75rem, custom)</div>
+            <div class="val">--tracking-snug (-0.011em, custom)</div>
+            <div class="val">--leading-tight (1.25, v4 default)</div>
+          </div>
+          <div style="min-width: 240px">
+            <div
+              style='font-family: "Playfair Display", Georgia, serif; font-weight: 700; font-size: 1.5rem; letter-spacing: -0.011em; line-height: 1.25'
+            >
+              Sistema de Diseño
+            </div>
+            <div class="val">h3 · --text-2xl (1.5rem, v4 default)</div>
+            <div class="val">--tracking-snug (-0.011em, custom)</div>
+            <div class="val">--leading-tight (1.25, v4 default)</div>
+          </div>
+          <div style="min-width: 240px">
+            <div
+              style='font-family: "Playfair Display", Georgia, serif; font-weight: 700; font-size: 1.25rem; letter-spacing: -0.011em; line-height: 1.25'
+            >
+              Componentes
+            </div>
+            <div class="val">h4 · --text-xl (1.25rem, v4 default)</div>
+            <div class="val">--tracking-snug (-0.011em, custom)</div>
+            <div class="val">--leading-tight (1.25, v4 default)</div>
+          </div>
+          <div style="min-width: 240px">
+            <div style='font-family: "Outfit", system-ui, sans-serif; font-size: 0.875rem; letter-spacing: 0em; line-height: 1.5'>
+              Texto de párrafo estándar para la interfaz.
+            </div>
+            <div class="val">body · --text-sm (0.875rem, v4 default)</div>
+            <div class="val">--tracking-normal (0em, v4 default)</div>
+            <div class="val">--leading-normal (1.5, v4 default)</div>
+          </div>
+          <div style="min-width: 240px">
+            <div style='font-family: "Outfit", system-ui, sans-serif; font-size: 0.75rem; letter-spacing: 0em; line-height: 1.5'>
+              Texto secundario y ayudas de formulario.
+            </div>
+            <div class="val">sm · --text-xs (0.75rem, v4 default)</div>
+            <div class="val">--tracking-normal (0em, v4 default)</div>
+            <div class="val">--leading-normal (1.5, v4 default)</div>
+          </div>
+          <div style="min-width: 240px">
+            <div style='font-family: "Outfit", system-ui, sans-serif; font-size: 0.625rem; letter-spacing: 0em; line-height: 1.5'>
+              Metadatos y etiquetas pequeñas.
+            </div>
+            <div class="val">xs · --text-2xs (0.625rem, custom)</div>
+            <div class="val">--tracking-normal (0em, v4 default)</div>
+            <div class="val">--leading-normal (1.5, v4 default)</div>
+          </div>
+        </div>
+        <p class="val" style="margin-top: 18px; max-width: 640px">
+          tokens.css:56-60 declara estos con namespaces v3 (--font-size-*, --letter-spacing-*,
+          --line-height-*) que Tailwind v4 ignora — corregir en el ticket de código.
+        </p>
+      </section>
+
+      <section class="ds-section">
+        <h2>Espaciado</h2>
+        <div class="ds-grid" style="align-items: flex-end">
+          <div>
+            <div style="height: 20px; width: 4px; background: hsl(var(--primary) / 0.4); border-radius: 2px"></div>
+            <div class="name">4px</div>
+          </div>
+          <div>
+            <div style="height: 20px; width: 6px; background: hsl(var(--primary) / 0.4); border-radius: 2px"></div>
+            <div class="name">6px</div>
+          </div>
+          <div>
+            <div style="height: 20px; width: 8px; background: hsl(var(--primary) / 0.4); border-radius: 2px"></div>
+            <div class="name">8px</div>
+          </div>
+          <div>
+            <div style="height: 20px; width: 10px; background: hsl(var(--primary) / 0.4); border-radius: 2px"></div>
+            <div class="name">10px</div>
+          </div>
+          <div>
+            <div style="height: 20px; width: 12px; background: hsl(var(--primary) / 0.4); border-radius: 2px"></div>
+            <div class="name">12px</div>
+          </div>
+          <div>
+            <div style="height: 20px; width: 16px; background: hsl(var(--primary) / 0.4); border-radius: 2px"></div>
+            <div class="name">16px</div>
+          </div>
+          <div>
+            <div style="height: 20px; width: 20px; background: hsl(var(--primary) / 0.4); border-radius: 2px"></div>
+            <div class="name">20px</div>
+          </div>
+          <div>
+            <div style="height: 20px; width: 24px; background: hsl(var(--primary) / 0.4); border-radius: 2px"></div>
+            <div class="name">24px</div>
+          </div>
+          <div>
+            <div style="height: 20px; width: 26px; background: hsl(var(--primary) / 0.4); border-radius: 2px"></div>
+            <div class="name">26px</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ds-section">
+        <h2>Radio</h2>
+        <div class="ds-grid">
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--muted)); border-radius: calc(0.75rem - 4px)"></div>
+            <div class="name">--radius-sm</div>
+            <div class="val">calc(0.75rem - 4px) → 8px</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--muted)); border-radius: calc(0.75rem - 2px)"></div>
+            <div class="name">--radius-md</div>
+            <div class="val">calc(0.75rem - 2px) → 10px</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--muted)); border-radius: 0.75rem"></div>
+            <div class="name">--radius-lg</div>
+            <div class="val">0.75rem → 12px</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--muted)); border-radius: calc(0.75rem + 4px)"></div>
+            <div class="name">--radius-xl</div>
+            <div class="val">calc(0.75rem + 4px) → 16px</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--muted)); border-radius: 999px; height: 32px; margin-top: 10px"></div>
+            <div class="name">pills</div>
+            <div class="val">999px</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="preview dark">
+      <!-- DARK: the SAME content duplicated -->
+
+      <section class="ds-section">
+        <h2>Color</h2>
+        <div class="ds-grid">
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--background))"></div>
+            <div class="name">--background</div>
+            <div class="val">222 47% 11%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--foreground))"></div>
+            <div class="name">--foreground</div>
+            <div class="val">210 40% 98%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--card))"></div>
+            <div class="name">--card</div>
+            <div class="val">222 47% 14%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--card-foreground))"></div>
+            <div class="name">--card-foreground</div>
+            <div class="val">210 40% 98%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--popover))"></div>
+            <div class="name">--popover</div>
+            <div class="val">222 47% 11%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--popover-foreground))"></div>
+            <div class="name">--popover-foreground</div>
+            <div class="val">210 40% 98%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--primary))"></div>
+            <div class="name">--primary</div>
+            <div class="val">210 90% 60%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--primary-foreground))"></div>
+            <div class="name">--primary-foreground</div>
+            <div class="val">222 47.4% 11.2%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--secondary))"></div>
+            <div class="name">--secondary</div>
+            <div class="val">217.2 32.6% 17.5%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--secondary-foreground))"></div>
+            <div class="name">--secondary-foreground</div>
+            <div class="val">210 40% 98%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--muted))"></div>
+            <div class="name">--muted</div>
+            <div class="val">217.2 32.6% 17.5%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--muted-foreground))"></div>
+            <div class="name">--muted-foreground</div>
+            <div class="val">215 20.2% 65.1%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--accent))"></div>
+            <div class="name">--accent</div>
+            <div class="val">217.2 32.6% 17.5%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--accent-foreground))"></div>
+            <div class="name">--accent-foreground</div>
+            <div class="val">210 40% 98%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--destructive))"></div>
+            <div class="name">--destructive</div>
+            <div class="val">0 62.8% 30.6%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--destructive-foreground))"></div>
+            <div class="name">--destructive-foreground</div>
+            <div class="val">210 40% 98%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--border))"></div>
+            <div class="name">--border</div>
+            <div class="val">217.2 32.6% 17.5%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--input))"></div>
+            <div class="name">--input</div>
+            <div class="val">217.2 32.6% 17.5%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--ring))"></div>
+            <div class="name">--ring</div>
+            <div class="val">210 90% 60%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--sidebar))"></div>
+            <div class="name">--sidebar</div>
+            <div class="val">240 5.9% 10%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--sidebar-foreground))"></div>
+            <div class="name">--sidebar-foreground</div>
+            <div class="val">240 4.8% 95.9%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--sidebar-primary))"></div>
+            <div class="name">--sidebar-primary</div>
+            <div class="val">224.3 76.3% 48%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--sidebar-primary-foreground))"></div>
+            <div class="name">--sidebar-primary-foreground</div>
+            <div class="val">0 0% 100%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--sidebar-accent))"></div>
+            <div class="name">--sidebar-accent</div>
+            <div class="val">240 3.7% 15.9%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--sidebar-accent-foreground))"></div>
+            <div class="name">--sidebar-accent-foreground</div>
+            <div class="val">240 4.8% 95.9%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--sidebar-border))"></div>
+            <div class="name">--sidebar-border</div>
+            <div class="val">240 3.7% 15.9%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--sidebar-ring))"></div>
+            <div class="name">--sidebar-ring</div>
+            <div class="val">217.2 91.2% 59.8%</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--chart-1))"></div>
+            <div class="name">--chart-1</div>
+            <div class="val">12 76% 61% (no dark override)</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--chart-2))"></div>
+            <div class="name">--chart-2</div>
+            <div class="val">173 58% 39% (no dark override)</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--chart-3))"></div>
+            <div class="name">--chart-3</div>
+            <div class="val">197 37% 24% (no dark override)</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--chart-4))"></div>
+            <div class="name">--chart-4</div>
+            <div class="val">43 74% 66% (no dark override)</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--chart-5))"></div>
+            <div class="name">--chart-5</div>
+            <div class="val">27 87% 67% (no dark override)</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--gold))"></div>
+            <div class="name">--gold</div>
+            <div class="val">35 40% 58%</div>
+            <div class="val">derivado — no está en tokens.css</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ds-section">
+        <h2>Tipografía</h2>
+        <div class="ds-grid" style="align-items: flex-start; gap: 28px">
+          <div style="min-width: 240px">
+            <div
+              style='font-family: "Playfair Display", Georgia, serif; font-weight: 700; font-size: 2.5rem; letter-spacing: -0.011em; line-height: 1.1'
+            >
+              Personas
+            </div>
+            <div class="val">h1 · --text-4xl (2.5rem, custom)</div>
+            <div class="val">--tracking-snug (-0.011em, custom)</div>
+            <div class="val">--leading-tighter (1.1, custom)</div>
+          </div>
+          <div style="min-width: 240px">
+            <div
+              style='font-family: "Playfair Display", Georgia, serif; font-weight: 700; font-size: 1.75rem; letter-spacing: -0.011em; line-height: 1.25'
+            >
+              Fundamentos
+            </div>
+            <div class="val">h2 · --text-3xl (1.75rem, custom)</div>
+            <div class="val">--tracking-snug (-0.011em, custom)</div>
+            <div class="val">--leading-tight (1.25, v4 default)</div>
+          </div>
+          <div style="min-width: 240px">
+            <div
+              style='font-family: "Playfair Display", Georgia, serif; font-weight: 700; font-size: 1.5rem; letter-spacing: -0.011em; line-height: 1.25'
+            >
+              Sistema de Diseño
+            </div>
+            <div class="val">h3 · --text-2xl (1.5rem, v4 default)</div>
+            <div class="val">--tracking-snug (-0.011em, custom)</div>
+            <div class="val">--leading-tight (1.25, v4 default)</div>
+          </div>
+          <div style="min-width: 240px">
+            <div
+              style='font-family: "Playfair Display", Georgia, serif; font-weight: 700; font-size: 1.25rem; letter-spacing: -0.011em; line-height: 1.25'
+            >
+              Componentes
+            </div>
+            <div class="val">h4 · --text-xl (1.25rem, v4 default)</div>
+            <div class="val">--tracking-snug (-0.011em, custom)</div>
+            <div class="val">--leading-tight (1.25, v4 default)</div>
+          </div>
+          <div style="min-width: 240px">
+            <div style='font-family: "Outfit", system-ui, sans-serif; font-size: 0.875rem; letter-spacing: 0em; line-height: 1.5'>
+              Texto de párrafo estándar para la interfaz.
+            </div>
+            <div class="val">body · --text-sm (0.875rem, v4 default)</div>
+            <div class="val">--tracking-normal (0em, v4 default)</div>
+            <div class="val">--leading-normal (1.5, v4 default)</div>
+          </div>
+          <div style="min-width: 240px">
+            <div style='font-family: "Outfit", system-ui, sans-serif; font-size: 0.75rem; letter-spacing: 0em; line-height: 1.5'>
+              Texto secundario y ayudas de formulario.
+            </div>
+            <div class="val">sm · --text-xs (0.75rem, v4 default)</div>
+            <div class="val">--tracking-normal (0em, v4 default)</div>
+            <div class="val">--leading-normal (1.5, v4 default)</div>
+          </div>
+          <div style="min-width: 240px">
+            <div style='font-family: "Outfit", system-ui, sans-serif; font-size: 0.625rem; letter-spacing: 0em; line-height: 1.5'>
+              Metadatos y etiquetas pequeñas.
+            </div>
+            <div class="val">xs · --text-2xs (0.625rem, custom)</div>
+            <div class="val">--tracking-normal (0em, v4 default)</div>
+            <div class="val">--leading-normal (1.5, v4 default)</div>
+          </div>
+        </div>
+        <p class="val" style="margin-top: 18px; max-width: 640px">
+          tokens.css:56-60 declara estos con namespaces v3 (--font-size-*, --letter-spacing-*,
+          --line-height-*) que Tailwind v4 ignora — corregir en el ticket de código.
+        </p>
+      </section>
+
+      <section class="ds-section">
+        <h2>Espaciado</h2>
+        <div class="ds-grid" style="align-items: flex-end">
+          <div>
+            <div style="height: 20px; width: 4px; background: hsl(var(--primary) / 0.4); border-radius: 2px"></div>
+            <div class="name">4px</div>
+          </div>
+          <div>
+            <div style="height: 20px; width: 6px; background: hsl(var(--primary) / 0.4); border-radius: 2px"></div>
+            <div class="name">6px</div>
+          </div>
+          <div>
+            <div style="height: 20px; width: 8px; background: hsl(var(--primary) / 0.4); border-radius: 2px"></div>
+            <div class="name">8px</div>
+          </div>
+          <div>
+            <div style="height: 20px; width: 10px; background: hsl(var(--primary) / 0.4); border-radius: 2px"></div>
+            <div class="name">10px</div>
+          </div>
+          <div>
+            <div style="height: 20px; width: 12px; background: hsl(var(--primary) / 0.4); border-radius: 2px"></div>
+            <div class="name">12px</div>
+          </div>
+          <div>
+            <div style="height: 20px; width: 16px; background: hsl(var(--primary) / 0.4); border-radius: 2px"></div>
+            <div class="name">16px</div>
+          </div>
+          <div>
+            <div style="height: 20px; width: 20px; background: hsl(var(--primary) / 0.4); border-radius: 2px"></div>
+            <div class="name">20px</div>
+          </div>
+          <div>
+            <div style="height: 20px; width: 24px; background: hsl(var(--primary) / 0.4); border-radius: 2px"></div>
+            <div class="name">24px</div>
+          </div>
+          <div>
+            <div style="height: 20px; width: 26px; background: hsl(var(--primary) / 0.4); border-radius: 2px"></div>
+            <div class="name">26px</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ds-section">
+        <h2>Radio</h2>
+        <div class="ds-grid">
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--muted)); border-radius: calc(0.75rem - 4px)"></div>
+            <div class="name">--radius-sm</div>
+            <div class="val">calc(0.75rem - 4px) → 8px</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--muted)); border-radius: calc(0.75rem - 2px)"></div>
+            <div class="name">--radius-md</div>
+            <div class="val">calc(0.75rem - 2px) → 10px</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--muted)); border-radius: 0.75rem"></div>
+            <div class="name">--radius-lg</div>
+            <div class="val">0.75rem → 12px</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--muted)); border-radius: calc(0.75rem + 4px)"></div>
+            <div class="name">--radius-xl</div>
+            <div class="val">calc(0.75rem + 4px) → 16px</div>
+          </div>
+          <div class="ds-swatch">
+            <div class="chip" style="background: hsl(var(--muted)); border-radius: 999px; height: 32px; margin-top: 10px"></div>
+            <div class="name">pills</div>
+            <div class="val">999px</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>
