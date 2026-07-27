@@ -750,8 +750,23 @@ and a `Select` (label `Rol`, options `Administrador`, `Líder`, `Colaborador`), 
   Brand block: `.mark` `R`, name `IDC Redentor`, sub `Panel Ministerial`. Foot: avatar `GD`,
   `Gabriel Damalis` / `Administrador`. Also show the **collapsed icon-rail** variant.
 
-**Pagination.html** — `‹ 1 2 3 … 16 ›` with `1` active, plus the count line
-`Mostrando 1–8 de 52 personas` (note: 52, per Global Constraints, not v1's 128).
+**Pagination.html** — TWO labelled examples, because one pager cannot honestly show both the real
+dataset and the truncation affordance:
+
+1. `.ds-label` **`Conjunto real (52 personas)`** — count line `Mostrando 1–8 de 52 personas`, pager
+   `‹ 1 2 3 4 5 6 7 ›` with `1` active. **No ellipsis**: 52 rows at 8 per page is exactly
+   **7 pages** (`ceil(52/8)`), which fits without truncation.
+2. `.ds-label` **`Conjunto grande (truncado)`** — count line `Mostrando 81–88 de 190 registros`,
+   pager `‹ … 10 11 12 … 24 ›` with `11` active. This is the truncated form, on a deliberately
+   domain-neutral count (`registros`) so it reads as an illustration of the pattern rather than a
+   claim about the congregation.
+
+⚠️ **Corrected 2026-07-27 (my error, not the implementer's).** The first draft specified
+`‹ 1 2 3 … 16 ›` **together with** `de 52 personas` in the same sentence. `16` is v1's page count
+(128 ÷ 8); with the corrected 52-person dataset it should be 7. The implementer transcribed both
+faithfully, exactly as instructed. A design system that contradicts its own sample data on the very
+component whose job is to count things is precisely the kind of carelessness this ticket exists to
+replace — hence two coherent examples rather than one incoherent one.
 
 **SegmentedToggle.html** — two instances: locale `ES`|`EN` (ES on, `title="Idioma / Language"`) and
 theme `Claro`|`Oscuro`.
