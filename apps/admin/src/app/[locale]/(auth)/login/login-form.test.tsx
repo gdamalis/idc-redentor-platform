@@ -95,7 +95,7 @@ describe("LoginForm", () => {
     });
   });
 
-  it("on a 403 no-invite response, deletes the orphan account, signs out, and redirects to /no-access", async () => {
+  it("on a 403 no-invite response, signs out and redirects to /no-access WITHOUT ever deleting the Firebase credential", async () => {
     const getIdToken = vi.fn().mockResolvedValue("id-token-2");
     signInWithEmailAndPasswordMock.mockResolvedValue({ user: { getIdToken } });
     fetchMock.mockResolvedValue({
@@ -107,10 +107,15 @@ describe("LoginForm", () => {
     await fillAndSubmit();
 
     await waitFor(() => {
-      expect(deleteUserMock).toHaveBeenCalledWith(fakeAuth.currentUser);
+      expect(signOutMock).toHaveBeenCalledWith(fakeAuth);
     });
-    expect(signOutMock).toHaveBeenCalledWith(fakeAuth);
     expect(pushMock).toHaveBeenCalledWith("/no-access");
+    // The orphan-Firebase-credential cleanup was deliberately removed
+    // (ICR-127 follow-up) — `deleteUser` must never be called from this
+    // component, for ANY refusal reason. `deleteUser` stays mocked here
+    // specifically so a future re-introduction of that cleanup fails this
+    // assertion.
+    expect(deleteUserMock).not.toHaveBeenCalled();
   });
 
   it("on a 403 disabled response, signs out and redirects to /no-access WITHOUT deleting the credential", async () => {

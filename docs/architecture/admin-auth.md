@@ -179,28 +179,57 @@ right now, and we CANNOT prove you were never invited." `POST /api/auth/session`
 tell "transient, retry" apart from "provably refused" without inspecting the JSON body reason
 first. No cookie is set for `409` either, same as `403`.
 
-### The `no-invite` orphan cleanup — and why `disabled`/`provisioning-conflict` are different
+### The `no-invite` refusal — why the client never deletes a Firebase credential
 
 When `POST /api/auth/session` returns `403 { reason: "no-invite" }`, the client
-(`login-form.tsx`'s `postSession`) deletes the just-created Firebase credential
-(`cleanupOrphanFirebaseAccount` → best-effort `deleteUser(auth.currentUser)`) before signing out.
-This account was **never** written anywhere in Mongo — Firebase is the only place it exists — so
-deleting it just prevents an orphaned, permanently-unusable sign-in-only credential from
-accumulating (anyone can create a Google/email Firebase account; only a matching invite turns it
-into an `AdminUser`).
+(`login-form.tsx`'s `postSession`) simply `signOut`s and routes to `/no-access`. **No Firebase
+credential is ever deleted, for any refusal reason.** An earlier version of this flow deleted the
+just-signed-in Firebase credential on `no-invite` (`cleanupOrphanFirebaseAccount` →
+`deleteUser(auth.currentUser)`), mirroring a cleanup used by `divinelab/toulmin-lab`. **That
+cleanup was removed** after an expert review, deliberately, and must not be re-added:
 
-**A `disabled` user's Firebase credential is never cleaned up.** That account is a real,
-provisioned `AdminUser` an admin deliberately disabled (e.g. offboarding) — its `firebaseUid` is
-the join key back to that Mongo document, `roleIds`, and history. Deleting the Firebase credential
-would sever that link and make re-enabling the user (flipping `status` back to `active`)
-impossible without the person re-registering from scratch. The client distinguishes the reasons by
-the `403` body's `reason` and only calls the cleanup for `"no-invite"`.
+1. **It never reliably achieved its purpose.** It only fired when someone signed in through _this_
+   login page with no matching invite. Anyone who created a Firebase account another way — e.g.
+   Firebase's public REST API — and never visited `/login` left an identical, untouched
+   Firebase-only credential behind. It only ever caught a fraction of the case it targeted.
+2. **The toulmin-lab premise doesn't apply here.** Toulmin-lab has a public SIGNUP
+   (`createUserWithEmailAndPassword`, client-side), where an existing Firebase account for an email
+   blocks re-signup with `auth/email-already-in-use` — its cleanup exists to un-stick that case.
+   `apps/admin` has **no signup**: Google sign-in auto-provisions a Firebase account and behaves
+   identically on every repeat sign-in, and email/password sign-in cannot create an account at all.
+   A pre-existing Firebase account for an invited address is therefore never an obstacle here — the
+   invited person just signs in and `resolveOrProvision` creates their `AdminUser`.
+3. **It was the root of a recurring, severe bug class.** Three separate review rounds each found a
+   different path where the wrong — real, already-provisioned — account got deleted instead of an
+   actual orphan (see the Codex round-3/round-4 fixes threaded through `provision.ts`'s doc
+   comments). A destructive client-side action gated on a distinction this hard to get right is not
+   worth the risk it carries.
+4. **It erased an audit signal.** For the one door into congregant PII this app has, a record that
+   someone attempted (and was refused) sign-in without an invite is worth keeping, not deleting.
+5. **An uninvited Firebase account is inert.** No `AdminUser` row is ever created for it, so it has
+   no session cookie and no access to anything; `resolveOrProvision` re-runs the same invite check
+   on every future sign-in attempt regardless of whether the Firebase credential still exists.
+   `email_verified` still gates invite consumption (see the invite-gate walkthrough above), so
+   leaving the credential in place creates no path to inherit an invite that wasn't earned.
 
-**A `409 provisioning-conflict` never deletes the credential or navigates to `/no-access`,
-either** — the client signs out and shows a localized "try again in a few seconds" message
-(`auth.login.errors.provisioningConflict`), because the failure is transient/ambiguous by
-construction: it may resolve itself on the very next attempt (the concurrent winner's provision
-completes) with no user action beyond retrying.
+**The one legitimate concern the cleanup was trying to address — a pre-existing Firebase account
+for an address that's about to be invited — belongs to invite CREATION, not sign-in.** A later
+ticket must handle it server-side, at the point an admin creates an `Invite`: look the email up
+with the Admin SDK (`getUserByEmail`) and either reuse the existing credential (set
+`emailVerified`, send a password-set link) or deliberately delete-and-recreate it — never as a side
+effect of a refused sign-in. See `tasks/specs/ICR-127-admin-firebase-auth.md` § 11 Open Questions.
+
+**`disabled` and `provisioning-conflict` were never destructive either way.** A `disabled` user's
+account is a real, provisioned `AdminUser` an admin deliberately disabled (e.g. offboarding) — its
+`firebaseUid` is the join key back to that Mongo document, `roleIds`, and history, so there was
+never anything to clean up; the client signs out and routes to `/no-access` same as `no-invite`. A
+`409 provisioning-conflict` never routes to `/no-access` either — the client signs out and shows a
+localized "try again in a few seconds" message (`auth.login.errors.provisioningConflict`), because
+the failure is transient/ambiguous by construction: it may resolve itself on the very next attempt
+(the concurrent winner's provision completes) with no user action beyond retrying. See
+`provision.ts`'s doc comment for why `no-invite` and `provisioning-conflict` must never be
+conflated: answering `no-invite` to a legitimately-invited user whose create merely hit a transient
+failure would dead-end them at `/no-access` instead of letting them retry.
 
 ## Roles and `preferredLocale`: Mongo, never the token
 

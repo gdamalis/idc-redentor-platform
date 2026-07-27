@@ -27,8 +27,8 @@ const bodySchema = z.object({ idToken: z.string().min(1) });
  * - `401 stale-token` — verifies, but the sign-in event is > 5 min old.
  * - `409 { reason: "provisioning-conflict" }` — verified + recent, but
  *   `resolveOrProvision` could not prove `no-invite` (a concurrent claim
- *   still mid-provision, or a create failure). Transient — retry — never a
- *   reason to destroy the client's Firebase credential. No cookie is set.
+ *   still mid-provision, or a create failure). Transient — retry — never
+ *   routed to `/no-access`. No cookie is set.
  * - `403 { reason }` — verified + recent, but `resolveOrProvision` refused
  *   for a PROVABLE reason (`no-invite` or `disabled` or `email-unverified`).
  *   No cookie is set either way.

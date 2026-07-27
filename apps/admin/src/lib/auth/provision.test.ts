@@ -143,8 +143,9 @@ describe("resolveOrProvision", () => {
     // A concurrent same-uid winner may have claimed this invite and be
     // mid-provision (its own insertOne not yet visible to this read), or an
     // unrelated uid accepted it earlier. Either way we cannot PROVE
-    // "never invited" — must not trigger the client's orphan-Firebase-account
-    // cleanup, which fires only on `no-invite`.
+    // "never invited" — must resolve as `provisioning-conflict`, never
+    // `no-invite`, or a legitimately-invited user gets dead-ended at
+    // /no-access instead of being told to retry.
     const { resolveOrProvision } = await import("./provision");
     findUserByFirebaseUid.mockResolvedValueOnce(null);
     claimPendingInvite.mockResolvedValueOnce(null);

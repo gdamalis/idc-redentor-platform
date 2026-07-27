@@ -23,7 +23,7 @@ All blockers are **Done and merged** (verified 2026-07-24):
 - `firebase@12.16.0` (`@firebase/auth@1.13.3`): `signInWithEmailAndPassword`, `signInWithPopup`, `signInWithRedirect`, `getRedirectResult`, `GoogleAuthProvider`, `signOut`, `setPersistence`, `browserLocalPersistence`, `deleteUser`.
 - **`resend` is NOT yet a dependency of `apps/admin`** — must be added (`apps/web` uses `resend ^6.4.1`).
 
-**Reused verbatim / mirrored:** `apps/admin/src/lib/firebase/{admin,client}.ts` (lazy getters — extend `admin.ts` with a `getAdminAuth()` helper), `apps/admin/src/service/database.service.ts` (`getAdminDb`, `getContentDb`), `apps/web/src/service/mailing/{types,resend.adapter}.ts` (copied), `apps/web/src/utils/auth/secret.ts` pattern (fail-closed), the toulmin-lab invite-gate/orphan-cleanup **flow** (not its NextAuth/custom-claim/thrown-Error style).
+**Reused verbatim / mirrored:** `apps/admin/src/lib/firebase/{admin,client}.ts` (lazy getters — extend `admin.ts` with a `getAdminAuth()` helper), `apps/admin/src/service/database.service.ts` (`getAdminDb`, `getContentDb`), `apps/web/src/service/mailing/{types,resend.adapter}.ts` (copied), `apps/web/src/utils/auth/secret.ts` pattern (fail-closed), the toulmin-lab invite-gate **flow** (not its NextAuth/custom-claim/thrown-Error style). **Post-merge reversal:** the toulmin-lab **orphan-Firebase-credential cleanup** was initially reused too, then deliberately removed after an expert review (PR #109) — see § 11 Open Questions and `docs/architecture/admin-auth.md` § "The `no-invite` refusal" for why it doesn't apply to this app's no-signup model and was the root of a recurring severe bug class.
 
 ---
 
@@ -49,7 +49,7 @@ All blockers are **Done and merged** (verified 2026-07-24):
 
 **R8 — `(app)` layout server gate.** `apps/admin/src/app/[locale]/(app)/layout.tsx` becomes an async RSC that calls `getCurrentUser()`: `{ ok:false, reason:"no-session"|"expired"|"revoked" }` ⇒ `redirect("/{locale}/login?callbackUrl=…")`; `{ ok:false, reason:"no-user"|"disabled" }` ⇒ `redirect("/{locale}/no-access")`; `{ ok:true }` ⇒ render `<AppShell>`.
 
-**R9 — Login page + client sign-in.** `[locale]/(auth)/login/page.tsx` (RSC shell, reads `callbackUrl` from `searchParams`) renders a `'use client'` `<LoginForm>`: Google button (`signInWithPopup`; on `auth/popup-blocked`|`auth/popup-closed-by-user` fall back to `signInWithRedirect`, handled by `getRedirectResult` on mount) + email/password form (`signInWithEmailAndPassword`). On any successful Firebase sign-in: `idToken = await user.getIdToken()` → `POST /api/auth/session { idToken }`. `200` ⇒ `router.push` to the **stored-locale** form of `callbackUrl ?? "/"` (rewrite the leading `/{locale}` segment to the `preferredLocale` returned by the route; validate `callbackUrl` is a local path — starts with `/`, not `//`). `403 no-invite` ⇒ `cleanupOrphanFirebaseAccount()` (`deleteUser(auth.currentUser)`, best-effort) + `signOut()` + `router.push("/no-access")`. Other errors ⇒ localized inline message. Minimal client state; `useActionState`/`useFormStatus` where a form action fits, otherwise controlled handlers named `handle*`.
+**R9 — Login page + client sign-in.** `[locale]/(auth)/login/page.tsx` (RSC shell, reads `callbackUrl` from `searchParams`) renders a `'use client'` `<LoginForm>`: Google button (`signInWithPopup`; on `auth/popup-blocked`|`auth/popup-closed-by-user` fall back to `signInWithRedirect`, handled by `getRedirectResult` on mount) + email/password form (`signInWithEmailAndPassword`). On any successful Firebase sign-in: `idToken = await user.getIdToken()` → `POST /api/auth/session { idToken }`. `200` ⇒ `router.push` to the **stored-locale** form of `callbackUrl ?? "/"` (rewrite the leading `/{locale}` segment to the `preferredLocale` returned by the route; validate `callbackUrl` is a local path — starts with `/`, not `//`). `403 no-invite` ⇒ `signOut()` + `router.push("/no-access")` — **no Firebase credential is ever deleted** (see § 11 Open Questions: a prior `cleanupOrphanFirebaseAccount`/`deleteUser(auth.currentUser)` step was removed post-merge after an expert review). Other errors ⇒ localized inline message. Minimal client state; `useActionState`/`useFormStatus` where a form action fits, otherwise controlled handlers named `handle*`.
 
 **R10 — Password reset (admin-branded, not Firebase default).** `[locale]/(auth)/reset-password/page.tsx` (RSC shell + client email form) invokes a Server Action `requestPasswordReset(email, locale)`: `generatePasswordResetLink(email, actionCodeSettings)` (Admin SDK, `actionCodeSettings.url = ${NEXT_PUBLIC_ADMIN_BASE_URL}/{locale}/login`) → send the link via Resend using the admin-branded localized template. **Enumeration-safe:** always return `{ ok: true }` and show a generic "if the email exists…" message; catch `auth/user-not-found` and any send failure, log server-side, still return `{ ok:true }`. Firebase's own reset email is never triggered.
 
@@ -63,7 +63,7 @@ All blockers are **Done and merged** (verified 2026-07-24):
 
 **R15 — QA host-deny hardening.** In `.claude/config.json`, add `idc-redentor-admin.vercel.app` and `ministerio.idcredentor.org` to `qa.env.preview.productionHostDeny` **and** `qa.env.staging.productionHostDeny`, so the orchestrator-resolved admin preview can never accidentally target admin production. Update the adjacent `*Note` prose. Must still validate against the canon schema (`divinelab:canon`).
 
-**R16 — Docs.** New `docs/architecture/admin-auth.md`: the native session-cookie flow, the invite gate + orphan cleanup, the proxy-vs-server-gate split, the deliberate divergences from toulmin-lab (native cookie not NextAuth; roles from Mongo not custom claims; return values not thrown Errors), and the QA verifiability boundary. Add it to the `CLAUDE.md` doc index.
+**R16 — Docs.** New `docs/architecture/admin-auth.md`: the native session-cookie flow, the invite gate (and, post-merge, why the client never deletes a Firebase credential on a refused sign-in — see § 11), the proxy-vs-server-gate split, the deliberate divergences from toulmin-lab (native cookie not NextAuth; roles from Mongo not custom claims; return values not thrown Errors), and the QA verifiability boundary. Add it to the `CLAUDE.md` doc index.
 
 **R17 — Functional-first.** Every auth outcome is a discriminated union / `null` / `boolean`. The **only** `class` instantiated is `new Resend()` inside the copied adapter factory. No `Error` subclass for control flow (the two DB-name `throw new Error` are pre-existing deployment-defect guards, not new).
 
@@ -169,7 +169,7 @@ export type SessionResult =
 | `apps/admin/src/lib/auth/provision.ts`                             | `resolveOrProvision(decoded): Promise<SessionResult>` (the invite gate, R5)                                                               |
 | `apps/admin/src/lib/auth/current-user.ts`                          | `getCurrentUser(): Promise<SessionResult>` (R6)                                                                                           |
 | `apps/admin/src/app/api/auth/session/route.ts`                     | `POST` + `DELETE` (R2/R3)                                                                                                                 |
-| `apps/admin/src/app/[locale]/(auth)/login/login-form.tsx`          | `'use client'` sign-in form (R9) + `cleanupOrphanFirebaseAccount`                                                                         |
+| `apps/admin/src/app/[locale]/(auth)/login/login-form.tsx`          | `'use client'` sign-in form (R9). No Firebase-credential deletion (removed post-merge — § 11)                                             |
 | `apps/admin/src/app/[locale]/(auth)/reset-password/reset-form.tsx` | `'use client'` reset request form (R10)                                                                                                   |
 | `apps/admin/src/app/[locale]/(auth)/reset-password/actions.ts`     | `requestPasswordReset` server action (R10)                                                                                                |
 | `apps/admin/src/components/shell/locale-actions.ts`                | `"use server"` `setPreferredLocale` (R18)                                                                                                 |
@@ -211,7 +211,7 @@ export type SessionResult =
     └── link → /reset-password
     · on Firebase success → getIdToken → POST /api/auth/session
     ·   200 → router.push(callbackUrl ?? "/")
-    ·   403 no-invite → cleanupOrphanFirebaseAccount + signOut → /no-access
+    ·   403 no-invite → signOut → /no-access (no credential deletion — § 11)
 
 [locale]/(auth)/reset-password/page.tsx (RSC)
 └── ResetForm ('use client') → requestPasswordReset(email, locale) → generic success
@@ -229,7 +229,7 @@ Responsive: auth pages are centered single-column (`min-h-screen items-center`),
 ## 7. Edge Cases
 
 1. **Stale ID token** (`auth_time` > 5 min) → `401 stale-token`, no cookie. Client re-prompts sign-in.
-2. **No matching invite** → `403 no-invite`, no cookie; client deletes the orphan Firebase credential + `signOut` + `/no-access`. **No `users` write** (assert count unchanged).
+2. **No matching invite** → `403 no-invite`, no cookie; client `signOut`s + `/no-access` — **no Firebase credential is deleted** (a prior cleanup was removed post-merge; see § 11). **No `users` write** (assert count unchanged).
 3. **Expired invite** (`expiresAt <= now`) → excluded by the query → treated as no-invite.
 4. **Revoked invite** (`status:"revoked"`) → excluded by the query → no-invite.
 5. **Email mismatch** (invite email ≠ account email) → query keys on normalized email, no match → no-invite (strict; no aliasing).
@@ -308,7 +308,7 @@ Commit: `feat(ICR-127): proxy + RSC gate protecting admin (app) routes`
 _(Draft PR opens after CP1 verify — step 11; CP2/CP3 push onto it.)_
 
 **CP4 — Login page + client sign-in + no-access + login/no-access i18n.**
-Files: `(auth)/login/page.tsx` + `login-form.tsx` (+ orphan cleanup, popup→redirect fallback, callbackUrl validation, **post-login push to the returned `preferredLocale`**), `no-access/page.tsx`, `messages/{es-AR,en-US}.json` (`auth.login.*`, `auth.noAccess.*`).
+Files: `(auth)/login/page.tsx` + `login-form.tsx` (popup→redirect fallback, callbackUrl validation, **post-login push to the returned `preferredLocale`**; the orphan-cleanup step this checkpoint originally shipped was removed post-merge — § 11 item 6), `no-access/page.tsx`, `messages/{es-AR,en-US}.json` (`auth.login.*`, `auth.noAccess.*`).
 Verify: type-check + lint + test + `pnpm --filter @idcr/admin build`.
 Commit: `feat(ICR-127): admin login (Google + email/password) + no-access + auth gate`
 
@@ -338,3 +338,5 @@ _(7 checkpoints — under the >8 split guard.)_
 3. **Session lifetime 5 days** and **any-Google-account strict-email** are proposals leadership can revisit; both are single-constant changes.
 4. **Invite _creation_ UI/flow** is out of scope (no trigger for the invite email in this ticket beyond seeded/test invites) — the invite email _template + send function_ are built and unit-tested here; the admin-facing "send invite" surface (where an admin will pick `invite.locale`) is a later ticket under ICR-13. Until then, seeded/test invites set `locale` explicitly.
 5. **`X-Frame-Options`/CSP for `apps/admin`** — the admin app has no `config/headers.js` yet; security headers for admin are not in this ticket's scope (auth cookie flags are). Flag for a later hardening pass if not already ticketed.
+6. **Client-side orphan-Firebase-credential cleanup — evaluated and deliberately NOT adopted (post-merge reversal, PR #109).** §§ R9/R16 and §§ 5–7 above originally described a `cleanupOrphanFirebaseAccount()` step, copied from `divinelab/toulmin-lab`, that deleted the just-signed-in Firebase credential on a `403 no-invite` refusal. It was removed after an expert review, for reasons that don't retroactively belong in the requirements above but must be on record: (a) it never reliably achieved its purpose — it only ever fired for someone who signed in through the admin's own `/login` page with no invite, not for a Firebase account created any other way (e.g. the public REST API); (b) toulmin-lab's premise doesn't transfer — that app has a public signup where a pre-existing account blocks re-signup, whereas `apps/admin` has no signup at all (Google auto-provisions identically on every sign-in; email/password can't create an account), so a pre-existing Firebase account for an invited address was never actually an obstacle here; (c) it was the root of a recurring, severe bug class — three separate review rounds each found a different path where the wrong, already-provisioned account got deleted; (d) it erased an audit signal for the one door into congregant PII this app has; (e) an uninvited Firebase account is inert (no `AdminUser` row, no session, no access) regardless of whether it's ever deleted. See `docs/architecture/admin-auth.md` § "The `no-invite` refusal" for the full writeup.
+7. **Deferred replacement requirement — invite CREATION must handle a pre-existing Firebase account (later ticket).** The one legitimate concern the removed cleanup was reaching for — an address that already has a Firebase account being invited — must be handled server-side, at invite-creation time (the ICR-13 "send invite" surface), not at sign-in: look the email up with the Admin SDK (`getUserByEmail`) and either reuse it (set `emailVerified`, send a password-set link) or deliberately delete-and-recreate it. This replaces the removed client-side cleanup and must be tracked when the invite-creation ticket is scoped.

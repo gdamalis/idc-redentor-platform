@@ -4,14 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import {
   GoogleAuthProvider,
-  deleteUser,
   getRedirectResult,
   signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
   signOut,
 } from "firebase/auth";
-import type { Auth, User } from "firebase/auth";
+import type { User } from "firebase/auth";
 import { useTranslations } from "next-intl";
 import { AlertCircle } from "lucide-react";
 import { useRouter, Link } from "@src/i18n/routing";
@@ -98,22 +97,6 @@ function stripLocalePrefix(path: string): string {
   return `${appPath}${search}`;
 }
 
-/**
- * Best-effort cleanup for a Firebase credential that provisioning refused
- * for lack of a matching invite (`no-invite`) — nothing else was ever
- * written for it, so deleting it just prevents an orphaned sign-in-only
- * Firebase account. Must NEVER be called for a `disabled` user: that
- * account is a real, provisioned `AdminUser` and deleting its Firebase
- * credential would break re-enablement.
- */
-async function cleanupOrphanFirebaseAccount(auth: Auth): Promise<void> {
-  try {
-    if (auth.currentUser) await deleteUser(auth.currentUser);
-  } catch {
-    // Best-effort — sign-out still proceeds regardless of this outcome.
-  }
-}
-
 export function LoginForm({ callbackUrl }: LoginFormProps) {
   const t = useTranslations("auth.login");
   const router = useRouter();
@@ -149,18 +132,21 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
     }
 
     if (response.status === 403) {
-      const json = (await response.json().catch(() => null)) as { reason?: string } | null;
-      const auth = getFirebaseAuth();
-      // Only a never-provisioned orphan (`no-invite`) gets its Firebase
-      // credential deleted. Every other refusal reason — `disabled` (a real,
-      // provisioned `AdminUser`; deleting the credential would break
-      // re-enablement) and `email-unverified` (a real invite may still be
-      // pending; the user just needs to verify their email and sign in
-      // again) — leaves the credential alone.
-      if (json?.reason === "no-invite") {
-        await cleanupOrphanFirebaseAccount(auth);
-      }
-      await signOut(auth);
+      // No Firebase credential is EVER deleted here, for any refusal reason
+      // (a prior `no-invite` cleanup was removed after an expert review —
+      // see docs/architecture/admin-auth.md). It only ever fired for someone
+      // who signed in through this very page with no invite; anyone who
+      // created a Firebase account another way (e.g. Firebase's public REST
+      // API) and never visited /login was never touched by it, so it did not
+      // reliably achieve its purpose. It was also the root of three separate
+      // regressions where a concurrent, legitimately-provisioned account got
+      // deleted instead. An uninvited Firebase account is inert — no `User`
+      // row, no session cookie, no access — so leaving it in place is both
+      // safe and preserves an audit signal for the door to congregant PII. A
+      // pre-existing Firebase account for an address that's being invited is
+      // a server-side concern for invite CREATION (Admin SDK, a later
+      // ticket), not something the client can safely resolve here.
+      await signOut(getFirebaseAuth());
       router.push("/no-access");
       return;
     }

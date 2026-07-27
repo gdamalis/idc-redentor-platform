@@ -33,24 +33,32 @@ import { normalizeEmail } from "./email";
  *    concurrent same-uid exchange may have claimed the invite and provisioned
  *    the `User` a moment earlier. Re-read `findUserByFirebaseUid` before
  *    concluding anything — if the concurrent winner's `User` now exists,
- *    resolve exactly like the returning-user path (step 2). Getting this
- *    wrong is not cosmetic: the client deletes the Firebase credential on
- *    `no-invite` (see below), which for a lost race would delete the
- *    WINNER's just-provisioned account too (same `firebaseUid`/browser
- *    session) — a permanent lockout plus an orphaned Mongo `User`.
+ *    resolve exactly like the returning-user path (step 2).
  *
  *    Codex round-4 P1 fix: that re-read alone is NOT proof of `no-invite` —
  *    it's a point-in-time check with no synchronization against the winner's
  *    concurrent `insertOne`, so the loser can observe an empty re-read while
- *    the winner is still mid-`createUserFromInvite`. Only a genuinely
- *    PROVABLE negative may return `no-invite` (the client destroys the
- *    Firebase credential on it). So when the re-read comes back empty, look
- *    up the invite by email (`findInviteByEmail`, any status) and branch:
- *    `status === "accepted"` ⇒ someone claimed it — a concurrent winner still
- *    mid-provision, or an earlier acceptance — either way we cannot prove
- *    "never invited", so `{ ok:false, reason:"provisioning-conflict" }`,
- *    never destructive; no invite doc at all, or one that's `revoked`/expired
- *    `pending` ⇒ provably `no-invite`, safe for the client's cleanup.
+ *    the winner is still mid-`createUserFromInvite`. The `no-invite` /
+ *    `provisioning-conflict` split is justified on its own merits:
+ *      - `no-invite` = **provably** not provisionable — no invite for this
+ *        email exists, or none can be proven to. The user is sent to
+ *        `/no-access`, a dead end with no retry path.
+ *      - `provisioning-conflict` = we could NOT complete provisioning and we
+ *        CANNOT prove the user was never invited — a concurrent winner still
+ *        mid-provision, an invite already accepted, or a transient store
+ *        failure. The user is told to retry.
+ *    This is not a cosmetic distinction: answering `no-invite` to a
+ *    legitimately-invited person whose create merely hit a transient failure
+ *    sends them to `/no-access` — a dead end telling them to "contact an
+ *    administrator" when simply retrying would have worked. That user-facing
+ *    bug is exactly what this split prevents.
+ *
+ *    So when the re-read comes back empty, look up the invite by email
+ *    (`findInviteByEmail`, any status) and branch: `status === "accepted"` ⇒
+ *    someone claimed it — a concurrent winner still mid-provision, or an
+ *    earlier acceptance — either way we cannot prove "never invited", so
+ *    `{ ok:false, reason:"provisioning-conflict" }`; no invite doc at all, or
+ *    one that's `revoked`/expired `pending` ⇒ provably `no-invite`.
  *
  *    A claimed invite creates the `User` (seeding `preferredLocale` from the
  *    invite, defaulting to the app's default locale). Codex round-4 P2 fix:
@@ -58,9 +66,11 @@ import { normalizeEmail } from "./email";
  *    reverted (Codex round-3 P2 fix: the revert is CONDITIONAL on the invite
  *    still being in the exact `"accepted"` state this claim left it in — see
  *    `revertInviteClaim` — so it can never clobber a newer transition, e.g. a
- *    concurrent revoke) and `provisioning-conflict` is returned — see the
- *    catch block below for why no error may ever propagate past this
- *    function, and why reverting is always correct here.
+ *    concurrent revoke) and `provisioning-conflict` is returned (never
+ *    `no-invite` — a create failure proves nothing about whether the user
+ *    was ever invited) — see the catch block below for why no error may
+ *    ever propagate past this function, and why reverting is always correct
+ *    here.
  *
  * Every outcome is a `SessionResult` return value — never thrown control
  * flow. Roles/locale come from the created/existing Mongo `User`, never the
@@ -94,8 +104,8 @@ export async function resolveOrProvision(
     // Lost-race check (Codex round-3 P1 fix): a concurrent same-uid exchange
     // may have claimed this exact invite and provisioned the `User` a moment
     // ago — re-read before concluding anything, so the loser resolves like a
-    // returning user instead of triggering the client's orphan cleanup
-    // against the winner's just-created account (see doc comment above).
+    // returning user instead of wrongly reporting `no-invite` against the
+    // winner's just-created account (see doc comment above).
     const concurrentlyProvisioned = await findUserByFirebaseUid(decoded.uid);
     if (concurrentlyProvisioned) {
       return resultForExistingUser(concurrentlyProvisioned);
@@ -108,12 +118,13 @@ export async function resolveOrProvision(
     const inviteByEmail = await findInviteByEmail(email);
     if (inviteByEmail?.status === "accepted") {
       // Claimed by someone — a concurrent winner still mid-provision, or an
-      // earlier acceptance. We cannot prove "never invited"; never let this
-      // trigger the client's destructive `no-invite` cleanup.
+      // earlier acceptance. We cannot prove "never invited", so this must
+      // never resolve as `no-invite` — that would wrongly dead-end a
+      // legitimately-invited user at `/no-access`.
       return { ok: false, reason: "provisioning-conflict" };
     }
     // No invite doc at all, or one that's `revoked`/expired `pending`:
-    // provably no-invite — safe for the client's orphan cleanup.
+    // provably no-invite.
     return { ok: false, reason: "no-invite" };
   }
 
@@ -138,7 +149,9 @@ export async function resolveOrProvision(
     // new uid). Either way the claim must be reverted (Codex round-3 P2 fix:
     // conditionally, on the claim's own `acceptedAt` — see
     // `revertInviteClaim`) so it isn't stranded `"accepted"` with no user,
-    // and the outcome reported as transient/ambiguous — never destructive.
+    // and the outcome reported as transient/ambiguous (`provisioning-conflict`)
+    // — never `no-invite`, which would wrongly send a legitimately-invited
+    // user whose create merely failed to a dead-end `/no-access` page.
     await revertInviteClaim(invite._id, invite.acceptedAt);
     return { ok: false, reason: "provisioning-conflict" };
   }
