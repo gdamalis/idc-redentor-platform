@@ -28,14 +28,30 @@ const BANNED = [
   },
 ];
 
-function walk(dir) {
+function walk(dir, exts = [".html"]) {
   const out = [];
   for (const entry of readdirSync(dir)) {
     const abs = join(dir, entry);
-    if (statSync(abs).isDirectory()) out.push(...walk(abs));
-    else if (extname(abs) === ".html") out.push(abs);
+    if (statSync(abs).isDirectory()) out.push(...walk(abs, exts));
+    else if (exts.includes(extname(abs))) out.push(abs);
   }
   return out;
+}
+
+// The fonts are declared ONCE, in the shared stylesheet — not in every artifact.
+// Asserting them per-HTML would force every artifact to embed a decorative
+// font-family purely to satisfy the gate. Assert them where they actually live,
+// and run the BANNED list over the stylesheet too — otherwise a gradient added
+// to styles.css (the likeliest place) bypasses the whole quality gate.
+function checkStyles() {
+  const src = readFileSync(join(ROOT, "styles.css"), "utf8");
+  if (src.trim().length === 0) return ["styles.css: EMPTY file"];
+  const problems = [];
+  if (!/"Outfit"/.test(src)) problems.push('missing "Outfit" font-family');
+  if (!/"Playfair Display"/.test(src))
+    problems.push('missing "Playfair Display" font-family');
+  for (const { re, why } of BANNED) if (re.test(src)) problems.push(why);
+  return problems.map((p) => `styles.css: ${p}`);
 }
 
 function checkHtml(abs) {
@@ -46,11 +62,9 @@ function checkHtml(abs) {
   // A negative assertion must first prove it observed something (lesson ICR-144).
   if (src.trim().length === 0) return [`${rel}: EMPTY file`];
 
+  // Linking the shared stylesheet IS an artifact's font contract.
   if (!/<link[^>]+href=["'][^"']*styles\.css/.test(src))
     problems.push("does not link the shared styles.css");
-  if (!/"Outfit"/.test(src)) problems.push('missing "Outfit" font-family');
-  if (!/"Playfair Display"/.test(src))
-    problems.push('missing "Playfair Display" font-family');
   if (!/lang=["']es-AR["']/.test(src)) problems.push('missing lang="es-AR"');
 
   if (PRINT_ONLY.has(rel)) {
@@ -83,8 +97,10 @@ if (files.length === 0) {
   process.exit(1);
 }
 
-const failures = files.flatMap(checkHtml);
-console.log(`checked ${files.length} artifact(s)`);
+// The stylesheet is always checked, even with --only: it is shared by every
+// artifact, so a defect there affects all of them.
+const failures = [...checkStyles(), ...files.flatMap(checkHtml)];
+console.log(`checked styles.css + ${files.length} artifact(s)`);
 for (const f of failures) console.error("  ✗ " + f);
 if (failures.length) {
   console.error(`FAIL: ${failures.length} problem(s)`);
