@@ -19,3 +19,53 @@ describe("admin locale message files", () => {
     expect(en.filter((k) => !es.includes(k))).toEqual([]); // missing from es-AR
   });
 });
+
+describe("auth.resetPassword + auth.email.{invite,reset} (ICR-127)", () => {
+  const resetPasswordKeys = [
+    "title",
+    "subtitle",
+    "emailLabel",
+    "submit",
+    "successGeneric",
+    "backToLogin",
+  ].sort();
+  const inviteEmailKeys = [
+    "subject",
+    "heading",
+    "greeting",
+    "body",
+    "cta",
+    "expiryNote",
+    "footer",
+  ].sort();
+  const resetEmailKeys = [
+    "subject",
+    "heading",
+    "body",
+    "cta",
+    "expiryNote",
+    "ignoreNote",
+    "footer",
+  ].sort();
+
+  it.each([
+    ["es-AR", esAR],
+    ["en-US", enUS],
+  ])("%s carries the auth.resetPassword subtree with every expected key", (_locale, messages) => {
+    expect(Object.keys(messages.auth.resetPassword).sort()).toEqual(resetPasswordKeys);
+  });
+
+  it.each([
+    ["es-AR", esAR],
+    ["en-US", enUS],
+  ])("%s carries the auth.email.invite subtree with every expected key", (_locale, messages) => {
+    expect(Object.keys(messages.auth.email.invite).sort()).toEqual(inviteEmailKeys);
+  });
+
+  it.each([
+    ["es-AR", esAR],
+    ["en-US", enUS],
+  ])("%s carries the auth.email.reset subtree with every expected key", (_locale, messages) => {
+    expect(Object.keys(messages.auth.email.reset).sort()).toEqual(resetEmailKeys);
+  });
+});

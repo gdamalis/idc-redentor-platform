@@ -1,12 +1,15 @@
-import { PlaceholderPage } from "@src/components/shell/placeholder-page";
-import { getTranslations } from "next-intl/server";
+import { LoginForm } from "./login-form";
 
-export default async function LoginPage() {
-  const tPages = await getTranslations("pages");
+interface LoginPageProps {
+  readonly searchParams: Promise<{ callbackUrl?: string }>;
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const { callbackUrl } = await searchParams;
 
   return (
     <div className="flex min-h-screen items-center justify-center p-8">
-      <PlaceholderPage heading={`${tPages("login.title")} — ${tPages("comingSoon")}`} />
+      <LoginForm callbackUrl={callbackUrl} />
     </div>
   );
 }

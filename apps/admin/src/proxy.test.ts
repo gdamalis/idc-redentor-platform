@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const intlMiddlewareMock = vi.hoisted(() => vi.fn());
 const createMiddlewareMock = vi.hoisted(() => vi.fn(() => intlMiddlewareMock));
+const verifySessionMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next-intl/middleware", () => ({
   default: createMiddlewareMock,
@@ -16,11 +17,17 @@ vi.mock("next-intl/middleware", () => ({
 vi.mock("./i18n/routing", () => ({
   routing: { locales: ["es-AR", "en-US"], defaultLocale: "es-AR" },
 }));
+vi.mock("@src/lib/auth/session", () => ({
+  SESSION_COOKIE_NAME: "__session",
+  verifySession: verifySessionMock,
+}));
 
 import { proxy } from "./proxy";
 
-const makeRequest = (path: string) =>
-  new NextRequest(`http://localhost:3000${path}`);
+const makeRequest = (path: string, cookieHeader?: string) =>
+  new NextRequest(`http://localhost:3000${path}`, {
+    headers: cookieHeader ? { cookie: cookieHeader } : undefined,
+  });
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -38,28 +45,83 @@ describe("proxy", () => {
     "/styles/theme.css",
   ])(
     "bypasses the intl middleware for a static asset path (%s) — no locale redirect",
-    (path) => {
-      const response = proxy(makeRequest(path));
+    async (path) => {
+      const response = await proxy(makeRequest(path));
 
       expect(intlMiddlewareMock).not.toHaveBeenCalled();
+      expect(verifySessionMock).not.toHaveBeenCalled();
       expect(response.status).not.toBe(307);
       expect(response.headers.get("location")).toBeNull();
     },
   );
 
-  it("delegates a normal (locale-less) path to the intl middleware", () => {
-    const response = proxy(makeRequest("/"));
+  it("short-circuits an OPTIONS preflight request with a 200, bypassing intl", async () => {
+    const response = await proxy(
+      new NextRequest("http://localhost:3000/", { method: "OPTIONS" }),
+    );
+
+    expect(intlMiddlewareMock).not.toHaveBeenCalled();
+    expect(verifySessionMock).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+  });
+
+  it("delegates a normal locale-less path to the intl middleware when the session is valid", async () => {
+    verifySessionMock.mockResolvedValueOnce({ uid: "uid1" });
+
+    const response = await proxy(makeRequest("/", "__session=valid-cookie"));
 
     expect(intlMiddlewareMock).toHaveBeenCalledTimes(1);
     expect(response.headers.get("location")).toContain("/es-AR");
   });
 
-  it("short-circuits an OPTIONS preflight request with a 200, bypassing intl", () => {
-    const response = proxy(
-      new NextRequest("http://localhost:3000/", { method: "OPTIONS" }),
-    );
+  it("redirects an unauthenticated (app) path to login with an encoded callbackUrl", async () => {
+    const response = await proxy(makeRequest("/es-AR/people"));
 
     expect(intlMiddlewareMock).not.toHaveBeenCalled();
-    expect(response.status).toBe(200);
+    expect([307, 308]).toContain(response.status);
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3000/es-AR/login?callbackUrl=%2Fes-AR%2Fpeople",
+    );
+  });
+
+  it.each(["/es-AR/login", "/en-US/reset-password", "/es-AR/no-access"])(
+    "bypasses the session check for the public auth path %s",
+    async (path) => {
+      const response = await proxy(makeRequest(path));
+
+      expect(verifySessionMock).not.toHaveBeenCalled();
+      expect(intlMiddlewareMock).toHaveBeenCalledTimes(1);
+      expect(response.headers.get("location")).toContain("/es-AR");
+    },
+  );
+
+  it("continues to the intl middleware when the session cookie is valid", async () => {
+    verifySessionMock.mockResolvedValueOnce({ uid: "uid1" });
+
+    const response = await proxy(
+      makeRequest("/es-AR/people", "__session=valid-cookie"),
+    );
+
+    expect(verifySessionMock).toHaveBeenCalledWith("valid-cookie", false);
+    expect(intlMiddlewareMock).toHaveBeenCalledTimes(1);
+    expect(response.headers.get("location")).toContain("/es-AR");
+  });
+
+  it("injects an x-pathname header (pathname+search) into the request passed to intl middleware on an authenticated pass-through", async () => {
+    verifySessionMock.mockResolvedValueOnce({ uid: "uid1" });
+
+    await proxy(makeRequest("/es-AR/people?tab=roles", "__session=valid-cookie"));
+
+    const [forwardedRequest] = intlMiddlewareMock.mock.calls[0] as [NextRequest];
+    expect(forwardedRequest.headers.get("x-pathname")).toBe(
+      "/es-AR/people?tab=roles",
+    );
+  });
+
+  it("also injects the x-pathname header on the public-auth-path bypass", async () => {
+    await proxy(makeRequest("/es-AR/login"));
+
+    const [forwardedRequest] = intlMiddlewareMock.mock.calls[0] as [NextRequest];
+    expect(forwardedRequest.headers.get("x-pathname")).toBe("/es-AR/login");
   });
 });

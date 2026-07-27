@@ -2,6 +2,8 @@ import "server-only";
 
 import { cert, getApp, getApps, initializeApp } from "firebase-admin/app";
 import type { App } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import type { Auth } from "firebase-admin/auth";
 import { z } from "zod";
 
 /**
@@ -46,4 +48,14 @@ export function getFirebaseAdminApp(): App {
       privateKey: privateKey.replace(/\\n/g, "\n"),
     }),
   });
+}
+
+/**
+ * Lazy getter for the server Admin SDK auth handle. Every server-side auth
+ * operation (session cookie create/verify, ID token verify, refresh-token
+ * revoke, password-reset link generation) goes through this — never called
+ * at import time, mirroring `getFirebaseAdminApp()` above.
+ */
+export function getAdminAuth(): Auth {
+  return getAuth(getFirebaseAdminApp());
 }

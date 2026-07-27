@@ -26,25 +26,73 @@
     "roles": "Roles",
     "settings": "Configuración"
   },
-  "topbar": {
-    "userMenuPlaceholder": "Cuenta"
-  },
   "localeSwitcher": {
     "ariaLabel": "Cambiar idioma",
     "es": "ES",
     "en": "EN"
   },
   "pages": {
-    "comingSoon": "Próximamente",
+    "comingSoon": "Próximamente"
+  },
+  "auth": {
     "login": {
-      "title": "Iniciar sesión"
+      "title": "Iniciá sesión",
+      "subtitle": "Ingresá con tu cuenta de la iglesia para acceder al panel.",
+      "googleButton": "Continuar con Google",
+      "emailLabel": "Correo electrónico",
+      "passwordLabel": "Contraseña",
+      "submit": "Iniciar sesión",
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "orSeparator": "o",
+      "errors": {
+        "wrongPassword": "El correo electrónico o la contraseña son incorrectos.",
+        "noInvite": "Tu cuenta no tiene una invitación activa. Consultá con un administrador.",
+        "inviteExpired": "Tu invitación venció. Consultá con un administrador.",
+        "sessionExpired": "Tu sesión expiró. Iniciá sesión de nuevo.",
+        "provisioningConflict": "No pudimos completar el inicio de sesión. Probá de nuevo en unos segundos.",
+        "popupBlocked": "El navegador bloqueó la ventana emergente. Probamos con otro método.",
+        "popupClosed": "Cerraste la ventana antes de terminar. Intentá de nuevo.",
+        "network": "Hubo un problema de conexión. Revisá tu internet e intentá de nuevo.",
+        "tooManyRequests": "Hiciste demasiados intentos. Esperá unos minutos y probá de nuevo.",
+        "generic": "No pudimos iniciar tu sesión. Intentá de nuevo."
+      }
     },
     "resetPassword": {
-      "title": "Restablecer contraseña"
+      "title": "Restablecer contraseña",
+      "subtitle": "Ingresá tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.",
+      "emailLabel": "Correo electrónico",
+      "submit": "Enviar enlace",
+      "successGeneric": "Si el correo está registrado, vas a recibir un enlace para restablecer tu contraseña en unos minutos.",
+      "backToLogin": "Volver a iniciar sesión"
     },
     "noAccess": {
       "title": "Sin acceso",
-      "description": "No tenés permiso para ver esta sección."
+      "description": "Tu cuenta no tiene permiso para ingresar al panel. Si creés que es un error, consultá con un administrador.",
+      "backToWebsite": "Ir al sitio de la iglesia"
+    },
+    "signOut": {
+      "label": "Cerrar sesión",
+      "error": "No pudimos cerrar tu sesión. Probá de nuevo."
+    },
+    "email": {
+      "invite": {
+        "subject": "Te invitamos al Panel de Administración de IDC Redentor",
+        "heading": "¡Bienvenido/a al equipo!",
+        "greeting": "Hola,",
+        "body": "Te invitamos a sumarte al Panel de Administración de la Iglesia de Cristo Redentor. Hacé clic en el botón de abajo para crear tu contraseña y comenzar.",
+        "cta": "Crear mi contraseña",
+        "expiryNote": "Este enlace es válido por tiempo limitado, por tu seguridad.",
+        "footer": "Si no esperabas esta invitación, podés ignorar este correo."
+      },
+      "reset": {
+        "subject": "Restablecé tu contraseña — Panel de Administración",
+        "heading": "Restablecé tu contraseña",
+        "body": "Recibimos una solicitud para restablecer la contraseña de tu cuenta en el Panel de Administración de IDC Redentor. Hacé clic en el botón de abajo para elegir una nueva contraseña.",
+        "cta": "Restablecer contraseña",
+        "expiryNote": "Este enlace es válido por tiempo limitado, por tu seguridad.",
+        "ignoreNote": "Si no solicitaste este cambio, podés ignorar este correo: tu contraseña actual sigue siendo válida.",
+        "footer": "Equipo del Panel de Administración de IDC Redentor."
+      }
     }
   }
 }
