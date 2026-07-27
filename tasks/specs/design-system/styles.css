@@ -202,6 +202,7 @@ a {
   display: grid;
   grid-template-columns: 264px 1fr;
   min-height: 100vh;
+  position: relative; /* containing block for an overlaid .dialog-scrim (Task 6) */
 }
 
 /* ===== Sidebar ===== */
@@ -1100,4 +1101,60 @@ tbody tr.dense td {
   color: hsl(var(--muted-foreground));
   background: hsl(var(--muted));
   border-color: hsl(var(--border));
+}
+
+/* ==========================================================================
+   New for Task 6 (users / roles-matrix / sign-in screens).
+   ========================================================================== */
+
+/* Layers an open Dialog over a full page — used when a screen must show a
+   modal atop real content (e.g. users.html's invite dialog), rather than the
+   in-flow, self-centered .dialog-scrim that Dialog.html renders on its own.
+   Anchors to the nearest .app (now position: relative above) so the light
+   and dark previews each get their own independent overlay. */
+.dialog-scrim.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  align-items: flex-start;
+  padding-top: 15vh;
+}
+
+/* Groups permission rows under a labelled header inside a matrix table
+   (roles-matrix.html). The row's td carries table-appropriate padding and a
+   subtle background so it reads as a header row; the label itself reuses
+   .ds-label's type treatment. */
+.group-row td {
+  padding: 10px 16px;
+  background: hsl(var(--muted) / 0.3);
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+/* Full-height centering wrapper for unauthenticated screens with no .app
+   shell (sign-in.html). Distinct from .flush: a floating card wants the
+   .preview's default 24px breathing room, just centered on both axes. */
+.center-viewport {
+  min-height: calc(100vh - 48px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* "or" divider between the Google button and the email/password fields on
+   sign-in.html — two hairlines flanking a centered label. Not a reuse of
+   .seg (that's a toggle-button group), since this has no clickable segments. */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 12.5px;
+}
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: hsl(var(--border));
 }
