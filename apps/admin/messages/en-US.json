@@ -68,8 +68,11 @@
     "noAccess": {
       "title": "No access",
       "description": "Your account doesn't have permission to enter the panel. If you think this is a mistake, contact an administrator.",
-      "backToWebsite": "Go to the church website",
-      "signOut": "Sign out"
+      "backToWebsite": "Go to the church website"
+    },
+    "signOut": {
+      "label": "Sign out",
+      "error": "We couldn't sign you out. Please try again."
     },
     "email": {
       "invite": {

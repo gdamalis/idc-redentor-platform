@@ -71,6 +71,26 @@ never block sign-out). The cookie is **always** cleared (`Set-Cookie` with the s
 `maxAge: 0`), so the endpoint is idempotent: calling it with no cookie, or a garbage one, still
 returns `200 { ok: true }`.
 
+### Client sign-out (`components/shell/sign-out-button.tsx`)
+
+Mounted by both `no-access/page.tsx` and the authenticated `Topbar`. Codex round-6 P1 fix
+(PR #109): navigation to `/login` happens **only once the server confirms** the `DELETE` above
+actually cleared the cookie (`response.ok`). The endpoint being _idempotent_ (safe to call twice,
+even with no cookie) is not the same guarantee as the _call succeeding_ — a rejected fetch
+(offline/network) or a non-2xx response means `Set-Cookie: maxAge=0` never reached the browser, so
+`__session` stays valid while the UI shows `/login`. On a shared device the next person could reach
+a protected route and land back inside the panel with congregant PII. On failure the button
+re-enables and a localized, retryable error renders next to it (`auth.signOut.error`); nothing
+navigates.
+
+On success, the control also calls Firebase's client `signOut(auth)` (same call `login-form.tsx`
+already makes on its own refusal paths) **after** the server cookie is confirmed cleared. Without
+this, the browser retains the previous user's Firebase session, so the next person on a shared
+device could click "Continuar con Google" on `/login` and be silently re-authenticated as them,
+minting a fresh session cookie with no credentials entered. A failure in this client-side step is
+logged but never blocks navigation — the server cookie is the one that actually grants access, so a
+local-state teardown failure must not strand the user on a page they can no longer use.
+
 ### Session cookie shape (`src/lib/auth/session.ts`)
 
 | Attribute  | Value                       | Why                                                                                                                                                                                         |

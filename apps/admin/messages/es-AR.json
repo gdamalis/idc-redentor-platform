@@ -68,8 +68,11 @@
     "noAccess": {
       "title": "Sin acceso",
       "description": "Tu cuenta no tiene permiso para ingresar al panel. Si creés que es un error, consultá con un administrador.",
-      "backToWebsite": "Ir al sitio de la iglesia",
-      "signOut": "Cerrar sesión"
+      "backToWebsite": "Ir al sitio de la iglesia"
+    },
+    "signOut": {
+      "label": "Cerrar sesión",
+      "error": "No pudimos cerrar tu sesión. Probá de nuevo."
     },
     "email": {
       "invite": {

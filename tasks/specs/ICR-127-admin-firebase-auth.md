@@ -241,7 +241,7 @@ Responsive: auth pages are centered single-column (`min-h-screen items-center`),
 5. **Email mismatch** (invite email ≠ account email) → query keys on normalized email, no match → no-invite (strict; no aliasing).
 6. **Token without email** (`decoded.email` undefined) → no-invite (nothing to match).
 7. **Returning active user** (valid recent token, `User` exists) → cookie set, `200`, invite untouched.
-8. **Sign-out** → `DELETE` clears cookie + `revokeRefreshTokens`; next request's `getCurrentUser` (checkRevoked:true) → `revoked` → `/login`.
+8. **Sign-out** → `DELETE` clears cookie + `revokeRefreshTokens`; next request's `getCurrentUser` (checkRevoked:true) → `revoked` → `/login`. Client (`sign-out-button.tsx`) navigates to `/login` only once `response.ok` confirms the clear (Codex round-6 P1, PR #109) — a rejected fetch or non-2xx leaves `__session` valid, so the client stays put and shows a retryable error instead. On success it also ends the Firebase client session (`signOut(auth)`), closing the adjacent gap where the browser's retained Firebase session could silently re-authenticate the next person on a shared device.
 9. **Expired session cookie** (> 5 d) → `verifySessionCookie` fails → proxy → `/login`.
 10. **Valid cookie, User deleted/disabled after issuance** → `getCurrentUser` → `no-user`/`disabled` → `(app)` layout → `/no-access`.
 11. **Google popup blocked/closed** → localized error → `signInWithRedirect` fallback; `getRedirectResult` completes on return.
