@@ -1065,3 +1065,31 @@ tbody tr.dense td {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* ==========================================================================
+   New for Task 5 (screens) — a generic form-card body/footer, used by
+   person-detail.html's "Datos" panel. Mirrors .dialog-body/.dialog-foot's
+   rhythm (same border-top + gap) but under its own name: these wrap a
+   whole-page form card, not a modal, so reusing .dialog-foot would be
+   misleading. Reusable by any later screen with the same pattern.
+   ========================================================================== */
+.card-body {
+  padding: 24px;
+}
+.card-foot {
+  padding: 16px 24px;
+  border-top: 1px solid hsl(var(--border));
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* A neutral informational badge — distinct from the .b-active/.b-occ/
+   .b-inactive STATUS dots (Task 4). Used for non-status pills like
+   "Requiere permiso" on a masked PII field. No leading dot: it isn't a
+   status indicator. */
+.badge.b-neutral {
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--muted));
+  border-color: hsl(var(--border));
+}
