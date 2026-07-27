@@ -6,22 +6,11 @@ import {
 } from "@src/service/user.service";
 import {
   claimPendingInvite,
+  findInviteByEmail,
   revertInviteClaim,
 } from "@src/service/invite.service";
 import type { AdminUser, SessionResult } from "@src/service/types";
 import { normalizeEmail } from "./email";
-
-interface MongoDuplicateKeyError {
-  code?: number;
-}
-
-function isDuplicateKeyError(error: unknown): error is MongoDuplicateKeyError {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    (error as MongoDuplicateKeyError).code === 11000
-  );
-}
 
 /**
  * Invite-only provisioning (spec §2 R5). Given a verified `DecodedIdToken`:
@@ -42,25 +31,36 @@ function isDuplicateKeyError(error: unknown): error is MongoDuplicateKeyError {
  *    revoked/expired between the two steps could still provision a user). No
  *    match can also mean a LOST RACE, not just expired/revoked/mismatched: a
  *    concurrent same-uid exchange may have claimed the invite and provisioned
- *    the `User` a moment earlier. Codex round-3 P1 fix: re-read
- *    `findUserByFirebaseUid` before concluding `no-invite` — if the
- *    concurrent winner's `User` now exists, resolve exactly like the
- *    returning-user path (step 2) instead of returning `no-invite`. Getting
- *    this wrong is not cosmetic: the client deletes the Firebase credential
- *    on `no-invite` (see below), which for a lost race would delete the
+ *    the `User` a moment earlier. Re-read `findUserByFirebaseUid` before
+ *    concluding anything — if the concurrent winner's `User` now exists,
+ *    resolve exactly like the returning-user path (step 2). Getting this
+ *    wrong is not cosmetic: the client deletes the Firebase credential on
+ *    `no-invite` (see below), which for a lost race would delete the
  *    WINNER's just-provisioned account too (same `firebaseUid`/browser
- *    session) — a permanent lockout plus an orphaned Mongo `User`. Only when
- *    that re-read also comes back empty is it genuinely `no-invite`
- *    (expired/revoked/mismatched), **creating nothing**. A claimed invite
- *    creates the `User` (seeding `preferredLocale` from the invite,
- *    defaulting to the app's default locale). If that create fails for any
- *    reason OTHER than the duplicate-key race `createUserFromInvite` already
- *    recovers from internally, the claim is reverted back to `"pending"`
- *    (Codex round-3 P2 fix: the revert is now CONDITIONAL on the invite
+ *    session) — a permanent lockout plus an orphaned Mongo `User`.
+ *
+ *    Codex round-4 P1 fix: that re-read alone is NOT proof of `no-invite` —
+ *    it's a point-in-time check with no synchronization against the winner's
+ *    concurrent `insertOne`, so the loser can observe an empty re-read while
+ *    the winner is still mid-`createUserFromInvite`. Only a genuinely
+ *    PROVABLE negative may return `no-invite` (the client destroys the
+ *    Firebase credential on it). So when the re-read comes back empty, look
+ *    up the invite by email (`findInviteByEmail`, any status) and branch:
+ *    `status === "accepted"` ⇒ someone claimed it — a concurrent winner still
+ *    mid-provision, or an earlier acceptance — either way we cannot prove
+ *    "never invited", so `{ ok:false, reason:"provisioning-conflict" }`,
+ *    never destructive; no invite doc at all, or one that's `revoked`/expired
+ *    `pending` ⇒ provably `no-invite`, safe for the client's cleanup.
+ *
+ *    A claimed invite creates the `User` (seeding `preferredLocale` from the
+ *    invite, defaulting to the app's default locale). Codex round-4 P2 fix:
+ *    if that create throws for ANY reason, the claim is unconditionally
+ *    reverted (Codex round-3 P2 fix: the revert is CONDITIONAL on the invite
  *    still being in the exact `"accepted"` state this claim left it in — see
- *    `revertInviteClaim` — so it can never clobber a newer transition, e.g.
- *    a concurrent revoke) so the invite isn't stranded `"accepted"` with no
- *    user.
+ *    `revertInviteClaim` — so it can never clobber a newer transition, e.g. a
+ *    concurrent revoke) and `provisioning-conflict` is returned — see the
+ *    catch block below for why no error may ever propagate past this
+ *    function, and why reverting is always correct here.
  *
  * Every outcome is a `SessionResult` return value — never thrown control
  * flow. Roles/locale come from the created/existing Mongo `User`, never the
@@ -93,14 +93,27 @@ export async function resolveOrProvision(
   if (!invite) {
     // Lost-race check (Codex round-3 P1 fix): a concurrent same-uid exchange
     // may have claimed this exact invite and provisioned the `User` a moment
-    // ago — re-read before concluding `no-invite`, so the loser resolves
-    // like a returning user instead of triggering the client's orphan
-    // cleanup against the winner's just-created account (see doc comment
-    // above).
+    // ago — re-read before concluding anything, so the loser resolves like a
+    // returning user instead of triggering the client's orphan cleanup
+    // against the winner's just-created account (see doc comment above).
     const concurrentlyProvisioned = await findUserByFirebaseUid(decoded.uid);
     if (concurrentlyProvisioned) {
       return resultForExistingUser(concurrentlyProvisioned);
     }
+
+    // Codex round-4 P1 fix: the re-read above is unproven against the
+    // winner's concurrent `insertOne` — an empty result here does NOT prove
+    // `no-invite` by itself. Check the invite doc directly (any status) to
+    // make the distinction provable, no sleeps/polling required.
+    const inviteByEmail = await findInviteByEmail(email);
+    if (inviteByEmail?.status === "accepted") {
+      // Claimed by someone — a concurrent winner still mid-provision, or an
+      // earlier acceptance. We cannot prove "never invited"; never let this
+      // trigger the client's destructive `no-invite` cleanup.
+      return { ok: false, reason: "provisioning-conflict" };
+    }
+    // No invite doc at all, or one that's `revoked`/expired `pending`:
+    // provably no-invite — safe for the client's orphan cleanup.
     return { ok: false, reason: "no-invite" };
   }
 
@@ -112,17 +125,21 @@ export async function resolveOrProvision(
       preferredLocale: invite.locale ?? i18n.defaultLocale,
     });
     return { ok: true, user };
-  } catch (error) {
-    // The one expected throw here is the pre-existing duplicate-key race
-    // inside `createUserFromInvite`, when its own re-read also comes back
-    // empty — an exceedingly rare inconsistency that predates this fix.
-    // Propagate it unchanged rather than reverting a claim a user may have
-    // genuinely (if racily) already consumed. Any OTHER failure means the
-    // invite was claimed but no user was created — revert the claim
-    // (Codex round-3 P2 fix: conditionally, on the claim's own `acceptedAt`
-    // — see `revertInviteClaim`) so it isn't stranded.
-    if (isDuplicateKeyError(error)) throw error;
+  } catch {
+    // Codex round-4 P2 fix: ANY error reaching this catch means WE created no
+    // user — `createUserFromInvite`'s own internal E11000 recovery already
+    // returns the existing user when the duplicate resolves to OUR
+    // firebaseUid, so that path never reaches here. An error here means
+    // either a non-duplicate write failure, or a duplicate whose internal
+    // re-read (by firebaseUid) came back empty — which happens precisely
+    // when the duplicate came from the EMAIL unique index (e.g. a
+    // re-invited address whose stale Mongo row still holds that email under
+    // a different/old firebaseUid, or a recreated Firebase account with a
+    // new uid). Either way the claim must be reverted (Codex round-3 P2 fix:
+    // conditionally, on the claim's own `acceptedAt` — see
+    // `revertInviteClaim`) so it isn't stranded `"accepted"` with no user,
+    // and the outcome reported as transient/ambiguous — never destructive.
     await revertInviteClaim(invite._id, invite.acceptedAt);
-    return { ok: false, reason: "no-invite" };
+    return { ok: false, reason: "provisioning-conflict" };
   }
 }

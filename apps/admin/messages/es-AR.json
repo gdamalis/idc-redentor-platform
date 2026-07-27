@@ -52,6 +52,7 @@
         "noInvite": "Tu cuenta no tiene una invitación activa. Consultá con un administrador.",
         "inviteExpired": "Tu invitación venció. Consultá con un administrador.",
         "sessionExpired": "Tu sesión expiró. Iniciá sesión de nuevo.",
+        "provisioningConflict": "No pudimos completar el inicio de sesión. Probá de nuevo en unos segundos.",
         "popupBlocked": "El navegador bloqueó la ventana emergente. Probamos con otro método.",
         "popupClosed": "Cerraste la ventana antes de terminar. Intentá de nuevo.",
         "network": "Hubo un problema de conexión. Revisá tu internet e intentá de nuevo.",

@@ -33,7 +33,9 @@ Firebase Auth (client SDK) — issues an ID token
 POST /api/auth/session { idToken }
   │ 1. verifyIdToken(idToken, true)              — 401 invalid-token on failure
   │ 2. auth_time recency (≤ 5 min)                — 401 stale-token
-  │ 3. resolveOrProvision(decoded)                — 403 { reason } on refusal, no cookie either way
+  │ 3. resolveOrProvision(decoded)                — 403 { reason } (provable refusal) or
+  │                                                  409 { reason: "provisioning-conflict" }
+  │                                                  (transient/ambiguous) — no cookie either way
   │ 4. createSessionCookie(idToken, {expiresIn})  — 200 { ok:true, preferredLocale } + Set-Cookie
   ▼
 __session cookie (httpOnly) on the browser
@@ -53,7 +55,9 @@ Body: `{ idToken: string }` (Zod). In order:
    This rejects a _verified-but-old_ cached ID token — the exchange only accepts a fresh sign-in
    event, not a token minted long ago and replayed.
 3. `resolveOrProvision(decoded)` (the invite gate — see below). `{ ok:false }` ⇒
-   `403 { reason: "no-invite" | "disabled" }`, **no cookie set either way**.
+   `403 { reason: "no-invite" | "disabled" | "email-unverified" }` for a PROVABLE refusal, or
+   `409 { reason: "provisioning-conflict" }` for a transient/ambiguous one — **no cookie set
+   either way**.
 4. On success: `createSession(idToken)` → `Set-Cookie` with `buildSessionCookieOptions()` (see
    below) → `200 { ok: true, preferredLocale: result.user.preferredLocale }`.
 
@@ -123,34 +127,59 @@ Given a verified `DecodedIdToken`:
    two steps could otherwise still provision a user. No match can mean a genuine `no-invite`
    (expired/revoked/mismatched) — **or** a lost race: a concurrent same-uid exchange claimed this
    exact invite and provisioned the `AdminUser` a moment earlier. `resolveOrProvision` re-reads
-   `findUserByFirebaseUid(decoded.uid)` before concluding `no-invite`; if the concurrent winner's
-   user now exists it resolves exactly like the returning-user path (step 2 — `active` ⇒ `ok`,
-   `disabled` ⇒ `{ ok:false, reason:"disabled" }`). Only when that re-read also comes back empty is
-   it genuinely `{ ok:false, reason:"no-invite" }`, and **nothing is written**. Getting this re-read
-   wrong is not cosmetic: the client deletes the Firebase credential on `no-invite` (see below) —
-   for a lost race that credential is the WINNER's just-provisioned account (same `firebaseUid`),
-   so skipping the re-read would delete it out from under them: a permanent lockout plus an
-   orphaned `AdminUser` with no usable Firebase credential.
+   `findUserByFirebaseUid(decoded.uid)` before concluding anything; if the concurrent winner's user
+   now exists it resolves exactly like the returning-user path (step 2 — `active` ⇒ `ok`,
+   `disabled` ⇒ `{ ok:false, reason:"disabled" }`).
+
+   **The provable-negative distinction (Codex round-4 P1 fix).** That re-read alone is NOT proof of
+   `no-invite` — it's a point-in-time check with no synchronization against the concurrent winner's
+   `insertOne`, so the loser can observe an empty re-read while the winner is still mid-
+   `createUserFromInvite`. A `no-invite` response is destructive downstream (the client deletes the
+   Firebase credential on it — see below), so it may **only** be returned when the negative is
+   provable. When the re-read comes back empty, `resolveOrProvision` looks up the invite by email
+   in ANY status (`findInviteByEmail`) and branches:
+   - `status === "accepted"` ⇒ someone claimed it — a concurrent winner still mid-provision, or an
+     earlier acceptance by an unrelated `firebaseUid`. Either way "never invited" cannot be proven:
+     `{ ok:false, reason:"provisioning-conflict" }` — transient, never destructive.
+   - no invite doc at all, or one that's `revoked`/expired `pending` ⇒ provably `no-invite`, safe
+     for the client's cleanup, and **nothing is written**.
 
    A claimed invite creates the `AdminUser` (seeding `roleIds` and `preferredLocale` from the
-   invite — see below) and returns `{ ok:true, user }`. If that create fails for any reason other
-   than the duplicate-key race below, the claim is reverted via `revertInviteClaim(invite._id,
-invite.acceptedAt)`: back to `status: "pending"`, `acceptedAt` unset — but the underlying
-   `updateOne` is **conditional**, guarded by `{ _id, status: "accepted", acceptedAt }` (the exact
-   triple this claim itself set), not `_id` alone. An `_id`-only revert would blindly overwrite
-   whatever the invite's CURRENT status is; the guard means a newer transition that happened
-   between the claim and this revert — e.g. an admin concurrently revoking the invite — can never
-   be clobbered back to `"pending"` (which would make a revoked invite usable again). A mismatched
-   filter simply matches zero documents — a safe no-op — instead of a blind revert.
+   invite — see below) and returns `{ ok:true, user }`. **Codex round-4 P2 fix**: if that create
+   throws for ANY reason, the claim is unconditionally reverted via
+   `revertInviteClaim(invite._id, invite.acceptedAt)` and `{ ok:false,
+reason:"provisioning-conflict" }` is returned — `provision.ts` no longer special-cases or rethrows
+   a duplicate-key (E11000) error. `createUserFromInvite`'s own internal E11000 recovery already
+   returns the existing user when the duplicate resolves to OUR `firebaseUid` (see below), so that
+   success path never reaches this catch; an error here can only mean either a non-duplicate write
+   failure, or a duplicate whose internal re-read (by `firebaseUid`) also came back empty — which
+   happens precisely when the duplicate came from the **email** unique index (a re-invited address
+   whose stale Mongo row still holds that email under a different/old `firebaseUid`, or a recreated
+   Firebase account with a new uid). In every such case WE created no user, so reverting the claim
+   is always correct — the prior behavior (rethrowing E11000 unconditionally) 500'd the request and
+   left the invite stranded `"accepted"` with no `AdminUser`. The revert's own `updateOne` is
+   **conditional**, guarded by `{ _id, status: "accepted", acceptedAt }` (the exact triple this
+   claim itself set), not `_id` alone. An `_id`-only revert would blindly overwrite whatever the
+   invite's CURRENT status is; the guard means a newer transition that happened between the claim
+   and this revert — e.g. an admin concurrently revoking the invite — can never be clobbered back
+   to `"pending"` (which would make a revoked invite usable again). A mismatched filter simply
+   matches zero documents — a safe no-op — instead of a blind revert.
 
 A duplicate-key error (E11000) on the `users.firebaseUid` unique index during the create — two
-concurrent first sign-ins racing — is treated as "someone else just provisioned this user":
-re-read via `findUserByFirebaseUid` and return that, rather than surfacing the conflict. If that
-internal recovery ever comes back empty (an exceedingly rare inconsistency), the error propagates
-out of `resolveOrProvision` unchanged rather than reverting a claim a user may have genuinely (if
-racily) already consumed.
+concurrent first sign-ins racing for the SAME `firebaseUid` — is treated by `createUserFromInvite`
+itself as "someone else just provisioned this user": re-read via `findUserByFirebaseUid` and return
+that, rather than surfacing the conflict. `provision.ts` never sees this success case.
 
-### The `no-invite` orphan cleanup — and why `disabled` is different
+### `provisioning-conflict`: the non-destructive catch-all
+
+`SessionResult`'s `reason` union (`src/service/types.ts`) carries a fourth failure reason alongside
+`no-invite`/`disabled`/`email-unverified`: **`provisioning-conflict`** — "we could not provision you
+right now, and we CANNOT prove you were never invited." `POST /api/auth/session` maps it to
+**`409 Conflict`** (every other refusal reason stays `403 Forbidden`) precisely so the client can
+tell "transient, retry" apart from "provably refused" without inspecting the JSON body reason
+first. No cookie is set for `409` either, same as `403`.
+
+### The `no-invite` orphan cleanup — and why `disabled`/`provisioning-conflict` are different
 
 When `POST /api/auth/session` returns `403 { reason: "no-invite" }`, the client
 (`login-form.tsx`'s `postSession`) deletes the just-created Firebase credential
@@ -164,8 +193,14 @@ into an `AdminUser`).
 provisioned `AdminUser` an admin deliberately disabled (e.g. offboarding) — its `firebaseUid` is
 the join key back to that Mongo document, `roleIds`, and history. Deleting the Firebase credential
 would sever that link and make re-enabling the user (flipping `status` back to `active`)
-impossible without the person re-registering from scratch. The client distinguishes the two by the
-`reason` in the `403` body and only calls the cleanup for `"no-invite"`.
+impossible without the person re-registering from scratch. The client distinguishes the reasons by
+the `403` body's `reason` and only calls the cleanup for `"no-invite"`.
+
+**A `409 provisioning-conflict` never deletes the credential or navigates to `/no-access`,
+either** — the client signs out and shows a localized "try again in a few seconds" message
+(`auth.login.errors.provisioningConflict`), because the failure is transient/ambiguous by
+construction: it may resolve itself on the very next attempt (the concurrent winner's provision
+completes) with no user action beyond retrying.
 
 ## Roles and `preferredLocale`: Mongo, never the token
 

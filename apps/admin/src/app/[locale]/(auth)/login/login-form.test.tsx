@@ -149,6 +149,27 @@ describe("LoginForm", () => {
     expect(deleteUserMock).not.toHaveBeenCalled();
   });
 
+  it("on a 409 provisioning-conflict response, signs out WITHOUT deleting the credential or navigating to /no-access, and shows a localized retry message (Codex round-4)", async () => {
+    const getIdToken = vi.fn().mockResolvedValue("id-token-conflict");
+    signInWithEmailAndPasswordMock.mockResolvedValue({ user: { getIdToken } });
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: () => Promise.resolve({ ok: false, reason: "provisioning-conflict" }),
+    });
+
+    await fillAndSubmit();
+
+    await waitFor(() => {
+      expect(signOutMock).toHaveBeenCalledWith(fakeAuth);
+    });
+    expect(deleteUserMock).not.toHaveBeenCalled();
+    expect(pushMock).not.toHaveBeenCalledWith("/no-access");
+    expect(
+      await screen.findByText("auth.login.errors.provisioningConflict"),
+    ).toBeDefined();
+  });
+
   it("shows the localized wrong-password error when Firebase rejects with auth/wrong-password", async () => {
     signInWithEmailAndPasswordMock.mockRejectedValue({ code: "auth/wrong-password" });
 

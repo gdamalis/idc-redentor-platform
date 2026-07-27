@@ -147,6 +147,27 @@ describe("POST /api/auth/session", () => {
     expect(createSession).not.toHaveBeenCalled();
   });
 
+  it("409 provisioning-conflict, and sets no cookie (Codex round-4)", async () => {
+    verifyIdToken.mockResolvedValueOnce({
+      uid: "uid1",
+      auth_time: authTimeNow(),
+    });
+    resolveOrProvision.mockResolvedValueOnce({
+      ok: false,
+      reason: "provisioning-conflict",
+    });
+
+    const res = await POST(postReq({ idToken: "id-token" }));
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      ok: false,
+      reason: "provisioning-conflict",
+    });
+    expect(res.headers.get("set-cookie")).toBeNull();
+    expect(createSession).not.toHaveBeenCalled();
+  });
+
   it("400 on a malformed body, without calling verifyIdToken", async () => {
     const res = await POST(rawPostReq("{not json"));
 

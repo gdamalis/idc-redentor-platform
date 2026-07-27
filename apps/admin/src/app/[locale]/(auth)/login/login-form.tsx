@@ -28,6 +28,7 @@ type LoginErrorKey =
   | "noInvite"
   | "inviteExpired"
   | "sessionExpired"
+  | "provisioningConflict"
   | "popupBlocked"
   | "popupClosed"
   | "network"
@@ -134,6 +135,16 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
       const json = (await response.json()) as { preferredLocale?: string };
       const locale = isValidLocale(json.preferredLocale) ? json.preferredLocale : i18n.defaultLocale;
       router.push(stripLocalePrefix(sanitizeCallbackUrl(callbackUrl)), { locale });
+      return;
+    }
+
+    if (response.status === 409) {
+      // Transient/ambiguous provisioning outcome (Codex round-4 fix) — never
+      // a provable "not invited", so the Firebase credential is NEVER
+      // deleted here and the user is never routed to /no-access. Just sign
+      // out and let them retry.
+      await signOut(getFirebaseAuth());
+      setErrorKey("provisioningConflict");
       return;
     }
 

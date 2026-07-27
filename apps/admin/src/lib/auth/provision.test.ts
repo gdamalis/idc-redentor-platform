@@ -5,6 +5,7 @@ const findUserByFirebaseUid = vi.fn();
 const createUserFromInvite = vi.fn();
 const claimPendingInvite = vi.fn();
 const revertInviteClaim = vi.fn();
+const findInviteByEmail = vi.fn();
 
 vi.mock("@src/service/user.service", () => ({
   findUserByFirebaseUid,
@@ -14,6 +15,7 @@ vi.mock("@src/service/user.service", () => ({
 vi.mock("@src/service/invite.service", () => ({
   claimPendingInvite,
   revertInviteClaim,
+  findInviteByEmail,
 }));
 
 beforeEach(() => vi.clearAllMocks());
@@ -103,13 +105,12 @@ describe("resolveOrProvision", () => {
     );
   });
 
-  it("creates nothing and returns no-invite when claimPendingInvite finds no still-pending, unexpired invite AND no concurrent winner exists", async () => {
-    // Covers expired/revoked/mismatched — a genuine no-invite, not a lost
-    // race: the round-3 P1 re-read also comes back empty.
+  it("creates nothing and returns no-invite when the null claim's re-read finds no user AND no invite doc exists at all (Codex round-4 P1)", async () => {
     const { resolveOrProvision } = await import("./provision");
     findUserByFirebaseUid.mockResolvedValueOnce(null); // initial existing-user check
     claimPendingInvite.mockResolvedValueOnce(null);
     findUserByFirebaseUid.mockResolvedValueOnce(null); // round-3 re-read after lost claim
+    findInviteByEmail.mockResolvedValueOnce(null); // round-4: provably no invite for this email
 
     const result = await resolveOrProvision(decodedToken());
 
@@ -117,6 +118,49 @@ describe("resolveOrProvision", () => {
     expect(createUserFromInvite).not.toHaveBeenCalled();
     expect(revertInviteClaim).not.toHaveBeenCalled();
     expect(findUserByFirebaseUid).toHaveBeenCalledTimes(2);
+    expect(findInviteByEmail).toHaveBeenCalledWith("foo@bar.com");
+  });
+
+  it("creates nothing and returns no-invite when the invite doc exists but is revoked (or expired pending) — provably no-invite (Codex round-4 P1)", async () => {
+    const { resolveOrProvision } = await import("./provision");
+    findUserByFirebaseUid.mockResolvedValueOnce(null);
+    claimPendingInvite.mockResolvedValueOnce(null);
+    findUserByFirebaseUid.mockResolvedValueOnce(null);
+    findInviteByEmail.mockResolvedValueOnce({
+      _id: "invite1",
+      email: "foo@bar.com",
+      roleIds: [],
+      status: "revoked",
+    });
+
+    const result = await resolveOrProvision(decodedToken());
+
+    expect(result).toEqual({ ok: false, reason: "no-invite" });
+    expect(createUserFromInvite).not.toHaveBeenCalled();
+  });
+
+  it("returns provisioning-conflict (never no-invite) when the invite doc is accepted but no user was found yet — cannot prove no-invite (Codex round-4 P1)", async () => {
+    // A concurrent same-uid winner may have claimed this invite and be
+    // mid-provision (its own insertOne not yet visible to this read), or an
+    // unrelated uid accepted it earlier. Either way we cannot PROVE
+    // "never invited" — must not trigger the client's orphan-Firebase-account
+    // cleanup, which fires only on `no-invite`.
+    const { resolveOrProvision } = await import("./provision");
+    findUserByFirebaseUid.mockResolvedValueOnce(null);
+    claimPendingInvite.mockResolvedValueOnce(null);
+    findUserByFirebaseUid.mockResolvedValueOnce(null);
+    findInviteByEmail.mockResolvedValueOnce({
+      _id: "invite1",
+      email: "foo@bar.com",
+      roleIds: [],
+      status: "accepted",
+    });
+
+    const result = await resolveOrProvision(decodedToken());
+
+    expect(result).toEqual({ ok: false, reason: "provisioning-conflict" });
+    expect(createUserFromInvite).not.toHaveBeenCalled();
+    expect(revertInviteClaim).not.toHaveBeenCalled();
   });
 
   it("treats an email mismatch (no invite for the normalized email) as no-invite", async () => {
@@ -124,10 +168,12 @@ describe("resolveOrProvision", () => {
     findUserByFirebaseUid.mockResolvedValueOnce(null);
     claimPendingInvite.mockResolvedValueOnce(null);
     findUserByFirebaseUid.mockResolvedValueOnce(null);
+    findInviteByEmail.mockResolvedValueOnce(null);
 
     await resolveOrProvision(decodedToken({ email: "someone-else@bar.com" }));
 
     expect(claimPendingInvite).toHaveBeenCalledWith("someone-else@bar.com");
+    expect(findInviteByEmail).toHaveBeenCalledWith("someone-else@bar.com");
   });
 
   it("re-reads by uid and returns the concurrent winner's active user when claimPendingInvite loses the race (Codex round-3 P1)", async () => {
@@ -241,7 +287,7 @@ describe("resolveOrProvision", () => {
     expect(revertInviteClaim).not.toHaveBeenCalled();
   });
 
-  it("reverts the claim (with its acceptedAt) and returns no-invite when createUserFromInvite fails for a non-duplicate reason after a successful claim", async () => {
+  it("reverts the claim (with its acceptedAt) and returns provisioning-conflict when createUserFromInvite fails for a non-duplicate reason after a successful claim", async () => {
     const { resolveOrProvision } = await import("./provision");
     findUserByFirebaseUid.mockResolvedValueOnce(null);
     const acceptedAt = new Date("2026-01-01T00:00:00.000Z");
@@ -252,29 +298,32 @@ describe("resolveOrProvision", () => {
     const result = await resolveOrProvision(decodedToken());
 
     expect(revertInviteClaim).toHaveBeenCalledWith("invite1", acceptedAt);
-    expect(result).toEqual({ ok: false, reason: "no-invite" });
+    expect(result).toEqual({ ok: false, reason: "provisioning-conflict" });
   });
 
-  it("rethrows (without reverting) a duplicate-key error that survives createUserFromInvite's own recovery", async () => {
+  it("reverts the claim and returns provisioning-conflict (never rethrows) on a duplicate-key error that survives createUserFromInvite's own recovery (Codex round-4 P2)", async () => {
     // createUserFromInvite already retries E11000 internally by re-reading
-    // the existing user (covered in user.service.test.ts); it only rethrows
-    // that error when its own re-read also comes back empty — an
-    // exceedingly rare inconsistency that predates this fix. provision.ts
-    // must not paper over it by reverting a claim a user may have genuinely
-    // (if racily) already consumed.
+    // the user by firebaseUid (covered in user.service.test.ts); it only
+    // rethrows that error when its own re-read ALSO comes back empty — which
+    // happens precisely when the duplicate came from the EMAIL unique index
+    // (a re-invited address whose stale Mongo row still holds that email
+    // under a different/old firebaseUid), not the firebaseUid index. By the
+    // time this error reaches provision.ts, no user was created under THIS
+    // firebaseUid — reverting the claim is always correct, and the outcome
+    // is transient/ambiguous, never destructive.
     const { resolveOrProvision } = await import("./provision");
     findUserByFirebaseUid.mockResolvedValueOnce(null);
-    const invite = { _id: "invite1", roleIds: ["r1"], locale: "en-US" };
+    const acceptedAt = new Date("2026-01-01T00:00:00.000Z");
+    const invite = { _id: "invite1", roleIds: ["r1"], locale: "en-US", acceptedAt };
     claimPendingInvite.mockResolvedValueOnce(invite);
     const duplicateKeyError = Object.assign(new Error("duplicate"), {
       code: 11000,
     });
     createUserFromInvite.mockRejectedValueOnce(duplicateKeyError);
 
-    await expect(resolveOrProvision(decodedToken())).rejects.toThrow(
-      "duplicate",
-    );
+    const result = await resolveOrProvision(decodedToken());
 
-    expect(revertInviteClaim).not.toHaveBeenCalled();
+    expect(revertInviteClaim).toHaveBeenCalledWith("invite1", acceptedAt);
+    expect(result).toEqual({ ok: false, reason: "provisioning-conflict" });
   });
 });

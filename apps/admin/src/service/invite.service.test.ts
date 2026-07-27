@@ -84,6 +84,39 @@ describe("findPendingInvite", () => {
   });
 });
 
+describe("findInviteByEmail", () => {
+  it("queries by normalized email, any status, and returns the parsed invite", async () => {
+    const { findInviteByEmail } = await import("./invite.service");
+    const now = new Date();
+    findOne.mockResolvedValueOnce({
+      _id: { toHexString: () => "x" },
+      email: "foo@bar.com",
+      roleIds: ["r1"],
+      locale: "en-US",
+      status: "accepted",
+      expiresAt: new Date(now.getTime() + 1000),
+      createdAt: now,
+      acceptedAt: now,
+    });
+
+    const invite = await findInviteByEmail("  Foo@Bar.COM ");
+
+    expect(findOne).toHaveBeenCalledTimes(1);
+    const query = findOne.mock.calls[0]?.[0];
+    expect(query).toEqual({ email: "foo@bar.com" });
+    expect(invite?.status).toBe("accepted");
+  });
+
+  it("returns null when no invite doc matches the email at all", async () => {
+    const { findInviteByEmail } = await import("./invite.service");
+    findOne.mockResolvedValueOnce(null);
+
+    const invite = await findInviteByEmail("nobody@bar.com");
+
+    expect(invite).toBeNull();
+  });
+});
+
 describe("claimPendingInvite", () => {
   it("atomically claims via a single findOneAndUpdate with the pending+unexpired+normalized-email filter", async () => {
     const { claimPendingInvite } = await import("./invite.service");

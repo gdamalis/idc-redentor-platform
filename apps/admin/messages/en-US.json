@@ -52,6 +52,7 @@
         "noInvite": "Your account doesn't have an active invite. Contact an administrator.",
         "inviteExpired": "Your invite has expired. Contact an administrator.",
         "sessionExpired": "Your session expired. Please sign in again.",
+        "provisioningConflict": "We couldn't complete your sign-in. Please try again in a few seconds.",
         "popupBlocked": "Your browser blocked the pop-up. We tried another sign-in method.",
         "popupClosed": "You closed the window before finishing. Please try again.",
         "network": "There was a connection problem. Check your internet and try again.",

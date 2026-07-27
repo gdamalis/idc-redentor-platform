@@ -20,6 +20,25 @@ export async function findPendingInvite(email: string): Promise<Invite | null> {
   return doc ? inviteSchema.parse(doc) : null;
 }
 
+/**
+ * Looks up an invite by normalized email in ANY status (Codex round-4 P1
+ * fix) — used by `resolveOrProvision` to distinguish a PROVABLE `no-invite`
+ * (no invite doc at all, or one that's revoked/expired) from an ambiguous
+ * `provisioning-conflict` (an `accepted` invite whose owning `User` isn't
+ * visible yet — either a concurrent same-uid winner still mid-provision, or
+ * an earlier acceptance). Unlike `findPendingInvite`, this deliberately does
+ * NOT filter by `status`/`expiresAt` — the caller needs to see an `accepted`
+ * invite precisely to avoid concluding `no-invite` on it.
+ */
+export async function findInviteByEmail(email: string): Promise<Invite | null> {
+  await ensureAuthIndexes();
+  const doc = await getAdminDb()
+    .collection(INVITES_COLLECTION)
+    .findOne({ email: normalizeEmail(email) });
+
+  return doc ? inviteSchema.parse(doc) : null;
+}
+
 // A successfully claimed invite always carries `acceptedAt` — the `$set`
 // below just stamped it on this exact document — so this narrows the shared
 // `Invite` type's optional `acceptedAt` to required for callers (namely

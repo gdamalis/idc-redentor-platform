@@ -25,8 +25,13 @@ const bodySchema = z.object({ idToken: z.string().min(1) });
  * - `400` — malformed body.
  * - `401 invalid-token` — the ID token itself doesn't verify.
  * - `401 stale-token` — verifies, but the sign-in event is > 5 min old.
+ * - `409 { reason: "provisioning-conflict" }` — verified + recent, but
+ *   `resolveOrProvision` could not prove `no-invite` (a concurrent claim
+ *   still mid-provision, or a create failure). Transient — retry — never a
+ *   reason to destroy the client's Firebase credential. No cookie is set.
  * - `403 { reason }` — verified + recent, but `resolveOrProvision` refused
- *   (`no-invite` or `disabled`). No cookie is set either way.
+ *   for a PROVABLE reason (`no-invite` or `disabled` or `email-unverified`).
+ *   No cookie is set either way.
  * - `200 { ok: true, preferredLocale }` + `Set-Cookie` — success.
  */
 export async function POST(request: NextRequest) {
@@ -52,7 +57,11 @@ export async function POST(request: NextRequest) {
 
   const result = await resolveOrProvision(decoded);
   if (!result.ok) {
-    return NextResponse.json({ ok: false, reason: result.reason }, { status: 403 });
+    // `provisioning-conflict` is a transient/ambiguous outcome — semantically
+    // a 409 Conflict, not a 403 Forbidden — so the client never treats it
+    // like a provable refusal (see `resolveOrProvision`'s doc comment).
+    const status = result.reason === "provisioning-conflict" ? 409 : 403;
+    return NextResponse.json({ ok: false, reason: result.reason }, { status });
   }
 
   const sessionCookie = await createSession(idToken);
