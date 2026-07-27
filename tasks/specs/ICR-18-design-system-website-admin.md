@@ -5,6 +5,18 @@ Component **Ministry Admin Panel** · Epic [ICR-14](https://divinelab.atlassian.
 **Branch:** `feat/ICR-18-design-system-website-admin` · **QA depth:** standard · **QA type:** `chore`
 **Design gate:** held 2026-07-27 (mandatory — `needsDesignGate: true`)
 
+> **Post-design-gate note (2026-07-27, vigil checkpoint 12):** `ICR-127` (admin Firebase auth) merged
+> to `main` while this ticket's PR was open, then this branch merged `origin/main`. Two claims below
+> and in `docs/architecture/design-system.md` were point-in-time snapshots that ICR-127 invalidated,
+> now corrected in that doc: (1) `apps/admin/src/components/ui/` has **two** flat primitives —
+> `button.tsx` **and** `input.tsx` — not one; (2) the admin sign-in and reset-password screens are no
+> longer placeholders — ICR-127 shipped the real
+> `apps/admin/src/app/[locale]/(auth)/{login,reset-password}/` implementation (the sign-in screen
+> even reproduces this system's Google-mark-omission artifact limitation in the shipped code). The
+> rest of `apps/admin/(app)/*` (people, families, activities, calendar, users, roles, settings)
+> remains `<PlaceholderPage>` stubs, unaffected. This spec's body below is left as the point-in-time
+> snapshot it was written as; `design-system.md` is the corrected, evergreen source.
+
 ---
 
 ## 0. Decisions locked at the design gate

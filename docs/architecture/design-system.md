@@ -102,9 +102,11 @@ a package `apps/admin` also consumes. Only presentation-neutral primitives cross
 
 **Current reality (the gap the code ticket closes):** `packages/ui` has **zero** components today —
 it exports only `cn()`, `LOGO`, and `tokens.css`. `apps/web/src/components/ui/` has ~13 primitives
-(some folder+barrel, some flat shadcn files). `apps/admin/src/components/ui/` has exactly **one**
-file, `button.tsx` — a duplicate of the same primitive, flat. Editing a button today means changing
-two files in two apps; the goal is to edit it once and have both apps pick it up.
+(some folder+barrel, some flat shadcn files). `apps/admin/src/components/ui/` has exactly **two**
+files, `button.tsx` and `input.tsx` — both duplicates of the same primitives, flat (`input.tsx`
+shipped with ICR-127's login/reset-password screens, merged into this branch after the design gate).
+Editing a button or input today means changing two files in two apps; the goal is to edit it once
+and have both apps pick it up.
 
 ## 5. The migration table
 
@@ -132,6 +134,12 @@ which is the authority on its status:
 | Container     | `container/Container.tsx` + `index.ts`          | `src/components/ui/container/` (already folder+barrel)                                               |
 | IconCard      | `icon-card/IconCard.tsx` + `index.ts`           | `src/components/ui/icon-card/` (already folder+barrel)                                               |
 | SectionHeader | `section-header/SectionHeader.tsx` + `index.ts` | `src/components/ui/section-header/` (already folder+barrel)                                          |
+
+**`apps/admin` now duplicates two of these rows, not one.** `apps/admin/src/components/ui/` carries
+its own flat `button.tsx` (pre-existing) and, since ICR-127's login/reset-password screens, a flat
+`input.tsx` too — the identical shadcn↔hand-rolled seam as `apps/web`'s inventory above, just
+doubled. Both still collapse into the single `@idcr/ui` `Button`/`Input` targets in the table above;
+see §7 for the defect entry this strengthens.
 
 **New — do not exist anywhere yet** (design-system artifacts under `tasks/specs/design-system/primitives/`
 are the spec; the code ticket builds the real component):
@@ -220,8 +228,10 @@ contained deprecation.
   an `<hr>` with no explicit width, which typically collapses to an invisible zero-width box instead
   of a visible vertical line. Verified: zero call sites use `variant="vertical"` today, so this has
   never been exercised in the running app.
-- **`apps/admin/src/components/ui/button.tsx`** is a flat file — the folder+barrel convention (§5)
-  isn't applied yet even to the one component `apps/admin` already has.
+- **`apps/admin/src/components/ui/{button,input}.tsx`** are both flat files — the folder+barrel
+  convention (§5) isn't applied yet to either of the two components `apps/admin` already has.
+  `input.tsx` landed with ICR-127's auth screens after this defect was first recorded; it repeats
+  the same convention gap, not a new one.
 
 ## 8. Deviations from the v1 design prompt
 
@@ -237,23 +247,34 @@ decision, not a silent drift:
   contradicts the documented reality of a **~40–60-person congregation**. This system's artifacts use
   **52 personas · 21 familias · 6 países de origen** throughout, and the pagination primitive shows the
   correspondingly correct **7 pages** (`ceil(52 / 8)`), not v1's 16.
-- **The sign-in artifact omits the Google brand mark.** The official Google "G" icon is fixed
-  four-colour brand hex, which conflicts with this system's tokens-only / no-raw-hex rule, so the
-  artifact renders `Continuar con Google` as a plain outline button with no icon. **This is an
-  artifact limitation, not a design decision** — the real `apps/admin` implementation must use the
-  official Google mark, per Google's brand guidelines, when it builds the actual sign-in screen.
+- **The sign-in artifact omits the Google brand mark — and so did the real screen.** The official
+  Google "G" icon is fixed four-colour brand hex, which conflicts with this system's tokens-only /
+  no-raw-hex rule, so the artifact renders `Continuar con Google` as a plain outline button with no
+  icon. **This was an artifact limitation, not a design decision** when written — but ICR-127 has
+  since shipped the real `apps/admin` sign-in screen
+  (`apps/admin/src/app/[locale]/(auth)/login/login-form.tsx`), and it uses the identical plain
+  outline-button treatment (same `auth.login.googleButton` copy, still no icon). Adding the official
+  mark is now a small polish item against **shipped** code, not a forward-looking build note; treat
+  `sign-in.html` as a design reference to reconcile against that real implementation, not a
+  greenfield target.
 
 ## 9. i18n
 
-No locale keys ship with ICR-18 — both `public/locales/es-AR.json` and `public/locales/en-US.json`
-are untouched. The follow-up implementing ticket will need to add these namespaces:
+No locale keys ship with ICR-18 — `apps/web`'s `public/locales/{es-AR,en-US}.json` are untouched.
+`apps/admin` doesn't share that file location: it keeps its own next-intl messages at
+`apps/admin/messages/{es-AR,en-US}.json`. This section originally predicted an `admin.*`-prefixed
+namespace shape inside whichever file the follow-up ticket would add to. That prediction is now
+superseded: `apps/admin/messages/*.json` already establishes **flat, unprefixed top-level
+namespaces** — `nav`, `pages`, and, since ICR-127, `auth` (`auth.login.*`, `auth.resetPassword.*`,
+`auth.noAccess`, `auth.signOut`) — with no `admin.` prefix anywhere. The follow-up implementing
+ticket should match that shipped convention:
 
-- `admin.people.*`
-- `admin.person.*`
-- `admin.calendar.*`
-- `admin.users.*`
-- `admin.roles.*`
-- `admin.auth.*`
+- `people.*`
+- `person.*`
+- `calendar.*`
+- `users.*`
+- `roles.*`
+- ~~`auth.*`~~ — already shipped flat (ICR-127); nothing left to add here.
 
 ## See also
 
