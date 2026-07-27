@@ -263,6 +263,17 @@ function checkHtml(abs) {
     problems.push("does not link the shared styles.css");
   if (!/lang=["']es-AR["']/.test(src)) problems.push('missing lang="es-AR"');
 
+  // Artifacts must render STATICALLY. A JS-dependent variant — e.g. a native
+  // checkbox's `indeterminate`, which is an IDL property with no HTML attribute
+  // — is invisible both to readback verification and to any renderer that
+  // screenshots before scripts execute. That is the same reason .dark must be a
+  // duplicated tree rather than a toggle (spec E5). Represent such states with a
+  // CSS class in styles.css instead.
+  if (/<script[\s>]/i.test(src))
+    problems.push(
+      "contains <script> — artifacts must render statically (spec E5)",
+    );
+
   if (PRINT_ONLY.has(rel)) {
     if (!/@page\s*\{[^}]*size:\s*A4/i.test(src))
       problems.push("print artifact lacks @page { size: A4 }");
@@ -637,12 +648,20 @@ Sizes: `sm` 36px visual/44px hit, `md` 44px, `lg` 48px.
 `Ingresá un correo válido`), disabled, and with-label (`Nombre completo`) + help text
 (`Como aparece en los registros de la iglesia`).
 
-**Textarea.html** — default / focused / error / disabled, label `Notas`, 4 rows.
+**Textarea.html** — default / focused / error / disabled, label `Notas`, 4 rows. Error message:
+`Este campo es obligatorio`. (Added 2026-07-27: the first draft specified the four states but gave no
+error string, so the CP2 implementer had to compose one against this plan's own "transcribe, never
+compose" rule. It chose exactly this, tone-matched to Input's `Ingresá un correo válido`; recording it
+so the gap is closed rather than re-improvised.)
 
 **Select.html** — closed with label `Grupo familiar`, options `Familia Peña`, `Familia Vargas`,
 `Familia Rodríguez`, `Sin familia`; plus disabled state.
 
-**Checkbox.html** — unchecked / checked / indeterminate / disabled, each with a label
+**Checkbox.html** — unchecked / checked / indeterminate / disabled, each with a label.
+⚠️ **The indeterminate state must be CSS-only** — add a `.checkbox.is-indeterminate` class to
+`styles.css` that draws the dash. Do **not** set the native `indeterminate` IDL property from an inline
+`<script>`: it is invisible to readback and to any renderer that screenshots before scripts run, so the
+variant would silently render identical to `unchecked`. The checker now rejects `<script>` in artifacts.
 (`Puede ver datos sensibles`).
 
 **Badge.html** — two families. Status dots: `Activo` (`.b-active`), `Ocasional` (`.b-occ`),
