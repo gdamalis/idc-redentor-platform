@@ -111,22 +111,27 @@ two files in two apps; the goal is to edit it once and have both apps pick it up
 Target layout for every primitive is **folder+barrel** (`button/Button.tsx` + `index.ts`), per
 `code-patterns-and-conventions.md`'s "Folder-per-thing + barrel" convention — not flat files.
 
-**Exists today in `apps/web`** (migrate into `@idcr/ui`, converting flat files to folder+barrel):
+**Exists today in `apps/web`** (migrate into `@idcr/ui`, converting flat files to folder+barrel).
+This table is the **full current `apps/web/src/components/ui/` inventory**, a superset of the 14
+system primitives listed in §4 — Label, Card, Toast, Divider, Typography, Container, IconCard, and
+SectionHeader are web components included here for migration completeness, not members of that 14.
+`Dropdown` is neither migrated nor one of the 14; see the disambiguation note below the next table,
+which is the authority on its status:
 
-| Primitive     | Target `@idcr/ui` path                          | `apps/web` today                                                                     |
-| ------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Button        | `button/Button.tsx` + `index.ts`                | `src/components/ui/button/` (already folder+barrel)                                  |
-| Input         | `input/Input.tsx` + `index.ts`                  | `src/components/ui/input.tsx` (flat)                                                 |
-| Textarea      | `textarea/Textarea.tsx` + `index.ts`            | `src/components/ui/textarea.tsx` (flat)                                              |
-| Label         | `label/Label.tsx` + `index.ts`                  | `src/components/ui/label.tsx` (flat)                                                 |
-| Card          | `card/Card.tsx` + `index.ts`                    | `src/components/ui/card.tsx` (flat)                                                  |
-| Toast         | `toast/Toast.tsx` + `index.ts`                  | `src/components/ui/toast.tsx` + `toaster.tsx` (flat)                                 |
-| Dropdown      | `dropdown/Dropdown.tsx` + `index.ts`            | `src/components/ui/dropdown/` (already folder+barrel)                                |
-| Divider       | `divider/Divider.tsx` + `index.ts`              | `src/components/ui/divider/` (already folder+barrel; carries a known defect, see §7) |
-| Typography    | `typography/Typography.tsx` + `index.ts`        | `src/components/ui/typography/` (already folder+barrel)                              |
-| Container     | `container/Container.tsx` + `index.ts`          | `src/components/ui/container/` (already folder+barrel)                               |
-| IconCard      | `icon-card/IconCard.tsx` + `index.ts`           | `src/components/ui/icon-card/` (already folder+barrel)                               |
-| SectionHeader | `section-header/SectionHeader.tsx` + `index.ts` | `src/components/ui/section-header/` (already folder+barrel)                          |
+| Primitive     | Target `@idcr/ui` path                          | `apps/web` today                                                                                     |
+| ------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Button        | `button/Button.tsx` + `index.ts`                | `src/components/ui/button/` (already folder+barrel)                                                  |
+| Input         | `input/Input.tsx` + `index.ts`                  | `src/components/ui/input.tsx` (flat)                                                                 |
+| Textarea      | `textarea/Textarea.tsx` + `index.ts`            | `src/components/ui/textarea.tsx` (flat)                                                              |
+| Label         | `label/Label.tsx` + `index.ts`                  | `src/components/ui/label.tsx` (flat)                                                                 |
+| Card          | `card/Card.tsx` + `index.ts`                    | `src/components/ui/card.tsx` (flat)                                                                  |
+| Toast         | `toast/Toast.tsx` + `index.ts`                  | `src/components/ui/toast.tsx` + `toaster.tsx` (flat)                                                 |
+| Dropdown      | — not migrated (superseded by `Select`)         | `src/components/ui/dropdown/` — Headless-UI `Listbox`, one call site (`contact-form/formFields.tsx`) |
+| Divider       | `divider/Divider.tsx` + `index.ts`              | `src/components/ui/divider/` (already folder+barrel; carries a known defect, see §7)                 |
+| Typography    | `typography/Typography.tsx` + `index.ts`        | `src/components/ui/typography/` (already folder+barrel)                                              |
+| Container     | `container/Container.tsx` + `index.ts`          | `src/components/ui/container/` (already folder+barrel)                                               |
+| IconCard      | `icon-card/IconCard.tsx` + `index.ts`           | `src/components/ui/icon-card/` (already folder+barrel)                                               |
+| SectionHeader | `section-header/SectionHeader.tsx` + `index.ts` | `src/components/ui/section-header/` (already folder+barrel)                                          |
 
 **New — do not exist anywhere yet** (design-system artifacts under `tasks/specs/design-system/primitives/`
 are the spec; the code ticket builds the real component):
@@ -148,9 +153,18 @@ are the spec; the code ticket builds the real component):
 **`Dropdown` and `DropdownMenu` are different components — do not conflate them.** The existing
 `apps/web/src/components/ui/dropdown/Dropdown.tsx` is a Headless-UI `Listbox` single-select form
 control, i.e. the functional equivalent of shadcn's `select`; it is legacy web inventory, not one
-of the 14 system primitives. `DropdownMenu` is the kebab-anchored contextual action menu
-(shadcn `dropdown-menu`). When the code ticket builds `Select`, `Dropdown.tsx` is the component
-it supersedes.
+of the 14 system primitives, and it has exactly **one** call site —
+`apps/web/src/components/features/contact-form/formFields.tsx`. `DropdownMenu` is the unrelated
+kebab-anchored contextual action menu (shadcn `dropdown-menu`), one of the 14 primitives, new and
+built by the code ticket.
+
+**`Dropdown.tsx` is deprecated, not migrated.** `Select` is the net-new system primitive and is
+Radix-based (`@radix-ui/react-select`); `Dropdown.tsx` is Headless-UI-based (`@headlessui/react`
+`Listbox`). `@idcr/ui` should not carry two headless-library implementations of the same control, so
+`Dropdown.tsx` does not move into `@idcr/ui`. Instead, when the code ticket builds `Select`, it
+repoints the single call site (`formFields.tsx`) to `Select` and deletes
+`apps/web/src/components/ui/dropdown/` (component + barrel). One call site makes this a low-risk,
+contained deprecation.
 
 ## 6. Implementation prerequisites for the code ticket
 
