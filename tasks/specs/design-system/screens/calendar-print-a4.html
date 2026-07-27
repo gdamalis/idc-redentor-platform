@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="es-AR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Calendario — Impresión A4 — Sistema de Diseño IDC Redentor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css" />
+    <!--
+      This is the ONE sanctioned raw-hex exception in the whole system (spec R6):
+      a printed sheet has no dark theme, so true black-on-white is forced here,
+      overriding whatever light-theme tokens the rest of the page uses on screen.
+      The @page rule and this @media print block must live IN THIS FILE — the
+      checker (verify-artifacts.mjs, PRINT_ONLY) reads this file's own source,
+      not the shared styles.css.
+    -->
+    <style>
+      @page {
+        size: A4;
+        margin: 12mm;
+      }
+      @media print {
+        .no-print {
+          display: none;
+        }
+        body {
+          background: #fff;
+          color: #000;
+        }
+        .print-page {
+          width: auto;
+          min-height: auto;
+          margin: 0;
+          padding: 0;
+          box-shadow: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="preview flush">
+      <div class="no-print">Vista previa de impresión — A4</div>
+
+      <div class="print-page">
+        <header class="print-head">
+          <div class="print-brand">
+            <div class="mark">R</div>
+            <div class="brand-name">IDC Redentor</div>
+          </div>
+          <div class="print-title">
+            <h1>julio 2026</h1>
+            <div class="sub">Calendario mensual</div>
+          </div>
+        </header>
+
+        <div class="cal-dow">
+          <div>lun</div>
+          <div>mar</div>
+          <div>mié</div>
+          <div>jue</div>
+          <div>vie</div>
+          <div>sáb</div>
+          <div>dom</div>
+        </div>
+
+        <div class="cal-grid">
+          <div class="cal-day is-empty"></div>
+          <div class="cal-day is-empty"></div>
+          <div class="cal-day">
+            <div class="num">1</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">2</div>
+            <div class="cal-entry">
+              <svg class="star" viewBox="0 0 24 24">
+                <path
+                  d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.2l1.4-6.8L2.2 9l6.9-.7z"
+                />
+              </svg>
+              Naibelis Vargas
+            </div>
+          </div>
+          <div class="cal-day">
+            <div class="num">3</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">4</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">5</div>
+            <div class="cal-entry">
+              <svg class="star" viewBox="0 0 24 24">
+                <path
+                  d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.2l1.4-6.8L2.2 9l6.9-.7z"
+                />
+              </svg>
+              Dana López
+            </div>
+          </div>
+
+          <div class="cal-day">
+            <div class="num">6</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">7</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">8</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">9</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">10</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">11</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">12</div>
+            <div class="cal-entry">▪ Reunión de líderes</div>
+          </div>
+
+          <div class="cal-day">
+            <div class="num">13</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">14</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">15</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">16</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">17</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">18</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">19</div>
+            <div class="cal-entry">▪ Culto especial</div>
+          </div>
+
+          <div class="cal-day">
+            <div class="num">20</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">21</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">22</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">23</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">24</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">25</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">26</div>
+            <div class="cal-entry">▪ Almuerzo comunitario</div>
+          </div>
+
+          <div class="cal-day">
+            <div class="num">27</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">28</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">29</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">30</div>
+          </div>
+          <div class="cal-day">
+            <div class="num">31</div>
+          </div>
+          <div class="cal-day is-empty"></div>
+          <div class="cal-day is-empty"></div>
+        </div>
+
+        <div class="cal-legend">
+          <span class="lg-item">
+            <svg class="star" viewBox="0 0 24 24">
+              <path
+                d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.2l1.4-6.8L2.2 9l6.9-.7z"
+              />
+            </svg>
+            Cumpleaños
+          </span>
+          <span class="lg-item">▪ Actividad</span>
+        </div>
+
+        <footer class="print-foot">
+          Iglesia de Cristo Redentor · Panel Ministerial
+        </footer>
+      </div>
+    </div>
+  </body>
+</html>
