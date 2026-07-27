@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@src/i18n/routing";
 import { i18n, isValidLocale } from "@src/i18n/config";
 import { Button } from "@src/components/ui/button";
+import { Input } from "@src/components/ui/input";
 import { requestPasswordReset } from "./actions";
 
 interface ResetRequestState {
@@ -44,14 +45,13 @@ export function ResetForm() {
           <label htmlFor="email" className="text-sm font-medium">
             {t("emailLabel")}
           </label>
-          <input
+          <Input
             id="email"
             name="email"
             type="email"
             required
             autoComplete="email"
             disabled={isPending}
-            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
           />
         </div>
         <Button type="submit" className="w-full" disabled={isPending}>

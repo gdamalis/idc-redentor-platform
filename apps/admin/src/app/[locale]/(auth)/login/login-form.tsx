@@ -17,6 +17,7 @@ import { useRouter, Link } from "@src/i18n/routing";
 import { getFirebaseAuth } from "@src/lib/firebase/client";
 import { i18n, isValidLocale } from "@src/i18n/config";
 import { Button } from "@src/components/ui/button";
+import { Input } from "@src/components/ui/input";
 
 interface LoginFormProps {
   readonly callbackUrl?: string;
@@ -250,7 +251,7 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
           <label htmlFor="email" className="text-sm font-medium">
             {t("emailLabel")}
           </label>
-          <input
+          <Input
             id="email"
             name="email"
             type="email"
@@ -259,14 +260,13 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
             disabled={isSubmitting}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
           />
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="password" className="text-sm font-medium">
             {t("passwordLabel")}
           </label>
-          <input
+          <Input
             id="password"
             name="password"
             type="password"
@@ -275,7 +275,6 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
             disabled={isSubmitting}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
           />
         </div>
         <Button type="submit" className="w-full" disabled={isSubmitting}>

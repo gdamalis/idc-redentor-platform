@@ -1,6 +1,11 @@
 import { getTranslations } from "next-intl/server";
-import { Link } from "@src/i18n/routing";
 import { SignOutButton } from "@src/components/shell/sign-out-button";
+
+// Public church website — offered as somewhere useful to go for a visitor who
+// was correctly refused admin access (signing out already returns them to
+// /login, so a second "back to sign in" link is redundant). Falls back to the
+// production site so an unset env var can never break the page.
+const CHURCH_WEBSITE_URL = process.env.NEXT_PUBLIC_WEBSITE_URL ?? "https://www.idcredentor.org";
 
 export default async function NoAccessPage() {
   const t = await getTranslations("auth.noAccess");
@@ -12,9 +17,12 @@ export default async function NoAccessPage() {
         <p className="max-w-md text-sm text-muted-foreground">{t("description")}</p>
       </div>
       <div className="flex items-center gap-4">
-        <Link href="/login" className="text-sm font-medium underline-offset-4 hover:underline">
-          {t("backToLogin")}
-        </Link>
+        <a
+          href={CHURCH_WEBSITE_URL}
+          className="text-sm font-medium underline-offset-4 hover:underline"
+        >
+          {t("backToWebsite")}
+        </a>
         <SignOutButton />
       </div>
     </div>
