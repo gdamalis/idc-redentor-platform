@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="es-AR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Badge — Sistema de Diseño IDC Redentor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body>
+    <div class="preview">
+      <!-- LIGHT -->
+
+      <section class="ds-section">
+        <h2>Badge</h2>
+        <div class="ds-label">Estado (dot)</div>
+        <div class="ds-grid">
+          <span class="badge dot b-active">Activo</span>
+          <span class="badge dot b-occ">Ocasional</span>
+          <span class="badge dot b-inactive">Inactivo</span>
+        </div>
+        <p class="val" style="margin-top: 12px; max-width: 640px">
+          Los tres matices de estado (--status-active-fg/bg, --status-occ-fg/bg) son derivados y no
+          están en tokens.css — ver docs/architecture/design-system.md.
+        </p>
+      </section>
+
+      <section class="ds-section">
+        <div class="ds-label">Etiquetas (tag)</div>
+        <div class="ds-grid">
+          <span class="tag">Cantos</span>
+          <span class="tag">Lecturas</span>
+          <span class="tag">Santa Cena</span>
+          <span class="tag">Ofrenda</span>
+          <span class="tag">Recoger ofrenda</span>
+        </div>
+      </section>
+    </div>
+
+    <div class="preview dark">
+      <!-- DARK: the SAME content duplicated -->
+
+      <section class="ds-section">
+        <h2>Badge</h2>
+        <div class="ds-label">Estado (dot)</div>
+        <div class="ds-grid">
+          <span class="badge dot b-active">Activo</span>
+          <span class="badge dot b-occ">Ocasional</span>
+          <span class="badge dot b-inactive">Inactivo</span>
+        </div>
+        <p class="val" style="margin-top: 12px; max-width: 640px">
+          Los tres matices de estado (--status-active-fg/bg, --status-occ-fg/bg) son derivados y no
+          están en tokens.css — ver docs/architecture/design-system.md.
+        </p>
+      </section>
+
+      <section class="ds-section">
+        <div class="ds-label">Etiquetas (tag)</div>
+        <div class="ds-grid">
+          <span class="tag">Cantos</span>
+          <span class="tag">Lecturas</span>
+          <span class="tag">Santa Cena</span>
+          <span class="tag">Ofrenda</span>
+          <span class="tag">Recoger ofrenda</span>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

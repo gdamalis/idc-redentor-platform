@@ -315,6 +315,59 @@ a {
   font-size: 12px;
   flex: none;
 }
+/* Size variants — base .avatar is the 32px "md". Added for Primitives A
+   (not present in v1, which only ever renders the sidebar-footer size). */
+.avatar-sm {
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+}
+.avatar-lg {
+  width: 44px;
+  height: 44px;
+  font-size: 15px;
+}
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  object-fit: cover;
+}
+/* No real congregant photo exists for a design-system mockup, so the "image"
+   variant is a token-derived silhouette placeholder standing in for wherever
+   an <img> would render — never a raw hex, never a stock photo URL. */
+.avatar-photo {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+.avatar-photo svg {
+  width: 60%;
+  height: 60%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+/* Favorite marker overlay — reuses the .star fill from the people-list table. */
+.avatar-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.avatar-wrap .avatar-star {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  display: grid;
+  place-items: center;
+}
+.avatar-wrap .avatar-star .star {
+  width: 9px;
+  height: 9px;
+}
 .side-foot .who {
   line-height: 1.15;
   min-width: 0;
@@ -471,6 +524,40 @@ a {
 .btn.is-disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Size variants for Primitives A. The 44px hit-area rule above already
+   floors .btn's rendered height at 44px (min-height wins over the 38px
+   base height), so .btn-md is only an explicit label for that default —
+   .btn-sm shrinks the VISUAL box to 36px while keeping the hit area at
+   44px via an invisible ::before halo (a standard compact-control pattern,
+   not a visual regression of the ≥44px bar). .btn-lg grows both. */
+.btn-sm {
+  position: relative;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 12.5px;
+}
+.btn-sm::before {
+  content: "";
+  position: absolute;
+  inset: -4px 0;
+}
+.btn-md {
+  height: 44px;
+  min-height: 44px;
+}
+.btn-lg {
+  height: 48px;
+  min-height: 48px;
+  padding: 0 18px;
+  font-size: 14px;
+}
+.btn-icon {
+  width: 44px;
+  padding: 0;
+  justify-content: center;
 }
 
 /* Toolbar */
@@ -728,7 +815,12 @@ tbody tr:hover {
 }
 .input:focus,
 .textarea:focus,
-.select:focus {
+.select:focus,
+/* A static artifact can't hold a real :focus state, so `.is-focus` mirrors
+   the same rule for artifacts that need to SHOW the focused look. */
+.input.is-focus,
+.textarea.is-focus,
+.select.is-focus {
   outline: none;
   border-color: hsl(var(--ring));
   box-shadow: 0 0 0 3px hsl(var(--ring) / 0.18);
