@@ -26,25 +26,73 @@
     "roles": "Roles",
     "settings": "Settings"
   },
-  "topbar": {
-    "userMenuPlaceholder": "Account"
-  },
   "localeSwitcher": {
     "ariaLabel": "Switch language",
     "es": "ES",
     "en": "EN"
   },
   "pages": {
-    "comingSoon": "Coming soon",
+    "comingSoon": "Coming soon"
+  },
+  "auth": {
     "login": {
-      "title": "Sign in"
+      "title": "Sign in",
+      "subtitle": "Sign in with your church account to access the panel.",
+      "googleButton": "Continue with Google",
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "submit": "Sign in",
+      "forgotPassword": "Forgot your password?",
+      "orSeparator": "or",
+      "errors": {
+        "wrongPassword": "The email or password is incorrect.",
+        "noInvite": "Your account doesn't have an active invite. Contact an administrator.",
+        "inviteExpired": "Your invite has expired. Contact an administrator.",
+        "sessionExpired": "Your session expired. Please sign in again.",
+        "provisioningConflict": "We couldn't complete your sign-in. Please try again in a few seconds.",
+        "popupBlocked": "Your browser blocked the pop-up. We tried another sign-in method.",
+        "popupClosed": "You closed the window before finishing. Please try again.",
+        "network": "There was a connection problem. Check your internet and try again.",
+        "tooManyRequests": "Too many attempts. Wait a few minutes and try again.",
+        "generic": "We couldn't sign you in. Please try again."
+      }
     },
     "resetPassword": {
-      "title": "Reset password"
+      "title": "Reset your password",
+      "subtitle": "Enter your email and we'll send you a link to reset your password.",
+      "emailLabel": "Email",
+      "submit": "Send reset link",
+      "successGeneric": "If that email is registered, you'll receive a password reset link in a few minutes.",
+      "backToLogin": "Back to sign in"
     },
     "noAccess": {
       "title": "No access",
-      "description": "You don't have permission to view this section."
+      "description": "Your account doesn't have permission to enter the panel. If you think this is a mistake, contact an administrator.",
+      "backToWebsite": "Go to the church website"
+    },
+    "signOut": {
+      "label": "Sign out",
+      "error": "We couldn't sign you out. Please try again."
+    },
+    "email": {
+      "invite": {
+        "subject": "You're invited to the IDC Redentor Admin Panel",
+        "heading": "Welcome to the team!",
+        "greeting": "Hi,",
+        "body": "You've been invited to join the Iglesia de Cristo Redentor Admin Panel. Click the button below to set your password and get started.",
+        "cta": "Set my password",
+        "expiryNote": "This link is valid for a limited time, for your security.",
+        "footer": "If you weren't expecting this invite, you can ignore this email."
+      },
+      "reset": {
+        "subject": "Reset your password — Admin Panel",
+        "heading": "Reset your password",
+        "body": "We received a request to reset the password for your Admin Panel account. Click the button below to choose a new password.",
+        "cta": "Reset password",
+        "expiryNote": "This link is valid for a limited time, for your security.",
+        "ignoreNote": "If you didn't request this change, you can ignore this email — your current password is still valid.",
+        "footer": "The IDC Redentor Admin Panel team."
+      }
     }
   }
 }

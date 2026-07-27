@@ -1,0 +1,232 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
+
+// next-intl requires a locale/translation context; echo back `${namespace}.${key}`
+// so assertions can target the exact message key without loading real copy.
+vi.mock("next-intl", () => ({
+  useTranslations: (namespace: string) => (key: string) => `${namespace}.${key}`,
+}));
+
+const pushMock = vi.fn();
+vi.mock("@src/i18n/routing", () => ({
+  useRouter: () => ({ push: pushMock }),
+  Link: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a>,
+}));
+
+const fakeAuth = { currentUser: { uid: "firebase-uid-1" } };
+vi.mock("@src/lib/firebase/client", () => ({
+  getFirebaseAuth: () => fakeAuth,
+}));
+
+const signInWithEmailAndPasswordMock = vi.fn();
+const signInWithPopupMock = vi.fn();
+const signInWithRedirectMock = vi.fn();
+const getRedirectResultMock = vi.fn();
+const signOutMock = vi.fn();
+const deleteUserMock = vi.fn();
+
+vi.mock("firebase/auth", () => ({
+  signInWithEmailAndPassword: (...args: unknown[]) => signInWithEmailAndPasswordMock(...args),
+  signInWithPopup: (...args: unknown[]) => signInWithPopupMock(...args),
+  signInWithRedirect: (...args: unknown[]) => signInWithRedirectMock(...args),
+  getRedirectResult: (...args: unknown[]) => getRedirectResultMock(...args),
+  signOut: (...args: unknown[]) => signOutMock(...args),
+  deleteUser: (...args: unknown[]) => deleteUserMock(...args),
+  GoogleAuthProvider: vi.fn(),
+}));
+
+import { LoginForm } from "./login-form";
+
+const fetchMock = vi.fn();
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  getRedirectResultMock.mockResolvedValue(null);
+  vi.stubGlobal("fetch", fetchMock);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+async function fillAndSubmit(email = "person@example.com", password = "secret123") {
+  const user = userEvent.setup();
+  render(<LoginForm callbackUrl="/es-AR" />);
+
+  await user.type(screen.getByLabelText("auth.login.emailLabel"), email);
+  await user.type(screen.getByLabelText("auth.login.passwordLabel"), password);
+  await user.click(screen.getByRole("button", { name: "auth.login.submit" }));
+
+  return user;
+}
+
+describe("LoginForm", () => {
+  it("signs in with email/password then exchanges the ID token for a session", async () => {
+    const getIdToken = vi.fn().mockResolvedValue("id-token-1");
+    signInWithEmailAndPasswordMock.mockResolvedValue({ user: { getIdToken } });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ ok: true, preferredLocale: "es-AR" }),
+    });
+
+    await fillAndSubmit("person@example.com", "secret123");
+
+    await waitFor(() => {
+      expect(signInWithEmailAndPasswordMock).toHaveBeenCalledWith(
+        fakeAuth,
+        "person@example.com",
+        "secret123",
+      );
+    });
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/auth/session",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ idToken: "id-token-1" }),
+        }),
+      );
+    });
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalled();
+    });
+  });
+
+  it("on a 403 no-invite response, signs out and redirects to /no-access WITHOUT ever deleting the Firebase credential", async () => {
+    const getIdToken = vi.fn().mockResolvedValue("id-token-2");
+    signInWithEmailAndPasswordMock.mockResolvedValue({ user: { getIdToken } });
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: () => Promise.resolve({ ok: false, reason: "no-invite" }),
+    });
+
+    await fillAndSubmit();
+
+    await waitFor(() => {
+      expect(signOutMock).toHaveBeenCalledWith(fakeAuth);
+    });
+    expect(pushMock).toHaveBeenCalledWith("/no-access");
+    // The orphan-Firebase-credential cleanup was deliberately removed
+    // (ICR-127 follow-up) — `deleteUser` must never be called from this
+    // component, for ANY refusal reason. `deleteUser` stays mocked here
+    // specifically so a future re-introduction of that cleanup fails this
+    // assertion.
+    expect(deleteUserMock).not.toHaveBeenCalled();
+  });
+
+  it("on a 403 disabled response, signs out and redirects to /no-access WITHOUT deleting the credential", async () => {
+    const getIdToken = vi.fn().mockResolvedValue("id-token-3");
+    signInWithEmailAndPasswordMock.mockResolvedValue({ user: { getIdToken } });
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: () => Promise.resolve({ ok: false, reason: "disabled" }),
+    });
+
+    await fillAndSubmit();
+
+    await waitFor(() => {
+      expect(signOutMock).toHaveBeenCalledWith(fakeAuth);
+    });
+    expect(pushMock).toHaveBeenCalledWith("/no-access");
+    expect(deleteUserMock).not.toHaveBeenCalled();
+  });
+
+  it("on a 403 email-unverified response, signs out and redirects to /no-access WITHOUT deleting the credential", async () => {
+    const getIdToken = vi.fn().mockResolvedValue("id-token-4");
+    signInWithEmailAndPasswordMock.mockResolvedValue({ user: { getIdToken } });
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: () => Promise.resolve({ ok: false, reason: "email-unverified" }),
+    });
+
+    await fillAndSubmit();
+
+    await waitFor(() => {
+      expect(signOutMock).toHaveBeenCalledWith(fakeAuth);
+    });
+    expect(pushMock).toHaveBeenCalledWith("/no-access");
+    expect(deleteUserMock).not.toHaveBeenCalled();
+  });
+
+  it("on a 409 provisioning-conflict response, signs out WITHOUT deleting the credential or navigating to /no-access, and shows a localized retry message (Codex round-4)", async () => {
+    const getIdToken = vi.fn().mockResolvedValue("id-token-conflict");
+    signInWithEmailAndPasswordMock.mockResolvedValue({ user: { getIdToken } });
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: () => Promise.resolve({ ok: false, reason: "provisioning-conflict" }),
+    });
+
+    await fillAndSubmit();
+
+    await waitFor(() => {
+      expect(signOutMock).toHaveBeenCalledWith(fakeAuth);
+    });
+    expect(deleteUserMock).not.toHaveBeenCalled();
+    expect(pushMock).not.toHaveBeenCalledWith("/no-access");
+    expect(
+      await screen.findByText("auth.login.errors.provisioningConflict"),
+    ).toBeDefined();
+  });
+
+  it("shows the localized wrong-password error when Firebase rejects with auth/wrong-password", async () => {
+    signInWithEmailAndPasswordMock.mockRejectedValue({ code: "auth/wrong-password" });
+
+    await fillAndSubmit();
+
+    expect(await screen.findByText("auth.login.errors.wrongPassword")).toBeDefined();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("strips the locale from a query-string callbackUrl BEFORE parsing it, avoiding a doubled locale segment (Codex round-3 P2)", async () => {
+    // Bug: naively splitting "/es-AR?tab=roles" on "/" yields the single
+    // token "es-AR?tab=roles", which fails isValidLocale — so the strip
+    // never fires and the stored-locale push doubles the prefix into
+    // "/en-US/es-AR?tab=roles" (a 404). The fix must split the query off
+    // first and push "/?tab=roles", leaving next-intl's router to prepend
+    // exactly one locale.
+    const getIdToken = vi.fn().mockResolvedValue("id-token-5");
+    signInWithEmailAndPasswordMock.mockResolvedValue({ user: { getIdToken } });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ ok: true, preferredLocale: "en-US" }),
+    });
+
+    const user = userEvent.setup();
+    render(<LoginForm callbackUrl="/es-AR?tab=roles" />);
+    await user.type(screen.getByLabelText("auth.login.emailLabel"), "person@example.com");
+    await user.type(screen.getByLabelText("auth.login.passwordLabel"), "secret123");
+    await user.click(screen.getByRole("button", { name: "auth.login.submit" }));
+
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith("/?tab=roles", { locale: "en-US" });
+    });
+  });
+
+  it("still strips a normal locale-prefixed path with no query correctly", async () => {
+    const getIdToken = vi.fn().mockResolvedValue("id-token-6");
+    signInWithEmailAndPasswordMock.mockResolvedValue({ user: { getIdToken } });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ ok: true, preferredLocale: "en-US" }),
+    });
+
+    const user = userEvent.setup();
+    render(<LoginForm callbackUrl="/es-AR/people" />);
+    await user.type(screen.getByLabelText("auth.login.emailLabel"), "person@example.com");
+    await user.type(screen.getByLabelText("auth.login.passwordLabel"), "secret123");
+    await user.click(screen.getByRole("button", { name: "auth.login.submit" }));
+
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith("/people", { locale: "en-US" });
+    });
+  });
+});

@@ -4,6 +4,7 @@ import { Button } from "@src/components/ui/button";
 import { routing, usePathname, useRouter } from "@src/i18n/routing";
 import { cn } from "@idcr/ui";
 import { useLocale, useTranslations } from "next-intl";
+import { setPreferredLocale } from "./locale-actions";
 
 type SupportedLocale = (typeof routing.locales)[number];
 
@@ -20,6 +21,11 @@ export function LocaleSwitcher() {
 
   function handleSelectLocale(nextLocale: SupportedLocale) {
     router.replace(pathname, { locale: nextLocale });
+    // Best-effort account-wide persistence (spec §2 R18): the visual switch
+    // above already applied, so a failure here (no session, network) is
+    // never surfaced — the stored preference just stays stale until the
+    // next toggle.
+    void setPreferredLocale(nextLocale);
   }
 
   return (

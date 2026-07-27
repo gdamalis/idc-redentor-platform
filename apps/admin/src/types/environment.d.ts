@@ -14,6 +14,9 @@ declare namespace NodeJS {
 
     // Base URL
     NEXT_PUBLIC_ADMIN_BASE_URL: string;
+    // Public church website, linked from /no-access. Optional — code falls
+    // back to the production site when unset.
+    NEXT_PUBLIC_WEBSITE_URL: string;
 
     // Firebase — client SDK (browser-safe)
     NEXT_PUBLIC_FIREBASE_API_KEY: string;

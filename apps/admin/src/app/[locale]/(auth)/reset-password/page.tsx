@@ -1,14 +1,9 @@
-import { PlaceholderPage } from "@src/components/shell/placeholder-page";
-import { getTranslations } from "next-intl/server";
+import { ResetForm } from "./reset-form";
 
-export default async function ResetPasswordPage() {
-  const tPages = await getTranslations("pages");
-
+export default function ResetPasswordPage() {
   return (
     <div className="flex min-h-screen items-center justify-center p-8">
-      <PlaceholderPage
-        heading={`${tPages("resetPassword.title")} — ${tPages("comingSoon")}`}
-      />
+      <ResetForm />
     </div>
   );
 }
