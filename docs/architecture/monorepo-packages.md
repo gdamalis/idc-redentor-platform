@@ -235,7 +235,7 @@ outside that walk and holds no class names to find, so no `@source` directive is
 will need an explicit source directive so Tailwind's scanner reaches into the package:
 
 ```css
-@source "../../../packages/ui";
+@source "../../../../packages/ui";
 ```
 
 This is intentionally **not** added now. Adding a scan path with nothing yet to scan would be

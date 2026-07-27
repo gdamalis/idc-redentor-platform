@@ -133,6 +133,34 @@ a {
   padding-block: 0;
 }
 
+/* The min-height above already floors .icon-btn / .kebab / .pager button's
+   rendered HEIGHT at 44px (min-height wins over their smaller explicit height:
+   36/30/30px), but sets no WIDTH floor — those controls render 36x44, 30x44 and
+   30x44 respectively (Codex P2, PR #112). Fixed by the .btn-sm ::before halo
+   pattern below, applied axis-specific (inset only left/right) rather than
+   uniformly: expanding height too would push the pointer target past the
+   already-correct 44px and into neighbouring dense-table rows. */
+.icon-btn,
+.kebab,
+.pager button {
+  position: relative;
+}
+.icon-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0 -4px; /* 36 -> 44 wide; height already 44 */
+}
+.kebab::before {
+  content: "";
+  position: absolute;
+  inset: 0 -7px; /* 30 -> 44 wide; height already 44 */
+}
+.pager button::before {
+  content: "";
+  position: absolute;
+  inset: 0 -7px; /* 30 -> 44 wide; height already 44 */
+}
+
 /* ===== Preview scaffolding used by every artifact ===== */
 .preview {
   padding: 24px;
@@ -465,6 +493,11 @@ a {
   font-size: 12.5px;
   font-weight: 600;
   color: hsl(var(--muted-foreground));
+  /* Short labels ("ES"/"EN") render under 44px wide from padding + text alone —
+     min-width floors the pointer target; justify-content re-centers the label
+     once the box is wider than its content (Codex P2, PR #112). */
+  min-width: 44px;
+  justify-content: center;
 }
 .seg button.on {
   background: hsl(var(--primary));

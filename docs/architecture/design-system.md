@@ -172,10 +172,13 @@ contained deprecation.
   components, **both** `apps/web/src/app/globals.css` and `apps/admin/src/app/globals.css` need:
 
   ```css
-  @source "../../../packages/ui";
+  @source "../../../../packages/ui";
   ```
 
-  Verified: it is currently **absent from both** files. Without it, Tailwind's v4 automatic content
+  Tailwind resolves `@source` relative to the CSS file that declares it. Both `globals.css` files
+  sit at `apps/<app>/src/app/`, so reaching repo-root `packages/ui` takes **four** `../` levels
+  (`app` → `src` → `web`/`admin` → `apps` → repo root) — three levels resolves to the non-existent
+  `apps/packages/ui` instead. Verified: it is currently **absent from both** files. Without it, Tailwind's v4 automatic content
   scanner never walks into `packages/ui`, the utility classes referenced by the new components are
   never generated, and the components render **completely unstyled — with no error and no warning**.
   See `monorepo-packages.md` §8 for why it isn't added yet (there's nothing to scan today).
