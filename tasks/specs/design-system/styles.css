@@ -112,13 +112,22 @@ a {
   text-decoration: none;
 }
 
-/* ===== ≥44px hit-area baseline — the correction to v1 ===== */
+/* ===== ≥44px hit-area baseline — the correction to v1 =====
+   Every interactive control belongs in this selector list — it is the single
+   enforcement point for the ≥44px hit target AND for `font: inherit` on
+   native form controls (leaving a <button> out of this list means it
+   renders in the browser's UA font, not Outfit). Two consecutive review
+   rounds each found one control missing (round 1: widths, round 2: heights)
+   because this list was enumerated by hand — verify-artifacts.mjs now
+   mechanically fails the build if any `cursor: pointer` (or bare <input>)
+   control's height/min-height falls under 44px anywhere in this file. */
 .btn,
 .icon-btn,
 .kebab,
 .pager button,
 .seg button,
-.nav-item {
+.nav-item,
+.filter {
   min-height: 44px; /* hit target — quality bar */
   display: inline-flex;
   align-items: center;
@@ -543,7 +552,6 @@ a {
 
 .btn {
   padding: 0 15px;
-  height: 38px;
   border-radius: calc(var(--radius) - 2px);
   font-weight: 600;
   font-size: 13.5px;
@@ -653,7 +661,7 @@ a {
 }
 .search input {
   width: 100%;
-  height: 38px;
+  height: 44px;
   border-radius: calc(var(--radius) - 2px);
   border: 1px solid hsl(var(--input));
   background: hsl(var(--card));
@@ -671,7 +679,6 @@ a {
   box-shadow: 0 0 0 3px hsl(var(--ring) / 0.18);
 }
 .filter {
-  height: 38px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -1059,7 +1066,7 @@ tbody tr.dense td {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 10px;
   border-radius: calc(var(--radius) - 4px);
   font-size: 13.5px;

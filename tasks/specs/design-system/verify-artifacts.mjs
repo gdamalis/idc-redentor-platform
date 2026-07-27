@@ -38,6 +38,87 @@ function walk(dir, exts = [".html"]) {
   return out;
 }
 
+// ===== CSS geometry check: every interactive control must reach the ≥44px
+// hit-target floor (spec quality bar). Two consecutive review rounds each
+// missed one instance (round 1: widths, round 2: heights) because the
+// baseline selector list was enumerated by hand — this makes it mechanical.
+// Regex-based block split — this is our own hand-written stylesheet, not
+// arbitrary CSS (no @media/nesting), so a full CSS parser would be overkill.
+function parseCssBlocks(css) {
+  const flat = css.replace(/\/\*[\s\S]*?\*\//g, ""); // strip comments first
+  const blocks = [];
+  const re = /([^{}]+)\{([^{}]*)\}/g;
+  let m;
+  while ((m = re.exec(flat))) {
+    blocks.push({ selectorList: m[1].trim(), body: m[2] });
+  }
+  return blocks;
+}
+
+// A bare `input` tag selector (not a `.input` class, not an attribute-narrowed
+// checkbox/radio glyph whose hit area is provided by its wrapping label, e.g.
+// `.checkbox input[type="checkbox"]`) is a real text-like control and needs
+// the same floor even with no cursor:pointer — native text inputs render a
+// text cursor, not a pointer, so cursor:pointer alone would miss them.
+function isBareInputSelector(sel) {
+  return (
+    /(^|[\s>+~])input(?![\w-])/i.test(sel) &&
+    !/type=["'](checkbox|radio)["']/i.test(sel)
+  );
+}
+
+function hasBeforeHalo(sel, blocks) {
+  const target = `${sel}::before`;
+  return blocks.some(({ selectorList }) =>
+    selectorList
+      .split(",")
+      .map((s) => s.trim())
+      .includes(target),
+  );
+}
+
+function checkHitTargets(css) {
+  const blocks = parseCssBlocks(css);
+  const problems = [];
+  for (const { selectorList, body } of blocks) {
+    const selectors = selectorList.split(",").map((s) => s.trim());
+    const bodyHasPointer = /cursor:\s*pointer\b/i.test(body);
+    const interactive = bodyHasPointer
+      ? selectors
+      : selectors.filter(isBareInputSelector);
+    if (interactive.length === 0) continue;
+
+    const minHeightMatch = body.match(/min-height:\s*([\d.]+)px/i);
+    const heightMatch = body.match(/(?<!min-)height:\s*([\d.]+)px/i);
+    if (!minHeightMatch && !heightMatch) continue; // no explicit floor here
+
+    const minHeight = minHeightMatch ? parseFloat(minHeightMatch[1]) : 0;
+    const height = heightMatch ? parseFloat(heightMatch[1]) : 0;
+    if (Math.max(minHeight, height) >= 44) continue;
+
+    const declared = [
+      heightMatch ? `height:${heightMatch[1]}px` : null,
+      minHeightMatch ? `min-height:${minHeightMatch[1]}px` : null,
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    for (const sel of interactive) {
+      // Sanctioned compact-control pattern (.btn-sm, .icon-btn, .kebab,
+      // .pager button): a visually smaller box, with an invisible ::before
+      // halo restoring the ≥44px pointer target.
+      if (hasBeforeHalo(sel, blocks)) continue;
+      const reason = bodyHasPointer
+        ? "cursor:pointer and no ::before halo"
+        : "a bare <input> and no ::before halo";
+      problems.push(
+        `${sel} declares ${declared} with ${reason} (>=44px hit target)`,
+      );
+    }
+  }
+  return problems;
+}
+
 // The fonts are declared ONCE, in the shared stylesheet — not in every artifact.
 // Asserting them per-HTML would force every artifact to embed a decorative
 // font-family purely to satisfy the gate. Assert them where they actually live,
@@ -51,6 +132,7 @@ function checkStyles() {
   if (!/"Playfair Display"/.test(src))
     problems.push('missing "Playfair Display" font-family');
   for (const { re, why } of BANNED) if (re.test(src)) problems.push(why);
+  problems.push(...checkHitTargets(src));
   return problems.map((p) => `styles.css: ${p}`);
 }
 
