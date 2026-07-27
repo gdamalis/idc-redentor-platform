@@ -183,9 +183,9 @@ the follow-up code ticket knows they must be added to `tokens.css`:
 --gold: 35 40% 58%;
 
 /* status badge hues (light / dark) */
---status-active-fg: 160 60% 34% / 160 55% 60%;
+--status-active-fg: 160 60% 29% / 160 55% 60%; /* light L 34%->29%, Codex round-4 P2: WCAG AA */
 --status-active-bg: 160 60% 34% / 0.12 / 160 55% 50% / 0.15;
---status-occ-fg: 35 70% 38% / 35 75% 62%;
+--status-occ-fg: 35 70% 33% / 35 75% 62%; /* light L 38%->33%, Codex round-4 P2: WCAG AA */
 --status-occ-bg: 35 70% 45% / 0.14 / 35 70% 50% / 0.16;
 /* inactive uses --muted-foreground on --muted in both themes */
 ```

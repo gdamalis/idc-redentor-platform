@@ -56,14 +56,14 @@ consumer (including a future third app) must satisfy:
 The design uses a handful of tokens that don't exist in `tokens.css` yet. The follow-up code ticket
 must add them:
 
-| Token                | Light                             | Dark                              | Notes                                                                                                                         |
-| -------------------- | --------------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `--gold`             | `35 45% 62%`                      | `35 40% 58%`                      | Derived from the `--secondary` hue. Sparing use — leadership/favourite accents (e.g. the calendar's birthday `.star` marker). |
-| `--status-active-fg` | `160 60% 34%`                     | `160 55% 60%`                     | Status-dot text/icon colour, "Activo".                                                                                        |
-| `--status-active-bg` | `160 60% 34% / .12`               | `160 55% 50% / .15`               | Status-dot background, "Activo".                                                                                              |
-| `--status-occ-fg`    | `35 70% 38%`                      | `35 75% 62%`                      | "Ocasional".                                                                                                                  |
-| `--status-occ-bg`    | `35 70% 45% / .14`                | `35 70% 50% / .16`                | "Ocasional".                                                                                                                  |
-| `--status-inactive`  | `--muted-foreground` on `--muted` | `--muted-foreground` on `--muted` | "Inactivo" reuses the existing muted pair in both themes — no new token needed.                                               |
+| Token                | Light                             | Dark                              | Notes                                                                                                                          |
+| -------------------- | --------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `--gold`             | `35 45% 62%`                      | `35 40% 58%`                      | Derived from the `--secondary` hue. Sparing use — leadership/favourite accents (e.g. the calendar's birthday `.star` marker).  |
+| `--status-active-fg` | `160 60% 29%`                     | `160 55% 60%`                     | Status-dot text/icon colour, "Activo". Light L darkened 34%->29% for WCAG AA (Codex round-4 P2; 3.66:1 -> 4.77:1 on `--card`). |
+| `--status-active-bg` | `160 60% 34% / .12`               | `160 55% 50% / .15`               | Status-dot background, "Activo".                                                                                               |
+| `--status-occ-fg`    | `35 70% 33%`                      | `35 75% 62%`                      | "Ocasional". Light L darkened 38%->33% for WCAG AA (Codex round-4 P2; 3.81:1 -> 4.80:1 on `--card`).                           |
+| `--status-occ-bg`    | `35 70% 45% / .14`                | `35 70% 50% / .16`                | "Ocasional".                                                                                                                   |
+| `--status-inactive`  | `--muted-foreground` on `--muted` | `--muted-foreground` on `--muted` | "Inactivo" reuses the existing muted pair in both themes — no new token needed.                                                |
 
 ## 4. Target architecture (binding end-state)
 

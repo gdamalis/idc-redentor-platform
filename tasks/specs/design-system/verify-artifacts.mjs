@@ -74,59 +74,135 @@ function isBareInputSelector(sel) {
   return true;
 }
 
-function hasBeforeHalo(sel, blocks) {
+// Every block whose selector list literally contains `sel` contributes to its
+// geometry — not just the one block that happens to establish cursor:pointer.
+// This matters because the ≥44px baseline is set in ONE shared rule
+// (`.btn, .icon-btn, .kebab, .pager button, .seg button, .nav-item, .filter`)
+// while a control's OTHER axis (or a size override) frequently lives in that
+// control's own separate block (e.g. `.seg button`'s min-width:44px is a
+// distinct rule from the shared block that gives it cursor:pointer). Scanning
+// only the "interactive" block itself — as the pre-fix height check did —
+// would make the width check blind to exactly that pattern.
+function axisFloor(sel, blocks, prop) {
+  const minRe = new RegExp(`min-${prop}:\\s*([\\d.]+)px`, "i");
+  const bareRe = new RegExp(`(?<!min-)${prop}:\\s*([\\d.]+)px`, "i");
+  // A percentage (e.g. `.search input`'s `width: 100%`) is an explicit,
+  // deliberate "fill the parent" declaration, not an undeclared floor — it
+  // just isn't expressible in px, so it can't feed the px-based max() below.
+  const pctRe = new RegExp(`(?:min-)?${prop}:\\s*[\\d.]+%`, "i");
+  let px = 0;
+  let hasPercent = false;
+  for (const { selectorList, body } of blocks) {
+    if (
+      !selectorList
+        .split(",")
+        .map((s) => s.trim())
+        .includes(sel)
+    )
+      continue;
+    const minM = body.match(minRe);
+    const bareM = body.match(bareRe);
+    if (minM) px = Math.max(px, parseFloat(minM[1]));
+    if (bareM) px = Math.max(px, parseFloat(bareM[1]));
+    if (pctRe.test(body)) hasPercent = true;
+  }
+  return { px, hasPercent };
+}
+
+// A halo only satisfies the axis its `inset` shorthand actually expands — the
+// existing halos are deliberately axis-specific (Codex round-4 P2): `.icon-btn`
+// /`.kebab`/`.pager button` use `inset: 0 -Npx` (vertical 0, horizontal -N) to
+// widen WITHOUT touching height; `.btn-sm`/`.th-sort` use `inset: -Npx 0`
+// (vertical -N, horizontal 0) to heighten WITHOUT touching width. Treating
+// "has a ::before halo" as "satisfies whichever axis is failing" (the old
+// behaviour) would silently pass a control whose halo covers the WRONG axis.
+function haloAxisCoverage(sel, blocks) {
   const target = `${sel}::before`;
-  return blocks.some(({ selectorList }) =>
-    selectorList
-      .split(",")
-      .map((s) => s.trim())
-      .includes(target),
-  );
+  for (const { selectorList, body } of blocks) {
+    if (
+      !selectorList
+        .split(",")
+        .map((s) => s.trim())
+        .includes(target)
+    )
+      continue;
+    const insetMatch = body.match(/inset:\s*([^;]+);/i);
+    if (!insetMatch) return { coversHeight: false, coversWidth: false };
+    const parts = insetMatch[1].trim().split(/\s+/).map(parseFloat);
+    let vertical = 0;
+    let horizontal = 0;
+    if (parts.length === 1) {
+      vertical = parts[0];
+      horizontal = parts[0];
+    } else if (parts.length === 2) {
+      [vertical, horizontal] = parts;
+    } else if (parts.length >= 4) {
+      // top right bottom left
+      vertical = Math.max(Math.abs(parts[0]), Math.abs(parts[2]));
+      horizontal = Math.max(Math.abs(parts[1]), Math.abs(parts[3]));
+    }
+    return { coversHeight: vertical !== 0, coversWidth: horizontal !== 0 };
+  }
+  return { coversHeight: false, coversWidth: false };
+}
+
+// A selector is interactive if ANY block containing it in its selector list
+// declares cursor:pointer, or if it's a bare <input> (see isBareInputSelector).
+// Collected once, selector-keyed, so a selector repeated across several
+// blocks (e.g. `.filter` gets cursor:pointer from both the shared baseline
+// block and its own block) is only evaluated once.
+function collectInteractiveSelectors(blocks) {
+  const interactive = new Map();
+  for (const { selectorList, body } of blocks) {
+    const selectors = selectorList.split(",").map((s) => s.trim());
+    const bodyHasPointer = /cursor:\s*pointer\b/i.test(body);
+    const sels = bodyHasPointer
+      ? selectors
+      : selectors.filter(isBareInputSelector);
+    for (const sel of sels) {
+      if (!interactive.has(sel)) {
+        interactive.set(
+          sel,
+          bodyHasPointer ? "cursor:pointer" : "a bare <input>",
+        );
+      }
+    }
+  }
+  return interactive;
 }
 
 function checkHitTargets(css) {
   const blocks = parseCssBlocks(css);
   const problems = [];
-  for (const { selectorList, body } of blocks) {
-    const selectors = selectorList.split(",").map((s) => s.trim());
-    const bodyHasPointer = /cursor:\s*pointer\b/i.test(body);
-    const interactive = bodyHasPointer
-      ? selectors
-      : selectors.filter(isBareInputSelector);
-    if (interactive.length === 0) continue;
+  const interactive = collectInteractiveSelectors(blocks);
 
-    const minHeightMatch = body.match(/min-height:\s*([\d.]+)px/i);
-    const heightMatch = body.match(/(?<!min-)height:\s*([\d.]+)px/i);
-    const hasFloor = Boolean(minHeightMatch || heightMatch);
+  for (const [sel, control] of interactive) {
+    const height = axisFloor(sel, blocks, "height");
+    const width = axisFloor(sel, blocks, "width");
+    const halo = haloAxisCoverage(sel, blocks);
 
-    const minHeight = minHeightMatch ? parseFloat(minHeightMatch[1]) : 0;
-    const height = heightMatch ? parseFloat(heightMatch[1]) : 0;
-    // A declared floor that already reaches 44px is done. A block with NO
-    // height/min-height at all does not "meet" the floor either — it simply
-    // never declared one — so it falls through to the same halo check below
-    // instead of being silently skipped (that silent skip was the gate hole:
-    // an interactive control with no floor doesn't meet 44px, it merely
-    // doesn't declare anything).
-    if (hasFloor && Math.max(minHeight, height) >= 44) continue;
+    const heightOk = height.px >= 44 || height.hasPercent || halo.coversHeight;
+    const widthOk = width.px >= 44 || width.hasPercent || halo.coversWidth;
+    if (heightOk && widthOk) continue;
 
-    const declared = [
-      heightMatch ? `height:${heightMatch[1]}px` : null,
-      minHeightMatch ? `min-height:${minHeightMatch[1]}px` : null,
-    ]
-      .filter(Boolean)
-      .join(", ");
-
-    for (const sel of interactive) {
-      // Sanctioned compact-control pattern (.btn-sm, .icon-btn, .kebab,
-      // .pager button): a visually smaller box, with an invisible ::before
-      // halo restoring the ≥44px pointer target.
-      if (hasBeforeHalo(sel, blocks)) continue;
-      const control = bodyHasPointer ? "cursor:pointer" : "a bare <input>";
-      const reason = hasFloor
-        ? `declares ${declared} with ${control} and no ::before halo`
-        : `has ${control} but declares no height floor and no ::before halo`;
-      problems.push(`${sel} ${reason} (>=44px hit target)`);
+    const axisReasons = [];
+    if (!heightOk) {
+      axisReasons.push(
+        height.px > 0
+          ? `height floor ${height.px}px (<44) with no ::before halo covering height`
+          : `no height floor and no ::before halo covering height`,
+      );
     }
+    if (!widthOk) {
+      axisReasons.push(
+        width.px > 0
+          ? `width floor ${width.px}px (<44) with no ::before halo covering width`
+          : `no width floor and no ::before halo covering width`,
+      );
+    }
+    problems.push(
+      `${sel} has ${control} but declares ${axisReasons.join(" and ")} (>=44px BOTH axes required)`,
+    );
   }
   return problems;
 }
@@ -146,6 +222,50 @@ function checkStyles() {
   for (const { re, why } of BANNED) if (re.test(src)) problems.push(why);
   problems.push(...checkHitTargets(src));
   return problems.map((p) => `styles.css: ${p}`);
+}
+
+// R2 requires Foundations to render every semantic colour token — the four
+// --status-* tokens were silently absent until this pass (Codex round-4 P2:
+// "Foundations omits the derived status tokens"). Enforce it mechanically:
+// every custom property declared in styles.css's :root must appear as a
+// var(--name) reference somewhere in foundations.html, unless explicitly
+// allowlisted below with a one-line reason. An allowlist entry is
+// documentation of a deliberate omission; a silent gap is not.
+const FOUNDATIONS_TOKEN_ALLOWLIST = {
+  "--radius":
+    "shown via its derived --radius-sm/md/lg/xl scale in the Radio section, not as a raw var(--radius) reference",
+};
+
+function extractRootTokenNames(blocks) {
+  const rootBlock = blocks.find(
+    ({ selectorList }) => selectorList.trim() === ":root",
+  );
+  if (!rootBlock) return [];
+  const names = [];
+  const re = /--([\w-]+)\s*:/g;
+  let m;
+  while ((m = re.exec(rootBlock.body))) names.push(`--${m[1]}`);
+  return names;
+}
+
+function checkFoundationsTokenCoverage() {
+  const cssSrc = readFileSync(join(ROOT, "styles.css"), "utf8");
+  const tokens = extractRootTokenNames(parseCssBlocks(cssSrc));
+  const foundationsPath = join(ROOT, "foundations", "foundations.html");
+  if (!existsSync(foundationsPath))
+    return ["foundations/foundations.html: file is missing"];
+  const html = readFileSync(foundationsPath, "utf8");
+
+  const problems = [];
+  for (const token of tokens) {
+    if (token in FOUNDATIONS_TOKEN_ALLOWLIST) continue;
+    if (!html.includes(`var(${token})`)) {
+      problems.push(
+        `missing a swatch for ${token} (declared in styles.css :root but not rendered)`,
+      );
+    }
+  }
+  return problems.map((p) => `foundations/foundations.html: ${p}`);
 }
 
 function checkHtml(abs) {
@@ -203,8 +323,13 @@ if (files.length === 0) {
 }
 
 // The stylesheet is always checked, even with --only: it is shared by every
-// artifact, so a defect there affects all of them.
-const failures = [...checkStyles(), ...files.flatMap(checkHtml)];
+// artifact, so a defect there affects all of them. Same for the Foundations
+// token-inventory check — it depends on styles.css's :root, not on `--only`.
+const failures = [
+  ...checkStyles(),
+  ...checkFoundationsTokenCoverage(),
+  ...files.flatMap(checkHtml),
+];
 console.log(`checked styles.css + ${files.length} artifact(s)`);
 for (const f of failures) console.error("  ✗ " + f);
 if (failures.length) {

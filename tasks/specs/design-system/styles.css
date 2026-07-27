@@ -42,9 +42,13 @@
 
   /* Derived — NOT in tokens.css. See docs/architecture/design-system.md. */
   --gold: 35 45% 62%;
-  --status-active-fg: 160 60% 34%;
+  /* status-*-fg darkened from v1 (Activo 34%->29%L, Ocasional 38%->33%L) to
+     clear WCAG AA 4.5:1 for 12px badge text composited over --card (white) —
+     Codex round-4 P2. Hue/sat unchanged; only lightness moved. Verified:
+     Activo 3.664:1 -> 4.765:1, Ocasional 3.811:1 -> 4.800:1. */
+  --status-active-fg: 160 60% 29%;
   --status-active-bg: 160 60% 34% / 0.12;
-  --status-occ-fg: 35 70% 38%;
+  --status-occ-fg: 35 70% 33%;
   --status-occ-bg: 35 70% 45% / 0.14;
 }
 
@@ -78,6 +82,9 @@
   --sidebar-ring: 217.2 91.2% 59.8%;
 
   --gold: 35 40% 58%;
+  /* Dark-theme status pairs already clear WCAG AA over --card (222 47% 14%) —
+     Activo 6.785:1, Ocasional 6.456:1 — verified during the same Codex
+     round-4 audit as the light-theme fix above. Left unchanged. */
   --status-active-fg: 160 55% 60%;
   --status-active-bg: 160 55% 50% / 0.15;
   --status-occ-fg: 35 75% 62%;
@@ -327,6 +334,8 @@ a {
 }
 .nav-item {
   padding: 8px 10px;
+  min-width: 44px; /* real content (icon+label) already measures 77.7px+ —
+     this floor is a mechanical guarantee, not a visual change (Codex round-4 P2). */
   border-radius: calc(var(--radius) - 2px);
   color: hsl(var(--sidebar-foreground));
   font-weight: 500;
@@ -552,6 +561,9 @@ a {
 
 .btn {
   padding: 0 15px;
+  min-width: 44px; /* real text-button content already measures 83px+ (icon-only
+     variants get their own 44px width from .btn-icon) — this floor is a
+     mechanical guarantee, not a visual change (Codex round-4 P2). */
   border-radius: calc(var(--radius) - 2px);
   font-weight: 600;
   font-size: 13.5px;
@@ -685,6 +697,9 @@ a {
   min-height: 44px; /* hit target — quality bar (also set via the shared
      baseline selector list above; restated here so this block is
      self-sufficient if that list ever changes) */
+  min-width: 44px; /* real content (icon+label, e.g. "País") already measures
+     71.7px+ — this floor is a mechanical guarantee, not a visual change
+     (Codex round-4 P2). */
   padding: 0 12px;
   border-radius: calc(var(--radius) - 2px);
   border: 1px solid hsl(var(--border));
@@ -744,6 +759,10 @@ tbody tr:hover {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-width: 44px; /* real column-label content already measures 66px+ — this
+     floor is a mechanical guarantee, not a visual change (Codex round-4 P2).
+     Unlike the height halo above, no ::before trick is needed: a width floor
+     here doesn't risk ballooning the header row. */
   cursor: pointer;
 }
 .th-sort::before {
@@ -972,6 +991,12 @@ tbody tr.dense td {
   align-items: center;
   gap: 8px;
   min-height: 44px;
+  /* A label-only checkbox (no visible text — e.g. roles-matrix.html's 96
+     permission-grid cells) has nothing but the 18px glyph + gap to give it
+     width, measuring ~25px real (Codex round-4 P2). min-width doesn't
+     disturb the labelled variant ("Puede ver datos sensibles"), which is
+     already far wider than 44px from its own text content. */
+  min-width: 44px;
   cursor: pointer;
   font-size: 13.5px;
   color: hsl(var(--foreground));
@@ -1084,6 +1109,9 @@ tbody tr.dense td {
   align-items: center;
   gap: 8px;
   min-height: 44px;
+  min-width: 44px; /* .menu's own min-width:200px already floors this via
+     flex-stretch (measures 186px+ real) — restated here so .menu-item is
+     self-sufficient if reused outside that container (Codex round-4 P2). */
   padding: 0 10px;
   border-radius: calc(var(--radius) - 4px);
   font-size: 13.5px;
@@ -1111,6 +1139,9 @@ tbody tr.dense td {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
+  min-width: 44px; /* real content measured as close as 44.32px ("Notas") —
+     a near-miss that depends on the Outfit web font loading; floors it
+     explicitly instead of trusting text metrics (Codex round-4 P2). */
   padding: 0 4px;
   margin-bottom: -1px;
   border-bottom: 2px solid transparent;
