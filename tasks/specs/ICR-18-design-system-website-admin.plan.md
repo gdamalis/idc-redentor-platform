@@ -86,6 +86,22 @@ implementer reports.
   `Marisol Peña` → `Cónyuge`, `Tomás Peña` → `Hijo/a`. Invented in CP4 because no other Peña-family
   member appears in the sample data; recorded now as canonical so they stay stable if the screen is
   re-rendered.
+- **Colaborador does NOT get `Ver datos sensibles (PII)`.** Task 6 said Colaborador gets "only the
+  three `Ver…` rows", but there are **four** rows starting with `Ver`. CP5 resolved the ambiguity by
+  excluding the PII row — granting sensitive personal data to a non-admin role by default would
+  contradict the `Sensible` badge that same row carries. That is the correct reading and is now
+  binding. (Related plan slip in the same paragraph: it said Líder is unchecked for "the four
+  `Administración` rows" when that group lists **three**; the intended total is 4 unchecked cells —
+  the 3 `Administración` rows plus `Eliminar personas`.)
+- **The sign-in screen deliberately omits the Google brand mark.** The official "G" is fixed
+  four-colour brand hex, which conflicts with the tokens-only/no-raw-hex rule, so the artifact renders
+  `Continuar con Google` as a plain outline button. **This is an artifact limitation, not a design
+  decision** — the real implementation must use the official Google mark per Google's branding
+  requirements. Task 8's doc records it as an implementation note.
+- **`.divider` is not `.seg`.** Task 6 called sign-in's "o" separator a "`.seg`-style divider"; `.seg`
+  is an interactive toggle-button group, so reusing it for static non-interactive text would be
+  semantically wrong. CP5 added a dedicated `.divider`. Read "`.seg`-style" there as loose visual
+  guidance only.
 
 ### The token palette (verbatim — use these exact values)
 
