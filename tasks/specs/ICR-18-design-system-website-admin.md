@@ -121,7 +121,7 @@ next-intl namespaces. Moving them into `@idcr/ui` would drag those dependencies 
 **`@source` scanner directive — the silent breaker.** Per
 [`monorepo-packages.md`](../../docs/architecture/monorepo-packages.md) §8, once `@idcr/ui` contains
 class-name-bearing components, **both** apps' `globals.css` need
-`@source "../../../packages/ui";`. Without it Tailwind never scans the package, the utility classes
+`@source "../../../../packages/ui";`. Without it Tailwind never scans the package, the utility classes
 are never generated, and components render **unstyled with no error and no warning**.
 
 Verified against the branch: `@source` is **absent from both** `apps/web/src/app/globals.css` and

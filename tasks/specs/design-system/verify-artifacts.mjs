@@ -61,10 +61,17 @@ function parseCssBlocks(css) {
 // the same floor even with no cursor:pointer — native text inputs render a
 // text cursor, not a pointer, so cursor:pointer alone would miss them.
 function isBareInputSelector(sel) {
-  return (
-    /(^|[\s>+~])input(?![\w-])/i.test(sel) &&
-    !/type=["'](checkbox|radio)["']/i.test(sel)
-  );
+  if (!/(^|[\s>+~])input(?![\w-])/i.test(sel)) return false;
+  if (/type=["'](checkbox|radio)["']/i.test(sel)) return false;
+  // A pseudo-class (:focus), pseudo-element (::placeholder), or boolean
+  // state attribute ([disabled]/[readonly]/[checked]) refines an input that
+  // already has its own base rule elsewhere in the sheet — it declares no
+  // box properties of its own, so it isn't a distinct hit target that needs
+  // its own floor (e.g. `.search input` sets height:44px; `.search
+  // input:focus`/`::placeholder` only restyle color/outline on that SAME box).
+  if (/:[a-z-]/i.test(sel)) return false;
+  if (/\[(disabled|readonly|checked)\]/i.test(sel)) return false;
+  return true;
 }
 
 function hasBeforeHalo(sel, blocks) {
@@ -90,11 +97,17 @@ function checkHitTargets(css) {
 
     const minHeightMatch = body.match(/min-height:\s*([\d.]+)px/i);
     const heightMatch = body.match(/(?<!min-)height:\s*([\d.]+)px/i);
-    if (!minHeightMatch && !heightMatch) continue; // no explicit floor here
+    const hasFloor = Boolean(minHeightMatch || heightMatch);
 
     const minHeight = minHeightMatch ? parseFloat(minHeightMatch[1]) : 0;
     const height = heightMatch ? parseFloat(heightMatch[1]) : 0;
-    if (Math.max(minHeight, height) >= 44) continue;
+    // A declared floor that already reaches 44px is done. A block with NO
+    // height/min-height at all does not "meet" the floor either — it simply
+    // never declared one — so it falls through to the same halo check below
+    // instead of being silently skipped (that silent skip was the gate hole:
+    // an interactive control with no floor doesn't meet 44px, it merely
+    // doesn't declare anything).
+    if (hasFloor && Math.max(minHeight, height) >= 44) continue;
 
     const declared = [
       heightMatch ? `height:${heightMatch[1]}px` : null,
@@ -108,12 +121,11 @@ function checkHitTargets(css) {
       // .pager button): a visually smaller box, with an invisible ::before
       // halo restoring the ≥44px pointer target.
       if (hasBeforeHalo(sel, blocks)) continue;
-      const reason = bodyHasPointer
-        ? "cursor:pointer and no ::before halo"
-        : "a bare <input> and no ::before halo";
-      problems.push(
-        `${sel} declares ${declared} with ${reason} (>=44px hit target)`,
-      );
+      const control = bodyHasPointer ? "cursor:pointer" : "a bare <input>";
+      const reason = hasFloor
+        ? `declares ${declared} with ${control} and no ::before halo`
+        : `has ${control} but declares no height floor and no ::before halo`;
+      problems.push(`${sel} ${reason} (>=44px hit target)`);
     }
   }
   return problems;

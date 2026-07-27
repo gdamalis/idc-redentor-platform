@@ -1112,7 +1112,7 @@ Per the scribe standard, it must answer **what / why / constraints**. Required s
    Use the **folder+barrel** layout (`button/Button.tsx` + `index.ts`) per
    `code-patterns-and-conventions.md` §9, not flat files.
 
-6. **Implementation prerequisites** — the `@source "../../../packages/ui";` directive required in
+6. **Implementation prerequisites** — the `@source "../../../../packages/ui";` directive required in
    **both** `apps/web/src/app/globals.css` and `apps/admin/src/app/globals.css`, with the explicit
    warning that omitting it renders components **unstyled with no error**. State that
    `transpilePackages` is **already declared in both apps** (`apps/web/next.config.ts:8`,

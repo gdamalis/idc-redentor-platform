@@ -682,6 +682,9 @@ a {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  min-height: 44px; /* hit target — quality bar (also set via the shared
+     baseline selector list above; restated here so this block is
+     self-sufficient if that list ever changes) */
   padding: 0 12px;
   border-radius: calc(var(--radius) - 2px);
   border: 1px solid hsl(var(--border));
@@ -728,11 +731,25 @@ tbody tr:hover {
    `.is-hover` mirrors :hover so a static artifact can SHOW the hovered look
    (same reasoning as Input's `.is-focus`). `.selected` and `.dense` are new
    row states; `.empty-state` is the table's empty-results layout. */
+/* .th-sort's own line-height is only ~17px — well under the 44px floor — but
+   it sits inside a thead th cell alongside plain-text headers (~42px tall).
+   A literal min-height: 44px on this inline-flex span would grow to 44px
+   PLUS the th's own padding, ballooning the whole header row past 68px
+   (measured) instead of matching its siblings. Use the same invisible
+   ::before halo already established for .btn-sm / .icon-btn / .kebab: it
+   restores the ≥44px hit target vertically without adding any layout
+   height (Codex P2, PR #112 precedent). */
 .th-sort {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 4px;
   cursor: pointer;
+}
+.th-sort::before {
+  content: "";
+  position: absolute;
+  inset: -14px 0; /* 17.25px line height -> 45.25px hit target */
 }
 .th-sort svg {
   width: 10px;
