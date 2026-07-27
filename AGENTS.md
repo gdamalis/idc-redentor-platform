@@ -44,6 +44,7 @@ IDC Redentor is the official bilingual (es-AR / en-US) website of Iglesia de Cri
 - **Revalidation**: `POST /api/revalidate` with header `x-vercel-reval-key === CONTENTFUL_REVALIDATE_SECRET` → `revalidateTag("site-content")`.
 - **Security/CSP**: `config/headers.js` (HSTS, X-Frame-Options, CSP allowlisting GTM/GA, Vercel, and Contentful image CDNs).
 - **Path aliases**: `@src/*`, `@lib/*`, `@public/*`, `@icons/*`.
+- **Design system**: shared UI for `apps/web` + `apps/admin` — token contract, derived tokens, the primitives-shared/features-local boundary, and the shadcn→`@idcr/ui` migration table. See `docs/architecture/design-system.md`.
 
 See `docs/architecture/architecture.md` and the domain docs in `docs/` for detail.
 
