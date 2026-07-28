@@ -114,29 +114,44 @@ raw `--muted-foreground` used directly as text against a muted-tinted background
 to the already-existing `--status-inactive-fg` token (background left untouched in each case) rather
 than raising the base pair, which would have rippled into every other opaque-`--muted` consumer.
 
-| Pair                                                                                   | Light                        | Dark     | Status                                                                    |
-| -------------------------------------------------------------------------------------- | ---------------------------- | -------- | ------------------------------------------------------------------------- |
-| `foreground` on `background`                                                           | 17.113:1                     | 17.092:1 | pass                                                                      |
-| `card-foreground` on `card`                                                            | 17.899:1                     | 15.996:1 | pass                                                                      |
-| `popover-foreground` on `popover`                                                      | 17.899:1                     | 17.092:1 | pass                                                                      |
-| `primary-foreground` on `primary`                                                      | 6.502:1                      | 6.005:1  | pass (brand mark, `.seg button.on`, `.btn-primary`, pager `.on`)          |
-| `secondary-foreground` on `secondary`                                                  | 14.211:1                     | 13.945:1 | pass (`.tag`, `.btn-secondary`)                                           |
-| `muted-foreground` on `muted` (graphical, 3:1 — icon fill only, see below)             | 4.341:1                      | 5.696:1  | pass — `.avatar-photo`'s SVG fill/stroke is the only remaining opaque use |
-| `accent-foreground` on `accent`                                                        | 16.296:1                     | 13.945:1 | pass                                                                      |
-| `destructive-foreground` on `destructive`                                              | 4.987:1 (fixed, was 3.59:1)  | 9.564:1  | pass — fixed in §3a (F1)                                                  |
-| `sidebar-foreground` on `sidebar`                                                      | 9.992:1                      | 16.125:1 | pass                                                                      |
-| `sidebar-primary-foreground` on `sidebar-primary`                                      | 16.960:1                     | 6.713:1  | pass                                                                      |
-| `sidebar-accent-foreground` on `sidebar-accent`                                        | 16.125:1                     | 13.548:1 | pass                                                                      |
-| `destructive-text` on `card`                                                           | 6.526:1                      | 5.081:1  | pass — new token, §3a (F2)                                                |
-| `destructive-text` on `background`                                                     | 6.240:1                      | 5.429:1  | pass — new token, §3a (F2)                                                |
-| `gold` on `card` (graphical, 3:1)                                                      | 3.636:1 (fixed, was 2.293:1) | 6.464:1  | pass — fixed above (§3)                                                   |
-| `gold` on `background` (graphical, 3:1)                                                | 3.476:1 (fixed, was 2.193:1) | 6.907:1  | pass — fixed above (§3)                                                   |
-| `status-active-fg` on `status-active-bg` (over `card`)                                 | 4.765:1                      | 6.785:1  | pass (Codex round-4 P2, pre-vigil)                                        |
-| `status-occ-fg` on `status-occ-bg` (over `card`)                                       | 4.800:1                      | 6.456:1  | pass (Codex round-4 P2, pre-vigil)                                        |
-| `status-inactive-fg` on `status-inactive-bg` (over `card`) — `.b-active`/`.b-inactive` | 4.894:1 (fixed, was 4.341:1) | 5.501:1  | pass — fixed in §3                                                        |
-| `muted-foreground` on `muted/.5` over `card` — `thead th`                              | 4.544:1                      | 6.122:1  | pass, thin margin light — recorded, not changed                           |
-| `status-inactive-fg` on opaque `muted` — `.badge.b-neutral`                            | 5.179:1 (fixed, was 4.341:1) | 5.696:1  | pass — **new fix, this sweep**                                            |
-| `status-inactive-fg` on `muted/.5` over `background` — `.cal-dow div`                  | 5.299:1 (fixed, was 4.441:1) | 6.361:1  | pass — **new fix, this sweep**                                            |
+**Round 7 addendum (thread 3662285579):** the table above was hand-maintained, and so was the gate
+rule's `CONTRAST_PAIRS` list — nothing mechanically confirmed it was _complete_. A companion function,
+`checkContrastPairsCompleteness`, now scans every CSS block for a same-block `color`/`fill`/`stroke` +
+`background`/`background-color` co-occurrence and fails if the pair has no `CONTRAST_PAIRS` entry. Five
+such pairs turned up missing (the four new rows at the bottom of the table below; the fifth,
+`status-inactive-fg` on opaque `muted` for `.badge.b-neutral`, was already in the table above as its
+own row). None is a live failure, but two use a translucent `--primary` background that composites
+over a specific container (`--sidebar` for `.nav-item.active`, `--card` for `.avatar`) — context a
+CSS-text scan can't infer, which is why the curated list still carries the compositing base and the
+scan only proves nothing is _missing_, not that a base is right.
+
+| Pair                                                                                   | Light                        | Dark     | Status                                                                                    |
+| -------------------------------------------------------------------------------------- | ---------------------------- | -------- | ----------------------------------------------------------------------------------------- |
+| `foreground` on `background`                                                           | 17.113:1                     | 17.092:1 | pass                                                                                      |
+| `card-foreground` on `card`                                                            | 17.899:1                     | 15.996:1 | pass                                                                                      |
+| `popover-foreground` on `popover`                                                      | 17.899:1                     | 17.092:1 | pass                                                                                      |
+| `primary-foreground` on `primary`                                                      | 6.502:1                      | 6.005:1  | pass (brand mark, `.seg button.on`, `.btn-primary`, pager `.on`)                          |
+| `secondary-foreground` on `secondary`                                                  | 14.211:1                     | 13.945:1 | pass (`.tag`, `.btn-secondary`)                                                           |
+| `muted-foreground` on `muted` (graphical, 3:1 — icon fill only, see below)             | 4.341:1                      | 5.696:1  | pass — `.avatar-photo`'s SVG fill/stroke is the only remaining opaque use                 |
+| `accent-foreground` on `accent`                                                        | 16.296:1                     | 13.945:1 | pass                                                                                      |
+| `destructive-foreground` on `destructive`                                              | 4.987:1 (fixed, was 3.59:1)  | 9.564:1  | pass — fixed in §3a (F1)                                                                  |
+| `sidebar-foreground` on `sidebar`                                                      | 9.992:1                      | 16.125:1 | pass                                                                                      |
+| `sidebar-primary-foreground` on `sidebar-primary`                                      | 16.960:1                     | 6.713:1  | pass                                                                                      |
+| `sidebar-accent-foreground` on `sidebar-accent`                                        | 16.125:1                     | 13.548:1 | pass                                                                                      |
+| `destructive-text` on `card`                                                           | 6.526:1                      | 5.081:1  | pass — new token, §3a (F2)                                                                |
+| `destructive-text` on `background`                                                     | 6.240:1                      | 5.429:1  | pass — new token, §3a (F2)                                                                |
+| `gold` on `card` (graphical, 3:1)                                                      | 3.636:1 (fixed, was 2.293:1) | 6.464:1  | pass — fixed above (§3)                                                                   |
+| `gold` on `background` (graphical, 3:1)                                                | 3.476:1 (fixed, was 2.193:1) | 6.907:1  | pass — fixed above (§3)                                                                   |
+| `status-active-fg` on `status-active-bg` (over `card`)                                 | 4.765:1                      | 6.785:1  | pass (Codex round-4 P2, pre-vigil)                                                        |
+| `status-occ-fg` on `status-occ-bg` (over `card`)                                       | 4.800:1                      | 6.456:1  | pass (Codex round-4 P2, pre-vigil)                                                        |
+| `status-inactive-fg` on `status-inactive-bg` (over `card`) — `.b-active`/`.b-inactive` | 4.894:1 (fixed, was 4.341:1) | 5.501:1  | pass — fixed in §3                                                                        |
+| `muted-foreground` on `muted/.5` over `card` — `thead th`                              | 4.544:1                      | 6.122:1  | pass, thin margin light — recorded, not changed                                           |
+| `status-inactive-fg` on opaque `muted` — `.badge.b-neutral`                            | 5.179:1 (fixed, was 4.341:1) | 5.696:1  | pass — **new fix, this sweep**                                                            |
+| `status-inactive-fg` on `muted/.5` over `background` — `.cal-dow div`                  | 5.299:1 (fixed, was 4.441:1) | 6.361:1  | pass — **new fix, this sweep**                                                            |
+| `foreground` on `card`                                                                 | 17.899:1                     | 15.996:1 | pass — trivial (`foreground` === `card-foreground` in this palette), round 7              |
+| `foreground` on `accent` — `.kebab:hover`                                              | 16.347:1                     | 13.945:1 | pass, round 7                                                                             |
+| `.nav-item.active`: `primary` on `primary`/0.1 light /0.18 dark, over `sidebar`        | 5.590:1                      | 4.573:1  | pass, thin margin dark — round 7, codex's flagged example, not a live failure             |
+| `.avatar`: `primary` on `primary`/.12, over `card`                                     | 5.644:1                      | 4.714:1  | pass, thin margin dark — round 7; also verified over `sidebar` context: 5.416:1 / 5.056:1 |
 
 ## 4. Target architecture (binding end-state)
 

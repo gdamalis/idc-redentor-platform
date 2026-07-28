@@ -11,10 +11,21 @@
 //     exempt from) a static .dark variant block, the print artifact's @page rule
 //   - Foundations token-inventory: every styles.css :root custom property renders
 //     a swatch in foundations.html (or is explicitly allowlisted)
-//   - token CONTRAST: every literal fg/bg token pair this stylesheet actually
-//     composites together clears its WCAG threshold (4.5:1 text, 3:1 graphical),
-//     computed directly from the HSL values in styles.css — this is genuinely
-//     static because the values themselves are static, unlike geometry (below)
+//   - token CONTRAST: every declared pair in CONTRAST_PAIRS clears its WCAG
+//     threshold (4.5:1 text, 3:1 graphical), computed directly from the HSL
+//     values in styles.css — genuinely static, unlike geometry (below), since
+//     the colour values themselves don't change once rendered. A separate
+//     completeness pass (checkContrastPairsCompleteness) mechanically scans
+//     cssBlocks for every same-block color/fill/stroke + background
+//     co-occurrence and FAILS if it finds one with no CONTRAST_PAIRS entry —
+//     this exists because an earlier version of this comment CLAIMED that
+//     scan without the code actually doing it, so a real pair (.nav-item.active)
+//     could regress silently (PR #112 thread 3662285579). The scan only
+//     proves nothing is MISSING, not that a listed entry's compositing base is
+//     right — that context isn't recoverable from CSS text alone (which
+//     container a translucent background sits over is a DOM fact), so the
+//     curated list stays the source of truth for bases; discovery just closes
+//     the omission hole.
 // RENDERED (launches headless Chromium, measures the real DOM — see
 // checkRenderedHitTargets): every native interactive element (button, select,
 // textarea, a[href], input excl. checkbox/radio) PLUS every element matching a
@@ -122,14 +133,15 @@ function interactiveCssSelectors(cssBlocks) {
 // ===== Token CONTRAST check — genuinely static, unlike geometry: the colours
 // ARE the literal HSL values in styles.css, so recomputing WCAG contrast from
 // them is exact, not an approximation of something that only exists once
-// rendered. Every fg/bg pair actually composited together in this stylesheet
-// (found by grepping every block for a `color`/`fill`/`stroke` declaration
-// alongside a `background`/`background-color` declaration in the SAME block,
-// plus the handful of cross-block pairs this system's own conventions
-// establish — see docs/architecture/design-system.md's contrast table) is
-// checked against 4.5:1 for text or 3:1 for a graphical object (WCAG 1.4.11,
-// e.g. the birthday star's fill). Composited (translucent-over-base) pairs use
-// the same alpha-compositing math the status tokens were hand-verified with.
+// rendered. Every pair in CONTRAST_PAIRS (below) — same-block pairs plus the
+// handful of cross-block pairs this system's own conventions establish, see
+// docs/architecture/design-system.md's contrast table — is checked against
+// 4.5:1 for text or 3:1 for a graphical object (WCAG 1.4.11, e.g. the
+// birthday star's fill). Composited (translucent-over-base) pairs use alpha-
+// compositing math. checkContrastPairsCompleteness (further below) is the
+// actual scan that finds same-block pairs mechanically and cross-checks them
+// against this list — the math here doesn't do that scan itself, it just
+// computes ratios for whatever pairs it's given.
 function hslToRgb(h, s, l) {
   s /= 100;
   l /= 100;
@@ -292,7 +304,130 @@ const CONTRAST_PAIRS = [
     "background",
     0.5,
   ],
+  // Discovered by the completeness pass below (PR #112 thread 3662285579):
+  // these five same-block fg/bg pairs existed in styles.css but had no
+  // CONTRAST_PAIRS entry, so a regression in any of them would have PASSed
+  // silently. Computed and verified — none is currently failing.
+  ["foreground on card", "foreground", "card", 4.5, null],
+  ["foreground on accent (.kebab:hover)", "foreground", "accent", 4.5, null],
+  [
+    "status-inactive-fg on muted, opaque (.badge.b-neutral)",
+    "status-inactive-fg",
+    "muted",
+    4.5,
+    null,
+  ],
+  // .nav-item.active: --primary text on a translucent --primary background,
+  // composited over --sidebar (its containing block). Light uses the base
+  // rule's /0.1; a separate `.dark .nav-item.active` rule overrides to /0.18.
+  [
+    ".nav-item.active: primary on (primary/alpha over sidebar)",
+    "primary",
+    "primary",
+    4.5,
+    "sidebar",
+    { light: 0.1, dark: 0.18 },
+  ],
+  // .avatar: --primary initials on a translucent --primary circle, /.12 both
+  // themes (no dark-specific override). Renders in both the sidebar's
+  // .side-foot and table-row (card) contexts; --card is the tighter
+  // constraint in dark (4.714 vs sidebar's 5.056) so it's the base checked —
+  // the sidebar context is verified separately in docs/§3c, also passing.
+  [
+    ".avatar: primary on (primary/.12 over card)",
+    "primary",
+    "primary",
+    4.5,
+    "card",
+    0.12,
+  ],
 ];
+
+// ===== Completeness pass (PR #112 thread 3662285579): this header comment
+// (see the file's top block) and the block comment above CONTRAST_PAIRS both
+// claimed the list was populated by "grepping every block for a color/fill/
+// stroke declaration alongside a background declaration in the SAME block" —
+// that scan never actually existed; CONTRAST_PAIRS was hand-maintained only,
+// so a real same-block pair (codex's example: .nav-item.active's --primary
+// text over an alpha-composited --primary background) could regress below
+// threshold while the gate still PASSed. This makes the scan real: it finds
+// every same-block co-occurrence of a `color`/`fill`/`stroke` declaration and
+// a `background`/`background-color` declaration, each referencing var(--...),
+// and FAILS if the (foreground, background) pair has no CONTRAST_PAIRS entry.
+// It only asserts EXISTENCE, not correctness of the entry's compositing base —
+// full auto-derivation of ratios (no curated list at all) isn't tractable:
+// the base a translucent background composites OVER (e.g. .nav-item.active's
+// bg sits on --sidebar, not --card) depends on DOM ancestry the CSS text
+// doesn't encode, and a few real pairs (--destructive-text, --gold) have no
+// co-located background at all — their context is a judgment call, not a
+// parseable fact. The curated list stays the source of compositing context;
+// this pass just makes leaving a real pair off it impossible.
+const FG_PROPS = ["color", "fill", "stroke"];
+const BG_PROPS = ["background", "background-color"];
+const varRefRe = (prop) =>
+  new RegExp(
+    `(?<![\\w-])${prop}:\\s*hsl\\(var\\(--([\\w-]+)\\)(?:\\s*/\\s*([\\d.]+))?\\)`,
+    "i",
+  );
+
+function discoverCssCompositions(cssBlocks) {
+  const found = new Map(); // signature -> {fgKey, bgKey, selectors: Set}
+  for (const { selectorList, body } of cssBlocks) {
+    let fgHit, bgHit;
+    for (const p of FG_PROPS) {
+      const m = body.match(varRefRe(p));
+      if (m) {
+        fgHit = { key: m[1] };
+        break;
+      }
+    }
+    for (const p of BG_PROPS) {
+      const m = body.match(varRefRe(p));
+      if (m) {
+        bgHit = { key: m[1], alpha: m[2] };
+        break;
+      }
+    }
+    if (!fgHit || !bgHit) continue;
+    const alphaTag = bgHit.alpha ?? "bare";
+    const sig = `${fgHit.key}::${bgHit.key}::${alphaTag}`;
+    if (!found.has(sig)) {
+      found.set(sig, { fgKey: fgHit.key, bgKey: bgHit.key, selectors: new Set() });
+    }
+    for (const sel of selectorList.split(",")) found.get(sig).selectors.add(sel.trim());
+  }
+  return found;
+}
+
+function curatedSignatures() {
+  const sigs = new Set();
+  for (const [, fgKey, bgKey, , , bgAlphaOverride] of CONTRAST_PAIRS) {
+    if (bgAlphaOverride === undefined) {
+      sigs.add(`${fgKey}::${bgKey}::bare`);
+    } else if (typeof bgAlphaOverride === "object") {
+      for (const alpha of Object.values(bgAlphaOverride)) {
+        sigs.add(`${fgKey}::${bgKey}::${alpha}`);
+      }
+    } else {
+      sigs.add(`${fgKey}::${bgKey}::${bgAlphaOverride}`);
+    }
+  }
+  return sigs;
+}
+
+function checkContrastPairsCompleteness(cssBlocks) {
+  const discovered = discoverCssCompositions(cssBlocks);
+  const curated = curatedSignatures();
+  const problems = [];
+  for (const [sig, { fgKey, bgKey, selectors }] of discovered) {
+    if (!curated.has(sig)) {
+      problems.push(
+        `discovered pair --${fgKey} on --${bgKey} (used by ${[...selectors].join(", ")}) has no CONTRAST_PAIRS entry — add it with its compositing base`,
+      );
+    }
+  }
+  return problems.map((p) => `styles.css (contrast completeness): ${p}`);
+}
 
 function checkTokenContrast(cssBlocks) {
   const light = extractThemeTokens(cssBlocks, ":root");
@@ -319,7 +454,15 @@ function checkTokenContrast(cssBlocks) {
         continue;
       }
       if (bgAlphaOverride !== undefined) {
-        bg = bg.replace(/\s*\/\s*[\d.]+\s*$/, "") + ` / ${bgAlphaOverride}`;
+        // A plain number applies to both themes; {light, dark} lets a usage
+        // site apply a DIFFERENT ad-hoc alpha per theme (e.g. .nav-item.active
+        // uses --primary/0.1 by default but a separate `.dark .nav-item.active`
+        // rule overrides it to /0.18 — the token itself carries no alpha).
+        const alpha =
+          typeof bgAlphaOverride === "object"
+            ? bgAlphaOverride[theme]
+            : bgAlphaOverride;
+        bg = bg.replace(/\s*\/\s*[\d.]+\s*$/, "") + ` / ${alpha}`;
       }
       const r = base
         ? contrastOverBase(fg, bg, tokens[base])
@@ -347,7 +490,11 @@ function checkStyles(cssBlocks, cssSrc) {
     problems.push('missing "Playfair Display" font-family');
   for (const { re, why } of BANNED) if (re.test(cssSrc)) problems.push(why);
   const styleProblems = problems.map((p) => `styles.css: ${p}`);
-  return [...styleProblems, ...checkTokenContrast(cssBlocks)];
+  return [
+    ...styleProblems,
+    ...checkTokenContrast(cssBlocks),
+    ...checkContrastPairsCompleteness(cssBlocks),
+  ];
 }
 
 // R2 requires Foundations to render every semantic colour token — the four
