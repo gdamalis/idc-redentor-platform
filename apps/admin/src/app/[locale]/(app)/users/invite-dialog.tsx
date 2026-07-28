@@ -15,7 +15,7 @@ import {
 import { Button } from "@src/components/ui/button";
 import { Input } from "@src/components/ui/input";
 import { inviteUserAction } from "./actions";
-import { rbacErrorMessageKey } from "../roles/rbac-error-message";
+import { useUsersRbacErrorMessage } from "../roles/rbac-error-message";
 import type { ActionResult } from "@src/service/types";
 
 export interface InviteDialogRole {
@@ -40,12 +40,11 @@ export function InviteDialog({ roles }: InviteDialogProps) {
   const [open, setOpen] = useState(false);
   const t = useTranslations("users.invite");
   const tSystem = useTranslations("roles.system");
-  const tErrors = useTranslations("rbac.errors");
   const [state, formAction, isPending] = useActionState<ActionResult | undefined, FormData>(
     inviteUserAction,
     undefined,
   );
-  const errorKey = rbacErrorMessageKey(state);
+  const errorMessage = useUsersRbacErrorMessage(state);
   const fieldErrors = state?.ok === false ? state.fieldErrors : undefined;
 
   // Close on a successful invite — adjusted DURING RENDER against a ref of
@@ -102,9 +101,9 @@ export function InviteDialog({ roles }: InviteDialogProps) {
             )}
           </fieldset>
 
-          {errorKey && (
+          {errorMessage && (
             <span role="alert" className="text-xs text-destructive">
-              {tErrors(errorKey)}
+              {errorMessage}
             </span>
           )}
 

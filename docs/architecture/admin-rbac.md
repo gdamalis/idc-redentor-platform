@@ -83,6 +83,37 @@ any Server Action invoked in that request all share a single Mongo role resolve,
 makes calling `requirePermission()` at the top of every page cheap enough to do everywhere rather
 than centralizing it in middleware.
 
+### `requireActionPermission` — the Server Action variant (P2 fix)
+
+RSC pages/layouts call `requirePermission` directly and do their own redirect inline, because they
+already have a `locale` from the route's `params` (`roles/page.tsx`: `authz.reason ===
+"unauthenticated" ? "/login" : "/no-access"`; `(app)/layout.tsx` does the same). A `"use server"`
+action has no route `params` — and, worse, a plain `requirePermission` result flowing back to the
+client as `{ ok: false, reason: "unauthenticated" | "no-account" | "disabled" }` used to render
+**nothing**: `rbac-error-message.ts`'s `rbacErrorMessageKey()` has no copy for those three
+session-level reasons, by design (see below), so a session that expired/was revoked/got disabled
+while an already-open edit page submitted a mutation just silently no-op'd (spec edge case #14,
+"session expires mid-edit" — the spec always called for a redirect here; this was a gap between the
+spec and the original CP4/CP6/CP7 implementation, closed after review).
+
+`lib/rbac/require-action-permission.ts` exports **`requireActionPermission(key)`**: every mutating
+action in `roles/actions.ts` and `users/actions.ts` calls this instead of `requirePermission`
+directly. It wraps `requirePermission`, and on a session-level refusal calls `getLocale()`
+(`next-intl/server` — the Server Action equivalent of a page's route `params.locale`) and then
+`redirect()` (`@src/i18n/routing`) itself: `unauthenticated` → `/login`, `no-account`/`disabled` →
+`/no-access` — before the action parses its payload or opens a transaction, so a redirect can never
+happen mid-write. Only `forbidden` still returns to the caller as `{ ok: false, reason: "forbidden"
+}`; that's the one reason the gated UI can legitimately reach with a stale permission set, and it
+has real on-page copy (`rbac.errors.forbidden`).
+
+It lives in its own module rather than being folded into `require-permission.ts` so that a test can
+mock `requirePermission` in isolation and still exercise `requireActionPermission`'s real
+redirect-selection branch — a same-module function reference can't be intercepted by mocking that
+module's exports (`require-action-permission.test.ts`; `roles/actions.test.ts` and
+`users/actions.test.ts` mock `requirePermission` + `next-intl/server`'s `getLocale` + `@src/i18n/
+routing`'s `redirect` the same way and let the real `requireActionPermission` run, so those tests
+cover the actual action → wrapper → redirect wiring, not a black-box stand-in).
+
 ### Why permissions are never in the token or the session cookie
 
 Same discipline as `admin-auth.md`'s divergence table: `roleIds` comes from `AdminUser` in Mongo,
@@ -300,6 +331,33 @@ inherit a fail-closed gate on day one instead of having to remember to add one l
 user keeps their nav — which is deliberate: `/no-access` (ICR-127) means exactly one thing, "no
 Mongo account at all," and reusing it for "wrong permission" would blur that contract. A `forbidden`
 result gets its own in-page panel instead.
+
+The same three-way split holds for a mutating Server Action, just reached one call deeper — see
+"`requireActionPermission` — the Server Action variant" above.
+
+### The `rbac.errors.*` / `users.errors.*` split (P2 fix)
+
+`(app)/roles/rbac-error-message.ts`'s `rbacErrorMessageKey()` maps the six `ActionFailureReason`s a
+Server Action can still return inline (`last-admin`/`system-role`/`forbidden`/`invalid`/`not-found`/
+`conflict`) to their `rbac.errors.*` message key — deliberately **not** the three session-level
+reasons (`unauthenticated`/`no-account`/`disabled`), which never reach it: `requireActionPermission`
+redirects on those before the action returns at all (see above).
+
+Two of those six keys are context-specific. `rbac.errors.notFound`/`.conflict` read as role-flavored
+copy — "We couldn't find that role. It may have already been deleted." / "A role with that name
+already exists." — which is misleading on `/users`: a concurrently-deleted user also maps to
+`not-found`, and a duplicate pending invite also maps to `conflict`, but neither is a _role_.
+`lastAdmin`/`systemRole`/`forbidden`/`invalid` are generic enough to read correctly on either screen,
+so those four stay shared.
+
+The fix keeps **one** key→reason mapping (`RBAC_ERROR_MESSAGE_KEYS`, unchanged) and parameterizes
+only the _namespace_ a caller resolves from: `rbac-error-message.ts` also exports
+`useUsersRbacErrorMessage(state)`, a small hook that resolves `notFound`/`conflict` from the new
+`users.errors.*` catalog entries (`users.errors.notFound`/`.conflict`, both message files) and every
+other reason from the shared `rbac.errors.*` catalog. `users/user-table.tsx` and
+`users/invite-dialog.tsx` call this hook; `roles/role-list.tsx` and `roles/permission-matrix.tsx`
+are untouched — they keep calling `rbacErrorMessageKey()` plus their own `rbac.errors` translator
+directly, since every reason they can surface is one of the four shared, generic ones.
 
 ### System-role display naming
 

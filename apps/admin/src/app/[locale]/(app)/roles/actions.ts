@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requirePermission } from "@src/lib/rbac/require-permission";
+import { requireActionPermission } from "@src/lib/rbac/require-action-permission";
 import { withAdminTransaction } from "@src/service/database.service";
 import {
   createRole,
@@ -46,8 +46,8 @@ export async function createRoleAction(
   _prev: ActionResult | undefined,
   formData: FormData,
 ): Promise<ActionResult> {
-  const authz = await requirePermission("roles:manage");
-  if (!authz.ok) return { ok: false, reason: authz.reason };
+  const authz = await requireActionPermission("roles:manage");
+  if (!authz.ok) return authz;
 
   const parsed = roleCreateSchema.safeParse({
     name: formData.get("name"),
@@ -89,8 +89,8 @@ export async function updateRoleAction(
   _prev: ActionResult | undefined,
   formData: FormData,
 ): Promise<ActionResult> {
-  const authz = await requirePermission("roles:manage");
-  if (!authz.ok) return { ok: false, reason: authz.reason };
+  const authz = await requireActionPermission("roles:manage");
+  if (!authz.ok) return authz;
 
   const parsed = roleUpdateSchema.safeParse({
     roleId: formData.get("roleId"),
@@ -192,8 +192,8 @@ export async function deleteRoleAction(
   _prev: ActionResult | undefined,
   formData: FormData,
 ): Promise<ActionResult> {
-  const authz = await requirePermission("roles:manage");
-  if (!authz.ok) return { ok: false, reason: authz.reason };
+  const authz = await requireActionPermission("roles:manage");
+  if (!authz.ok) return authz;
 
   const parsed = roleDeleteSchema.safeParse({ roleId: formData.get("roleId") });
   if (!parsed.success) {

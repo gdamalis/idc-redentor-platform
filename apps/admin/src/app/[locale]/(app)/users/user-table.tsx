@@ -13,7 +13,7 @@ import {
 } from "@src/components/ui/table";
 import { Button } from "@src/components/ui/button";
 import { deleteUserAction, updateUserRolesAction, updateUserStatusAction } from "./actions";
-import { rbacErrorMessageKey } from "../roles/rbac-error-message";
+import { useUsersRbacErrorMessage } from "../roles/rbac-error-message";
 import type { ActionResult } from "@src/service/types";
 
 export interface UserTableRole {
@@ -124,12 +124,11 @@ function RoleAssignmentForm({
   readonly roleName: (role: UserTableRole) => string;
 }) {
   const t = useTranslations("users");
-  const tErrors = useTranslations("rbac.errors");
   const [state, formAction, isPending] = useActionState<ActionResult | undefined, FormData>(
     updateUserRolesAction,
     undefined,
   );
-  const errorKey = rbacErrorMessageKey(state);
+  const errorMessage = useUsersRbacErrorMessage(state);
 
   return (
     <form action={formAction} className="flex flex-col gap-1.5">
@@ -155,9 +154,9 @@ function RoleAssignmentForm({
         {state?.ok === true && (
           <span className="text-xs text-muted-foreground">{t("table.rolesSaved")}</span>
         )}
-        {errorKey && (
+        {errorMessage && (
           <span role="alert" className="text-xs text-destructive">
-            {tErrors(errorKey)}
+            {errorMessage}
           </span>
         )}
       </div>
@@ -173,21 +172,20 @@ function StatusToggleButton({
   readonly currentStatus: "active" | "disabled";
 }) {
   const t = useTranslations("users");
-  const tErrors = useTranslations("rbac.errors");
   const [state, formAction, isPending] = useActionState<ActionResult | undefined, FormData>(
     updateUserStatusAction,
     undefined,
   );
-  const errorKey = rbacErrorMessageKey(state);
+  const errorMessage = useUsersRbacErrorMessage(state);
   const nextStatus = currentStatus === "active" ? "disabled" : "active";
 
   return (
     <form action={formAction} className="inline-flex items-center gap-2">
       <input type="hidden" name="userId" value={userId} />
       <input type="hidden" name="status" value={nextStatus} />
-      {errorKey && (
+      {errorMessage && (
         <span role="alert" className="text-xs text-destructive">
-          {tErrors(errorKey)}
+          {errorMessage}
         </span>
       )}
       <Button type="submit" size="sm" variant="outline" disabled={isPending}>
@@ -205,12 +203,11 @@ function DeleteUserButton({
   readonly email: string;
 }) {
   const t = useTranslations("users");
-  const tErrors = useTranslations("rbac.errors");
   const [state, formAction, isPending] = useActionState<ActionResult | undefined, FormData>(
     deleteUserAction,
     undefined,
   );
-  const errorKey = rbacErrorMessageKey(state);
+  const errorMessage = useUsersRbacErrorMessage(state);
 
   return (
     <form
@@ -226,9 +223,9 @@ function DeleteUserButton({
       className="inline-flex items-center gap-2"
     >
       <input type="hidden" name="userId" value={userId} />
-      {errorKey && (
+      {errorMessage && (
         <span role="alert" className="text-xs text-destructive">
-          {tErrors(errorKey)}
+          {errorMessage}
         </span>
       )}
       <Button type="submit" variant="destructive" size="sm" disabled={isPending}>

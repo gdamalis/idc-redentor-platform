@@ -153,7 +153,7 @@ describe("permissions.*, roles.*, users.*, rbac.* (ICR-128)", () => {
     }
   });
 
-  const usersTopLevelKeys = ["title", "subtitle", "table", "status", "invite"].sort();
+  const usersTopLevelKeys = ["title", "subtitle", "table", "status", "invite", "errors"].sort();
   const usersTableKeys = [
     "email",
     "displayName",
@@ -177,6 +177,11 @@ describe("permissions.*, roles.*, users.*, rbac.* (ICR-128)", () => {
     "cancel",
     "submit",
   ].sort();
+  // The `/users`-context override for the two `rbac.errors.*` keys whose
+  // shared copy is role-flavored (P2 fix) — `useUsersRbacErrorMessage`
+  // (`rbac-error-message.ts`) reads these instead of `rbac.errors.notFound`/
+  // `.conflict` on the users screens. Every other reason stays shared.
+  const usersErrorsKeys = ["notFound", "conflict"].sort();
 
   it.each([
     ["es-AR", esAR],
@@ -186,13 +191,14 @@ describe("permissions.*, roles.*, users.*, rbac.* (ICR-128)", () => {
     expect(Object.keys(messages.users.table).sort()).toEqual(usersTableKeys);
     expect(Object.keys(messages.users.status).sort()).toEqual(usersStatusKeys);
     expect(Object.keys(messages.users.invite).sort()).toEqual(usersInviteKeys);
+    expect(Object.keys(messages.users.errors).sort()).toEqual(usersErrorsKeys);
   });
 
   const rbacDeniedKeys = ["title", "body", "backToDashboard"].sort();
   // One key per `ActionFailureReason` that a Server Action can actually
   // surface to the UI (service/types.ts) — "unauthenticated"/"no-account"/
   // "disabled" never reach here, since those redirect instead of rendering
-  // an inline error (Task 4's `requirePermission` gate).
+  // an inline error (`requireActionPermission`, `lib/rbac/require-permission.ts`).
   const rbacErrorKeys = [
     "lastAdmin",
     "systemRole",

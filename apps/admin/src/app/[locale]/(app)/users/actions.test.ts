@@ -1,7 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// `actions.ts` calls the REAL `requireActionPermission` — only its own
+// dependencies are mocked here — so these tests exercise the actual
+// redirect-selection wiring (P2 fix), not just a black-box stand-in. See
+// `require-action-permission.test.ts` for that wrapper's own unit tests.
 const requirePermission = vi.fn();
 vi.mock("@src/lib/rbac/require-permission", () => ({ requirePermission }));
+
+const getLocale = vi.fn();
+vi.mock("next-intl/server", () => ({ getLocale }));
+
+// Mirrors `require-action-permission.test.ts`'s reasoning: real `redirect()`
+// throws a Next-internal `NEXT_REDIRECT` digest error to halt rendering, so
+// this mock does the same rather than silently returning `undefined` (which
+// would make `requireActionPermission` return `undefined` instead of never
+// resolving, and crash the action's `authz.ok` check for the wrong reason).
+const redirect = vi.fn(() => {
+  throw new Error("NEXT_REDIRECT");
+});
+vi.mock("@src/i18n/routing", () => ({ redirect }));
 
 const abortTransaction = vi.fn();
 const session = { abortTransaction };
@@ -345,6 +362,48 @@ describe("updateUserRolesAction", () => {
     expect(abortTransaction).not.toHaveBeenCalled();
     expect(revalidatePath).toHaveBeenCalledWith("/[locale]/users", "page");
     expect(touchAdministrabilityGuard).toHaveBeenCalledWith(session);
+  });
+});
+
+// P2 fix: a session-level refusal redirects instead of returning a silent
+// `{ ok: false }` the client would render nothing for (spec edge case #14).
+// One representative user action covers the wiring here; `roles/actions.test.ts`
+// covers the same wiring for a role action. Every other action shares the
+// same `requireActionPermission` call, unit-tested on its own in
+// `require-action-permission.test.ts`.
+describe("updateUserStatusAction — session-level refusal redirects (P2 fix)", () => {
+  it("redirects to /login on an unauthenticated refusal, with no write and no transaction", async () => {
+    requirePermission.mockResolvedValueOnce({ ok: false, reason: "unauthenticated" });
+    getLocale.mockResolvedValueOnce("es-AR");
+    const { updateUserStatusAction } = await loadActions();
+
+    await expect(
+      updateUserStatusAction(
+        undefined,
+        formDataOf({ userId: TARGET_USER_ID, status: "disabled" }),
+      ),
+    ).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(redirect).toHaveBeenCalledWith({ href: "/login", locale: "es-AR" });
+    expect(updateUserStatus).not.toHaveBeenCalled();
+    expect(withAdminTransaction).not.toHaveBeenCalled();
+  });
+
+  it("redirects to /no-access on a disabled refusal, with no write and no transaction", async () => {
+    requirePermission.mockResolvedValueOnce({ ok: false, reason: "disabled" });
+    getLocale.mockResolvedValueOnce("es-AR");
+    const { updateUserStatusAction } = await loadActions();
+
+    await expect(
+      updateUserStatusAction(
+        undefined,
+        formDataOf({ userId: TARGET_USER_ID, status: "disabled" }),
+      ),
+    ).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(redirect).toHaveBeenCalledWith({ href: "/no-access", locale: "es-AR" });
+    expect(updateUserStatus).not.toHaveBeenCalled();
+    expect(withAdminTransaction).not.toHaveBeenCalled();
   });
 });
 

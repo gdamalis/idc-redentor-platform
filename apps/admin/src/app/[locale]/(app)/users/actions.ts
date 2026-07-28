@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requirePermission } from "@src/lib/rbac/require-permission";
+import { requireActionPermission } from "@src/lib/rbac/require-action-permission";
 import { withAdminTransaction } from "@src/service/database.service";
 import { listRoles } from "@src/service/role.service";
 import {
@@ -49,8 +49,8 @@ export async function inviteUserAction(
   _prev: ActionResult | undefined,
   formData: FormData,
 ): Promise<ActionResult> {
-  const authz = await requirePermission("users:manage");
-  if (!authz.ok) return { ok: false, reason: authz.reason };
+  const authz = await requireActionPermission("users:manage");
+  if (!authz.ok) return authz;
 
   const parsed = inviteCreateSchema.safeParse({
     email: formData.get("email"),
@@ -127,7 +127,7 @@ export async function inviteUserAction(
 }
 
 /**
- * Reassigns a user's roles. THE privilege-escalation guard: `requirePermission`
+ * Reassigns a user's roles. THE privilege-escalation guard: `requireActionPermission`
  * runs before any parsing or DB read, so a session lacking `users:manage`
  * calling this directly with a crafted admin `roleId` is refused as
  * `forbidden` without the payload ever being inspected.
@@ -136,8 +136,8 @@ export async function updateUserRolesAction(
   _prev: ActionResult | undefined,
   formData: FormData,
 ): Promise<ActionResult> {
-  const authz = await requirePermission("users:manage");
-  if (!authz.ok) return { ok: false, reason: authz.reason };
+  const authz = await requireActionPermission("users:manage");
+  if (!authz.ok) return authz;
 
   const parsed = userRolesUpdateSchema.safeParse({
     userId: formData.get("userId"),
@@ -211,8 +211,8 @@ export async function updateUserStatusAction(
   _prev: ActionResult | undefined,
   formData: FormData,
 ): Promise<ActionResult> {
-  const authz = await requirePermission("users:manage");
-  if (!authz.ok) return { ok: false, reason: authz.reason };
+  const authz = await requireActionPermission("users:manage");
+  if (!authz.ok) return authz;
 
   const parsed = userStatusUpdateSchema.safeParse({
     userId: formData.get("userId"),
@@ -277,8 +277,8 @@ export async function deleteUserAction(
   _prev: ActionResult | undefined,
   formData: FormData,
 ): Promise<ActionResult> {
-  const authz = await requirePermission("users:manage");
-  if (!authz.ok) return { ok: false, reason: authz.reason };
+  const authz = await requireActionPermission("users:manage");
+  if (!authz.ok) return authz;
 
   const parsed = userDeleteSchema.safeParse({ userId: formData.get("userId") });
   if (!parsed.success) {

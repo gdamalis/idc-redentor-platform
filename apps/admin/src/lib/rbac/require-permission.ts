@@ -59,7 +59,17 @@ export const getSessionPermissions = cache(
   },
 );
 
-/** Never throws. Callers branch on the result. */
+/** Never throws. Callers branch on the result.
+ *
+ * RSC pages/layouts call this directly and do their OWN redirect (each
+ * already has a `locale` from its route `params` — see `roles/page.tsx`,
+ * `(app)/layout.tsx`). A `"use server"` Server Action has no route params,
+ * and — unlike a page render — a silent `{ ok: false }` on a session-level
+ * refusal is a real bug, not just a missing redirect (spec edge case #14):
+ * Server Actions should call `requireActionPermission`
+ * (`require-action-permission.ts`) instead, which wraps this and redirects
+ * on `unauthenticated`/`no-account`/`disabled` itself.
+ */
 export async function requirePermission(
   key: PermissionKey,
 ): Promise<Authorized | Refused> {

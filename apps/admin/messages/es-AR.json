@@ -231,6 +231,10 @@
       "rolesLabel": "Roles",
       "cancel": "Cancelar",
       "submit": "Enviar invitación"
+    },
+    "errors": {
+      "notFound": "No encontramos a ese usuario. Puede que ya haya sido eliminado.",
+      "conflict": "Ya hay una invitación pendiente para ese email."
     }
   },
   "rbac": {
