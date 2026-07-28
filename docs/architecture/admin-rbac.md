@@ -321,14 +321,15 @@ three judgment calls worth recording:
    user is harmless (`inviteUserAction` has no `retainsAdministrability` check to run here either —
    inviting can only ever **add** a prospective grantee, never reduce administrability).
 
-**Uniqueness enforcement is two layers, deliberately (CP7).** CP6 implemented "at most one pending
-invite per address" as a `findOne` pre-check alone. That's a TOCTOU race: MongoDB transactions use
-snapshot isolation, which does **not** prevent a phantom insert — two concurrent invites for the same
-address can both observe "no pending invite" from their own transaction snapshot and both proceed to
-insert, even though each runs inside `withAdminTransaction`. This is the identical read-then-write
-bug class the last-admin invariant exists to prevent, just on a different collection. CP7 added a
-**partial unique index** to `ensureAuthIndexes()` (`user.service.ts`, which already owns the
-`invites` indexes):
+**Uniqueness enforcement is ONE rule (CP7, settled after two rounds of review).** CP6 implemented "at
+most one pending invite per address" as a `findOne` pre-check alone. That's a TOCTOU race: MongoDB
+transactions use snapshot isolation, which does **not** prevent a phantom insert — two concurrent
+invites for the same address can both observe "no pending invite" from their own transaction snapshot
+and both proceed to insert, even though each runs inside `withAdminTransaction`. This is the identical
+read-then-write bug class the last-admin invariant exists to prevent, just on a different collection.
+
+The fix is a **partial unique index** in `ensureAuthIndexes()` (`user.service.ts`, which already owns
+the `invites` indexes):
 
 ```ts
 invites.createIndex(
@@ -337,20 +338,27 @@ invites.createIndex(
 );
 ```
 
-The pre-check is **kept**, not replaced — it gives a clean `{ ok: false, reason: "conflict" }` result
-without relying on an exception in the common (non-racing) case. The index is the backstop that
-closes the race: the loser's `insertOne` raises `E11000`, which `createInvite` catches and maps to
-the same `conflict` result via `isDuplicateKeyError` (exported from `user.service.ts`, reused by both
-`invite.service.ts` and `createRole`'s duplicate-name handling — one implementation, not two copies).
+`createInvite` attempts the insert directly — **no pre-check** — and maps the resulting `E11000` to
+`{ ok: false, reason: "conflict" }` via `isDuplicateKeyError` (exported from `user.service.ts`, reused
+by both `invite.service.ts` and `createRole`'s duplicate-name handling — one implementation, not two
+copies). An earlier revision paired the index with a `findOne` pre-check for a clean non-exception
+result in the common case; it was removed. The reason is stronger than "the index makes it redundant":
+the pre-check used a **different predicate** than the index — `expiresAt: { $gt: new Date() }` vs. the
+index's bare `status: "pending"` — so the two guards could **disagree** at the edges, producing a
+confusing "passes the pre-check, then collides on insert anyway" outcome for an expired-but-still-
+pending invite. Removing the pre-check collapses this to one authoritative rule instead of two rules
+that don't always agree, and matches `createRole`'s catch-only pattern against its own unique index —
+one duplicate-detection idiom in this codebase, not two.
 
-**Known gap, not fixed here.** The partial index keys off `status: "pending"` alone, with no
-`expiresAt` condition, while the pre-check's `expiresAt: { $gt: new Date() }` filter treats an
-expired pending invite as no longer blocking. Nothing in this codebase ever transitions a `pending`
-invite to another status on natural expiry (`expiresAt` is only ever a query filter, never written),
-so a genuinely expired-but-still-`"pending"` invite doc can pass the pre-check yet still collide with
-the index on insert — incorrectly refusing a legitimate re-invite as `conflict` until that doc is
-manually cleared. There is no revoke path or pending-invites list UI yet to clear it either. Flagged
-in `tasks/todo.md` for a follow-up; an "invites" management view (list/revoke) would close it.
+**Known limitation, not fixed here.** With one rule, the gap is simpler to state: the partial index
+keys off `status: "pending"` alone, and nothing in this codebase ever transitions a `pending` invite to
+another status on natural expiry (`expiresAt` is only ever a query filter elsewhere — e.g.
+`findPendingInvite` — never written). So a genuinely expired-but-still-`"pending"` invite permanently
+blocks re-inviting that address — it still collides with the index — until the doc is manually cleared,
+and there is no revoke path or pending-invites list UI yet to do that. Flagged in `tasks/todo.md` for a
+follow-up. The real fix is either an `expiresAt` clause added to the partial filter or upsert-and-
+refresh semantics on `createInvite` — both are scope decisions for a follow-up ticket, not a checkpoint
+detail.
 
 ## Related docs
 

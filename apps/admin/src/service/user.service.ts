@@ -43,14 +43,14 @@ export function ensureAuthIndexes(): Promise<void> {
       invites.createIndex({ email: 1, status: 1 }),
       invites.createIndex({ expiresAt: 1 }),
       // Enforces "at most one PENDING invite per address" at the database
-      // layer (ICR-128 CP7, carried over from CP6 review) — the backstop
-      // `createInvite` (invite.service.ts) relies on for its E11000 mapping,
-      // closing a race its pre-check alone cannot: Mongo transactions use
-      // snapshot isolation, which does not prevent a phantom insert from two
-      // concurrent invites for the same address. Partial, not a plain unique
-      // index: accepted and revoked invites for the same email must keep
-      // accumulating as history (mirrors `roles.key`'s partial-unique
-      // pattern, role.service.ts).
+      // layer (ICR-128 CP7) — the ONE rule `createInvite` (invite.service.ts)
+      // relies on, via an E11000 -> conflict mapping, not a read-then-check:
+      // Mongo transactions use snapshot isolation, which does not prevent a
+      // phantom insert from two concurrent invites for the same address, so
+      // only a DB-level constraint actually closes the race. Partial, not a
+      // plain unique index: accepted and revoked invites for the same email
+      // must keep accumulating as history (mirrors `roles.key`'s
+      // partial-unique pattern, role.service.ts).
       invites.createIndex(
         { email: 1 },
         { unique: true, partialFilterExpression: { status: "pending" } },

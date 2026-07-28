@@ -32,34 +32,35 @@ const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
  * missing write path, added here because Task 6's `inviteUserAction` needs
  * it — mirrors the Task 5 Step 0 correction for `createRole`/`listUsers`.
  *
- * Refuses (`reason: "conflict"`) when a still-pending, unexpired invite
- * already exists for this email, rather than silently stacking duplicate
- * invites for the same address — mirrors `createRole`'s duplicate-name
- * handling. **Two layers, deliberately (CP7 team-lead correction):** the
- * `findOne` pre-check below gives a clean `conflict` result without relying
- * on an exception in the common (non-racing) case, but it is NOT sufficient
- * on its own — MongoDB transactions use snapshot isolation, which does not
- * prevent a phantom insert. Two concurrent invites for the same address can
- * both observe "no pending invite" here and both proceed to insert, even
- * inside the same transaction (this is the same read-then-write class of bug
- * the last-admin invariant exists to prevent). `ensureAuthIndexes()`'s
- * partial unique index on `{ email: 1 }` (`user.service.ts`,
- * `partialFilterExpression: { status: "pending" }`) is the backstop that
- * actually closes the race: the loser's insert raises E11000, caught below
- * and mapped to the same `{ ok: false, reason: "conflict" }` via
- * `isDuplicateKeyError` — exactly `createRole`'s pattern for its unique
- * `name` index.
+ * **Uniqueness rule (CP7, index-only — settled after two rounds of review):**
+ * at most one pending invite per address, enforced by a single source of
+ * truth — `ensureAuthIndexes()`'s partial unique index on `{ email: 1 }`
+ * (`user.service.ts`, `partialFilterExpression: { status: "pending" }`).
+ * `createInvite` attempts the insert directly and maps the resulting E11000
+ * to `{ ok: false, reason: "conflict" }` via `isDuplicateKeyError`, exactly
+ * `createRole`'s pattern for its unique `name` index — one duplicate-
+ * detection idiom, not two, across this PR.
  *
- * Known gap (not fixed here — out of this ticket's scope): the partial index
- * keys off `status: "pending"` alone, with no `expiresAt` condition, while
- * the pre-check's `expiresAt: { $gt: new Date() }` filter treats an expired
- * pending invite as no longer blocking. Nothing in this codebase ever
- * transitions a `pending` invite to another status on natural expiry, so a
- * genuinely expired-but-still-`"pending"` invite doc can pass the pre-check
- * (it's not "live") yet still collide with the index on insert, incorrectly
- * refusing a legitimate re-invite as `conflict`. There is no revoke path or
- * pending-invites list UI yet to clear such a doc either. Flagged in
- * `tasks/todo.md` for a follow-up.
+ * An earlier version of this function paired the index with a `findOne`
+ * pre-check for a clean non-exception result in the common case. That was
+ * deliberately removed: the pre-check used a DIFFERENT predicate than the
+ * index (`expiresAt: { $gt: new Date() }`, vs. the index's bare
+ * `status: "pending"`), so the two guards could disagree — a pre-check that
+ * isn't authoritative doesn't fix anything the index doesn't already fix, it
+ * just adds a non-atomic read that can't be trusted, and manufactures a
+ * confusing "passes the pre-check, then collides on insert" path. Deleting
+ * it removes the contradiction, not just the code.
+ *
+ * **Known gap (not fixed here — out of this ticket's scope):** the partial
+ * index keys off `status: "pending"` alone, with no `expiresAt` condition.
+ * Nothing in this codebase ever transitions a `pending` invite to another
+ * status on natural expiry (`expiresAt` is only ever a query filter
+ * elsewhere, e.g. `findPendingInvite`, never written), so a genuinely
+ * expired-but-still-`"pending"` invite permanently blocks re-inviting that
+ * address until the doc is manually cleared — and there is no revoke path or
+ * pending-invites list UI yet to do that. Flagged in `tasks/todo.md` for a
+ * follow-up; the real fix is either an `expiresAt` clause in the partial
+ * filter or upsert-and-refresh semantics, which is a scope decision.
  *
  * Deliberately does NOT check whether the email already belongs to an active
  * `AdminUser` — no such lookup exists yet, adding one is out of this
@@ -69,10 +70,8 @@ const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
  * reduce administrability).
  *
  * `session` is REQUIRED, not optional — this only ever runs inside
- * `withAdminTransaction`, and the duplicate-pending-invite READ below must
- * join the same session as the INSERT, or a concurrent invite for the same
- * email could slip past the pre-check (Global Constraints, transaction
- * rules).
+ * `withAdminTransaction`, and the insert must join the caller's transaction
+ * (Global Constraints, transaction rules).
  */
 export async function createInvite(
   input: CreateInviteInput,
@@ -80,15 +79,6 @@ export async function createInvite(
 ): Promise<{ ok: true; inviteId: string } | { ok: false; reason: "conflict" }> {
   await ensureAuthIndexes();
   const email = normalizeEmail(input.email);
-
-  const existing = await getAdminDb()
-    .collection(INVITES_COLLECTION)
-    .findOne(
-      { email, status: "pending", expiresAt: { $gt: new Date() } },
-      { session },
-    );
-  if (existing) return { ok: false, reason: "conflict" };
-
   const now = new Date();
   const doc: Omit<Invite, "_id"> = {
     email,
