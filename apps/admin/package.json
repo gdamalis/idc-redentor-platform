@@ -43,7 +43,7 @@
     "eslint": "^9.39.1",
     "eslint-config-next": "^16.0.1",
     "jsdom": "^29.1.1",
-    "postcss": "^8.5.10",
+    "postcss": "^8.5.18",
     "tailwindcss": "^4.1.16",
     "typescript": "^5.9.3",
     "vite-tsconfig-paths": "^6.1.1",
