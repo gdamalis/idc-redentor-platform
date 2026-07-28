@@ -1,3 +1,5 @@
+import { ObjectId } from "mongodb";
+import type { ClientSession } from "mongodb";
 import { getAdminDb } from "@src/service/database.service";
 import type { Locale } from "@src/i18n/config";
 import { adminUserSchema } from "./types";
@@ -10,7 +12,10 @@ interface MongoDuplicateKeyError {
   code?: number;
 }
 
-function isDuplicateKeyError(error: unknown): error is MongoDuplicateKeyError {
+/** Exported so `role.service.ts` reuses this rather than writing a second copy. */
+export function isDuplicateKeyError(
+  error: unknown,
+): error is MongoDuplicateKeyError {
   return (
     typeof error === "object" &&
     error !== null &&
@@ -37,6 +42,19 @@ export function ensureAuthIndexes(): Promise<void> {
       users.createIndex({ email: 1 }, { unique: true }),
       invites.createIndex({ email: 1, status: 1 }),
       invites.createIndex({ expiresAt: 1 }),
+      // Enforces "at most one PENDING invite per address" at the database
+      // layer (ICR-128 CP7) — the ONE rule `createInvite` (invite.service.ts)
+      // relies on, via an E11000 -> conflict mapping, not a read-then-check:
+      // Mongo transactions use snapshot isolation, which does not prevent a
+      // phantom insert from two concurrent invites for the same address, so
+      // only a DB-level constraint actually closes the race. Partial, not a
+      // plain unique index: accepted and revoked invites for the same email
+      // must keep accumulating as history (mirrors `roles.key`'s
+      // partial-unique pattern, role.service.ts).
+      invites.createIndex(
+        { email: 1 },
+        { unique: true, partialFilterExpression: { status: "pending" } },
+      ),
     ]);
   })();
 
@@ -105,4 +123,63 @@ export async function updatePreferredLocale(
     );
 
   return (result.matchedCount ?? 0) > 0;
+}
+
+/**
+ * ALL users, not just active — `retainsAdministrability` filters by status
+ * itself, so it needs disabled users in the snapshot too (a disabled admin
+ * must not count toward administrability).
+ */
+export async function listUsers(session?: ClientSession): Promise<AdminUser[]> {
+  await ensureAuthIndexes();
+  const docs = await getAdminDb()
+    .collection(USERS_COLLECTION)
+    .find({}, { session })
+    .toArray();
+
+  return docs.map((doc) => adminUserSchema.parse(doc));
+}
+
+// The three mutators below all take `userId` as a hex string and convert
+// with `new ObjectId(userId)` internally — matching how
+// `AdminStateSnapshot.users[].id` is produced (`_id.toHexString()`) in
+// `(app)/users/actions.ts` (Task 6 Step 4). `session` is required, not
+// optional: every caller runs these inside `withAdminTransaction`, after
+// asserting the administrability invariant against the proposed post-state.
+
+export async function updateUserRoles(
+  userId: string,
+  roleIds: readonly string[],
+  session: ClientSession,
+): Promise<void> {
+  await ensureAuthIndexes();
+  await getAdminDb()
+    .collection(USERS_COLLECTION)
+    .updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { roleIds: [...roleIds], updatedAt: new Date() } },
+      { session },
+    );
+}
+
+export async function updateUserStatus(
+  userId: string,
+  status: "active" | "disabled",
+  session: ClientSession,
+): Promise<void> {
+  await ensureAuthIndexes();
+  await getAdminDb()
+    .collection(USERS_COLLECTION)
+    .updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { status, updatedAt: new Date() } },
+      { session },
+    );
+}
+
+export async function deleteUser(userId: string, session: ClientSession): Promise<void> {
+  await ensureAuthIndexes();
+  await getAdminDb()
+    .collection(USERS_COLLECTION)
+    .deleteOne({ _id: new ObjectId(userId) }, { session });
 }

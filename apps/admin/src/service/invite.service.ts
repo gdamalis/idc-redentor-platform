@@ -1,11 +1,147 @@
-import type { ObjectId } from "mongodb";
+import type { ClientSession, ObjectId } from "mongodb";
 import { getAdminDb } from "@src/service/database.service";
 import { normalizeEmail } from "@src/lib/auth/email";
-import { ensureAuthIndexes } from "./user.service";
+import type { Locale } from "@src/i18n/config";
+import { ensureAuthIndexes, isDuplicateKeyError } from "./user.service";
 import { inviteSchema } from "./types";
 import type { Invite } from "./types";
 
 const INVITES_COLLECTION = "invites";
+
+export interface CreateInviteInput {
+  readonly email: string;
+  readonly roleIds: readonly string[];
+  readonly locale: Locale;
+  readonly invitedByUserId: string;
+}
+
+/**
+ * No invite TTL is specified anywhere in the ICR-127/ICR-128 spec or docs —
+ * only the ACCEPT-side filter (`expiresAt: { $gt: new Date() }`, throughout
+ * this file) existed before `createInvite`, never a WRITE side that computes
+ * one. 7 days is a conventional default for an admin invite link; revisit if
+ * product wants something shorter/longer.
+ */
+const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Creates OR REFRESHES a pending invite for `email` in a single atomic
+ * upsert (ICR-128 P1 fix — compounded with the swallowed-delivery-failure
+ * bug on `inviteUserAction`: a transient Resend failure plus this function's
+ * old insert-then-conflict behavior could permanently lock an address out of
+ * an invite-only product, with no in-product recovery — see
+ * `docs/architecture/admin-rbac.md`).
+ *
+ * **Upsert-refresh, not insert-then-catch (replaces the CP6/CP7 design).**
+ * The filter `{ email, status: "pending" }` matches ANY still-`"pending"`
+ * invite for this address — whether it's live or has quietly passed its
+ * `expiresAt` (nothing in this codebase ever transitions a pending invite to
+ * another status on natural expiry) — and refreshes it in place: new
+ * `roleIds`/`locale`/`expiresAt`/`invitedByUserId`, same `_id`. When no
+ * pending invite exists yet, the same call inserts a fresh one via
+ * `$setOnInsert`. One atomic `findOneAndUpdate`, so there is no read-then-
+ * write race, and `createInvite` no longer HAS a failure branch — re-inviting
+ * an address, whether its invite is live or long expired, always refreshes
+ * and re-sends. That's what an administrator means by "invite again."
+ *
+ * `refreshed` distinguishes the two outcomes for the caller
+ * (`inviteUserAction` surfaces different copy for "sent" vs. "re-sent") via
+ * `lastErrorObject.updatedExisting` — the atomic, race-free signal
+ * `includeResultMetadata: true` returns from the same operation, not a
+ * `createdAt` timestamp comparison (which would be racy at the millisecond
+ * boundary).
+ *
+ * **The partial unique index is still the ONLY uniqueness guard** —
+ * `ensureAuthIndexes()`'s `{ email: 1 }` index with
+ * `partialFilterExpression: { status: "pending" }` (`user.service.ts`). It
+ * still guarantees at most one pending invite per address, and also
+ * backstops the upsert itself: MongoDB's server-side upsert retry (4.2+)
+ * already resolves the common race — two concurrent upserts for a brand-new
+ * address both missing the `{ email, status: "pending" }` match and both
+ * attempting an insert — by re-running the query predicate against whichever
+ * insert won, transparently to this function.
+ *
+ * **When that internal retry budget is exhausted, this returns
+ * `{ ok: false, reason: "insert-race" }` instead of retrying itself
+ * in-session (Codex P2 fix).** An earlier version of this function retried
+ * the same upsert once on the same `session` as a belt-and-suspenders
+ * backstop. That retry was dead code that looked like a safety net — it
+ * could never actually run, for two independent reasons:
+ *
+ * 1. A duplicate-key error raised by an operation inside a multi-document
+ *    transaction aborts that transaction **server-side**. Every subsequent
+ *    operation on the same `session` — including a same-session "retry" of
+ *    this very upsert — is invalid once that happens.
+ * 2. Even if the session were still usable, every operation inside a
+ *    transaction reads against the snapshot taken when the transaction
+ *    started, which predates the winning insert's commit. A retry on the
+ *    SAME session can never observe the winner and could never take the
+ *    update-in-place branch — it would just fail the same way again.
+ *
+ * The fix is to retry the whole TRANSACTION, not the operation:
+ * `inviteUserAction` (`(app)/users/actions.ts`) re-runs its entire
+ * `withAdminTransaction(...)` block once when it sees `insert-race`. A fresh
+ * transaction gets a fresh snapshot, which DOES see the now-committed
+ * winner, so the retried upsert takes the update branch and returns
+ * `refreshed: true` — correctly, since the second admin's invite refreshes
+ * the first's. `insert-race` is an internal signal consumed entirely by
+ * `inviteUserAction`; it must never reach a client (see that function's doc
+ * comment for what happens if a SECOND retry also races).
+ *
+ * Deliberately does NOT check whether the email already belongs to an active
+ * `AdminUser` — no such lookup exists yet, adding one is out of this
+ * ticket's scope, and re-inviting an existing user is harmless (see
+ * `inviteUserAction`, which has no administrability-invariant check to run
+ * here either: inviting can only ever ADD a prospective grantee, never
+ * reduce administrability).
+ *
+ * `session` is REQUIRED, not optional — this only ever runs inside
+ * `withAdminTransaction`, and the upsert must join the caller's transaction
+ * (Global Constraints, transaction rules).
+ */
+export async function createInvite(
+  input: CreateInviteInput,
+  session: ClientSession,
+): Promise<
+  | { ok: true; inviteId: string; refreshed: boolean }
+  | { ok: false; reason: "insert-race" }
+> {
+  await ensureAuthIndexes();
+  const email = normalizeEmail(input.email);
+  const now = new Date();
+
+  try {
+    const result = await getAdminDb()
+      .collection(INVITES_COLLECTION)
+      .findOneAndUpdate(
+        { email, status: "pending" },
+        {
+          $set: {
+            roleIds: [...input.roleIds],
+            locale: input.locale,
+            expiresAt: new Date(now.getTime() + INVITE_EXPIRY_MS),
+            invitedByUserId: input.invitedByUserId,
+          },
+          $setOnInsert: { email, status: "pending", createdAt: now },
+        },
+        { upsert: true, returnDocument: "after", includeResultMetadata: true, session },
+      );
+
+    const doc = result.value;
+    if (!doc) throw new Error("createInvite: upsert returned no document");
+    return {
+      ok: true,
+      inviteId: doc._id.toHexString(),
+      refreshed: result.lastErrorObject?.updatedExisting === true,
+    };
+  } catch (error) {
+    // Race backstop (see doc comment above) — the transaction this upsert
+    // ran in is now aborted server-side. Return the outcome rather than
+    // retrying or throwing; the caller retries in a FRESH transaction.
+    if (!isDuplicateKeyError(error)) throw error;
+    return { ok: false, reason: "insert-race" };
+  }
+}
 
 export async function findPendingInvite(email: string): Promise<Invite | null> {
   await ensureAuthIndexes();

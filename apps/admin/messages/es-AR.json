@@ -1,4 +1,7 @@
 {
+  "common": {
+    "close": "Cerrar"
+  },
   "shell": {
     "appName": "Panel de Administración",
     "tagline": "Iglesia de Cristo Redentor"
@@ -93,6 +96,166 @@
         "ignoreNote": "Si no solicitaste este cambio, podés ignorar este correo: tu contraseña actual sigue siendo válida.",
         "footer": "Equipo del Panel de Administración de IDC Redentor."
       }
+    }
+  },
+  "permissions": {
+    "people:read": {
+      "label": "Ver personas",
+      "description": "Permite ver el listado y las fichas de las personas."
+    },
+    "people:write": {
+      "label": "Crear/editar personas",
+      "description": "Permite crear y editar fichas de personas."
+    },
+    "people:delete": {
+      "label": "Eliminar personas",
+      "description": "Permite eliminar fichas de personas."
+    },
+    "people:pii": {
+      "label": "Ver datos sensibles",
+      "description": "Permite ver el teléfono y el correo electrónico de las personas."
+    },
+    "families:read": {
+      "label": "Ver familias",
+      "description": "Permite ver el listado y las fichas de las familias."
+    },
+    "families:write": {
+      "label": "Crear/editar familias",
+      "description": "Permite crear y editar fichas de familias."
+    },
+    "activities:read": {
+      "label": "Ver actividades",
+      "description": "Permite ver el listado de actividades."
+    },
+    "activities:write": {
+      "label": "Crear/editar actividades",
+      "description": "Permite crear y editar actividades."
+    },
+    "activities:delete": {
+      "label": "Eliminar actividades",
+      "description": "Permite eliminar actividades."
+    },
+    "calendar:read": {
+      "label": "Ver calendario",
+      "description": "Permite ver el calendario de la iglesia."
+    },
+    "calendar:print": {
+      "label": "Imprimir calendario",
+      "description": "Permite imprimir el calendario de la iglesia."
+    },
+    "users:read": {
+      "label": "Ver usuarios",
+      "description": "Permite ver el listado de usuarios del panel."
+    },
+    "users:manage": {
+      "label": "Invitar usuarios y asignar roles",
+      "description": "Permite invitar usuarios, asignarles roles y habilitar o deshabilitar sus cuentas."
+    },
+    "roles:read": {
+      "label": "Ver roles",
+      "description": "Permite ver los roles y sus permisos."
+    },
+    "roles:manage": {
+      "label": "Crear/editar roles y permisos",
+      "description": "Permite crear, editar y eliminar roles, y modificar sus permisos."
+    },
+    "groups": {
+      "people": "Personas",
+      "families": "Familias",
+      "activities": "Actividades",
+      "calendar": "Calendario",
+      "users": "Usuarios",
+      "roles": "Roles"
+    }
+  },
+  "roles": {
+    "title": "Roles",
+    "subtitle": "Gestioná los roles y los permisos de cada uno.",
+    "edit": "Editar permisos",
+    "new": "Crear rol",
+    "delete": "Eliminar",
+    "table": {
+      "name": "Nombre",
+      "description": "Descripción",
+      "members": "Miembros",
+      "actions": "Acciones",
+      "systemBadge": "Sistema"
+    },
+    "matrix": {
+      "permissionColumn": "Permiso",
+      "save": "Guardar",
+      "saved": "Cambios guardados"
+    },
+    "form": {
+      "nameLabel": "Nombre",
+      "descriptionLabel": "Descripción",
+      "deleteConfirm": "¿Eliminar el rol \"{name}\"? Esta acción no se puede deshacer."
+    },
+    "system": {
+      "admin": {
+        "name": "Administrador",
+        "description": "Acceso completo a todos los módulos y a la gestión de usuarios y roles."
+      },
+      "leader": {
+        "name": "Líder",
+        "description": "Gestiona personas, familias y actividades; imprime el calendario."
+      },
+      "member": {
+        "name": "Miembro",
+        "description": "Acceso de solo lectura a personas y al calendario."
+      }
+    }
+  },
+  "users": {
+    "title": "Usuarios",
+    "subtitle": "Invitá a los miembros del equipo y asigná sus roles.",
+    "table": {
+      "email": "Email",
+      "displayName": "Nombre",
+      "roles": "Roles",
+      "status": "Estado",
+      "actions": "Acciones",
+      "saveRoles": "Guardar roles",
+      "rolesSaved": "Roles guardados",
+      "enable": "Habilitar",
+      "disable": "Deshabilitar",
+      "delete": "Eliminar",
+      "deleteConfirm": "¿Eliminar a \"{email}\"? Esta acción no se puede deshacer."
+    },
+    "status": {
+      "active": "Activo",
+      "disabled": "Deshabilitado"
+    },
+    "invite": {
+      "trigger": "Invitar usuario",
+      "title": "Invitar usuario",
+      "description": "Le enviamos una invitación por email con los roles que va a tener.",
+      "emailLabel": "Email",
+      "rolesLabel": "Roles",
+      "cancel": "Cancelar",
+      "submit": "Enviar invitación",
+      "sentSuccess": "Invitación enviada.",
+      "resentSuccess": "Invitación reenviada.",
+      "deliveryFailed": "Guardamos la invitación, pero no pudimos enviar el email. Podés intentar de nuevo."
+    },
+    "errors": {
+      "notFound": "No encontramos a ese usuario. Puede que ya haya sido eliminado.",
+      "conflict": "Ya hay una invitación pendiente para ese email."
+    }
+  },
+  "rbac": {
+    "denied": {
+      "title": "No tenés permiso para ver esto",
+      "body": "Tu usuario no tiene el permiso necesario para acceder a esta sección. Si creés que deberías tenerlo, consultá con un administrador.",
+      "backToDashboard": "Volver al inicio"
+    },
+    "errors": {
+      "lastAdmin": "Esta acción dejaría el panel sin ningún administrador activo. Asegurate de que quede al menos un administrador antes de guardar.",
+      "systemRole": "El rol Administrador no puede perder estos permisos, y los roles del sistema no se pueden eliminar.",
+      "forbidden": "No tenés permiso para realizar esta acción.",
+      "invalid": "Los datos ingresados no son válidos. Revisalos e intentá de nuevo.",
+      "notFound": "No encontramos el rol. Puede que ya haya sido eliminado.",
+      "conflict": "Ya existe un rol con ese nombre."
     }
   }
 }

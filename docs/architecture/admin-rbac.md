@@ -1,0 +1,571 @@
+# Admin RBAC — permission registry, roles, the last-admin invariant, audit
+
+ICR-127 built the front door (Firebase Auth, invite-only, `AdminUser.roleIds` resolved and
+returned). ICR-128 is the ticket that turns enforcement **on**: before it, `apps/admin` had zero
+permission checks anywhere — every route was reachable by any signed-in, provisioned user. This is
+the sibling doc to `docs/architecture/admin-auth.md`; read that one first if you haven't — this doc
+assumes `SessionResult`, `getCurrentUser()`, and the invite gate as background. Design record:
+`tasks/specs/ICR-128-admin-rbac-permission-registry.md`.
+
+## The registry — a const map, not an enum
+
+`apps/admin/src/lib/rbac/permissions.ts` is the single source of truth for what a permission key
+_is_:
+
+```ts
+export const PERMISSIONS = {
+  "people:read": "View people",
+  "people:write": "Create/edit people",
+  // … 15 keys total
+} as const satisfies Record<string, string>;
+
+export type PermissionKey = keyof typeof PERMISSIONS;
+export const PERMISSION_KEYS = Object.keys(PERMISSIONS) as [
+  PermissionKey,
+  ...PermissionKey[],
+];
+```
+
+It's a const map, never an enum, following this repo's repo-wide convention (`CLAUDE.md` § Code
+Conventions: "Avoid enums; use const maps instead"). Keys are shaped `resource:action`
+(`people:read`, `roles:manage`, …) — that shape is load-bearing, not stylistic: the permission
+matrix UI (`(app)/roles/permission-matrix.tsx`) groups its rows by splitting on `:` and rendering
+one `<tbody>` per resource prefix (`permissions.groups.<resource>` heading), so **a new feature
+appends one entry to `PERMISSIONS` and the matrix grows a row and, if the resource is new, a group
+— zero UI code touched.** The values on the map itself are dev-facing fallbacks only, never
+rendered; every user-visible label/description comes from next-intl
+(`permissions.<key>.{label,description}`, both catalogs — see the i18n section below).
+
+`isPermissionKey(value): value is PermissionKey` checks membership via
+`Object.prototype.hasOwnProperty.call(PERMISSIONS, value)`, not `value in PERMISSIONS` — the `in`
+operator walks the prototype chain and would accept `"toString"` or `"constructor"` as a valid key.
+This is exercised directly (`permissions.test.ts`: `isPermissionKey("toString")` must be `false`).
+
+## Reject-at-write / ignore-at-read symmetry
+
+The registry feeds two independent gates that fail closed the same way, at opposite ends of a
+permission key's lifecycle:
+
+| Side               | File                                             | Behavior                                                                                                                                                                                                                                                                      |
+| ------------------ | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Write** (reject) | `lib/rbac/schemas.ts`: `z.enum(PERMISSION_KEYS)` | A role's `permissions` field is validated against the registry before persistence. A crafted POST carrying `"finances:write"` or `"*"` cannot ever land in Mongo — Zod rejects it, `roleUpdateSchema.safeParse` fails, the action returns `{ ok: false, reason: "invalid" }`. |
+| **Read** (ignore)  | `lib/rbac/resolve.ts`: `resolvePermissions()`    | Every stored key is filtered through `isPermissionKey()` before being added to the granted set. A key that's stored but no longer registered — a renamed or removed feature — grants nothing.                                                                                 |
+
+Why both are needed, not just one: the write-side guard only prevents _new_ drift. It cannot help a
+role document that already carries a since-removed key (a feature was retired and its permission
+key deleted from the registry, but old `Role.permissions` arrays on disk still list it). The
+read-side filter is what makes that safe — `resolvePermissions` (and therefore
+`retainsAdministrability`, which is built on it) simply never sees the stale key, so drift
+**fails closed**: a dangling permission grants nothing rather than silently continuing to grant
+access to a feature that no longer exists (or, worse, being re-registered later for something
+unrelated and inheriting old grants by accident). `Role.permissions` is typed loosely
+(`permissions: string[]`, `service/types.ts`) specifically so a stale value round-trips through
+Mongo without a Zod parse failure — enforcement, not storage, is where the registry is authoritative.
+
+## `requirePermission` — the one IO boundary
+
+`lib/rbac/require-permission.ts` is the only place permission-checking touches the network/DB. Two
+exports:
+
+- **`getSessionPermissions()`** — `cache()`-memoized (see the testing caveat below). Calls
+  `getCurrentUser()`, maps its 8-reason `SessionResult` refusal union down to 3 `DeniedReason`s
+  (`unauthenticated` covers `no-session`/`expired`/`revoked`/`no-invite`/`email-unverified`/
+  `provisioning-conflict`; `no-account` is `no-user`; `disabled` stays `disabled`) via an
+  **exhaustive `switch`** — adding a ninth `SessionResult` reason is a TypeScript error here, not a
+  silent fall-through to "authorized". On success it resolves the user's roles
+  (`findRolesByIds(session.user.roleIds)`) and returns `resolvePermissions(roles)`.
+- **`requirePermission(key)`** — calls `getSessionPermissions()`, then checks
+  `result.permissions.has(key)`, returning `{ ok: false, reason: "forbidden" }` on a miss. Never
+  throws; every caller branches on the return value.
+
+`cache()` scopes memoization to one React request — the `(app)` layout, the page, the sidebar, and
+any Server Action invoked in that request all share a single Mongo role resolve, which is what
+makes calling `requirePermission()` at the top of every page cheap enough to do everywhere rather
+than centralizing it in middleware.
+
+### `getCurrentUser` is ALSO `cache()`-memoized, independently (P2 fix)
+
+`lib/auth/current-user.ts`'s `getCurrentUser()` carries its own `cache()` wrap, not just
+`getSessionPermissions()`. Before this fix the two were memoized asymmetrically: `(app)/layout.tsx`
+calls `getCurrentUser()` directly (to render the sidebar/account menu), and `getSessionPermissions()`
+calls `getCurrentUser()` again to build the permission set for the same request — but only the
+latter call sat behind `cache()`, so those two call sites never shared work. Every authenticated
+page render paid `verifySession(cookie, true)` (a Firebase Admin network round-trip — `checkRevoked:
+true`) and a Mongo `findUserByFirebaseUid` **twice**. Wrapping `getCurrentUser` itself in `cache()`
+collapses that to once per request, and layers cleanly under `getSessionPermissions()`'s own cache:
+`getSessionPermissions()` still memoizes the `findRolesByIds` resolve on top, and its call into
+`getCurrentUser()` now also hits `getCurrentUser`'s own request-scoped memo instead of doing a
+second verify+lookup.
+
+This is safe for the same reason `getSessionPermissions()`'s memoization is safe: `cache()` scopes
+to ONE React request, so there is no cross-request staleness, and the mid-session revocation
+guarantee (AC8) is unaffected — a revoked/disabled session is still re-verified from scratch on the
+**next** request, it's only re-verified once instead of twice within the _same_ request. The
+identical testing caveat applies (see below): `current-user.test.ts` mocks `react`'s `cache` export
+the same way `require-permission.test.ts` does, so its own memoization assertion tests something
+real rather than trivially passing because Vitest resolves the passthrough `cache()`.
+
+### `requireActionPermission` — the Server Action variant (P2 fix)
+
+RSC pages/layouts call `requirePermission` directly and do their own redirect inline, because they
+already have a `locale` from the route's `params` (`roles/page.tsx`: `authz.reason ===
+"unauthenticated" ? "/login" : "/no-access"`; `(app)/layout.tsx` does the same). A `"use server"`
+action has no route `params` — and, worse, a plain `requirePermission` result flowing back to the
+client as `{ ok: false, reason: "unauthenticated" | "no-account" | "disabled" }` used to render
+**nothing**: `rbac-error-message.ts`'s `rbacErrorMessageKey()` has no copy for those three
+session-level reasons, by design (see below), so a session that expired/was revoked/got disabled
+while an already-open edit page submitted a mutation just silently no-op'd (spec edge case #14,
+"session expires mid-edit" — the spec always called for a redirect here; this was a gap between the
+spec and the original CP4/CP6/CP7 implementation, closed after review).
+
+`lib/rbac/require-action-permission.ts` exports **`requireActionPermission(key)`**: every mutating
+action in `roles/actions.ts` and `users/actions.ts` calls this instead of `requirePermission`
+directly. It wraps `requirePermission`, and on a session-level refusal calls `getLocale()`
+(`next-intl/server` — the Server Action equivalent of a page's route `params.locale`) and then
+`redirect()` (`@src/i18n/routing`) itself: `unauthenticated` → `/login`, `no-account`/`disabled` →
+`/no-access` — before the action parses its payload or opens a transaction, so a redirect can never
+happen mid-write. Only `forbidden` still returns to the caller as `{ ok: false, reason: "forbidden"
+}`; that's the one reason the gated UI can legitimately reach with a stale permission set, and it
+has real on-page copy (`rbac.errors.forbidden`).
+
+It lives in its own module rather than being folded into `require-permission.ts` so that a test can
+mock `requirePermission` in isolation and still exercise `requireActionPermission`'s real
+redirect-selection branch — a same-module function reference can't be intercepted by mocking that
+module's exports (`require-action-permission.test.ts`; `roles/actions.test.ts` and
+`users/actions.test.ts` mock `requirePermission` + `next-intl/server`'s `getLocale` + `@src/i18n/
+routing`'s `redirect` the same way and let the real `requireActionPermission` run, so those tests
+cover the actual action → wrapper → redirect wiring, not a black-box stand-in).
+
+### Why permissions are never in the token or the session cookie
+
+Same discipline as `admin-auth.md`'s divergence table: `roleIds` comes from `AdminUser` in Mongo,
+never from `decoded.customClaims`, and the **resolved permission set is never cached in the
+`__session` cookie either** — `getSessionPermissions()` re-reads roles from Mongo on every request
+(memoized only within that one request, not across requests). This is precisely what makes
+mid-session revocation take effect immediately, with no sign-out required: an admin who unchecks a
+permission on someone's role, or disables their account, changes what that user can do starting on
+their **very next request** — there is no stale JWT or custom claim anywhere in the path that could
+keep granting the old access until a token refresh. The cost is a Mongo round trip per request
+(amortized to one per request by the `cache()` memoization above) instead of a free claims read;
+this codebase has consistently traded that cost for correctness (see `admin-auth.md`'s
+`roleIds`-from-Mongo rationale for the identical tradeoff one layer up).
+
+### Testing caveat — do not remove the `cache()` mock
+
+React's `cache()` only memoizes inside a live React Server render, which requires Node's
+`react-server` module-resolution condition. React 19.2.1 ships `"react-server": "./react.react-server.js"`
+alongside `"default": "./index.js"` in its `package.json` exports map; Next resolves the
+`react-server` condition for RSC/Server Actions (so memoization is real in production), but Vitest's
+default Node resolution does not use that condition and resolves `"default"` instead — where
+`cache()` is a plain passthrough (`return function() { return fn.apply(null, arguments) }`, no
+memoization at all). Both `require-permission.test.ts` AND `current-user.test.ts` therefore mock
+`react`'s `cache` export with the same minimal single-call-cached reimplementation, so their
+respective "two calls in one request hit `findRolesByIds`/`verifySession` once" assertions test
+something real instead of trivially passing because every mocked call happens to be idempotent.
+**Do not remove either mock** — without it, the memoization assertions would keep passing even if
+`require-permission.ts`/`current-user.ts` stopped calling `cache()` at all, silently making the test
+suite blind to a real regression. (`current-user.test.ts` also needs `vi.resetModules()` before
+every test — `cache()` has no arguments to key on, so without a fresh module per test the FIRST
+test's resolved session would stay memoized for every test that runs after it in the same file;
+`require-permission.test.ts`'s `loadModule()` helper does the same for the identical reason.)
+
+## The last-admin invariant — a post-state predicate, not an admin count
+
+`lib/rbac/last-admin.ts`'s `retainsAdministrability(state: AdminStateSnapshot): boolean` is the one
+predicate every mutating action in `/roles` and `/users` must pass before it's allowed to commit.
+It is evaluated against a **proposed post-state** — the system as it would look _after_ the pending
+write — not a live count of admins in the current state. That distinction is the entire reason this
+exists as a dedicated module instead of a one-line `if (adminCount <= 1) refuse`:
+
+> A naive admin **count** cannot see the path that actually bricks the panel: unchecking
+> `roles:manage` on the Admin **role** in the permission matrix instantly demotes every user holding
+> that role at once — the admin count before the edit and immediately after could be identical (say,
+> 3 admins), yet after the edit none of those 3 users hold an admin-equivalent permission anymore.
+
+`ADMIN_EQUIVALENT_KEYS = ["users:manage", "roles:manage"]` — holding **either** key is
+admin-equivalent in effect, because anyone holding one can grant themselves the other (`users:manage`
+lets you reassign your own roles to include one that has `roles:manage`; `roles:manage` lets you add
+`users:manage` to a role you hold). So administrability requires **both** keys to survive somewhere
+in the system — not necessarily on the same role (`ADMIN_EQUIVALENT_KEYS.every(k => granted.has(k))`
+is evaluated over the union of a user's roles, so two different roles jointly holding one key each
+still counts), just held collectively by at least one active user.
+
+`retainsAdministrability` is the single predicate covering **all five** ways an edit can remove the
+last administrator, each exercised in `last-admin.test.ts`:
+
+1. **Delete the last admin user.**
+2. **Disable the last admin user** (`status: "disabled"` — a disabled user is filtered out of the
+   `.some(...)` before its roles are even resolved).
+3. **Remove the Admin role from the last admin user** (reassign their `roleIds` to exclude it).
+4. **Uncheck `users:manage`/`roles:manage` on the Admin _role_ in the matrix** — the path a count
+   can't see, described above.
+5. **Delete the Admin role entirely.**
+
+Every mutating action (`(app)/roles/actions.ts`, `(app)/users/actions.ts`) follows the identical
+shape: touch the shared administrability guard document (see "Closing the concurrent-demotion race"
+below — this is what makes the invariant race-safe across concurrent transactions, not the
+transaction by itself), read the current `roles`/`users` inside the transaction, build the
+`AdminStateSnapshot` as it would look **after** applying the pending change (substituting the one
+role/user being edited, filtering out the one being deleted), call `retainsAdministrability(postState)`,
+and refuse `{ reason: "last-admin" }` before writing anything if it returns `false`.
+
+`ADMIN_EQUIVALENT_KEYS.every` (not `.some`) is what makes step 4 above actually require **both**
+keys — verified by mutation during CP2 (flip `.every` to `.some`, confirm the "requires BOTH keys,
+not either" test goes red, then revert) rather than trusted on inspection alone.
+
+## Services and transactions
+
+`role.service.ts`, `rbac-audit.service.ts`, and `user.service.ts`'s mutators
+(`updateUserRoles`/`updateUserStatus`/`deleteUser`) all follow the same shape as the pre-existing
+`user.service.ts` — a module-level memoized `indexesPromise` (`??=`), `ensureRbacIndexes()`/
+`ensureAuthIndexes()` awaited at the top of every entrypoint, every read parsed through a Zod schema
+(`roleSchema.parse(doc)`) before use — the repo's "untrusted-shape defense" convention
+(`service/types.ts:45`) applied to `Role` and `RbacAuditEntry` the same way it already applied to
+`AdminUser`.
+
+### `withAdminTransaction` — the transaction rules
+
+`service/database.service.ts`'s `withAdminTransaction<T>(fn)` is the **one** place a Mongo
+transaction is opened in this app (the `MongoClient` stays private to the module, same reason
+`getAdminClient` isn't exported). It wraps `session.startSession()` /
+`session.withTransaction(fn)` / `session.endSession()`. Three driver behaviors (verified against
+`mongodb` 6.21.0's own `.d.ts`) shape every caller:
+
+1. **Every operation inside `fn` must receive `{ session }` explicitly.** An un-sessioned read or
+   write silently runs OUTSIDE the transaction — it doesn't error, it just doesn't join. This is the
+   single most dangerous mistake available in this code: an un-sessioned `listRoles()`/`listUsers()`
+   call inside `updateRoleAction`'s transaction would read **stale, pre-transaction** data when
+   building the post-state snapshot, letting `retainsAdministrability` pass on data that's about to
+   be superseded. Every action in `(app)/roles/actions.ts` and `(app)/users/actions.ts` threads
+   `session` through every read and write for exactly this reason.
+2. **The callback may be retried by the driver.** `fn` must be idempotent and must not mutate
+   anything outside its own scope — which is why `inviteUserAction` sends the invite email **after**
+   `withAdminTransaction` resolves (i.e. after commit), never from inside the callback: an email
+   send is not idempotent, and a retried callback would risk sending it twice, or sending it for a
+   transaction that later aborts for an unrelated reason.
+3. **A caught error inside the callback must not be silently swallowed** — the driver can retry the
+   transaction indefinitely against an error it never sees. The sanctioned refusal path is
+   `await session.abortTransaction()` followed by `return { ok: false, reason: … }` — MongoDB's own
+   docs promise a manual `abortTransaction()` inside the callback does **not** throw. This is the
+   functional-first refusal pattern applied to transactions specifically: every mutating action
+   below aborts-and-returns rather than throwing a custom `Error` for a business-rule refusal
+   (`system-role`, `last-admin`, `not-found`, `conflict`), keeping the "no `Error` subclass for
+   control flow" rule (`CLAUDE.md` § Code Conventions) intact even inside a transaction callback.
+
+### Closing the concurrent-demotion race — snapshot isolation is not serializability
+
+**An earlier revision of this doc claimed that running every read/write inside `withAdminTransaction`
+was, by itself, enough to make `retainsAdministrability` race-safe. That claim was wrong**, and the
+bug it hid was real: two admins concurrently demoting two _different_ users could both commit,
+leaving the panel with zero administrable users — with no error, no refusal, and no trace beyond the
+audit log showing two individually-innocent-looking edits.
+
+The mistake was conflating **snapshot isolation** (what MongoDB transactions actually give you) with
+**serializability** (what the invariant needs). A MongoDB multi-document transaction gives every read
+inside it a consistent point-in-time snapshot, and the driver detects a **write conflict** — forcing a
+retry — only when two concurrent transactions try to write **the same document**. It does **not**
+serialize transactions that never touch a common document. Concretely:
+
+> Admin A and Admin B are the only two active administrators. Admin A starts a transaction disabling
+> User B (Admin B's account); Admin B, at the same instant, starts a transaction disabling User A
+> (Admin A's account). Each transaction reads its own consistent snapshot — the one where the OTHER
+> admin is still active — builds a post-state, and `retainsAdministrability` correctly sees "the other
+> admin survives" in that snapshot and allows the write. Transaction A writes User B's document;
+> transaction B writes User A's document. **Different documents — no write conflict, no retry, both
+> commit.** The post-commit reality (zero active admins) was never checked, because neither snapshot
+> ever saw it. This is the textbook write-skew anomaly, and it is possible under snapshot isolation by
+> definition — nothing about "everything ran inside a transaction" prevents it, because the two
+> transactions were never in each other's way.
+
+**The fix is `service/rbac-guard.service.ts`'s `touchAdministrabilityGuard(session)`**, called as the
+FIRST operation inside every transaction that runs `retainsAdministrability` (role update, role
+delete, user role-assignment, user status change, user delete — every one of them, before the
+`listRoles`/`listUsers` reads that build the post-state snapshot):
+
+```ts
+await getAdminDb()
+  .collection<RbacGuardDocument>("rbacGuard")
+  .updateOne(
+    { _id: "administrability" },
+    { $inc: { rev: 1 }, $set: { updatedAt: new Date() } },
+    { upsert: true, session },
+  );
+```
+
+This manufactures exactly the shared document the two transactions above were missing: both A and B
+now write to the _same_ `rbacGuard` document before they read anything else. Whichever transaction's
+`updateOne` commits first wins outright; the other hits a real MongoDB write conflict, the driver
+retries it, and the retry re-reads `roles`/`users` **after** the winner's commit — so it observes the
+winner's demotion already applied and correctly refuses (`reason: "last-admin"`). Touching the guard
+document is what converts an untouched, mutually-invisible pair of transactions into a genuinely
+contended pair — trading "never conflict" for "always conflict," which is the entire point: a shared
+hot-spot document is the standard way to force serializability for an invariant that spans documents
+a database's conflict detection wouldn't otherwise link.
+
+Two details that matter if you touch this again:
+
+- **It must run before the invariant read, not after.** The earlier the contended write happens
+  inside the callback, the earlier a losing transaction discovers it must retry, instead of doing all
+  its other work first only to fail at commit time.
+- **It must stay idempotent.** `withAdminTransaction`'s callback can itself be retried by the driver
+  (rule 2 above) for reasons unrelated to this guard — a retried callback simply bumps `rev` again,
+  which is harmless by construction (a plain `$inc`/`$set` upsert has no side effect that isn't safe
+  to repeat).
+
+`createRoleAction` and `inviteUserAction` do **not** call `touchAdministrabilityGuard` — creating a
+role or inviting a user can only ever **add** a prospective grantee, never remove one, so neither runs
+`retainsAdministrability` in the first place and there is nothing to serialize against.
+
+## The audit log
+
+`rbac-audit.service.ts`'s `appendAuditEntry(entry, session)` writes to the append-only `rbacAudit`
+collection. `session` is a **required** parameter (not optional, unlike most read helpers) — the
+audit write must join the same transaction as the mutation it's recording, or the log could commit
+independently of (and drift from) what was actually persisted. `at` is always stamped server-side
+inside the function, never taken from caller input, so the timestamp can't be spoofed by a caller
+that constructs the `Omit<RbacAuditEntry, "_id" | "at">` payload.
+
+Every mutating action appends one entry: `role.create` / `role.update` / `role.delete` /
+`user.invite` / `user.roles.update` / `user.disable` / `user.enable` / `user.delete`
+(`RbacAuditAction`, `service/types.ts`), each carrying `actorUserId`/`actorEmail` (who),
+`targetId` (what), and a `before`/`after` snapshot of just the changed fields.
+
+**Why `users:manage` and `roles:manage` are admin-equivalent by construction, and why the seed
+grants both only to Admin.** As established above (last-admin section), holding either key lets you
+grant yourself the other — there is no privilege boundary between "can manage users" and "can manage
+roles" once you hold one of them. That means **the audit log is the real control here, not a
+narrower permission split** — this ticket does not attempt to prevent a `users:manage`-only holder
+from reaching admin-equivalent access (that would require a different, more granular design than
+what M1b's 15-key registry defines), it makes sure every such escalation is traceable to a specific
+actor and timestamp. This is also exactly why `role.service.ts`'s `SYSTEM_ROLE_SEEDS` grants **both**
+keys only to the seeded `admin` role — Leader (9 keys) and Member (2 keys) hold neither, so no
+non-admin system role starts one edit away from admin-equivalence.
+
+## UI enforcement — convenience only, never the gate
+
+`components/shell/sidebar.tsx` filters `NAV_ITEMS` by `getSessionPermissions()` before rendering —
+but this is explicitly **convenience only**: a hidden nav item that a user reaches anyway via a
+direct URL is refused by the real gate, which is the `requirePermission()` call at the top of the
+page/action itself. The four still-placeholder feature pages (`people`, `families`, `activities`,
+`calendar`) already carry their real server-side gate even though their bodies are still
+`PlaceholderPage` — each calls `requirePermission("<resource>:read")` and either renders
+`<PermissionDenied />` (authenticated + provisioned but lacking the key — `reason: "forbidden"`) or
+redirects to `/login` (`unauthenticated`) / `/no-access` (`no-account`/`disabled`), so ICR-129/130/131
+inherit a fail-closed gate on day one instead of having to remember to add one later.
+
+`<PermissionDenied>` (`components/rbac/permission-denied.tsx`) renders **inside** `AppShell` — the
+user keeps their nav — which is deliberate: `/no-access` (ICR-127) means exactly one thing, "no
+Mongo account at all," and reusing it for "wrong permission" would blur that contract. A `forbidden`
+result gets its own in-page panel instead.
+
+The same three-way split holds for a mutating Server Action, just reached one call deeper — see
+"`requireActionPermission` — the Server Action variant" above.
+
+### The `rbac.errors.*` / `users.errors.*` split (P2 fix)
+
+`(app)/roles/rbac-error-message.ts`'s `rbacErrorMessageKey()` maps the six `ActionFailureReason`s a
+Server Action can still return inline (`last-admin`/`system-role`/`forbidden`/`invalid`/`not-found`/
+`conflict`) to their `rbac.errors.*` message key — deliberately **not** the three session-level
+reasons (`unauthenticated`/`no-account`/`disabled`), which never reach it: `requireActionPermission`
+redirects on those before the action returns at all (see above).
+
+Two of those six keys are context-specific. `rbac.errors.notFound`/`.conflict` read as role-flavored
+copy — "We couldn't find that role. It may have already been deleted." / "A role with that name
+already exists." — which is misleading on `/users`: a concurrently-deleted user also maps to
+`not-found`, and a duplicate pending invite also maps to `conflict`, but neither is a _role_.
+`lastAdmin`/`systemRole`/`forbidden`/`invalid` are generic enough to read correctly on either screen,
+so those four stay shared.
+
+The fix keeps **one** key→reason mapping (`RBAC_ERROR_MESSAGE_KEYS`, unchanged) and parameterizes
+only the _namespace_ a caller resolves from: `rbac-error-message.ts` also exports
+`useUsersRbacErrorMessage(state)`, a small hook that resolves `notFound`/`conflict` from the new
+`users.errors.*` catalog entries (`users.errors.notFound`/`.conflict`, both message files) and every
+other reason from the shared `rbac.errors.*` catalog. `users/user-table.tsx` and
+`users/invite-dialog.tsx` call this hook; `roles/role-list.tsx` and `roles/permission-matrix.tsx`
+are untouched — they keep calling `rbacErrorMessageKey()` plus their own `rbac.errors` translator
+directly, since every reason they can surface is one of the four shared, generic ones.
+
+### System-role display naming
+
+The three seeded system roles' `Role.name`/`Role.description` are set once, in English, at seed time
+(`role.service.ts`'s `SYSTEM_ROLE_SEEDS`) and are **never edited** after that — `$setOnInsert` makes
+re-running the seed non-destructive to a hand-edited role, but nothing translates the stored value.
+`RoleList`/`PermissionMatrix` instead render `roles.system.<key>.name`/`.description` (translated,
+both catalogs) for any role where `Role.isSystem` is true, falling back to the raw `name`/
+`description` fields only for custom (user-authored) roles, which have no i18n key to render and
+whose content genuinely is whatever the creating admin typed. The role edit form's `name` input for
+a system role is a **hidden field carrying the raw stored (English) value**, not the translated
+display string — so submitting an edit (e.g. to a system role's permissions) round-trips the
+original DB `name` unchanged rather than overwriting it with whatever locale happened to be active
+in the admin's browser at edit time.
+
+### `Role.key` — immutable, system-roles-only, partial-unique
+
+`Role.key?: SystemRoleKey` (`"admin" | "leader" | "member"`) is optional — custom roles have none —
+and, once seeded, **never updatable**: `updateRoleAction`/`updateRole` never write it, and
+`roleUpdateSchema` doesn't even accept it as a field (Zod strips unknown keys by default, so a
+crafted payload carrying `key` is silently dropped rather than validated-and-rejected). The
+`{ key: 1 }` index in `ensureRbacIndexes()` is unique but **partial**
+(`partialFilterExpression: { key: { $exists: true } }`) — a plain unique index would collide the
+moment a second custom role (which has no `key` field) was inserted, since Mongo treats a missing
+field as `null` for uniqueness purposes and a second `null` collides with the first.
+
+This ticket creates the `Admin` role and its `key: "admin"` — the stable identifier a **downstream**
+ticket, ICR-155's `seed:admin` bootstrap script, is designed to upsert against
+(`updateOne({ key: "admin" }, …, { upsert: true })`) rather than matching on the mutable, i18n-only
+`name` field. ICR-155 is out of scope here; this ticket only ships the identifier it will consume.
+
+## The `people:pii` scope boundary
+
+`lib/rbac/pii.ts`'s `omitPii(record, granted)` is a pure, non-mutating helper:
+
+```ts
+export function omitPii<T extends PiiFields>(
+  record: T,
+  granted: ReadonlySet<PermissionKey>,
+): T | Omit<T, "phone" | "email"> {
+  if (granted.has("people:pii")) return record;
+  // … returns a shallow copy with phone/email deleted, not blanked
+}
+```
+
+It is **field omission, not masking** — without `people:pii`, `phone`/`email` are absent from the
+returned object entirely (`expect(result).not.toHaveProperty("phone")`), never rewritten to `""` or
+`null`. This distinction matters for a viewer building UI or an API client off the response: a
+masked-but-present field still discloses that a value exists (and sometimes its shape, e.g. a
+partially-redacted phone number); an absent key discloses nothing.
+
+**This ticket ships the enforcement primitive and its unit tests only.** There is no People
+list/detail/print view yet to call it on a real DTO — those arrive in ICR-129/130/131, which is what
+actually wires `omitPii()` into a real congregant-data response. The spec's acceptance criterion
+"confirm phone/email are absent from the list, detail, and print views without `people:pii`" **cannot
+be demonstrated by this ticket** — there is nothing rendered yet for it to be absent from. Treat
+`pii.ts` as load-bearing but unverified-end-to-end until ICR-129 lands.
+
+## Surfaces deliberately NOT permission-gated
+
+Three Server Action/route surfaces in `apps/admin` have no `requirePermission()` call. Each is a
+deliberate omission, not oversight — a reader auditing for gaps should stop at these three rather
+than filing a "missing gate" finding:
+
+| Surface                                                     | Why it's ungated                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app/api/auth/session/route.ts` (`POST`/`DELETE`)           | **Pre-auth by definition.** This route is what _establishes_ the session cookie in the first place (`POST`) or tears it down (`DELETE`) — gating it on a permission derived from a session that doesn't exist yet is circular. Its own security boundary is the Firebase ID-token verification + invite-gate (`resolveOrProvision`) described in `admin-auth.md`.                                                                                       |
+| `(auth)/reset-password/actions.ts`'s `requestPasswordReset` | **Public by design, and enumeration-safe by construction** — it always returns `{ ok: true }` regardless of whether the email exists, is throttled, or the send fails (see `admin-auth.md`'s "Enumeration-safe by construction"). A permission check here would either require exposing account existence (defeating the enumeration-safety) or would be meaningless (there's no session to hold a permission yet — the requester isn't authenticated). |
+| `components/shell/locale-actions.ts`'s `setPreferredLocale` | **Self-service, and already gated on identity rather than a specific permission.** It requires a valid session (`getCurrentUser()`; no-op `{ ok: false }` without one) and writes only the calling user's own `preferredLocale` — there is no `PermissionKey` for "may change your own display language," and adding one would be pure ceremony: every provisioned user is allowed to do this by definition of having an account.                       |
+
+## `createInvite` — upsert-refresh semantics (ICR-128 P1 fix, supersedes CP6/CP7)
+
+`invite.service.ts`'s `createInvite(input, session)` (added in CP6 — ICR-127 shipped invite
+**acceptance** only; there was no creation path anywhere in `apps/admin` before this ticket) carries
+these judgment calls:
+
+1. **7-day expiry.** No TTL value is specified anywhere in the ICR-127/ICR-128 spec or docs; 7 days
+   is a conventional default for an admin invite link. Revisit if product wants something
+   shorter/longer.
+2. **Re-inviting an address always refreshes and re-sends** — whether that address's existing pending
+   invite is still live or has quietly passed its `expiresAt` — rather than being refused. This is the
+   fix for a compounding P1 pair a Codex review found on the CP6/CP7 design (below) and is what an
+   administrator actually expects from "invite again."
+3. **`createInvite` does not check whether the email already belongs to an active `AdminUser`** — no
+   such lookup exists in `user.service.ts`, adding one is out of scope, and re-inviting an existing
+   user is harmless (`inviteUserAction` has no `retainsAdministrability` check to run here either —
+   inviting can only ever **add** a prospective grantee, never reduce administrability).
+
+**The compounding bug this replaced.** The CP6/CP7 design (insert-then-catch-E11000, documented in the
+first release of this doc) had a known, deliberately-deferred limitation: the partial unique index keys
+off `status: "pending"` alone, and nothing in this codebase ever transitions a `pending` invite to
+another status on natural expiry — so a genuinely expired-but-still-`"pending"` invite permanently
+blocked re-inviting that address, `conflict`, with no revoke path or pending-invites UI to clear it.
+That was filed as a low-severity follow-up (ICR-185) on the theory that hitting it required an invite to
+sit unaccepted for a full 7 days. A later review connected it to a SECOND bug on the same path —
+`inviteUserAction` awaited `sendInviteEmail()`'s `boolean` return and ignored it, so a **transient**
+Resend failure (not a 7-day wait) reported success to the admin while nobody was actually invited. The
+two together meant a single transient email outage could permanently lock an address out of an
+invite-only product on day one, with no in-product recovery — reachable, not theoretical. Fixing them
+required one coherent change to the invite flow, not two independent patches.
+
+**The fix: one atomic upsert, not insert-then-catch.**
+
+```ts
+db.collection("invites").findOneAndUpdate(
+  { email, status: "pending" },
+  {
+    $set: { roleIds, locale, expiresAt: <now + 7d>, invitedByUserId },
+    $setOnInsert: { email, status: "pending", createdAt: now },
+  },
+  { upsert: true, returnDocument: "after", includeResultMetadata: true, session },
+);
+```
+
+The filter `{ email, status: "pending" }` matches ANY still-`"pending"` invite for the address — live
+or expired, since nothing ever moves it out of `"pending"` on its own — and refreshes it in place
+(same `_id`, new `roleIds`/`locale`/`expiresAt`/`invitedByUserId`). When no pending invite exists, the
+same call inserts a fresh one via `$setOnInsert`. One atomic operation: no read-then-write race, and
+`createInvite`'s return type dropped its `{ ok: false, reason: "conflict" }` branch entirely — it now
+always returns `{ ok: true; inviteId; refreshed }`, where `refreshed` (read from
+`lastErrorObject.updatedExisting`, the atomic signal `includeResultMetadata: true` returns from the same
+operation) tells the caller whether this was a fresh invite or a refresh of an existing one.
+
+**The partial unique index is still the only uniqueness guard** —
+`ensureAuthIndexes()`'s `{ email: 1 }` index with `partialFilterExpression: { status: "pending" }`
+(`user.service.ts`) is unchanged, and still guarantees at most one pending invite per address. It also
+backstops the upsert itself: MongoDB's server-side upsert retry (4.2+) already resolves the common
+race where two concurrent upserts for a brand-new address both miss the `{ email, status: "pending" }`
+match and both attempt an insert, by re-running the query predicate against whichever insert won,
+transparently to `createInvite`.
+
+**When that internal retry budget is exhausted: a transaction-level retry, not an in-session one
+(Codex P2 fix — supersedes an earlier revision of this doc).** An earlier version of `createInvite`
+retried the same upsert once itself, on the same `session`, as a belt-and-suspenders backstop. That
+retry was dead code that looked like a safety net — it could never actually run, for two independent
+reasons:
+
+1. A duplicate-key error raised by an operation inside a multi-document transaction aborts that
+   transaction **server-side**. Every subsequent operation on the same `session` — including a
+   same-session "retry" of this very upsert — is invalid once that happens.
+2. Even if the session were still usable, every operation inside a transaction reads against the
+   snapshot taken when the transaction started, which predates the winning insert's commit. A retry
+   on the SAME session can never observe the winner and could never take the update-in-place branch —
+   it would just fail the same way again.
+
+`createInvite` now returns `{ ok: false, reason: "insert-race" }` on a duplicate-key error instead of
+retrying or throwing — an internal-only signal, never surfaced to a client. The retry moved to
+`inviteUserAction` (`(app)/users/actions.ts`): on `insert-race` it re-runs its **entire**
+`withAdminTransaction(...)` block once — role-existence check, `createInvite`, and the audit write all
+together, not just the upsert. A fresh transaction gets a fresh snapshot, which DOES see the
+now-committed winner, so the retried upsert takes the update branch and correctly returns
+`refreshed: true` — the second admin's invite refreshes the first's. Exactly one retry; a SECOND
+`insert-race` (both attempts lost) is a genuine, if pathological, refusal, mapped onto the existing
+`conflict` reason rather than surfaced as a new one no UI knows how to render — `users.errors.conflict`
+("There's already a pending invitation for that email address.") already reads correctly for it.
+`conflict` is otherwise unreachable from `createInvite` itself; `users.errors.conflict` /
+`rbac.errors.conflict` stay in the message catalogs regardless, since `createRole` still produces
+`conflict` for duplicate role names.
+
+**`inviteUserAction` (`(app)/users/actions.ts`) surfaces delivery failure instead of swallowing it.**
+It now inspects `sendInviteEmail()`'s `boolean` return (and treats a thrown error the same way) and
+reports `{ ok: true, data: { emailSent, refreshed } }` — the action still SUCCEEDS when delivery fails
+(the `Invite` document, committed inside the transaction before the send is even attempted, is the
+source of truth, and a person can be provisioned once told out of band; a Resend outage must not block
+provisioning), but the admin is told. `invite-dialog.tsx` renders three distinct outcomes instead of
+silently closing on any `ok: true`: a fresh invite delivered ("Invitation sent"), a refreshed invite
+re-delivered ("Invitation re-sent"), or a saved-but-undelivered invite (an assertive warning, not a
+quiet success) — and, since a retry now refreshes instead of conflicting, "try again" from that warning
+always works.
+
+This resolves **ICR-185** (the expired-pending-invite follow-up filed against the CP6/CP7 design) — that
+ticket can be closed.
+
+## Related docs
+
+- `docs/architecture/admin-auth.md` — the sign-in → session-cookie → invite-gate flow this ticket
+  enforces on top of; `SessionResult`, `getCurrentUser()`, the two-verification model.
+- `docs/architecture/admin-database.md` — the two-connection Mongo model `role.service.ts` /
+  `rbac-audit.service.ts` / `user.service.ts` all read and write through (`getAdminDb()`).
+- `docs/architecture/i18n.md` — the next-intl setup `permissions.*`/`roles.*`/`users.*`/`rbac.*`
+  plug into; both catalogs' parity is asserted in `src/i18n/messages.test.ts`.
+- `tasks/specs/ICR-128-admin-rbac-permission-registry.md` — the full spec (requirements, edge cases,
+  data model, i18n key structure).
+- `tasks/specs/ICR-128-admin-rbac-permission-registry.plan.md` — the checkpoint-by-checkpoint
+  implementation plan, including every plan defect found and corrected along the way.

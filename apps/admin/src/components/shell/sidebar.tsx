@@ -1,5 +1,6 @@
 import { Link } from "@src/i18n/routing";
 import { cn } from "@idcr/ui";
+import { getSessionPermissions } from "@src/lib/rbac/require-permission";
 import {
   Activity,
   CalendarDays,
@@ -12,30 +13,40 @@ import {
 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import type { ComponentType } from "react";
+import type { PermissionKey } from "@src/lib/rbac/permissions";
 
 interface NavItem {
   readonly href: string;
   readonly labelKey: "dashboard" | "people" | "families" | "activities" | "calendar" | "users" | "roles" | "settings";
   readonly icon: ComponentType<{ className?: string }>;
+  /** Absent = ungated (dashboard, settings). Present = hidden unless granted. */
+  readonly permission?: PermissionKey;
 }
 
-// Static nav placeholders — no permission gating here. RBAC-aware filtering
-// (hiding items the signed-in user lacks permission for) lands in a later
-// checkpoint once Firebase Auth + the role/permission model exist.
+// This filtering is CONVENIENCE ONLY, never the gate — it just hides links a
+// user can't use. The server check in each page (`requirePermission()`) is
+// the actual enforcement; a hidden item that leaked via a direct URL would
+// still be refused there.
 const NAV_ITEMS: readonly NavItem[] = [
   { href: "/", labelKey: "dashboard", icon: LayoutDashboard },
-  { href: "/people", labelKey: "people", icon: Users },
-  { href: "/families", labelKey: "families", icon: UsersRound },
-  { href: "/activities", labelKey: "activities", icon: Activity },
-  { href: "/calendar", labelKey: "calendar", icon: CalendarDays },
-  { href: "/users", labelKey: "users", icon: UserCog },
-  { href: "/roles", labelKey: "roles", icon: ShieldCheck },
+  { href: "/people", labelKey: "people", icon: Users, permission: "people:read" },
+  { href: "/families", labelKey: "families", icon: UsersRound, permission: "families:read" },
+  { href: "/activities", labelKey: "activities", icon: Activity, permission: "activities:read" },
+  { href: "/calendar", labelKey: "calendar", icon: CalendarDays, permission: "calendar:read" },
+  { href: "/users", labelKey: "users", icon: UserCog, permission: "users:read" },
+  { href: "/roles", labelKey: "roles", icon: ShieldCheck, permission: "roles:read" },
   { href: "/settings", labelKey: "settings", icon: Settings },
 ];
 
 export async function Sidebar() {
   const tShell = await getTranslations("shell");
   const tNav = await getTranslations("nav");
+
+  const authz = await getSessionPermissions();
+  const granted = authz.ok ? authz.permissions : new Set<PermissionKey>();
+  const items = NAV_ITEMS.filter(
+    (item) => !item.permission || granted.has(item.permission),
+  );
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
@@ -48,7 +59,7 @@ export async function Sidebar() {
         </span>
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {NAV_ITEMS.map(({ href, labelKey, icon: Icon }) => (
+        {items.map(({ href, labelKey, icon: Icon }) => (
           <Link
             key={href}
             href={href}

@@ -3,11 +3,18 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const findOne = vi.fn();
 const findOneAndUpdate = vi.fn();
 const updateOne = vi.fn();
+const insertOne = vi.fn();
 const createIndex = vi.fn();
 
 vi.mock("@src/service/database.service", () => ({
   getAdminDb: () => ({
-    collection: () => ({ findOne, findOneAndUpdate, updateOne, createIndex }),
+    collection: () => ({
+      findOne,
+      findOneAndUpdate,
+      updateOne,
+      insertOne,
+      createIndex,
+    }),
   }),
 }));
 
@@ -241,5 +248,128 @@ describe("revertInviteClaim", () => {
     await expect(updateOne.mock.results[0]?.value).resolves.toEqual({
       matchedCount: 0,
     });
+  });
+});
+
+describe("createInvite", () => {
+  const session = { id: "session" } as unknown as import("mongodb").ClientSession;
+
+  it("upserts a normalized, pending invite via a single atomic findOneAndUpdate, and computes expiresAt", async () => {
+    const { createInvite } = await import("./invite.service");
+    findOneAndUpdate.mockResolvedValueOnce({
+      ok: 1,
+      value: { _id: { toHexString: () => "inv1" } },
+      lastErrorObject: { updatedExisting: false, upserted: { toHexString: () => "inv1" } },
+    });
+
+    const before = Date.now();
+    const result = await createInvite(
+      {
+        email: "  Ana@IDCR.org ",
+        roleIds: ["r1", "r2"],
+        locale: "es-AR",
+        invitedByUserId: "admin1",
+      },
+      session,
+    );
+    const after = Date.now();
+
+    expect(result).toEqual({ ok: true, inviteId: "inv1", refreshed: false });
+    expect(findOne).not.toHaveBeenCalled(); // no pre-check — the atomic upsert is the only guard
+    expect(findOneAndUpdate).toHaveBeenCalledTimes(1);
+
+    const [filter, update, options] = findOneAndUpdate.mock.calls[0] ?? [];
+    expect(filter).toEqual({ email: "ana@idcr.org", status: "pending" });
+    expect(update.$set.roleIds).toEqual(["r1", "r2"]);
+    expect(update.$set.locale).toBe("es-AR");
+    expect(update.$set.invitedByUserId).toBe("admin1");
+    expect(update.$setOnInsert).toEqual({
+      email: "ana@idcr.org",
+      status: "pending",
+      createdAt: expect.any(Date),
+    });
+    const expiryMs =
+      update.$set.expiresAt.getTime() - update.$setOnInsert.createdAt.getTime();
+    expect(expiryMs).toBe(7 * 24 * 60 * 60 * 1000);
+    expect(update.$set.expiresAt.getTime()).toBeGreaterThanOrEqual(before + expiryMs - 1000);
+    expect(update.$set.expiresAt.getTime()).toBeLessThanOrEqual(after + expiryMs + 1000);
+    expect(options).toEqual({
+      upsert: true,
+      returnDocument: "after",
+      includeResultMetadata: true,
+      session,
+    });
+  });
+
+  // The exact regression the bot found: a pending invite whose expiresAt has
+  // quietly passed used to still collide with the partial unique index on
+  // re-invite (E11000 -> conflict), permanently locking that address out.
+  // The filter here is `{ email, status: "pending" }` — no expiresAt clause —
+  // so it matches the expired-but-still-pending doc exactly like a live one
+  // and refreshes it, never returning conflict.
+  it("refreshes an address whose pending invite has EXPIRED, returning ok:true with refreshed:true", async () => {
+    const { createInvite } = await import("./invite.service");
+    findOneAndUpdate.mockResolvedValueOnce({
+      ok: 1,
+      value: { _id: { toHexString: () => "inv-expired" } },
+      lastErrorObject: { updatedExisting: true },
+    });
+
+    const result = await createInvite(
+      { email: "expired@idcr.org", roleIds: ["r1"], locale: "es-AR", invitedByUserId: "admin1" },
+      session,
+    );
+
+    expect(result).toEqual({ ok: true, inviteId: "inv-expired", refreshed: true });
+  });
+
+  it("refreshes an address with a LIVE pending invite, returning the same inviteId with refreshed:true", async () => {
+    const { createInvite } = await import("./invite.service");
+    findOneAndUpdate.mockResolvedValueOnce({
+      ok: 1,
+      value: { _id: { toHexString: () => "inv-live" } },
+      lastErrorObject: { updatedExisting: true },
+    });
+
+    const result = await createInvite(
+      { email: "live@idcr.org", roleIds: ["r2"], locale: "en-US", invitedByUserId: "admin1" },
+      session,
+    );
+
+    expect(result).toEqual({ ok: true, inviteId: "inv-live", refreshed: true });
+    expect(findOneAndUpdate).toHaveBeenCalledTimes(1); // one atomic op — no duplicate document created
+  });
+
+  // Codex P2 fix (see the function's doc comment for the full "why"): a
+  // duplicate-key error means the transaction this upsert ran in is already
+  // aborted server-side, and even a same-session retry would still read the
+  // pre-race snapshot — so createInvite no longer retries in-session. It
+  // returns a distinguishable outcome and leaves retrying (in a FRESH
+  // transaction) to the caller (`inviteUserAction`, see actions.test.ts).
+  it("returns { ok: false, reason: 'insert-race' } on a duplicate-key error, without retrying", async () => {
+    const { createInvite } = await import("./invite.service");
+    const duplicateKeyError = Object.assign(new Error("duplicate"), { code: 11000 });
+    findOneAndUpdate.mockRejectedValueOnce(duplicateKeyError);
+
+    const result = await createInvite(
+      { email: "race@idcr.org", roleIds: ["r1"], locale: "es-AR", invitedByUserId: "admin1" },
+      session,
+    );
+
+    expect(result).toEqual({ ok: false, reason: "insert-race" });
+    expect(findOneAndUpdate).toHaveBeenCalledTimes(1); // no in-session retry
+  });
+
+  it("re-throws a non-duplicate-key upsert error rather than retrying or misreporting it as a conflict", async () => {
+    const { createInvite } = await import("./invite.service");
+    findOneAndUpdate.mockRejectedValueOnce(new Error("connection reset"));
+
+    await expect(
+      createInvite(
+        { email: "ana@idcr.org", roleIds: ["r1"], locale: "es-AR", invitedByUserId: "admin1" },
+        session,
+      ),
+    ).rejects.toThrow("connection reset");
+    expect(findOneAndUpdate).toHaveBeenCalledTimes(1);
   });
 });
