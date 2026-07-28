@@ -1,5 +1,5 @@
 import { MongoClient, ServerApiVersion } from "mongodb";
-import type { Db } from "mongodb";
+import type { ClientSession, Db } from "mongodb";
 
 const MONGODB_OPTIONS = {
   serverApi: {
@@ -199,5 +199,25 @@ export async function connect(): Promise<MongoClient | undefined> {
     return mongoClient;
   } catch (error) {
     console.error("[db] Failed to connect to MongoDB", error);
+  }
+}
+
+/**
+ * The ONE place transactions are created, so the MongoClient stays private to
+ * this module (same reason `getAdminClient` is not exported).
+ *
+ * CALLERS MUST pass the `session` into EVERY operation inside `fn` — an
+ * un-sessioned operation silently runs OUTSIDE the transaction
+ * (mongodb 6.21.0 `mongodb.d.ts:2468`). `fn` may also be RETRIED by the driver,
+ * so it must be idempotent and must not mutate outer state.
+ */
+export async function withAdminTransaction<T>(
+  fn: (session: ClientSession) => Promise<T>,
+): Promise<T> {
+  const session = getAdminClient().startSession();
+  try {
+    return await session.withTransaction((s) => fn(s));
+  } finally {
+    await session.endSession();
   }
 }

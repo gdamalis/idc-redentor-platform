@@ -87,3 +87,69 @@ export const inviteSchema = z.object({
   acceptedAt: z.date().optional(),
   invitedByUserId: z.string().optional(),
 }) satisfies z.ZodType<Invite, z.ZodTypeDef, unknown>;
+
+export type SystemRoleKey = "admin" | "leader" | "member";
+
+export interface Role {
+  _id: ObjectId;
+  /** Immutable; SYSTEM roles only. Custom roles have none. Never updatable. */
+  key?: SystemRoleKey;
+  name: string;
+  description?: string;
+  permissions: string[]; // stored loosely; resolvePermissions() filters to the registry
+  isSystem: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export const roleSchema = z.object({
+  _id: objectIdSchema,
+  key: z.enum(["admin", "leader", "member"]).optional(),
+  name: z.string().min(1),
+  description: z.string().optional(),
+  permissions: z.array(z.string()),
+  isSystem: z.boolean(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+}) satisfies z.ZodType<Role>;
+
+export type RbacAuditAction =
+  | "role.create"
+  | "role.update"
+  | "role.delete"
+  | "user.invite"
+  | "user.roles.update"
+  | "user.disable"
+  | "user.enable"
+  | "user.delete";
+
+export interface RbacAuditEntry {
+  _id: ObjectId;
+  at: Date;
+  actorUserId: string;
+  actorEmail: string;
+  action: RbacAuditAction;
+  targetId: string;
+  before: unknown | null;
+  after: unknown | null;
+}
+
+/** Every Server Action returns this. Nothing throws. */
+export type ActionFailureReason =
+  | "unauthenticated"
+  | "no-account"
+  | "disabled"
+  | "forbidden"
+  | "last-admin"
+  | "system-role"
+  | "invalid"
+  | "not-found"
+  | "conflict";
+
+export type ActionResult<T = undefined> =
+  | { ok: true; data: T }
+  | {
+      ok: false;
+      reason: ActionFailureReason;
+      fieldErrors?: Record<string, string[]>;
+    };
