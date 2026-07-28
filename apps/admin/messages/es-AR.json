@@ -203,6 +203,36 @@
       }
     }
   },
+  "users": {
+    "title": "Usuarios",
+    "subtitle": "Invitá a los miembros del equipo y asigná sus roles.",
+    "table": {
+      "email": "Email",
+      "displayName": "Nombre",
+      "roles": "Roles",
+      "status": "Estado",
+      "actions": "Acciones",
+      "saveRoles": "Guardar roles",
+      "rolesSaved": "Roles guardados",
+      "enable": "Habilitar",
+      "disable": "Deshabilitar",
+      "delete": "Eliminar",
+      "deleteConfirm": "¿Eliminar a \"{email}\"? Esta acción no se puede deshacer."
+    },
+    "status": {
+      "active": "Activo",
+      "disabled": "Deshabilitado"
+    },
+    "invite": {
+      "trigger": "Invitar usuario",
+      "title": "Invitar usuario",
+      "description": "Le enviamos una invitación por email con los roles que va a tener.",
+      "emailLabel": "Email",
+      "rolesLabel": "Roles",
+      "cancel": "Cancelar",
+      "submit": "Enviar invitación"
+    }
+  },
   "rbac": {
     "denied": {
       "title": "No tenés permiso para ver esto",

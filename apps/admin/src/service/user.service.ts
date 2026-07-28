@@ -1,5 +1,6 @@
-import { getAdminDb } from "@src/service/database.service";
+import { ObjectId } from "mongodb";
 import type { ClientSession } from "mongodb";
+import { getAdminDb } from "@src/service/database.service";
 import type { Locale } from "@src/i18n/config";
 import { adminUserSchema } from "./types";
 import type { AdminUser } from "./types";
@@ -124,4 +125,48 @@ export async function listUsers(session?: ClientSession): Promise<AdminUser[]> {
     .toArray();
 
   return docs.map((doc) => adminUserSchema.parse(doc));
+}
+
+// The three mutators below all take `userId` as a hex string and convert
+// with `new ObjectId(userId)` internally — matching how
+// `AdminStateSnapshot.users[].id` is produced (`_id.toHexString()`) in
+// `(app)/users/actions.ts` (Task 6 Step 4). `session` is required, not
+// optional: every caller runs these inside `withAdminTransaction`, after
+// asserting the administrability invariant against the proposed post-state.
+
+export async function updateUserRoles(
+  userId: string,
+  roleIds: readonly string[],
+  session: ClientSession,
+): Promise<void> {
+  await ensureAuthIndexes();
+  await getAdminDb()
+    .collection(USERS_COLLECTION)
+    .updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { roleIds: [...roleIds], updatedAt: new Date() } },
+      { session },
+    );
+}
+
+export async function updateUserStatus(
+  userId: string,
+  status: "active" | "disabled",
+  session: ClientSession,
+): Promise<void> {
+  await ensureAuthIndexes();
+  await getAdminDb()
+    .collection(USERS_COLLECTION)
+    .updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { status, updatedAt: new Date() } },
+      { session },
+    );
+}
+
+export async function deleteUser(userId: string, session: ClientSession): Promise<void> {
+  await ensureAuthIndexes();
+  await getAdminDb()
+    .collection(USERS_COLLECTION)
+    .deleteOne({ _id: new ObjectId(userId) }, { session });
 }

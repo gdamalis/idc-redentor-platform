@@ -3,11 +3,18 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const findOne = vi.fn();
 const findOneAndUpdate = vi.fn();
 const updateOne = vi.fn();
+const insertOne = vi.fn();
 const createIndex = vi.fn();
 
 vi.mock("@src/service/database.service", () => ({
   getAdminDb: () => ({
-    collection: () => ({ findOne, findOneAndUpdate, updateOne, createIndex }),
+    collection: () => ({
+      findOne,
+      findOneAndUpdate,
+      updateOne,
+      insertOne,
+      createIndex,
+    }),
   }),
 }));
 
@@ -241,5 +248,69 @@ describe("revertInviteClaim", () => {
     await expect(updateOne.mock.results[0]?.value).resolves.toEqual({
       matchedCount: 0,
     });
+  });
+});
+
+describe("createInvite", () => {
+  const session = { id: "session" } as unknown as import("mongodb").ClientSession;
+
+  it("inserts a normalized, pending invite carrying the caller's session, and computes expiresAt", async () => {
+    const { createInvite } = await import("./invite.service");
+    findOne.mockResolvedValueOnce(null); // no existing pending invite
+    insertOne.mockResolvedValueOnce({ insertedId: { toHexString: () => "inv1" } });
+
+    const before = Date.now();
+    const result = await createInvite(
+      {
+        email: "  Ana@IDCR.org ",
+        roleIds: ["r1", "r2"],
+        locale: "es-AR",
+        invitedByUserId: "admin1",
+      },
+      session,
+    );
+    const after = Date.now();
+
+    expect(result).toEqual({ ok: true, inviteId: "inv1" });
+
+    const [existingFilter, existingOptions] = findOne.mock.calls[0] ?? [];
+    expect(existingFilter.email).toBe("ana@idcr.org");
+    expect(existingFilter.status).toBe("pending");
+    expect(existingOptions).toEqual({ session });
+
+    const [doc, insertOptions] = insertOne.mock.calls[0] ?? [];
+    expect(doc.email).toBe("ana@idcr.org");
+    expect(doc.roleIds).toEqual(["r1", "r2"]);
+    expect(doc.locale).toBe("es-AR");
+    expect(doc.status).toBe("pending");
+    expect(doc.invitedByUserId).toBe("admin1");
+    expect(doc.acceptedAt).toBeUndefined();
+    const expiryMs = doc.expiresAt.getTime() - doc.createdAt.getTime();
+    expect(expiryMs).toBe(7 * 24 * 60 * 60 * 1000);
+    expect(doc.expiresAt.getTime()).toBeGreaterThanOrEqual(before + expiryMs - 1000);
+    expect(doc.expiresAt.getTime()).toBeLessThanOrEqual(after + expiryMs + 1000);
+    expect(insertOptions).toEqual({ session });
+  });
+
+  it("refuses with conflict, and never inserts, when a pending unexpired invite already exists", async () => {
+    const { createInvite } = await import("./invite.service");
+    const now = new Date();
+    findOne.mockResolvedValueOnce({
+      _id: { toHexString: () => "existing" },
+      email: "ana@idcr.org",
+      roleIds: ["r1"],
+      locale: "es-AR",
+      status: "pending",
+      expiresAt: new Date(now.getTime() + 1000),
+      createdAt: now,
+    });
+
+    const result = await createInvite(
+      { email: "ana@idcr.org", roleIds: ["r1"], locale: "es-AR", invitedByUserId: "admin1" },
+      session,
+    );
+
+    expect(result).toEqual({ ok: false, reason: "conflict" });
+    expect(insertOne).not.toHaveBeenCalled();
   });
 });

@@ -3,13 +3,21 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const findOne = vi.fn();
 const insertOne = vi.fn();
 const updateOne = vi.fn();
+const deleteOne = vi.fn();
 const createIndex = vi.fn();
 const toArray = vi.fn();
 const find = vi.fn(() => ({ toArray }));
 
 vi.mock("@src/service/database.service", () => ({
   getAdminDb: () => ({
-    collection: () => ({ findOne, insertOne, updateOne, createIndex, find }),
+    collection: () => ({
+      findOne,
+      insertOne,
+      updateOne,
+      deleteOne,
+      createIndex,
+      find,
+    }),
   }),
 }));
 
@@ -163,6 +171,53 @@ describe("listUsers", () => {
     await listUsers(session);
 
     expect(find).toHaveBeenCalledWith({}, { session });
+  });
+});
+
+describe("updateUserRoles", () => {
+  it("$sets roleIds (spread into a plain array) and forwards the session", async () => {
+    const { updateUserRoles } = await loadService();
+    updateOne.mockResolvedValueOnce({ matchedCount: 1 });
+    const session = { id: "session" } as unknown as import("mongodb").ClientSession;
+
+    await updateUserRoles("507f1f77bcf86cd799439011", ["r1", "r2"], session);
+
+    expect(updateOne).toHaveBeenCalledTimes(1);
+    const [filter, update, options] = updateOne.mock.calls[0] ?? [];
+    expect(filter._id.toHexString()).toBe("507f1f77bcf86cd799439011");
+    expect(update.$set.roleIds).toEqual(["r1", "r2"]);
+    expect(update.$set.updatedAt).toBeInstanceOf(Date);
+    expect(options).toEqual({ session });
+  });
+});
+
+describe("updateUserStatus", () => {
+  it("$sets status and forwards the session", async () => {
+    const { updateUserStatus } = await loadService();
+    updateOne.mockResolvedValueOnce({ matchedCount: 1 });
+    const session = { id: "session" } as unknown as import("mongodb").ClientSession;
+
+    await updateUserStatus("507f1f77bcf86cd799439011", "disabled", session);
+
+    const [filter, update, options] = updateOne.mock.calls[0] ?? [];
+    expect(filter._id.toHexString()).toBe("507f1f77bcf86cd799439011");
+    expect(update.$set.status).toBe("disabled");
+    expect(options).toEqual({ session });
+  });
+});
+
+describe("deleteUser", () => {
+  it("deletes by _id and forwards the session", async () => {
+    const { deleteUser } = await loadService();
+    deleteOne.mockResolvedValueOnce({ deletedCount: 1 });
+    const session = { id: "session" } as unknown as import("mongodb").ClientSession;
+
+    await deleteUser("507f1f77bcf86cd799439011", session);
+
+    expect(deleteOne).toHaveBeenCalledTimes(1);
+    const [filter, options] = deleteOne.mock.calls[0] ?? [];
+    expect(filter._id.toHexString()).toBe("507f1f77bcf86cd799439011");
+    expect(options).toEqual({ session });
   });
 });
 

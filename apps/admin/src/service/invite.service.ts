@@ -1,11 +1,84 @@
-import type { ObjectId } from "mongodb";
+import type { ClientSession, ObjectId } from "mongodb";
 import { getAdminDb } from "@src/service/database.service";
 import { normalizeEmail } from "@src/lib/auth/email";
+import type { Locale } from "@src/i18n/config";
 import { ensureAuthIndexes } from "./user.service";
 import { inviteSchema } from "./types";
 import type { Invite } from "./types";
 
 const INVITES_COLLECTION = "invites";
+
+export interface CreateInviteInput {
+  readonly email: string;
+  readonly roleIds: readonly string[];
+  readonly locale: Locale;
+  readonly invitedByUserId: string;
+}
+
+/**
+ * No invite TTL is specified anywhere in the ICR-127/ICR-128 spec or docs —
+ * only the ACCEPT-side filter (`expiresAt: { $gt: new Date() }`, throughout
+ * this file) existed before `createInvite`, never a WRITE side that computes
+ * one. 7 days is a conventional default for an admin invite link; revisit if
+ * product wants something shorter/longer.
+ */
+const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Creates a new pending invite. **Plan correction (found during ICR-128
+ * CP6):** ICR-127 shipped invite ACCEPTANCE only (`claimPendingInvite` /
+ * `revertInviteClaim` below) — there was no invite CREATION path anywhere in
+ * `apps/admin` (confirmed: `sendInviteEmail` had zero callers). This is that
+ * missing write path, added here because Task 6's `inviteUserAction` needs
+ * it — mirrors the Task 5 Step 0 correction for `createRole`/`listUsers`.
+ *
+ * Refuses (`reason: "conflict"`) when a still-pending, unexpired invite
+ * already exists for this email, rather than silently stacking duplicate
+ * invites for the same address — mirrors `createRole`'s duplicate-name
+ * handling. Deliberately does NOT check whether the email already belongs to
+ * an active `AdminUser` — no such lookup exists yet, adding one is out of
+ * this ticket's scope, and re-inviting an existing user is harmless (see
+ * `inviteUserAction`, which has no administrability-invariant check to run
+ * here either: inviting can only ever ADD a prospective grantee, never
+ * reduce administrability).
+ *
+ * `session` is REQUIRED, not optional — this only ever runs inside
+ * `withAdminTransaction`, and the duplicate-pending-invite READ above must
+ * join the same session as the INSERT below, or a concurrent invite for the
+ * same email could slip past this check (Global Constraints, transaction
+ * rules).
+ */
+export async function createInvite(
+  input: CreateInviteInput,
+  session: ClientSession,
+): Promise<{ ok: true; inviteId: string } | { ok: false; reason: "conflict" }> {
+  await ensureAuthIndexes();
+  const email = normalizeEmail(input.email);
+
+  const existing = await getAdminDb()
+    .collection(INVITES_COLLECTION)
+    .findOne(
+      { email, status: "pending", expiresAt: { $gt: new Date() } },
+      { session },
+    );
+  if (existing) return { ok: false, reason: "conflict" };
+
+  const now = new Date();
+  const doc: Omit<Invite, "_id"> = {
+    email,
+    roleIds: [...input.roleIds],
+    locale: input.locale,
+    status: "pending",
+    expiresAt: new Date(now.getTime() + INVITE_EXPIRY_MS),
+    createdAt: now,
+    invitedByUserId: input.invitedByUserId,
+  };
+
+  const result = await getAdminDb()
+    .collection(INVITES_COLLECTION)
+    .insertOne(doc, { session });
+  return { ok: true, inviteId: result.insertedId.toHexString() };
+}
 
 export async function findPendingInvite(email: string): Promise<Invite | null> {
   await ensureAuthIndexes();

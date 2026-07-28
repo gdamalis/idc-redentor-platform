@@ -203,6 +203,36 @@
       }
     }
   },
+  "users": {
+    "title": "Users",
+    "subtitle": "Invite team members and assign their roles.",
+    "table": {
+      "email": "Email",
+      "displayName": "Name",
+      "roles": "Roles",
+      "status": "Status",
+      "actions": "Actions",
+      "saveRoles": "Save roles",
+      "rolesSaved": "Roles saved",
+      "enable": "Enable",
+      "disable": "Disable",
+      "delete": "Delete",
+      "deleteConfirm": "Delete \"{email}\"? This action cannot be undone."
+    },
+    "status": {
+      "active": "Active",
+      "disabled": "Disabled"
+    },
+    "invite": {
+      "trigger": "Invite user",
+      "title": "Invite user",
+      "description": "We'll email them an invite with the roles you choose.",
+      "emailLabel": "Email",
+      "rolesLabel": "Roles",
+      "cancel": "Cancel",
+      "submit": "Send invite"
+    }
+  },
   "rbac": {
     "denied": {
       "title": "You don't have permission to view this",

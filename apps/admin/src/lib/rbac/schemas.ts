@@ -43,3 +43,5 @@ export const userStatusUpdateSchema = z.object({
   userId: objectId,
   status: z.enum(["active", "disabled"]),
 });
+
+export const userDeleteSchema = z.object({ userId: objectId });

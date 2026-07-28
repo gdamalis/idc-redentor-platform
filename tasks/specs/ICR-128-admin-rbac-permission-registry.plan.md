@@ -1381,11 +1381,26 @@ git commit -m "feat(ICR-128): add roles screen with permission matrix"
 - Create: `apps/admin/src/app/[locale]/(app)/users/{user-table.tsx,invite-dialog.tsx,actions.ts,actions.test.ts}`
 - Modify: `apps/admin/src/app/[locale]/(app)/users/page.tsx`
 - Modify: `apps/admin/src/service/user.service.ts` (add `updateUserRoles`, `updateUserStatus`, `deleteUser` — all session-aware. **`listUsers` already exists — Task 5 Step 0 added it.**)
+- Modify: `apps/admin/src/service/invite.service.ts` (add `createInvite` — see the plan correction below)
 
 **Interfaces:**
 
 - Consumes: everything from Tasks 1–4, plus `invite.service.ts`'s existing invite creation.
 - Produces: `inviteUserAction`, `updateUserRolesAction`, `updateUserStatusAction`, `deleteUserAction`.
+
+> **Plan correction (found during CP6).** This task's own "Interfaces" line above claims
+> `invite.service.ts` already ships invite creation — it does not. ICR-127 shipped invite
+> ACCEPTANCE only (`findPendingInvite` / `findAcceptedInviteByEmail` / `claimPendingInvite` /
+> `revertInviteClaim`); no function ever inserted an `Invite` document, and `sendInviteEmail`
+> (`service/auth-email.ts`) had zero callers anywhere in `apps/admin`. Fixed here, mirroring the
+> Task 5 Step 0 correction: `createInvite(input, session)` is added to `invite.service.ts` —
+> session-aware, refuses `reason: "conflict"` when a still-pending unexpired invite already exists
+> for the email (mirrors `createRole`'s duplicate-name handling), and computes a 7-day `expiresAt`
+> (no TTL value is specified anywhere in the ICR-127/ICR-128 spec or docs). `inviteUserAction` calls
+> it, then `sendInviteEmail` with `inviteUrl` built from `NEXT_PUBLIC_ADMIN_BASE_URL` +
+> `/${locale}/login` — exactly what that env var's `.env.example` comment already described as its
+> purpose, just never wired up. See `invite.service.ts`'s `createInvite` doc comment for the full
+> reasoning.
 
 - [ ] **Step 1: Add the dependency**
 

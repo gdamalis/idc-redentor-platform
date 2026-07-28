@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   inviteCreateSchema,
   roleUpdateSchema,
+  userDeleteSchema,
   userStatusUpdateSchema,
 } from "./schemas";
 
@@ -87,5 +88,15 @@ describe("userStatusUpdateSchema", () => {
       userStatusUpdateSchema.safeParse({ userId: OID, status: "deleted" })
         .success,
     ).toBe(false);
+  });
+});
+
+describe("userDeleteSchema", () => {
+  it("accepts a well-formed ObjectId", () => {
+    expect(userDeleteSchema.safeParse({ userId: OID }).success).toBe(true);
+  });
+
+  it("rejects a malformed userId", () => {
+    expect(userDeleteSchema.safeParse({ userId: "nope" }).success).toBe(false);
   });
 });
