@@ -149,16 +149,24 @@ a {
   padding-block: 0;
 }
 
-/* The min-height above already floors .icon-btn / .kebab / .pager button's
-   rendered HEIGHT at 44px (min-height wins over their smaller explicit height:
-   36/30/30px), but sets no WIDTH floor — those controls render 36x44, 30x44 and
-   30x44 respectively (Codex P2, PR #112). Fixed by the .btn-sm ::before halo
-   pattern below, applied axis-specific (inset only left/right) rather than
-   uniformly: expanding height too would push the pointer target past the
-   already-correct 44px and into neighbouring dense-table rows. */
+/* The min-height above already floors .icon-btn / .kebab's rendered HEIGHT at
+   44px (min-height wins over their smaller explicit height: 36/30px), but sets
+   no WIDTH floor — those controls render 36x44 and 30x44 respectively (Codex
+   P2, PR #112). Fixed by the ::before halo pattern below, applied axis-specific
+   (inset only left/right) rather than uniformly: expanding height too would
+   push the pointer target past the already-correct 44px and into neighbouring
+   dense-table rows.
+   .pager button used to get the same halo (`inset: 0 -7px`), but with the
+   pager's 6px gap that put adjacent buttons' 44px halos 8px into each other —
+   the later-painted sibling's halo wins the overlap, so a click near a pager
+   boundary activated the neighbouring page (PR #112 vigil finding, thread
+   3660378526). Floored to min-width: 44px directly instead, below, matching
+   the round-4 precedent already used for .btn/.seg button/.nav-item/.filter/
+   .search input/.th-sort/.checkbox: pitch becomes 44+6=50px, no overlap.
+   Measured (headless, getBoundingClientRect): adjacent .pager button hit
+   areas no longer intersect on any artifact that renders the pager. */
 .icon-btn,
-.kebab,
-.pager button {
+.kebab {
   position: relative;
 }
 .icon-btn::before {
@@ -167,11 +175,6 @@ a {
   inset: 0 -4px; /* 36 -> 44 wide; height already 44 */
 }
 .kebab::before {
-  content: "";
-  position: absolute;
-  inset: 0 -7px; /* 30 -> 44 wide; height already 44 */
-}
-.pager button::before {
   content: "";
   position: absolute;
   inset: 0 -7px; /* 30 -> 44 wide; height already 44 */
@@ -899,7 +902,8 @@ tbody tr.dense td {
   gap: 6px;
 }
 .pager button {
-  min-width: 30px;
+  min-width: 44px; /* was 30px + a ::before halo — floored directly, see the
+     comment above .icon-btn/.kebab (PR #112 vigil, thread 3660378526). */
   height: 30px;
   border-radius: 8px;
   border: 1px solid hsl(var(--border));

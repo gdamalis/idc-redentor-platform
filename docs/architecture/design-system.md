@@ -65,6 +65,10 @@ must add them:
 | `--status-occ-bg`    | `35 70% 45% / .14`                | `35 70% 50% / .16`                | "Ocasional".                                                                                                                   |
 | `--status-inactive`  | `--muted-foreground` on `--muted` | `--muted-foreground` on `--muted` | "Inactivo" reuses the existing muted pair in both themes — no new token needed.                                                |
 
+## 3b. Pager hit-target fix (PR #112 post-review vigil)
+
+**F5 — pager hit-halo overlap (thread 3660378526).** `.pager button` was `min-width: 30px` with a `::before` halo (`inset: 0 -7px`, `36px` wide) inside a `.pager` with `gap: 6px` — pitch was only `30 + 6 = 36px`, so adjacent halos overlapped by `44 - 36 = 8px` and a click near a pager boundary could activate the neighbouring page. This was a regression from round 1's own width fix (widening `.pager button` without re-checking the halo it already had), not a v1 defect. Fixed the same way round 4 fixed seven other controls: floored `.pager button` to `min-width: 44px` directly and deleted its `::before` halo, so the pitch becomes `44 + 6 = 50px` — no overlap. Measured headlessly (`getBoundingClientRect`) across every artifact rendering a pager: adjacent buttons now sit `913-957`, `963-1007`, … (6px gaps, no intersection). The two remaining halo users, `.icon-btn` (`inset: 0 -4px`) and `.kebab` (`inset: 0 -7px`), were measured the same way everywhere they appear (`people-list`, `person-detail`, `roles-matrix`, `users`, `calendar-month`, `Table`, `DropdownMenu`) — all render a clean 44x44 hit area with no overlap against neighbouring controls, so neither needed the same fix.
+
 ## 4. Target architecture (binding end-state)
 
 **The boundary: primitives are shared; feature/domain components stay app-local.**
