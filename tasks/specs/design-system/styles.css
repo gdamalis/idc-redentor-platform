@@ -50,6 +50,14 @@
   --status-active-bg: 160 60% 34% / 0.12;
   --status-occ-fg: 35 70% 33%;
   --status-occ-bg: 35 70% 45% / 0.14;
+  /* "Inactivo" used to reuse --muted-foreground on --muted directly (4.34:1 —
+     an AA near-miss, Codex PR #112 vigil, thread 3660378517). Same fix as the
+     two pairs above: derive a dedicated pair instead of the opaque muted
+     swatch, composited translucent over --card. fg darkened 46.9%->42%L
+     (mirrors the ~5pt darkening already applied to Activo/Ocasional above).
+     Verified (composited over --card, white): 4.34:1 -> 4.894:1. */
+  --status-inactive-fg: 215.4 16.3% 42%;
+  --status-inactive-bg: 215.4 16.3% 47% / 0.12;
 }
 
 .dark {
@@ -89,6 +97,12 @@
   --status-active-bg: 160 55% 50% / 0.15;
   --status-occ-fg: 35 75% 62%;
   --status-occ-bg: 35 70% 50% / 0.16;
+  /* Dark "Inactivo" pair — the opaque muted pair already cleared AA here
+     (5.70:1), so fg is left at --muted-foreground's own value; only the bg
+     moves to a translucent wash for consistency with Activo/Ocasional and
+     with the light pair above. Verified (composited over --card): 5.501:1. */
+  --status-inactive-fg: 215 20.2% 65.1%;
+  --status-inactive-bg: 215 20.2% 50% / 0.15;
 }
 
 /* ===== Base reset + typography ===== */
@@ -856,8 +870,8 @@ tbody tr.dense td {
   background: hsl(var(--status-occ-bg));
 }
 .b-inactive {
-  color: hsl(var(--muted-foreground));
-  background: hsl(var(--muted));
+  color: hsl(var(--status-inactive-fg));
+  background: hsl(var(--status-inactive-bg));
 }
 
 .tag {
