@@ -72,6 +72,27 @@ must add them:
 | `--status-inactive-fg` | `215.4 16.3% 42%`       | `215 20.2% 65.1%`     | "Inactivo". Replaces the old direct `--muted-foreground`-on-`--muted` reuse, which was an AA near-miss (4.34:1, PR #112 post-review vigil thread 3660378517) — see §3a. Light darkened 46.9%->42%L; dark unchanged (already passed). Verified (composited over `--card`): 4.894:1 / 5.501:1. |
 | `--status-inactive-bg` | `215.4 16.3% 47% / .12` | `215 20.2% 50% / .15` | "Inactivo" — translucent wash over `--card`, mirroring Activo/Ocasional's pattern instead of the old opaque `--muted` swatch.                                                                                                                                                                |
 
+## 3a. Contrast fixes to the production palette (PR #112 post-review vigil)
+
+Findings from the same post-PR vigil that produced §3's status tokens (`tasks/specs/ICR-18-vigil-handoff.md`). Unlike §3's `--status-*` tokens, the destructive-palette fix below **widens ICR-18's D1 design-only scope** by explicit maintainer decision (2026-07-27) — it edits `packages/ui/src/tokens.css`, the shared production palette both apps consume, not just the design-system spec files.
+
+**F1/F2 — destructive contrast (threads 3660378508, 3660378512).** `--destructive` was designed as a _background_ token (buttons, badge fills) and was unsafe both as a background at its old light lightness and as small foreground text at any lightness:
+
+| Pair                                                        | Before                         | After                                                                                       |
+| ----------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------- |
+| Light button: `--destructive-foreground` on `--destructive` | 3.59:1 (fail)                  | `--destructive` darkened `60.2%L`->`46%L` (same hue/sat) -> **4.987:1**                     |
+| Dark button: `--destructive-foreground` on `--destructive`  | 9.564:1 (already passes)       | unchanged, recorded only                                                                    |
+| Light text: `--destructive` on `--card`                     | 3.76:1 (fail)                  | new `--destructive-text: 0 84.2% 40%` -> **6.526:1** on `--card`, 6.240:1 on `--background` |
+| Dark text: `--destructive` on `--card`                      | 1.67-1.79:1 (fail, unreadable) | new `--destructive-text: 0 84.2% 65%` -> **5.081:1** on `--card`, 5.429:1 on `--background` |
+
+`--destructive-text` is a dedicated pair for small FOREGROUND text (field errors, destructive menu items) — `--destructive` itself stays background-only. Added to `packages/ui/src/tokens.css` (both `@theme inline` as `--color-destructive-text` and the `:root`/`.dark` blocks) and mirrored verbatim in `tasks/specs/design-system/styles.css`. App-level rewires (genuine small-foreground-text usages of the old `text-destructive` utility, found by grepping both apps for `destructive` as a Tailwind text class — background usages on `Button`/`toast` were left alone):
+
+- `apps/web/src/components/ui/form.tsx` — `FormLabel`'s error state and `FormMessage` (the actual field-error text).
+- `apps/admin/src/app/[locale]/(auth)/login/login-form.tsx` — the sign-in error banner.
+- `apps/admin/src/components/shell/sign-out-button.tsx` — the inline sign-out error.
+
+`packages/ui` versions via a Changesets patch (`.changeset/icr-18-destructive-contrast.md`), which cascades a patch to `@idcr/web` and `@idcr/admin` per `updateInternalDependencies: "patch"` (`docs/architecture/versioning.md`).
+
 ## 3b. Pager hit-target fix (PR #112 post-review vigil)
 
 **F5 — pager hit-halo overlap (thread 3660378526).** `.pager button` was `min-width: 30px` with a `::before` halo (`inset: 0 -7px`, `36px` wide) inside a `.pager` with `gap: 6px` — pitch was only `30 + 6 = 36px`, so adjacent halos overlapped by `44 - 36 = 8px` and a click near a pager boundary could activate the neighbouring page. This was a regression from round 1's own width fix (widening `.pager button` without re-checking the halo it already had), not a v1 defect. Fixed the same way round 4 fixed seven other controls: floored `.pager button` to `min-width: 44px` directly and deleted its `::before` halo, so the pitch becomes `44 + 6 = 50px` — no overlap. Measured headlessly (`getBoundingClientRect`) across every artifact rendering a pager: adjacent buttons now sit `913-957`, `963-1007`, … (6px gaps, no intersection). The two remaining halo users, `.icon-btn` (`inset: 0 -4px`) and `.kebab` (`inset: 0 -7px`), were measured the same way everywhere they appear (`people-list`, `person-detail`, `roles-matrix`, `users`, `calendar-month`, `Table`, `DropdownMenu`) — all render a clean 44x44 hit area with no overlap against neighbouring controls, so neither needed the same fix.

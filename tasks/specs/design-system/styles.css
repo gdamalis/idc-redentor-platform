@@ -20,8 +20,16 @@
   --muted-foreground: 215.4 16.3% 46.9%;
   --accent: 210 40% 96.1%;
   --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
+  /* Destructive — light L darkened 60.2%->46% so the button pair (this
+     --destructive as a background, with --destructive-foreground as text)
+     clears WCAG AA 4.5:1 (was 3.59:1, Codex PR #112 vigil, thread 3660378508).
+     --destructive-text is a dedicated pair for small FOREGROUND text (field
+     errors, destructive menu items) — --destructive itself is unsafe as text
+     (was 3.76:1 on --card, thread 3660378512). Mirrors packages/ui/src/tokens.css;
+     see docs/architecture/design-system.md §3a. */
+  --destructive: 0 84.2% 46%;
   --destructive-foreground: 210 40% 98%;
+  --destructive-text: 0 84.2% 40%;
   --border: 214.3 31.8% 91.4%;
   --input: 214.3 31.8% 91.4%;
   --ring: 210 100% 35%;
@@ -75,8 +83,13 @@
   --muted-foreground: 215 20.2% 65.1%;
   --accent: 217.2 32.6% 17.5%;
   --accent-foreground: 210 40% 98%;
+  /* Destructive — button pair unchanged (9.56:1, already clears AA; recorded,
+     not fixed). --destructive-text is a dedicated lighter tint safe as small
+     foreground text (was 1.67-1.79:1, effectively unreadable). See
+     docs/architecture/design-system.md §3a. */
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 210 40% 98%;
+  --destructive-text: 0 84.2% 65%;
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;
   --ring: 210 90% 60%;
@@ -953,7 +966,10 @@ tbody tr.dense td {
 }
 .field-error {
   font-size: 12px;
-  color: hsl(var(--destructive));
+  /* Small foreground text — --destructive-text, not --destructive (which is
+     a background token and unsafe as text at this size; PR #112 thread
+     3660378512). */
+  color: hsl(var(--destructive-text));
 }
 .field.has-error .input,
 .field.has-error .textarea,
@@ -1140,7 +1156,8 @@ tbody tr.dense td {
   background: hsl(var(--accent));
 }
 .menu-item.destructive {
-  color: hsl(var(--destructive));
+  /* Small foreground text — --destructive-text, see .field-error above. */
+  color: hsl(var(--destructive-text));
 }
 .menu-sep {
   height: 1px;

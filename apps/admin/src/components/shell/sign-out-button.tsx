@@ -87,7 +87,7 @@ export function SignOutButton() {
         {t("label")}
       </Button>
       {hasError && (
-        <span role="alert" className="text-sm text-destructive">
+        <span role="alert" className="text-sm text-destructive-text">
           {t("error")}
         </span>
       )}
