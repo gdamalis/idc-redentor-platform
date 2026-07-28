@@ -94,5 +94,12 @@
         "footer": "Equipo del Panel de Administración de IDC Redentor."
       }
     }
+  },
+  "rbac": {
+    "denied": {
+      "title": "No tenés permiso para ver esto",
+      "body": "Tu usuario no tiene el permiso necesario para acceder a esta sección. Si creés que deberías tenerlo, consultá con un administrador.",
+      "backToDashboard": "Volver al inicio"
+    }
   }
 }
