@@ -401,9 +401,14 @@ function discoverCssCompositions(cssBlocks) {
     const alphaTag = bgHit.alpha ?? "bare";
     const sig = `${fgHit.key}::${bgHit.key}::${alphaTag}`;
     if (!found.has(sig)) {
-      found.set(sig, { fgKey: fgHit.key, bgKey: bgHit.key, selectors: new Set() });
+      found.set(sig, {
+        fgKey: fgHit.key,
+        bgKey: bgHit.key,
+        selectors: new Set(),
+      });
     }
-    for (const sel of selectorList.split(",")) found.get(sig).selectors.add(sel.trim());
+    for (const sel of selectorList.split(","))
+      found.get(sig).selectors.add(sel.trim());
   }
   return found;
 }
@@ -695,7 +700,11 @@ async function measureArtifact(page, url, allSelectors) {
     try {
       combined = document.querySelectorAll(selectors.join(","));
     } catch {
-      return { error: "invalid combined selector", results: [], unlabelledControls: [] };
+      return {
+        error: "invalid combined selector",
+        results: [],
+        unlabelledControls: [],
+      };
     }
     for (const el of combined) {
       if (seen.has(el)) continue;
@@ -753,14 +762,20 @@ async function measureArtifact(page, url, allSelectors) {
         const label = document.querySelector(
           `label[for="${CSS.escape(input.id)}"]`,
         );
-        if (label) hit = findMeasuredAncestor(label) ?? findMeasuredAncestor(label.parentElement);
+        if (label)
+          hit =
+            findMeasuredAncestor(label) ??
+            findMeasuredAncestor(label.parentElement);
       }
       const desc = `input[type="${input.type}"]${input.id ? `#${input.id}` : ""}${input.name ? ` name="${input.name}"` : ""}`;
       if (!hit) {
         unlabelledControls.push(
           `${desc} has no containing or label[for]-associated measured element at all (no ancestor/label wrapper found)`,
         );
-      } else if (hit.area.right - hit.area.left < 44 - 0.5 || hit.area.bottom - hit.area.top < 44 - 0.5) {
+      } else if (
+        hit.area.right - hit.area.left < 44 - 0.5 ||
+        hit.area.bottom - hit.area.top < 44 - 0.5
+      ) {
         unlabelledControls.push(
           `${desc}'s labelling element <${hit.el.tagName.toLowerCase()} class="${hit.el.className}"> measures ${(hit.area.right - hit.area.left).toFixed(2)}x${(hit.area.bottom - hit.area.top).toFixed(2)}px, below 44px`,
         );
