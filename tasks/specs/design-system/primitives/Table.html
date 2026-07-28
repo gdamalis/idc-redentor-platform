@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="es-AR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Table — Sistema de Diseño IDC Redentor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body>
+    <div class="preview">
+      <!-- LIGHT -->
+
+      <section class="ds-section">
+        <h2>Table</h2>
+        <div class="ds-label">
+          Encabezado ordenable, fila con hover forzado y fila seleccionada
+        </div>
+        <div class="card">
+          <table>
+            <thead>
+              <tr>
+                <th>
+                  <span class="th-sort"
+                    >Nombre
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 9l6 6 6-6" /></svg
+                  ></span>
+                </th>
+                <th>Familia</th>
+                <th>Cumpleaños</th>
+                <th>País de origen</th>
+                <th>Áreas</th>
+                <th>Participación</th>
+                <th style="width: 48px"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="person">
+                    <div class="avatar">SP</div>
+                    <div>
+                      <div class="nm">Servando Peña</div>
+                      <div class="em">servando@idcredentor.com</div>
+                    </div>
+                  </div>
+                </td>
+                <td>Familia Peña</td>
+                <td>14 mar</td>
+                <td class="muted">Argentina</td>
+                <td><span class="tag">Cantos</span> <span class="tag">Lecturas</span></td>
+                <td><span class="badge dot b-active">Activo</span></td>
+                <td>
+                  <button class="kebab" aria-label="Más acciones">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                      <circle cx="12" cy="5" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle
+                        cx="12"
+                        cy="19"
+                        r="1.4"
+                      />
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+              <tr class="is-hover">
+                <td>
+                  <div class="person">
+                    <div class="avatar">NV</div>
+                    <div>
+                      <div class="nm">Naibelis Vargas</div>
+                      <div class="em">naibelis@idcredentor.com</div>
+                    </div>
+                  </div>
+                </td>
+                <td>Familia Vargas</td>
+                <td>2 jul</td>
+                <td class="muted">Venezuela</td>
+                <td><span class="tag">Lecturas</span></td>
+                <td><span class="badge dot b-active">Activo</span></td>
+                <td>
+                  <button class="kebab" aria-label="Más acciones">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                      <circle cx="12" cy="5" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle
+                        cx="12"
+                        cy="19"
+                        r="1.4"
+                      />
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+              <tr class="selected">
+                <td>
+                  <div class="person">
+                    <div class="avatar">FG</div>
+                    <div>
+                      <div class="nm">Fernando Gil</div>
+                      <div class="em">fernando@idcredentor.com</div>
+                    </div>
+                  </div>
+                </td>
+                <td>—</td>
+                <td>28 feb</td>
+                <td class="muted">Argentina</td>
+                <td><span class="tag">Recoger ofrenda</span></td>
+                <td><span class="badge dot b-inactive">Inactivo</span></td>
+                <td>
+                  <button class="kebab" aria-label="Más acciones">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                      <circle cx="12" cy="5" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle
+                        cx="12"
+                        cy="19"
+                        r="1.4"
+                      />
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="ds-section">
+        <div class="ds-label">Densidad — .dense</div>
+        <div class="card">
+          <table>
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Familia</th>
+                <th>Cumpleaños</th>
+                <th>País de origen</th>
+                <th>Áreas</th>
+                <th>Participación</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="dense">
+                <td>Servando Peña</td>
+                <td>Familia Peña</td>
+                <td>14 mar</td>
+                <td class="muted">Argentina</td>
+                <td><span class="tag">Cantos</span> <span class="tag">Lecturas</span></td>
+                <td><span class="badge dot b-active">Activo</span></td>
+              </tr>
+              <tr class="dense">
+                <td>Naibelis Vargas</td>
+                <td>Familia Vargas</td>
+                <td>2 jul</td>
+                <td class="muted">Venezuela</td>
+                <td><span class="tag">Lecturas</span></td>
+                <td><span class="badge dot b-active">Activo</span></td>
+              </tr>
+              <tr class="dense">
+                <td>Fernando Gil</td>
+                <td>—</td>
+                <td>28 feb</td>
+                <td class="muted">Argentina</td>
+                <td><span class="tag">Recoger ofrenda</span></td>
+                <td><span class="badge dot b-inactive">Inactivo</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="ds-section">
+        <div class="ds-label">Estado vacío</div>
+        <div class="card">
+          <div class="empty-state">
+            <p>Todavía no hay personas registradas.</p>
+            <button class="btn btn-md btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Nueva persona
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="preview dark">
+      <!-- DARK: the SAME content duplicated -->
+
+      <section class="ds-section">
+        <h2>Table</h2>
+        <div class="ds-label">
+          Encabezado ordenable, fila con hover forzado y fila seleccionada
+        </div>
+        <div class="card">
+          <table>
+            <thead>
+              <tr>
+                <th>
+                  <span class="th-sort"
+                    >Nombre
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 9l6 6 6-6" /></svg
+                  ></span>
+                </th>
+                <th>Familia</th>
+                <th>Cumpleaños</th>
+                <th>País de origen</th>
+                <th>Áreas</th>
+                <th>Participación</th>
+                <th style="width: 48px"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="person">
+                    <div class="avatar">SP</div>
+                    <div>
+                      <div class="nm">Servando Peña</div>
+                      <div class="em">servando@idcredentor.com</div>
+                    </div>
+                  </div>
+                </td>
+                <td>Familia Peña</td>
+                <td>14 mar</td>
+                <td class="muted">Argentina</td>
+                <td><span class="tag">Cantos</span> <span class="tag">Lecturas</span></td>
+                <td><span class="badge dot b-active">Activo</span></td>
+                <td>
+                  <button class="kebab" aria-label="Más acciones">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                      <circle cx="12" cy="5" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle
+                        cx="12"
+                        cy="19"
+                        r="1.4"
+                      />
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+              <tr class="is-hover">
+                <td>
+                  <div class="person">
+                    <div class="avatar">NV</div>
+                    <div>
+                      <div class="nm">Naibelis Vargas</div>
+                      <div class="em">naibelis@idcredentor.com</div>
+                    </div>
+                  </div>
+                </td>
+                <td>Familia Vargas</td>
+                <td>2 jul</td>
+                <td class="muted">Venezuela</td>
+                <td><span class="tag">Lecturas</span></td>
+                <td><span class="badge dot b-active">Activo</span></td>
+                <td>
+                  <button class="kebab" aria-label="Más acciones">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                      <circle cx="12" cy="5" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle
+                        cx="12"
+                        cy="19"
+                        r="1.4"
+                      />
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+              <tr class="selected">
+                <td>
+                  <div class="person">
+                    <div class="avatar">FG</div>
+                    <div>
+                      <div class="nm">Fernando Gil</div>
+                      <div class="em">fernando@idcredentor.com</div>
+                    </div>
+                  </div>
+                </td>
+                <td>—</td>
+                <td>28 feb</td>
+                <td class="muted">Argentina</td>
+                <td><span class="tag">Recoger ofrenda</span></td>
+                <td><span class="badge dot b-inactive">Inactivo</span></td>
+                <td>
+                  <button class="kebab" aria-label="Más acciones">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                      <circle cx="12" cy="5" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle
+                        cx="12"
+                        cy="19"
+                        r="1.4"
+                      />
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="ds-section">
+        <div class="ds-label">Densidad — .dense</div>
+        <div class="card">
+          <table>
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Familia</th>
+                <th>Cumpleaños</th>
+                <th>País de origen</th>
+                <th>Áreas</th>
+                <th>Participación</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="dense">
+                <td>Servando Peña</td>
+                <td>Familia Peña</td>
+                <td>14 mar</td>
+                <td class="muted">Argentina</td>
+                <td><span class="tag">Cantos</span> <span class="tag">Lecturas</span></td>
+                <td><span class="badge dot b-active">Activo</span></td>
+              </tr>
+              <tr class="dense">
+                <td>Naibelis Vargas</td>
+                <td>Familia Vargas</td>
+                <td>2 jul</td>
+                <td class="muted">Venezuela</td>
+                <td><span class="tag">Lecturas</span></td>
+                <td><span class="badge dot b-active">Activo</span></td>
+              </tr>
+              <tr class="dense">
+                <td>Fernando Gil</td>
+                <td>—</td>
+                <td>28 feb</td>
+                <td class="muted">Argentina</td>
+                <td><span class="tag">Recoger ofrenda</span></td>
+                <td><span class="badge dot b-inactive">Inactivo</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="ds-section">
+        <div class="ds-label">Estado vacío</div>
+        <div class="card">
+          <div class="empty-state">
+            <p>Todavía no hay personas registradas.</p>
+            <button class="btn btn-md btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Nueva persona
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

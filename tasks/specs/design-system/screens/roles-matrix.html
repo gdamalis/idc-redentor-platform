@@ -1,0 +1,900 @@
+<!doctype html>
+<html lang="es-AR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Roles y permisos — Sistema de Diseño IDC Redentor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body>
+    <div class="preview flush">
+      <!-- LIGHT -->
+
+      <div class="app">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="mark">R</div>
+            <div>
+              <div class="brand-name">IDC Redentor</div>
+              <div class="brand-sub">Panel Ministerial</div>
+            </div>
+          </div>
+
+          <nav class="nav">
+            <div class="nav-group">
+              <div class="nav-label">Principal</div>
+              <div class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                  <path d="M3 10.5 12 3l9 7.5" />
+                  <path d="M5 9.5V21h14V9.5" />
+                </svg>
+                <span class="nav-item-label">Inicio</span>
+              </div>
+              <div class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                  <circle cx="9" cy="8" r="3.2" />
+                  <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+                  <path d="M16 4.5a3 3 0 0 1 0 6" />
+                  <path d="M21 20c0-2.5-1.5-4.6-3.6-5.5" />
+                </svg>
+                <span class="nav-item-label">Personas</span>
+              </div>
+              <div class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                  <circle cx="12" cy="7" r="3" />
+                  <path d="M5.5 21c0-3.6 2.9-6.5 6.5-6.5S18.5 17.4 18.5 21" />
+                  <circle cx="5" cy="9" r="1.8" />
+                  <circle cx="19" cy="9" r="1.8" />
+                </svg>
+                <span class="nav-item-label">Familias</span>
+              </div>
+              <div class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                  <rect x="3" y="5" width="18" height="16" rx="2" />
+                  <path d="M8 3v4M16 3v4M3 10h18" />
+                </svg>
+                <span class="nav-item-label">Actividades</span>
+              </div>
+              <div class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                  <rect x="3" y="5" width="18" height="16" rx="2" />
+                  <path d="M3 10h18M8 3v4M16 3v4" />
+                  <path d="M7 14h2M11 14h2M15 14h2M7 17h2M11 17h2" />
+                </svg>
+                <span class="nav-item-label">Calendario</span>
+              </div>
+            </div>
+
+            <div class="nav-group">
+              <div class="nav-label">Administración</div>
+              <div class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                  <circle cx="12" cy="8" r="3.2" />
+                  <path d="M5 20c0-3.3 3.1-6 7-6s7 2.7 7 6" />
+                </svg>
+                <span class="nav-item-label">Usuarios</span>
+              </div>
+              <div class="nav-item active">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                  <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" />
+                  <path d="M9.5 12l1.8 1.8L15 10" />
+                </svg>
+                <span class="nav-item-label">Roles y permisos</span>
+              </div>
+              <div class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                  <circle cx="12" cy="12" r="3" />
+                  <path
+                    d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"
+                  />
+                </svg>
+                <span class="nav-item-label">Configuración</span>
+              </div>
+            </div>
+
+            <div class="nav-group">
+              <div class="nav-label">Próximamente</div>
+              <div class="nav-item disabled">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                  <path d="M12 2v20M7 6h7a3 3 0 0 1 0 6H8a3 3 0 0 0 0 6h8" />
+                </svg>
+                <span class="nav-item-label">Finanzas</span>
+                <span class="soon">Pronto</span>
+              </div>
+              <div class="nav-item disabled">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                  <path d="M9 18V5l11-2v13" />
+                  <circle cx="6" cy="18" r="3" />
+                  <circle cx="18" cy="16" r="3" />
+                </svg>
+                <span class="nav-item-label">Cultos</span>
+                <span class="soon">Pronto</span>
+              </div>
+            </div>
+          </nav>
+
+          <div class="side-foot">
+            <div class="avatar">GD</div>
+            <div class="who">
+              <b>Gabriel Damalis</b><span>Administrador</span>
+            </div>
+          </div>
+        </aside>
+
+        <div class="main">
+          <header class="topbar">
+            <div class="crumb">Panel · <b>Roles y permisos</b></div>
+            <div class="spacer"></div>
+            <div class="seg" title="Idioma / Language">
+              <button class="on">ES</button>
+              <button>EN</button>
+            </div>
+            <button
+              class="icon-btn"
+              title="Tema claro / oscuro"
+              aria-label="Cambiar tema"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+              </svg>
+            </button>
+            <div class="avatar" title="Gabriel Damalis">GD</div>
+          </header>
+
+          <main class="content">
+            <div class="page-head">
+              <div>
+                <h1>Roles y permisos</h1>
+              </div>
+              <button class="btn btn-md btn-primary">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Nuevo rol
+              </button>
+            </div>
+
+            <div class="card">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Permiso</th>
+                    <th style="text-align: center">Administrador</th>
+                    <th style="text-align: center">Líder</th>
+                    <th style="text-align: center">Colaborador</th>
+                    <th style="text-align: center">Solo lectura</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="group-row">
+                    <td colspan="5">
+                      <span class="ds-label" style="margin-bottom: 0"
+                        >Personas</span
+                      >
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Ver personas</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Crear y editar personas</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      Ver datos sensibles (PII)
+                      <span class="badge b-neutral" style="margin-left: 8px"
+                        >Sensible</span
+                      >
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Eliminar personas</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                  </tr>
+
+                  <tr class="group-row">
+                    <td colspan="5">
+                      <span class="ds-label" style="margin-bottom: 0"
+                        >Familias</span
+                      >
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Ver familias</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Editar familias</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                  </tr>
+
+                  <tr class="group-row">
+                    <td colspan="5">
+                      <span class="ds-label" style="margin-bottom: 0"
+                        >Actividades y calendario</span
+                      >
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Ver calendario</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Crear actividades</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Imprimir calendario</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                  </tr>
+
+                  <tr class="group-row">
+                    <td colspan="5">
+                      <span class="ds-label" style="margin-bottom: 0"
+                        >Administración</span
+                      >
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Gestionar usuarios</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Gestionar roles</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Cambiar configuración</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <div class="preview dark flush">
+      <!-- DARK: the SAME content duplicated -->
+
+      <div class="app">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="mark">R</div>
+            <div>
+              <div class="brand-name">IDC Redentor</div>
+              <div class="brand-sub">Panel Ministerial</div>
+            </div>
+          </div>
+
+          <nav class="nav">
+            <div class="nav-group">
+              <div class="nav-label">Principal</div>
+              <div class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                  <path d="M3 10.5 12 3l9 7.5" />
+                  <path d="M5 9.5V21h14V9.5" />
+                </svg>
+                <span class="nav-item-label">Inicio</span>
+              </div>
+              <div class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                  <circle cx="9" cy="8" r="3.2" />
+                  <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+                  <path d="M16 4.5a3 3 0 0 1 0 6" />
+                  <path d="M21 20c0-2.5-1.5-4.6-3.6-5.5" />
+                </svg>
+                <span class="nav-item-label">Personas</span>
+              </div>
+              <div class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                  <circle cx="12" cy="7" r="3" />
+                  <path d="M5.5 21c0-3.6 2.9-6.5 6.5-6.5S18.5 17.4 18.5 21" />
+                  <circle cx="5" cy="9" r="1.8" />
+                  <circle cx="19" cy="9" r="1.8" />
+                </svg>
+                <span class="nav-item-label">Familias</span>
+              </div>
+              <div class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                  <rect x="3" y="5" width="18" height="16" rx="2" />
+                  <path d="M8 3v4M16 3v4M3 10h18" />
+                </svg>
+                <span class="nav-item-label">Actividades</span>
+              </div>
+              <div class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                  <rect x="3" y="5" width="18" height="16" rx="2" />
+                  <path d="M3 10h18M8 3v4M16 3v4" />
+                  <path d="M7 14h2M11 14h2M15 14h2M7 17h2M11 17h2" />
+                </svg>
+                <span class="nav-item-label">Calendario</span>
+              </div>
+            </div>
+
+            <div class="nav-group">
+              <div class="nav-label">Administración</div>
+              <div class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                  <circle cx="12" cy="8" r="3.2" />
+                  <path d="M5 20c0-3.3 3.1-6 7-6s7 2.7 7 6" />
+                </svg>
+                <span class="nav-item-label">Usuarios</span>
+              </div>
+              <div class="nav-item active">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                  <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" />
+                  <path d="M9.5 12l1.8 1.8L15 10" />
+                </svg>
+                <span class="nav-item-label">Roles y permisos</span>
+              </div>
+              <div class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                  <circle cx="12" cy="12" r="3" />
+                  <path
+                    d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"
+                  />
+                </svg>
+                <span class="nav-item-label">Configuración</span>
+              </div>
+            </div>
+
+            <div class="nav-group">
+              <div class="nav-label">Próximamente</div>
+              <div class="nav-item disabled">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                  <path d="M12 2v20M7 6h7a3 3 0 0 1 0 6H8a3 3 0 0 0 0 6h8" />
+                </svg>
+                <span class="nav-item-label">Finanzas</span>
+                <span class="soon">Pronto</span>
+              </div>
+              <div class="nav-item disabled">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                  <path d="M9 18V5l11-2v13" />
+                  <circle cx="6" cy="18" r="3" />
+                  <circle cx="18" cy="16" r="3" />
+                </svg>
+                <span class="nav-item-label">Cultos</span>
+                <span class="soon">Pronto</span>
+              </div>
+            </div>
+          </nav>
+
+          <div class="side-foot">
+            <div class="avatar">GD</div>
+            <div class="who">
+              <b>Gabriel Damalis</b><span>Administrador</span>
+            </div>
+          </div>
+        </aside>
+
+        <div class="main">
+          <header class="topbar">
+            <div class="crumb">Panel · <b>Roles y permisos</b></div>
+            <div class="spacer"></div>
+            <div class="seg" title="Idioma / Language">
+              <button class="on">ES</button>
+              <button>EN</button>
+            </div>
+            <button
+              class="icon-btn"
+              title="Tema claro / oscuro"
+              aria-label="Cambiar tema"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+              </svg>
+            </button>
+            <div class="avatar" title="Gabriel Damalis">GD</div>
+          </header>
+
+          <main class="content">
+            <div class="page-head">
+              <div>
+                <h1>Roles y permisos</h1>
+              </div>
+              <button class="btn btn-md btn-primary">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Nuevo rol
+              </button>
+            </div>
+
+            <div class="card">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Permiso</th>
+                    <th style="text-align: center">Administrador</th>
+                    <th style="text-align: center">Líder</th>
+                    <th style="text-align: center">Colaborador</th>
+                    <th style="text-align: center">Solo lectura</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="group-row">
+                    <td colspan="5">
+                      <span class="ds-label" style="margin-bottom: 0"
+                        >Personas</span
+                      >
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Ver personas</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Crear y editar personas</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      Ver datos sensibles (PII)
+                      <span class="badge b-neutral" style="margin-left: 8px"
+                        >Sensible</span
+                      >
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Eliminar personas</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                  </tr>
+
+                  <tr class="group-row">
+                    <td colspan="5">
+                      <span class="ds-label" style="margin-bottom: 0"
+                        >Familias</span
+                      >
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Ver familias</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Editar familias</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                  </tr>
+
+                  <tr class="group-row">
+                    <td colspan="5">
+                      <span class="ds-label" style="margin-bottom: 0"
+                        >Actividades y calendario</span
+                      >
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Ver calendario</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Crear actividades</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Imprimir calendario</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                  </tr>
+
+                  <tr class="group-row">
+                    <td colspan="5">
+                      <span class="ds-label" style="margin-bottom: 0"
+                        >Administración</span
+                      >
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Gestionar usuarios</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Gestionar roles</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Cambiar configuración</td>
+                    <td style="text-align: center">
+                      <label class="checkbox"
+                        ><input type="checkbox" checked
+                      /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                    <td style="text-align: center">
+                      <label class="checkbox"><input type="checkbox" /></label>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
