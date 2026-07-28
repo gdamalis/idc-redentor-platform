@@ -2,6 +2,11 @@
 
 **Written 2026-07-27 at the end of a 5-round post-PR vigil.** Read this cold before touching anything.
 
+> **2026-07-28 addendum (orchestrator):** the scope question below was resolved by the maintainer on
+> 2026-07-27 — F1/F2 were brought **into** scope (D1/R9 amended in the spec §0/§3; fixed at source in
+> `packages/ui/src/tokens.css`, commit aa421c8) and F3 was fixed in-PR (7993994). The OUT-OF-SCOPE
+> labels below describe the pre-decision state and are kept for the record.
+
 |                           |                                                                                                              |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | **PR**                    | [#112](https://github.com/gdamalis/idc-redentor-platform/pull/112) — ready for review (not draft)            |
