@@ -168,7 +168,9 @@ function contrastRatio(hslA, hslB) {
 function compositeOver(overStr, baseStr) {
   const over = parseHslToken(overStr);
   const base = parseHslToken(baseStr);
-  const rgb = over.rgb.map((c, i) => c * over.alpha + base.rgb[i] * (1 - over.alpha));
+  const rgb = over.rgb.map(
+    (c, i) => c * over.alpha + base.rgb[i] * (1 - over.alpha),
+  );
   return relLuminance(rgb);
 }
 function contrastOverBase(fgStr, bgStr, baseStr) {
@@ -179,7 +181,9 @@ function contrastOverBase(fgStr, bgStr, baseStr) {
 }
 
 function extractThemeTokens(blocks, selector) {
-  const block = blocks.find(({ selectorList }) => selectorList.trim() === selector);
+  const block = blocks.find(
+    ({ selectorList }) => selectorList.trim() === selector,
+  );
   if (!block) return {};
   const tokens = {};
   const re = /--([\w-]+)\s*:\s*([^;]+);/g;
@@ -194,7 +198,13 @@ const CONTRAST_PAIRS = [
   ["card-foreground on card", "card-foreground", "card", 4.5, null],
   ["popover-foreground on popover", "popover-foreground", "popover", 4.5, null],
   ["primary-foreground on primary", "primary-foreground", "primary", 4.5, null],
-  ["secondary-foreground on secondary", "secondary-foreground", "secondary", 4.5, null],
+  [
+    "secondary-foreground on secondary",
+    "secondary-foreground",
+    "secondary",
+    4.5,
+    null,
+  ],
   // 3:1 (not 4.5:1): this raw opaque pair's only remaining live usage is
   // .avatar-photo's SVG icon (fill/stroke: currentColor) — graphical, not
   // text (WCAG 1.4.11). Its two former TEXT usages (.b-inactive, then
@@ -202,36 +212,110 @@ const CONTRAST_PAIRS = [
   // --status-inactive-fg/-bg pair below instead of raising this pair itself,
   // which would have rippled into every other opaque-muted-background
   // consumer. See docs/architecture/design-system.md §3a.
-  ["muted-foreground on muted (graphical only — see comment)", "muted-foreground", "muted", 3.0, null],
+  [
+    "muted-foreground on muted (graphical only — see comment)",
+    "muted-foreground",
+    "muted",
+    3.0,
+    null,
+  ],
   ["accent-foreground on accent", "accent-foreground", "accent", 4.5, null],
-  ["destructive-foreground on destructive", "destructive-foreground", "destructive", 4.5, null],
+  [
+    "destructive-foreground on destructive",
+    "destructive-foreground",
+    "destructive",
+    4.5,
+    null,
+  ],
   ["sidebar-foreground on sidebar", "sidebar-foreground", "sidebar", 4.5, null],
-  ["sidebar-primary-foreground on sidebar-primary", "sidebar-primary-foreground", "sidebar-primary", 4.5, null],
-  ["sidebar-accent-foreground on sidebar-accent", "sidebar-accent-foreground", "sidebar-accent", 4.5, null],
+  [
+    "sidebar-primary-foreground on sidebar-primary",
+    "sidebar-primary-foreground",
+    "sidebar-primary",
+    4.5,
+    null,
+  ],
+  [
+    "sidebar-accent-foreground on sidebar-accent",
+    "sidebar-accent-foreground",
+    "sidebar-accent",
+    4.5,
+    null,
+  ],
   ["destructive-text on card", "destructive-text", "card", 4.5, null],
-  ["destructive-text on background", "destructive-text", "background", 4.5, null],
+  [
+    "destructive-text on background",
+    "destructive-text",
+    "background",
+    4.5,
+    null,
+  ],
   ["gold on card (graphical, .star fill)", "gold", "card", 3.0, null],
   ["gold on background (graphical)", "gold", "background", 3.0, null],
-  ["status-active-fg on status-active-bg (over card)", "status-active-fg", "status-active-bg", 4.5, "card"],
-  ["status-occ-fg on status-occ-bg (over card)", "status-occ-fg", "status-occ-bg", 4.5, "card"],
-  ["status-inactive-fg on status-inactive-bg (over card)", "status-inactive-fg", "status-inactive-bg", 4.5, "card"],
+  [
+    "status-active-fg on status-active-bg (over card)",
+    "status-active-fg",
+    "status-active-bg",
+    4.5,
+    "card",
+  ],
+  [
+    "status-occ-fg on status-occ-bg (over card)",
+    "status-occ-fg",
+    "status-occ-bg",
+    4.5,
+    "card",
+  ],
+  [
+    "status-inactive-fg on status-inactive-bg (over card)",
+    "status-inactive-fg",
+    "status-inactive-bg",
+    4.5,
+    "card",
+  ],
   // These two override the bg token's OWN alpha with an ad-hoc one applied at
   // the usage site (thead th / .cal-dow div use `hsl(var(--muted) / 0.5)`,
   // not --muted's own opacity) — the 6th field is that override.
-  ["thead th: muted-foreground on (muted/.5 over card)", "muted-foreground", "muted", 4.5, "card", 0.5],
-  ["status-inactive-fg on (muted/.5 over background) — .cal-dow div", "status-inactive-fg", "muted", 4.5, "background", 0.5],
+  [
+    "thead th: muted-foreground on (muted/.5 over card)",
+    "muted-foreground",
+    "muted",
+    4.5,
+    "card",
+    0.5,
+  ],
+  [
+    "status-inactive-fg on (muted/.5 over background) — .cal-dow div",
+    "status-inactive-fg",
+    "muted",
+    4.5,
+    "background",
+    0.5,
+  ],
 ];
 
 function checkTokenContrast(cssBlocks) {
   const light = extractThemeTokens(cssBlocks, ":root");
   const dark = extractThemeTokens(cssBlocks, ".dark");
   const problems = [];
-  for (const [theme, tokens] of [["light", light], ["dark", dark]]) {
-    for (const [label, fgKey, bgKey, threshold, base, bgAlphaOverride] of CONTRAST_PAIRS) {
+  for (const [theme, tokens] of [
+    ["light", light],
+    ["dark", dark],
+  ]) {
+    for (const [
+      label,
+      fgKey,
+      bgKey,
+      threshold,
+      base,
+      bgAlphaOverride,
+    ] of CONTRAST_PAIRS) {
       const fg = tokens[fgKey];
       let bg = tokens[bgKey];
       if (!fg || !bg) {
-        problems.push(`${theme}: ${label} — token(s) missing (--${fgKey}/--${bgKey})`);
+        problems.push(
+          `${theme}: ${label} — token(s) missing (--${fgKey}/--${bgKey})`,
+        );
         continue;
       }
       if (bgAlphaOverride !== undefined) {
@@ -359,7 +443,12 @@ async function measureArtifact(page, url, allSelectors) {
   await page.goto(url, { waitUntil: "networkidle" });
   return page.evaluate((selectors) => {
     function toLTRB(rect) {
-      return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+      return {
+        left: rect.left,
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+      };
     }
     // inset shorthand is always resolved to 4 values (top right bottom left);
     // a NEGATIVE value pushes that edge OUTWARD (expands the box).
@@ -394,11 +483,13 @@ async function measureArtifact(page, url, allSelectors) {
       const rect = el.getBoundingClientRect();
       if (rect.width === 0 && rect.height === 0) continue; // not rendered (e.g. hidden variant)
       const before = getComputedStyle(el, "::before");
-      const halo = before.content !== "none" ? haloRect(toLTRB(rect), before.inset) : null;
+      const halo =
+        before.content !== "none" ? haloRect(toLTRB(rect), before.inset) : null;
       const area = halo ?? toLTRB(rect);
       results.push({
         tag: el.tagName.toLowerCase(),
-        cls: el.className && el.className.toString ? el.className.toString() : "",
+        cls:
+          el.className && el.className.toString ? el.className.toString() : "",
         left: area.left,
         top: area.top,
         right: area.right,
@@ -432,7 +523,9 @@ async function checkRenderedHitTargets(files, cssBlocks, cssSrc) {
       process.cwd(),
       "node_modules/.pnpm/playwright@1.61.0/node_modules/playwright/index.mjs",
     );
-    ({ chromium } = await import(`file://${existsSync(entry) ? entry : "playwright"}`));
+    ({ chromium } = await import(
+      `file://${existsSync(entry) ? entry : "playwright"}`
+    ));
   } catch {
     try {
       ({ chromium } = await import("playwright"));
@@ -462,8 +555,9 @@ async function checkRenderedHitTargets(files, cssBlocks, cssSrc) {
       const body = readFileSync(abs);
       const ext = extname(abs);
       const mime =
-        { ".html": "text/html", ".css": "text/css", ".js": "text/javascript" }[ext] ??
-        "application/octet-stream";
+        { ".html": "text/html", ".css": "text/css", ".js": "text/javascript" }[
+          ext
+        ] ?? "application/octet-stream";
       res.writeHead(200, { "Content-Type": mime });
       res.end(body);
     } catch {
@@ -488,7 +582,9 @@ async function checkRenderedHitTargets(files, cssBlocks, cssSrc) {
 
   const problems = [];
   try {
-    const page = await browser.newPage({ viewport: { width: 1400, height: 1200 } });
+    const page = await browser.newPage({
+      viewport: { width: 1400, height: 1200 },
+    });
     for (const abs of files) {
       const rel = relative(ROOT, abs);
       const url = `http://localhost:${port}/${rel}`;
@@ -549,15 +645,16 @@ const staticFailures = [
   ...files.flatMap(checkHtml),
 ];
 
-const { problems: renderedFailures, skipped, reason } =
-  await checkRenderedHitTargets(files, cssBlocks, cssSrc);
+const {
+  problems: renderedFailures,
+  skipped,
+  reason,
+} = await checkRenderedHitTargets(files, cssBlocks, cssSrc);
 
 const failures = [...staticFailures, ...renderedFailures];
 console.log(`checked styles.css + ${files.length} artifact(s)`);
 if (skipped) {
-  console.warn(
-    `  !!! rendered hit-target/overlap check SKIPPED: ${reason}`,
-  );
+  console.warn(`  !!! rendered hit-target/overlap check SKIPPED: ${reason}`);
   console.warn(
     "  !!! this gate cannot verify >=44px hit targets or halo overlap without it",
   );
