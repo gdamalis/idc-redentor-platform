@@ -20,6 +20,15 @@ const redirect = vi.fn(() => {
 });
 vi.mock("@src/i18n/routing", () => ({ redirect }));
 
+// `requireActionPermission` reads the proxy-injected pathname header to
+// preserve the return path on an `unauthenticated` redirect (P2 fix); no
+// header is set here, so it falls back to plain `/login` below — the
+// header-present case is covered by `require-action-permission.test.ts`.
+const headersGet = vi.fn(() => null);
+vi.mock("next/headers", () => ({
+  headers: () => Promise.resolve({ get: headersGet }),
+}));
+
 const abortTransaction = vi.fn();
 const session = { abortTransaction };
 const withAdminTransaction = vi.fn((fn: (s: typeof session) => Promise<unknown>) =>

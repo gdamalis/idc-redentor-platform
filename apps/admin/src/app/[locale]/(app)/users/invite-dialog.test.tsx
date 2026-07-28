@@ -81,3 +81,30 @@ describe("InviteDialog — ICR-128 P1 outcome messaging", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });
+
+/**
+ * ICR-128 P2 fix regression coverage: `useActionState`'s result survives
+ * closing the dialog, so reopening it used to immediately show the
+ * *previous* attempt's outcome. The delivery-failure warning is the
+ * dangerous case — an admin opening the dialog to invite someone new would
+ * see a warning that actually refers to a different person.
+ */
+describe("InviteDialog — ICR-128 P2 fix: no stale outcome on reopen", () => {
+  it("shows no success text and no warning when the dialog is closed and reopened", async () => {
+    inviteUserAction.mockResolvedValueOnce({
+      ok: true,
+      data: { emailSent: false, refreshed: false },
+    });
+
+    const user = await openAndSubmit();
+    await screen.findByText("users.invite.deliveryFailed");
+
+    await user.click(screen.getByRole("button", { name: "users.invite.cancel" }));
+    await user.click(screen.getByRole("button", { name: "users.invite.trigger" }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.queryByText("users.invite.deliveryFailed")).not.toBeInTheDocument();
+    expect(screen.queryByText("users.invite.sentSuccess")).not.toBeInTheDocument();
+    expect(screen.queryByText("users.invite.resentSuccess")).not.toBeInTheDocument();
+  });
+});

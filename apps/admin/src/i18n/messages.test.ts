@@ -21,6 +21,16 @@ describe("admin locale message files", () => {
   });
 });
 
+describe("common (ICR-128 P2 fix — dialog.tsx's required, localized closeLabel)", () => {
+  it.each([
+    ["es-AR", esAR],
+    ["en-US", enUS],
+  ])("%s carries a non-empty common.close", (_locale, messages) => {
+    expect(Object.keys(messages.common).sort()).toEqual(["close"]);
+    expect(messages.common.close.length).toBeGreaterThan(0);
+  });
+});
+
 describe("auth.resetPassword + auth.email.{invite,reset} (ICR-127)", () => {
   const resetPasswordKeys = [
     "title",

@@ -1,5 +1,10 @@
+import { headers } from "next/headers";
 import { getLocale } from "next-intl/server";
 import { redirect } from "@src/i18n/routing";
+import {
+  REQUEST_PATHNAME_HEADER,
+  sanitizeRequestPathname,
+} from "@src/lib/http/request-pathname";
 import { requirePermission } from "./require-permission";
 import type { Authorized } from "./require-permission";
 import type { PermissionKey } from "./permissions";
@@ -37,6 +42,14 @@ export interface ActionRefused {
  * stale permission set, and it already has on-page copy
  * (`rbac.errors.forbidden`).
  *
+ * The `unauthenticated` redirect preserves the return path (spec edge case
+ * #14, "the client redirects to `/login` preserving the return path") by
+ * reusing `(app)/layout.tsx`'s own mechanism: the proxy-injected
+ * `REQUEST_PATHNAME_HEADER` is sanitized into a `callbackUrl` query param, so
+ * a session that expires mid-edit sends the admin back to the interrupted
+ * page after re-login rather than to the dashboard. Falls back to a plain
+ * `/login` when the header is absent (P2 fix).
+ *
  * A `"use server"` action has no route `params`, so — unlike a page —
  * `getLocale()` (`next-intl/server`) is how it learns the current locale
  * before redirecting (same convention as `app/not-found.tsx`).
@@ -61,8 +74,17 @@ export async function requireActionPermission(
   if (result.reason === "forbidden") return { ok: false, reason: "forbidden" };
 
   const locale = await getLocale();
-  return redirect({
-    href: result.reason === "unauthenticated" ? "/login" : "/no-access",
-    locale,
-  });
+
+  if (result.reason === "unauthenticated") {
+    const requestHeaders = await headers();
+    const callbackUrl = sanitizeRequestPathname(
+      requestHeaders.get(REQUEST_PATHNAME_HEADER),
+    );
+    return redirect({
+      href: callbackUrl ? { pathname: "/login", query: { callbackUrl } } : "/login",
+      locale,
+    });
+  }
+
+  return redirect({ href: "/no-access", locale });
 }

@@ -6,6 +6,11 @@ vi.mock("./require-permission", () => ({ requirePermission }));
 const getLocale = vi.fn();
 vi.mock("next-intl/server", () => ({ getLocale }));
 
+const headersGet = vi.fn();
+vi.mock("next/headers", () => ({
+  headers: () => Promise.resolve({ get: headersGet }),
+}));
+
 // Real `redirect()` throws a Next.js-internal `NEXT_REDIRECT` digest error to
 // halt rendering — that's what makes it safe for `requireActionPermission` to
 // call it with no `return` afterward (the call site's guide, `receiving-code
@@ -53,9 +58,27 @@ describe("requireActionPermission", () => {
     expect(getLocale).not.toHaveBeenCalled();
   });
 
-  it("redirects to /login on an unauthenticated refusal", async () => {
+  // P2 fix: session expires mid-edit must not strand the admin on the
+  // dashboard after re-login — the sanitized proxy-injected pathname header
+  // is carried through as `callbackUrl`, exactly like `(app)/layout.tsx`.
+  it("redirects to /login with a sanitized callbackUrl when the pathname header is present", async () => {
     requirePermission.mockResolvedValueOnce({ ok: false, reason: "unauthenticated" });
     getLocale.mockResolvedValueOnce("es-AR");
+    headersGet.mockReturnValueOnce("/roles/abc123/edit");
+    const { requireActionPermission } = await loadModule();
+
+    await expect(requireActionPermission("roles:manage")).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(redirect).toHaveBeenCalledWith({
+      href: { pathname: "/login", query: { callbackUrl: "/roles/abc123/edit" } },
+      locale: "es-AR",
+    });
+  });
+
+  it("redirects to plain /login when the pathname header is absent", async () => {
+    requirePermission.mockResolvedValueOnce({ ok: false, reason: "unauthenticated" });
+    getLocale.mockResolvedValueOnce("es-AR");
+    headersGet.mockReturnValueOnce(null);
     const { requireActionPermission } = await loadModule();
 
     await expect(requireActionPermission("roles:manage")).rejects.toThrow("NEXT_REDIRECT");

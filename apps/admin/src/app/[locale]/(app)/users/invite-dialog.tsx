@@ -48,9 +48,45 @@ interface InviteDialogProps {
  * delivery-failure warning is re-entering the email and clicking Submit
  * again; `createInvite` refreshes rather than conflicting either way, so a
  * retry can never hit a stale-conflict dead end (see invite.service.ts).
+ *
+ * **ICR-128 P2 fix.** `useActionState`'s result outlives the dialog closing —
+ * React has no imperative way to reset it — so reopening the dialog to
+ * invite a *different* person used to immediately show the *previous*
+ * attempt's outcome. The delivery-failure warning is the dangerous case: an
+ * admin opens the dialog fresh and sees "we couldn't send the email", which
+ * actually refers to someone else entirely. Fixed by giving the form
+ * subtree a `key` that changes every time the dialog opens (`sessionId`),
+ * which remounts it — including a brand-new `useActionState` with no prior
+ * result — instead of trying to reset state React doesn't let you reset.
  */
 export function InviteDialog({ roles }: InviteDialogProps) {
   const [open, setOpen] = useState(false);
+  const [sessionId, setSessionId] = useState(0);
+  const t = useTranslations("users.invite");
+  const tCommon = useTranslations("common");
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen) setSessionId((id) => id + 1);
+    setOpen(nextOpen);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button size="sm">{t("trigger")}</Button>
+      </DialogTrigger>
+      <DialogContent closeLabel={tCommon("close")}>
+        <InviteForm key={sessionId} roles={roles} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface InviteFormProps {
+  readonly roles: readonly InviteDialogRole[];
+}
+
+function InviteForm({ roles }: InviteFormProps) {
   const t = useTranslations("users.invite");
   const tSystem = useTranslations("roles.system");
   const [state, formAction, isPending] = useActionState<
@@ -62,86 +98,77 @@ export function InviteDialog({ roles }: InviteDialogProps) {
   const outcome = state?.ok ? state.data : undefined;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm">{t("trigger")}</Button>
-      </DialogTrigger>
-      <DialogContent>
-        <form action={formAction} className="flex flex-col gap-4">
-          <DialogHeader>
-            <DialogTitle>{t("title")}</DialogTitle>
-            <DialogDescription>{t("description")}</DialogDescription>
-          </DialogHeader>
+    <form action={formAction} className="flex flex-col gap-4">
+      <DialogHeader>
+        <DialogTitle>{t("title")}</DialogTitle>
+        <DialogDescription>{t("description")}</DialogDescription>
+      </DialogHeader>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="invite-email" className="text-xs font-medium text-muted-foreground">
-              {t("emailLabel")}
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="invite-email" className="text-xs font-medium text-muted-foreground">
+          {t("emailLabel")}
+        </label>
+        <Input id="invite-email" name="email" type="email" required disabled={isPending} />
+        {fieldErrors?.email && (
+          <span role="alert" className="text-xs text-destructive">
+            {fieldErrors.email[0]}
+          </span>
+        )}
+      </div>
+
+      <fieldset className="flex flex-col gap-1.5">
+        <legend className="text-xs font-medium text-muted-foreground">{t("rolesLabel")}</legend>
+        <div className="flex flex-col gap-1">
+          {roles.map((role) => (
+            <label key={role.id} className="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="roleIds" value={role.id} disabled={isPending} />
+              {role.key ? tSystem(`${role.key}.name`) : role.name}
             </label>
-            <Input id="invite-email" name="email" type="email" required disabled={isPending} />
-            {fieldErrors?.email && (
-              <span role="alert" className="text-xs text-destructive">
-                {fieldErrors.email[0]}
-              </span>
-            )}
-          </div>
+          ))}
+        </div>
+        {fieldErrors?.roleIds && (
+          <span role="alert" className="text-xs text-destructive">
+            {fieldErrors.roleIds[0]}
+          </span>
+        )}
+      </fieldset>
 
-          <fieldset className="flex flex-col gap-1.5">
-            <legend className="text-xs font-medium text-muted-foreground">
-              {t("rolesLabel")}
-            </legend>
-            <div className="flex flex-col gap-1">
-              {roles.map((role) => (
-                <label key={role.id} className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" name="roleIds" value={role.id} disabled={isPending} />
-                  {role.key ? tSystem(`${role.key}.name`) : role.name}
-                </label>
-              ))}
-            </div>
-            {fieldErrors?.roleIds && (
-              <span role="alert" className="text-xs text-destructive">
-                {fieldErrors.roleIds[0]}
-              </span>
-            )}
-          </fieldset>
+      {errorMessage && (
+        <span role="alert" className="text-xs text-destructive">
+          {errorMessage}
+        </span>
+      )}
 
-          {errorMessage && (
-            <span role="alert" className="text-xs text-destructive">
-              {errorMessage}
-            </span>
-          )}
+      {/* Not a silent success: a saved-but-undelivered invite gets a
+          warning (assertive `role="alert"`), never the same quiet
+          confirmation as a delivered one. */}
+      {!isPending && outcome && (
+        <span
+          role={outcome.emailSent ? "status" : "alert"}
+          className={
+            outcome.emailSent
+              ? "text-xs text-emerald-600 dark:text-emerald-400"
+              : "text-xs text-amber-600 dark:text-amber-400"
+          }
+        >
+          {outcome.emailSent
+            ? outcome.refreshed
+              ? t("resentSuccess")
+              : t("sentSuccess")
+            : t("deliveryFailed")}
+        </span>
+      )}
 
-          {/* Not a silent success: a saved-but-undelivered invite gets a
-              warning (assertive `role="alert"`), never the same quiet
-              confirmation as a delivered one. */}
-          {!isPending && outcome && (
-            <span
-              role={outcome.emailSent ? "status" : "alert"}
-              className={
-                outcome.emailSent
-                  ? "text-xs text-emerald-600 dark:text-emerald-400"
-                  : "text-xs text-amber-600 dark:text-amber-400"
-              }
-            >
-              {outcome.emailSent
-                ? outcome.refreshed
-                  ? t("resentSuccess")
-                  : t("sentSuccess")
-                : t("deliveryFailed")}
-            </span>
-          )}
-
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={isPending}>
-                {t("cancel")}
-              </Button>
-            </DialogClose>
-            <Button type="submit" disabled={isPending}>
-              {t("submit")}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button type="button" variant="outline" disabled={isPending}>
+            {t("cancel")}
+          </Button>
+        </DialogClose>
+        <Button type="submit" disabled={isPending}>
+          {t("submit")}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }

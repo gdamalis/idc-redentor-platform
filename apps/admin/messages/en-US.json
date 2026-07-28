@@ -1,4 +1,7 @@
 {
+  "common": {
+    "close": "Close"
+  },
   "shell": {
     "appName": "Admin Panel",
     "tagline": "Iglesia de Cristo Redentor"
