@@ -700,8 +700,10 @@ git commit -m "feat(ICR-128): add last-admin invariant over proposed post-state"
 
 - Consumes: `getAdminDb` (existing), `PERMISSION_KEYS` + `retainsAdministrability` (Tasks 1–2).
 - Produces: `withAdminTransaction<T>(fn)`, `ensureRbacIndexes()`, `findRolesByIds(ids, session?)`,
-  `listRoles(session?)`, `seedSystemRoles()`, `createRole/updateRole/deleteRole`,
-  `appendAuditEntry(entry, session)`, and the `Role` / `RbacAuditEntry` / `ActionResult` types.
+  `listRoles(session?)`, `seedSystemRoles()`, `appendAuditEntry(entry, session)`, and the
+  `Role` / `RbacAuditEntry` / `ActionResult` types.
+  _(The role MUTATORS — `createRole`/`updateRole`/`deleteRole` — are deliberately NOT here: they are
+  added in Task 5, alongside the actions that call them, so their shape is driven by a real caller.)_
 
 - [ ] **Step 1: Add the types (no test — types are checked by `type-check`)**
 
@@ -1149,12 +1151,66 @@ git commit -m "feat(ICR-128): enforce permissions in rsc loaders, nav, and denie
 - Create: `apps/admin/src/components/ui/table.tsx`
 - Create: `apps/admin/src/app/[locale]/(app)/roles/{role-list.tsx,permission-matrix.tsx,actions.ts,actions.test.ts}`
 - Modify: `apps/admin/src/app/[locale]/(app)/roles/page.tsx`
+- **Modify: `apps/admin/src/service/role.service.ts`** — add the role mutators (Step 0)
+- **Modify: `apps/admin/src/service/user.service.ts`** — add `listUsers` (Step 0)
 
 **Interfaces:**
 
 - Consumes: `requirePermission`, `listRoles`, `withAdminTransaction`, `retainsAdministrability`,
   `appendAuditEntry`, `roleUpdateSchema` / `roleCreateSchema` / `roleDeleteSchema`.
-- Produces: `updateRoleAction`, `createRoleAction`, `deleteRoleAction` — all `Promise<ActionResult>`.
+- Produces: `updateRoleAction`, `createRoleAction`, `deleteRoleAction` — all `Promise<ActionResult>`;
+  plus `createRole` / `updateRole` / `deleteRole` and `listUsers`, which **Task 6 also consumes**.
+
+- [ ] **Step 0: Add the service functions these actions call**
+
+> **Plan correction (found during CP3).** Task 3's _Produces_ line originally advertised
+> `createRole`/`updateRole`/`deleteRole`, but no task defined them, and this task's Step 3 skeleton
+> calls `updateRole(...)`. The skeleton also called `listActiveUsers(...)`, which no task defined
+> either — the only user-list function in the plan was `listUsers`, in Task **6**, i.e. after it is
+> needed. Both are fixed here: the mutators land in this task, beside their first real caller.
+
+Add to `role.service.ts`, following that file's existing shape (`await ensureRbacIndexes()` first,
+`roleSchema.parse` on reads, every operation forwarding `{ session }`):
+
+```ts
+export async function createRole(
+  input: { name: string; description?: string; permissions: readonly string[] },
+  session: ClientSession,
+): Promise<{ ok: true; roleId: string } | { ok: false; reason: "conflict" }>;
+
+/** Never writes `key` or `isSystem` — neither is updatable. */
+export async function updateRole(
+  input: {
+    roleId: string;
+    name: string;
+    description?: string;
+    permissions: readonly string[];
+  },
+  session: ClientSession,
+): Promise<void>;
+
+export async function deleteRole(
+  roleId: string,
+  session: ClientSession,
+): Promise<void>;
+```
+
+`createRole` maps a duplicate-key error from the unique `name` index to
+`{ ok: false, reason: "conflict" }`. Reuse `user.service.ts`'s existing `isDuplicateKeyError` helper
+(export it from there) rather than writing a second copy.
+
+Add to `user.service.ts`:
+
+```ts
+/** ALL users, not just active — `retainsAdministrability` filters by status itself. */
+export async function listUsers(session?: ClientSession): Promise<AdminUser[]>;
+```
+
+Tests for this step: each mutator forwards `{ session }`; `updateRole` never `$set`s `key` or
+`isSystem`; `createRole` maps a duplicate-key error to `conflict`; `listUsers` returns disabled users
+too (the invariant needs them to decide correctly).
+
+**In Step 3's skeleton below, read `listUsers(session)` wherever it says `listActiveUsers(session)`.**
 
 - [ ] **Step 1: Write the failing action test** — the security-critical assertions
 
@@ -1210,7 +1266,7 @@ export async function updateRoleAction(
     // OUTSIDE the transaction and the invariant check reads stale data.
     const [roles, users] = await Promise.all([
       listRoles(session),
-      listActiveUsers(session),
+      listUsers(session),
     ]);
 
     const target = roles.find(
@@ -1316,7 +1372,7 @@ git commit -m "feat(ICR-128): add roles screen with permission matrix"
 - Create: `apps/admin/src/components/ui/dialog.tsx`
 - Create: `apps/admin/src/app/[locale]/(app)/users/{user-table.tsx,invite-dialog.tsx,actions.ts,actions.test.ts}`
 - Modify: `apps/admin/src/app/[locale]/(app)/users/page.tsx`
-- Modify: `apps/admin/src/service/user.service.ts` (add `listUsers`, `updateUserRoles`, `updateUserStatus`, `deleteUser` — all session-aware)
+- Modify: `apps/admin/src/service/user.service.ts` (add `updateUserRoles`, `updateUserStatus`, `deleteUser` — all session-aware. **`listUsers` already exists — Task 5 Step 0 added it.**)
 
 **Interfaces:**
 
@@ -1356,6 +1412,30 @@ build post-state → `retainsAdministrability` → write → audit. For `updateU
 `updateUserStatusAction` and `deleteUserAction`, the post-state substitutes the **user** rather than
 the role. `inviteUserAction` cannot reduce administrability, so it needs no invariant check — but it
 **must** still validate that every `roleId` exists.
+
+The three `user.service.ts` functions these call (`listUsers` already exists from Task 5 Step 0):
+
+```ts
+export async function updateUserRoles(
+  userId: string,
+  roleIds: readonly string[],
+  session: ClientSession,
+): Promise<void>;
+
+export async function updateUserStatus(
+  userId: string,
+  status: "active" | "disabled",
+  session: ClientSession,
+): Promise<void>;
+
+export async function deleteUser(
+  userId: string,
+  session: ClientSession,
+): Promise<void>;
+```
+
+All three take `_id` as a hex string and convert with `new ObjectId(userId)` internally, matching how
+`AdminStateSnapshot.users[].id` is produced (`_id.toHexString()`).
 
 - [ ] **Step 5: Build `dialog.tsx` + `invite-dialog.tsx` + `user-table.tsx`**
 
