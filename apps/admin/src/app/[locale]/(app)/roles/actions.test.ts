@@ -205,16 +205,21 @@ describe("updateRoleAction", () => {
     expect(updateRole).not.toHaveBeenCalled();
   });
 
-  // P1 regression: a disabled `<input type="checkbox">` is never submitted
-  // in FormData, so the Admin role's protected checkboxes previously arrived
-  // here ABSENT from `permissions` on every legitimate save — and this guard
-  // used to refuse the whole edit whenever that happened, permanently
-  // bricking the Admin role (no permission change to it could ever be
-  // saved). The fix force-unions ADMIN_EQUIVALENT_KEYS into whatever was
-  // submitted BEFORE the guard runs, so the server never depends on the
-  // client actually sending them — a submission that naturally omits one
-  // (or both) is corrected, not refused.
-  it("force-unions users:manage/roles:manage back into the Admin role when the submission omits one of them, and succeeds", async () => {
+  // These two tests are a PAIR and must be read together — they pin the fix
+  // for the P1 "Admin role is uneditable" finding without weakening AC7.
+  //
+  // The bug: a disabled `<input type="checkbox">` is never submitted in
+  // FormData, so the Admin role's two protected keys arrived ABSENT on every
+  // legitimate save and this guard refused the whole edit — permanently
+  // bricking the Admin role.
+  //
+  // The fix is CLIENT-side: permission-matrix.tsx mirrors each protected key
+  // with a hidden input, so an honest save always carries both. The SERVER
+  // therefore keeps rejecting strictly (AC7: "the server rejects the write if
+  // attempted directly") rather than silently correcting the payload — an
+  // `{ ok: true }` that quietly rewrote what the caller asked for would be a
+  // dishonest response and would make the AC7 refusal path unreachable.
+  it("refuses a direct payload that omits a protected key from the Admin role — system-role, aborted, no write", async () => {
     requirePermission.mockResolvedValueOnce(AUTHORIZED);
     listRoles.mockResolvedValueOnce([ADMIN_ROLE, LEADER_ROLE]);
     listUsers.mockResolvedValueOnce([ADMIN_USER]);
@@ -229,25 +234,16 @@ describe("updateRoleAction", () => {
       }),
     );
 
-    expect(result).toEqual({ ok: true, data: undefined });
-    expect(abortTransaction).not.toHaveBeenCalled();
-    expect(updateRole).toHaveBeenCalledWith(
-      expect.objectContaining({
-        roleId: ADMIN_ROLE_ID,
-        permissions: expect.arrayContaining(["roles:manage", "users:manage"]),
-      }),
-      session,
-    );
+    expect(result).toEqual({ ok: false, reason: "system-role" });
+    expect(abortTransaction).toHaveBeenCalled();
+    expect(updateRole).not.toHaveBeenCalled();
+    expect(appendAuditEntry).not.toHaveBeenCalled();
   });
 
-  // The literal disabled-checkbox scenario: BOTH protected keys, plus every
-  // other permission on the Admin role, are absent from `permissions` — this
-  // is exactly what a real browser submits for the matrix's Admin column
-  // before the client-side hidden-input mirror renders (or for any crafted
-  // payload that omits them). Explicitly what the review asked for: "updating
-  // the Admin role's non-protected permissions succeeds and retains both
-  // protected keys."
-  it("updating the Admin role's non-protected permissions succeeds and retains both protected keys even when the submission carries neither", async () => {
+  // The legitimate path, as the browser actually submits it once the hidden
+  // inputs are present: a real non-protected edit alongside both protected
+  // keys. This is the test that would have caught the original bug.
+  it("saves a non-protected permission change to the Admin role when the hidden inputs carry both protected keys", async () => {
     requirePermission.mockResolvedValueOnce(AUTHORIZED);
     listRoles.mockResolvedValueOnce([ADMIN_ROLE, LEADER_ROLE]);
     listUsers.mockResolvedValueOnce([ADMIN_USER]);
@@ -258,7 +254,8 @@ describe("updateRoleAction", () => {
       formDataOf({
         roleId: ADMIN_ROLE_ID,
         name: "Admin",
-        permissions: ["people:read"], // a genuine, non-protected permission edit
+        // exactly what the matrix submits: the edited key + the hidden mirrors
+        permissions: ["people:read", "users:manage", "roles:manage"],
       }),
     );
 
@@ -272,17 +269,21 @@ describe("updateRoleAction", () => {
       expect.objectContaining({
         action: "role.update",
         after: expect.objectContaining({
-          permissions: expect.arrayContaining(["people:read", "users:manage", "roles:manage"]),
+          permissions: expect.arrayContaining([
+            "people:read",
+            "users:manage",
+            "roles:manage",
+          ]),
         }),
       }),
       session,
     );
   });
 
-  it("does not force-union admin-equivalent keys onto a non-admin role — a Leader role can still lose users:manage", async () => {
+  it("does not apply the system-role guard to a non-admin role — a Leader role can still lose users:manage", async () => {
     requirePermission.mockResolvedValueOnce(AUTHORIZED);
     // CUSTOM_ADMIN_ROLE has no `key`, so it is NOT `target.key === "admin"" —
-    // this isolates the force-union from the (separate) last-admin invariant.
+    // this isolates the system-role guard from the (separate) last-admin invariant.
     listRoles.mockResolvedValueOnce([ADMIN_ROLE, CUSTOM_ADMIN_ROLE]);
     listUsers.mockResolvedValueOnce([
       ADMIN_USER,

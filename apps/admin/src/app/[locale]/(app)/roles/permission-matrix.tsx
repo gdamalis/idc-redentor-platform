@@ -132,11 +132,13 @@ export function PermissionMatrix({ roles, canManage }: PermissionMatrixProps) {
                           the Admin role's protected keys with a real hidden
                           input of the same name/value/form so submitted data
                           reflects what's visibly checked, regardless of the
-                          disabled state. Server-side, `updateRoleAction`
-                          force-unions these keys back in unconditionally
-                          anyway (it must not depend on the client sending
-                          them) — this mirror is what keeps a permissions-only
-                          save from LOOKING like it silently dropped them. */}
+                          disabled state. This is the ONLY thing that keeps a
+                          legitimate matrix save from omitting these keys:
+                          `updateRoleAction` strictly REJECTS an Admin-role
+                          submission that omits either one (spec edge case
+                          #4 — "the server rejects the write if attempted
+                          directly") rather than silently correcting it, so
+                          without this mirror every save would fail. */}
                       {isProtectedAdminKey && (
                         <input
                           type="hidden"

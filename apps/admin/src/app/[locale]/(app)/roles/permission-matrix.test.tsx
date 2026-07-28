@@ -137,6 +137,35 @@ describe("PermissionMatrix — Admin role's protected keys survive submission", 
     expect(peopleReadHidden).toBeNull();
   });
 
+  /**
+   * Sanity check requested in review: the checkbox and its hidden twin share
+   * the same `name`/`value`/`form`, which could in principle double-submit a
+   * protected key — and `updateRoleAction` now strictly REJECTS the Admin
+   * role's write when a key is missing (AC7), so it must not also choke on a
+   * doubled one reaching `roleUpdateSchema`/`updateRole`. Uses a REAL
+   * `<form>` + native `FormData(form)` construction (not a manual DOM query)
+   * so this exercises the actual browser "form-associated element" algorithm
+   * the `form={...}` attribute relies on, not just an assumption about it.
+   */
+  it("submits each Admin-role protected key exactly once via real FormData — the disabled checkbox contributes nothing, only its hidden twin does", async () => {
+    const { PermissionMatrix } = await import("./permission-matrix");
+
+    const { container } = render(
+      <PermissionMatrix roles={[ADMIN_ROLE, LEADER_ROLE]} canManage />,
+    );
+
+    const form = container.querySelector<HTMLFormElement>("#role-form-r-admin");
+    expect(form).not.toBeNull();
+    const formData = new FormData(form as HTMLFormElement);
+
+    const submittedPermissions = formData.getAll("permissions");
+    expect(submittedPermissions.filter((v) => v === "users:manage")).toHaveLength(1);
+    expect(submittedPermissions.filter((v) => v === "roles:manage")).toHaveLength(1);
+    // people:read is a real, enabled, defaultChecked box on the Admin role —
+    // confirms the form picked up ordinary (non-mirrored) checkboxes too.
+    expect(submittedPermissions.filter((v) => v === "people:read")).toHaveLength(1);
+  });
+
   it("does not render the protected-key hidden mirrors at all when canManage is false", async () => {
     const { PermissionMatrix } = await import("./permission-matrix");
 

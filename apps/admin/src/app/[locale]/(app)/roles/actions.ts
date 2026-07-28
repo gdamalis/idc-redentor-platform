@@ -126,25 +126,22 @@ export async function updateRoleAction(
       return { ok: false, reason: "not-found" };
     }
 
-    // The Admin role's admin-equivalent keys are PINNED: force-union them
-    // into whatever was submitted BEFORE the guard below runs. A disabled
-    // `<input type="checkbox">` is never submitted in FormData — the client
-    // mirrors these two keys with a hidden input (permission-matrix.tsx) so
-    // a legitimate save never actually omits them, but the SERVER must not
-    // depend on that: any submission that omits one (or both) — whether a
-    // browser quirk or a crafted payload — is corrected here, not refused.
-    const permissions =
-      target.key === "admin"
-        ? Array.from(new Set([...parsed.data.permissions, ...ADMIN_EQUIVALENT_KEYS]))
-        : parsed.data.permissions;
+    // Dedupe defensively: a disabled `<input type="checkbox">` submits
+    // nothing, so permission-matrix.tsx mirrors the Admin role's two pinned
+    // keys with a hidden input. That should yield each key exactly once, but
+    // a doubled value would otherwise flow straight into `$set`.
+    const permissions = Array.from(new Set(parsed.data.permissions));
 
-    // Defense-in-depth, not the primary gate anymore: after the union above
-    // this can never actually be false for `target.key === "admin"` — kept
-    // as a guard against the union logic itself regressing, and because
-    // `ADMIN_EQUIVALENT_KEYS.every` here is exactly what's exercised by
-    // mutation testing (admin-rbac.md).
+    // AC7: the Admin role can never lose the admin-equivalent keys, and the
+    // server REJECTS such a write rather than silently correcting it. The
+    // hidden inputs above are what make a legitimate matrix save always carry
+    // both keys, so strict rejection here costs the honest path nothing — and
+    // a crafted payload that omits one gets a truthful refusal instead of an
+    // `ok` that quietly rewrote what the caller asked for.
     if (target.key === "admin") {
-      const keeps = ADMIN_EQUIVALENT_KEYS.every((key) => permissions.includes(key));
+      const keeps = ADMIN_EQUIVALENT_KEYS.every((key) =>
+        permissions.includes(key),
+      );
       if (!keeps) {
         await session.abortTransaction();
         return { ok: false, reason: "system-role" };
