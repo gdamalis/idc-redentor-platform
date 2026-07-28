@@ -28,6 +28,17 @@ const BANNED = [
   },
 ];
 
+// NOT ADDED: a static halo-OVERLAP check (PR #112 thread 3660378526, the
+// pager 8px-overlap regression this same vigil round fixed — see .pager
+// button's min-width below). Considered and rejected: whether two adjacent
+// halos overlap depends on the CONTAINER's runtime `gap`/flex-wrap and
+// which sibling paints last, none of which this regex-based, non-cascading
+// block parser resolves (it doesn't even know which selectors are siblings
+// under a shared flex/grid parent, let alone the parent's computed gap).
+// A static rule here would either miss real overlaps or false-positive on
+// fine layouts — gate theater, not a gate. The real check is the browser
+// measurement (getBoundingClientRect on the rendered artifact) done for F5;
+// re-run that measurement by hand if a control near a halo'd sibling changes.
 function walk(dir, exts = [".html"]) {
   const out = [];
   for (const entry of readdirSync(dir)) {
@@ -268,7 +279,150 @@ function checkFoundationsTokenCoverage() {
   return problems.map((p) => `foundations/foundations.html: ${p}`);
 }
 
-function checkHtml(abs) {
+// ===== HTML-side hit-target check (PR #112 thread 3660378522): checkHitTargets
+// above only sees controls discoverable FROM THE CSS (cursor:pointer, or a bare
+// `input` selector) — a native <button>/<select>/<textarea>/<a href>/<input>
+// (excl. checkbox/radio) added to an artifact with no matching CSS rule at all
+// is invisible to it. Reproduced directly: `<button>tiny</button>` dropped into
+// an artifact still reported PASS before this check existed.
+//
+// Full class -> floor resolution (not the simpler "every native element needs
+// SOME class" rule) is what's actually sound here: several already-correct
+// controls are BARE tags matched only via an ancestor's class — `.pager
+// button`, `.seg button`, `.search input` (see people-list.html's `<button
+// class="on">ES</button>` sibling `<button>EN</button>`, and its unclassed
+// `<button>‹</button>` pager arrows) all rely on a parent's class + the tag
+// name, not a class of their own. A "must carry a class" rule would flag
+// these correct, already-floored controls, so this resolves the same way
+// checkHitTargets does: build the candidate selector strings this element
+// could be reached by (its own class(es), or an ancestor class + this tag,
+// mirroring the "A B" descendant compounds actually used in this file) and
+// ask the SAME axisFloor/haloAxisCoverage helpers whether any of them clears
+// >=44px on both axes (or is haloed). A element with no such selector — no
+// class of its own, no ancestor class this stylesheet keys off of — fails.
+const VOID_ELEMENTS = new Set([
+  "area",
+  "base",
+  "br",
+  "col",
+  "embed",
+  "hr",
+  "img",
+  "input",
+  "link",
+  "meta",
+  "param",
+  "source",
+  "track",
+  "wbr",
+]);
+const NATIVE_CONTROL_TAGS = new Set([
+  "button",
+  "select",
+  "textarea",
+  "a",
+  "input",
+]);
+
+function scanNativeControls(html) {
+  // Blank out <script>/<style>/comment bodies first so stray "<"/">" inside
+  // them (e.g. a CSS child combinator) can't desync the tag scanner.
+  const cleaned = html
+    .replace(/<!--[\s\S]*?-->/g, (m) => " ".repeat(m.length))
+    .replace(/<style[\s\S]*?<\/style>/gi, (m) => " ".repeat(m.length))
+    .replace(/<script[\s\S]*?<\/script>/gi, (m) => " ".repeat(m.length));
+
+  const tagRe = /<(\/?)([a-zA-Z][a-zA-Z0-9-]*)((?:\s+[^<>]*)?)\/?>/g;
+  const stack = []; // {tag, classes: string[]}
+  const controls = [];
+  let m;
+  while ((m = tagRe.exec(cleaned))) {
+    const [, closing, tagRaw, attrsRaw = ""] = m;
+    const tag = tagRaw.toLowerCase();
+    if (closing) {
+      for (let i = stack.length - 1; i >= 0; i--) {
+        if (stack[i].tag === tag) {
+          stack.length = i;
+          break;
+        }
+      }
+      continue;
+    }
+    const classMatch = attrsRaw.match(/\bclass=["']([^"']*)["']/i);
+    const ownClasses = classMatch
+      ? classMatch[1].trim().split(/\s+/).filter(Boolean)
+      : [];
+    const selfClosed = /\/\s*$/.test(m[0].slice(0, -1));
+    const isVoid = VOID_ELEMENTS.has(tag) || selfClosed;
+
+    if (NATIVE_CONTROL_TAGS.has(tag)) {
+      const isCheckboxOrRadio =
+        tag === "input" && /\btype=["'](checkbox|radio)["']/i.test(attrsRaw);
+      const isHreflessAnchor = tag === "a" && !/\bhref=["']/i.test(attrsRaw);
+      if (!isCheckboxOrRadio && !isHreflessAnchor) {
+        controls.push({
+          tag,
+          ownClasses,
+          ancestors: [...stack].reverse(), // closest ancestor first
+        });
+      }
+    }
+
+    if (!isVoid) stack.push({ tag, classes: ownClasses });
+  }
+  return controls;
+}
+
+function controlCandidateSelectors(control) {
+  const candidates = new Set();
+  for (const c of control.ownClasses) candidates.add(`.${c}`);
+  for (const ancestor of control.ancestors) {
+    for (const ac of ancestor.classes) {
+      candidates.add(`.${ac} ${control.tag}`);
+      for (const oc of control.ownClasses) candidates.add(`.${ac} .${oc}`);
+    }
+  }
+  if (control.tag === "input") candidates.add("input"); // mirrors isBareInputSelector
+  return candidates;
+}
+
+function checkNativeControlsFloored(html, rel, cssBlocks) {
+  const problems = [];
+  for (const control of scanNativeControls(html)) {
+    let ok = false;
+    for (const sel of controlCandidateSelectors(control)) {
+      const height = axisFloor(sel, cssBlocks, "height");
+      const width = axisFloor(sel, cssBlocks, "width");
+      const halo = haloAxisCoverage(sel, cssBlocks);
+      const heightOk =
+        height.px >= 44 || height.hasPercent || halo.coversHeight;
+      const widthOk = width.px >= 44 || width.hasPercent || halo.coversWidth;
+      if (heightOk && widthOk) {
+        ok = true;
+        break;
+      }
+    }
+    if (!ok) {
+      const desc = control.ownClasses.length
+        ? `class="${control.ownClasses.join(" ")}"`
+        : "no class";
+      const ancestorDesc = control.ancestors
+        .slice(0, 2)
+        .map((a) =>
+          a.classes.length ? `.${a.classes.join(".")}` : `<${a.tag}>`,
+        )
+        .join(" < ");
+      problems.push(
+        `<${control.tag}> (${desc}${ancestorDesc ? `, inside ${ancestorDesc}` : ""}) ` +
+          `has no CSS rule (own class, or ancestor-class + <${control.tag}>) that ` +
+          `floors >=44px on both axes or provides an axis-covering halo`,
+      );
+    }
+  }
+  return problems.map((p) => `${rel}: ${p}`);
+}
+
+function checkHtml(abs, cssBlocks) {
   const rel = relative(ROOT, abs);
   const src = readFileSync(abs, "utf8");
   const problems = [];
@@ -304,7 +458,10 @@ function checkHtml(abs) {
 
   for (const { re, why } of BANNED) if (re.test(src)) problems.push(why);
 
-  return problems.map((p) => `${rel}: ${p}`);
+  return [
+    ...problems.map((p) => `${rel}: ${p}`),
+    ...checkNativeControlsFloored(src, rel, cssBlocks),
+  ];
 }
 
 if (!existsSync(join(ROOT, "styles.css"))) {
@@ -325,10 +482,16 @@ if (files.length === 0) {
 // The stylesheet is always checked, even with --only: it is shared by every
 // artifact, so a defect there affects all of them. Same for the Foundations
 // token-inventory check — it depends on styles.css's :root, not on `--only`.
+// checkHtml's native-control floor check (F4, thread 3660378522) needs the
+// same parsed blocks checkHitTargets already builds, so it's read here once
+// and threaded through rather than re-read per artifact.
+const cssBlocks = parseCssBlocks(
+  readFileSync(join(ROOT, "styles.css"), "utf8"),
+);
 const failures = [
   ...checkStyles(),
   ...checkFoundationsTokenCoverage(),
-  ...files.flatMap(checkHtml),
+  ...files.flatMap((f) => checkHtml(f, cssBlocks)),
 ];
 console.log(`checked styles.css + ${files.length} artifact(s)`);
 for (const f of failures) console.error("  ✗ " + f);

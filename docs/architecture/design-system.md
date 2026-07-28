@@ -25,7 +25,13 @@ content — never a JS toggle), and contains **no `<script>`** — a JS-only sta
 screenshots before scripts run (spec E5). The whole bundle is gated by
 `tasks/specs/design-system/verify-artifacts.mjs`, which bans gradients, emoji, Inter/Roboto, and
 missing `.dark` blocks, and enforces the one sanctioned exception: `calendar-print-a4.html`, a print
-medium that must **not** ship a dark variant (spec R6).
+medium that must **not** ship a dark variant (spec R6). The gate's hit-target check has two sides:
+a CSS-side check (which selectors declare `cursor: pointer`/a bare `input` and whether they clear
+≥44px on both axes) and an HTML-side check added in the PR #112 post-review vigil (thread 3660378522) — it scans each artifact's markup for native `<button>`/`<select>`/`<textarea>`/
+`<a href>`/`<input>` (excl. checkbox/radio) and confirms each resolves, via its own class or an
+ancestor class + tag, to a CSS rule the first check already verified. See the script's own comments
+for why a _static_ halo-overlap check was considered and rejected (runtime-layout-dependent; the
+browser measurement in §3b's F5 note covers it instead).
 
 ## 2. The token contract
 
