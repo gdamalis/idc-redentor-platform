@@ -393,6 +393,69 @@ function checkFoundationsTokenCoverage(cssBlocks) {
   return problems.map((p) => `foundations/foundations.html: ${p}`);
 }
 
+// R2's coverage check above only compares TOKEN NAMES between Foundations and
+// styles.css — a swatch's printed value can still drift from the token it
+// names (found during publish readback: --destructive's light swatch kept
+// printing the pre-fix "0 84.2% 60.2%" after F1 darkened the real token to
+// "0 84.2% 46%" — the chip itself rendered correctly via var(--destructive),
+// only the label text was stale). Enforce values too: for every swatch, parse
+// the FIRST `.val` line's token value and compare it against the same theme
+// block's declared value in styles.css. Skips: the second `.val` line some
+// swatches carry ("derivado — no está en tokens.css" and similar annotations —
+// never the value itself, so never matched here); tokens with no literal
+// counterpart in styles.css's :root/.dark at all (e.g. the Radio section's
+// computed --radius-sm/md/lg/xl display, which was never a real custom
+// property to begin with — that's what FOUNDATIONS_TOKEN_ALLOWLIST already
+// covers from the other direction). A dark swatch marked "(no dark override)"
+// (the --chart-* family) compares against the LIGHT block's value instead,
+// since that's the value actually rendered when .dark declares no override.
+function normalizeSwatchValue(v) {
+  return v
+    .replace(/\(no dark override\)/i, "")
+    .replace(/\/\s*\.(\d)/, "/ 0.$1") // "/ .12" -> "/ 0.12"
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function checkFoundationsTokenValues(cssBlocks) {
+  const lightTokens = extractThemeTokens(cssBlocks, ":root");
+  const darkTokens = extractThemeTokens(cssBlocks, ".dark");
+  const foundationsPath = join(ROOT, "foundations", "foundations.html");
+  if (!existsSync(foundationsPath)) return [];
+  const html = readFileSync(foundationsPath, "utf8");
+
+  const darkMarker = html.indexOf('<div class="preview dark">');
+  const sections =
+    darkMarker === -1
+      ? [["light", html, lightTokens, null]]
+      : [
+          ["light", html.slice(0, darkMarker), lightTokens, null],
+          ["dark", html.slice(darkMarker), darkTokens, lightTokens],
+        ];
+
+  const swatchRe =
+    /<div class="name">--([\w-]+)<\/div>\s*<div class="val">([^<]*)<\/div>/g;
+  const problems = [];
+  for (const [theme, section, tokens, fallback] of sections) {
+    let m;
+    swatchRe.lastIndex = 0;
+    while ((m = swatchRe.exec(section))) {
+      const [, name, rawVal] = m;
+      const noDarkOverride = /\(no dark override\)/i.test(rawVal);
+      const declared = noDarkOverride ? fallback?.[name] : tokens[name];
+      if (declared === undefined) continue; // no literal counterpart to check against
+      const shown = normalizeSwatchValue(rawVal);
+      const expected = normalizeSwatchValue(declared);
+      if (shown !== expected) {
+        problems.push(
+          `--${name} (${theme}): swatch shows "${shown}" but styles.css declares "${expected}"`,
+        );
+      }
+    }
+  }
+  return problems.map((p) => `foundations/foundations.html: ${p}`);
+}
+
 function checkHtml(abs) {
   const rel = relative(ROOT, abs);
   const src = readFileSync(abs, "utf8");
@@ -642,6 +705,7 @@ const cssBlocks = parseCssBlocks(cssSrc);
 const staticFailures = [
   ...checkStyles(cssBlocks, cssSrc),
   ...checkFoundationsTokenCoverage(cssBlocks),
+  ...checkFoundationsTokenValues(cssBlocks),
   ...files.flatMap(checkHtml),
 ];
 
