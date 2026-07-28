@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import type { ClientSession } from "mongodb";
 import { getAdminDb } from "@src/service/database.service";
+import { isDuplicateKeyError } from "@src/service/user.service";
 import { PERMISSION_KEYS } from "@src/lib/rbac/permissions";
 import type { PermissionKey } from "@src/lib/rbac/permissions";
 import { roleSchema } from "./types";
@@ -137,4 +138,81 @@ export async function seedSystemRoles(): Promise<void> {
       ),
     ),
   );
+}
+
+export interface CreateRoleInput {
+  readonly name: string;
+  readonly description?: string;
+  readonly permissions: readonly string[];
+}
+
+/**
+ * Custom roles only — `key`/`isSystem` are never set here, matching
+ * `Role.key`'s "SYSTEM roles only" contract. Maps the unique `name` index's
+ * duplicate-key error to a refusal rather than letting it escape as a throw
+ * (Global Constraints: no throw for control flow).
+ */
+export async function createRole(
+  input: CreateRoleInput,
+  session: ClientSession,
+): Promise<{ ok: true; roleId: string } | { ok: false; reason: "conflict" }> {
+  await ensureRbacIndexes();
+  const now = new Date();
+
+  try {
+    const result = await getAdminDb()
+      .collection(ROLES_COLLECTION)
+      .insertOne(
+        {
+          name: input.name,
+          description: input.description,
+          permissions: [...input.permissions],
+          isSystem: false,
+          createdAt: now,
+          updatedAt: now,
+        },
+        { session },
+      );
+    return { ok: true, roleId: result.insertedId.toHexString() };
+  } catch (error) {
+    if (isDuplicateKeyError(error)) return { ok: false, reason: "conflict" };
+    throw error;
+  }
+}
+
+export interface UpdateRoleInput {
+  readonly roleId: string;
+  readonly name: string;
+  readonly description?: string;
+  readonly permissions: readonly string[];
+}
+
+/** Never writes `key` or `isSystem` — neither is updatable, by construction. */
+export async function updateRole(
+  input: UpdateRoleInput,
+  session: ClientSession,
+): Promise<void> {
+  await ensureRbacIndexes();
+  await getAdminDb().collection(ROLES_COLLECTION).updateOne(
+    { _id: new ObjectId(input.roleId) },
+    {
+      $set: {
+        name: input.name,
+        description: input.description,
+        permissions: [...input.permissions],
+        updatedAt: new Date(),
+      },
+    },
+    { session },
+  );
+}
+
+export async function deleteRole(
+  roleId: string,
+  session: ClientSession,
+): Promise<void> {
+  await ensureRbacIndexes();
+  await getAdminDb()
+    .collection(ROLES_COLLECTION)
+    .deleteOne({ _id: new ObjectId(roleId) }, { session });
 }

@@ -4,10 +4,12 @@ const findOne = vi.fn();
 const insertOne = vi.fn();
 const updateOne = vi.fn();
 const createIndex = vi.fn();
+const toArray = vi.fn();
+const find = vi.fn(() => ({ toArray }));
 
 vi.mock("@src/service/database.service", () => ({
   getAdminDb: () => ({
-    collection: () => ({ findOne, insertOne, updateOne, createIndex }),
+    collection: () => ({ findOne, insertOne, updateOne, createIndex, find }),
   }),
 }));
 
@@ -117,6 +119,64 @@ describe("updatePreferredLocale", () => {
     updateOne.mockResolvedValueOnce({ matchedCount: 0 });
 
     expect(await updatePreferredLocale("uid-missing", "es-AR")).toBe(false);
+  });
+});
+
+describe("listUsers", () => {
+  it("returns every parsed user, including disabled ones", async () => {
+    const { listUsers } = await loadService();
+    const now = new Date();
+    toArray.mockResolvedValueOnce([
+      {
+        _id: { toHexString: () => "u1" },
+        firebaseUid: "uid1",
+        email: "a@b.com",
+        roleIds: ["r1"],
+        preferredLocale: "es-AR",
+        status: "active",
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        _id: { toHexString: () => "u2" },
+        firebaseUid: "uid2",
+        email: "c@d.com",
+        roleIds: ["r1"],
+        preferredLocale: "es-AR",
+        status: "disabled",
+        createdAt: now,
+        updatedAt: now,
+      },
+    ]);
+
+    const users = await listUsers();
+
+    expect(users.map((u) => u.status)).toEqual(["active", "disabled"]);
+    expect(find).toHaveBeenCalledWith({}, { session: undefined });
+  });
+
+  it("forwards the caller's session", async () => {
+    const { listUsers } = await loadService();
+    toArray.mockResolvedValueOnce([]);
+    const session = { id: "session" } as unknown as import("mongodb").ClientSession;
+
+    await listUsers(session);
+
+    expect(find).toHaveBeenCalledWith({}, { session });
+  });
+});
+
+describe("isDuplicateKeyError", () => {
+  it("recognizes a Mongo E11000 error", async () => {
+    const { isDuplicateKeyError } = await loadService();
+    expect(isDuplicateKeyError(Object.assign(new Error("dup"), { code: 11000 }))).toBe(true);
+  });
+
+  it("rejects a non-duplicate-key error and non-error values", async () => {
+    const { isDuplicateKeyError } = await loadService();
+    expect(isDuplicateKeyError(new Error("other"))).toBe(false);
+    expect(isDuplicateKeyError(null)).toBe(false);
+    expect(isDuplicateKeyError("nope")).toBe(false);
   });
 });
 

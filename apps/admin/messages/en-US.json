@@ -95,11 +95,127 @@
       }
     }
   },
+  "permissions": {
+    "people:read": {
+      "label": "View people",
+      "description": "Lets you view the list and profiles of people."
+    },
+    "people:write": {
+      "label": "Create/edit people",
+      "description": "Lets you create and edit people's profiles."
+    },
+    "people:delete": {
+      "label": "Delete people",
+      "description": "Lets you delete people's profiles."
+    },
+    "people:pii": {
+      "label": "View sensitive fields",
+      "description": "Lets you view people's phone number and email address."
+    },
+    "families:read": {
+      "label": "View families",
+      "description": "Lets you view the list and profiles of families."
+    },
+    "families:write": {
+      "label": "Create/edit families",
+      "description": "Lets you create and edit family profiles."
+    },
+    "activities:read": {
+      "label": "View activities",
+      "description": "Lets you view the list of activities."
+    },
+    "activities:write": {
+      "label": "Create/edit activities",
+      "description": "Lets you create and edit activities."
+    },
+    "activities:delete": {
+      "label": "Delete activities",
+      "description": "Lets you delete activities."
+    },
+    "calendar:read": {
+      "label": "View calendar",
+      "description": "Lets you view the church calendar."
+    },
+    "calendar:print": {
+      "label": "Print calendar",
+      "description": "Lets you print the church calendar."
+    },
+    "users:read": {
+      "label": "View users",
+      "description": "Lets you view the list of panel users."
+    },
+    "users:manage": {
+      "label": "Invite users and assign roles",
+      "description": "Lets you invite users, assign their roles, and enable or disable their accounts."
+    },
+    "roles:read": {
+      "label": "View roles",
+      "description": "Lets you view roles and their permissions."
+    },
+    "roles:manage": {
+      "label": "Create/edit roles and permissions",
+      "description": "Lets you create, edit, and delete roles, and change their permissions."
+    },
+    "groups": {
+      "people": "People",
+      "families": "Families",
+      "activities": "Activities",
+      "calendar": "Calendar",
+      "users": "Users",
+      "roles": "Roles"
+    }
+  },
+  "roles": {
+    "title": "Roles",
+    "subtitle": "Manage roles and each one's permissions.",
+    "edit": "Edit permissions",
+    "new": "Create role",
+    "delete": "Delete",
+    "table": {
+      "name": "Name",
+      "description": "Description",
+      "members": "Members",
+      "actions": "Actions",
+      "systemBadge": "System"
+    },
+    "matrix": {
+      "permissionColumn": "Permission",
+      "save": "Save",
+      "saved": "Changes saved"
+    },
+    "form": {
+      "nameLabel": "Name",
+      "descriptionLabel": "Description",
+      "deleteConfirm": "Delete the \"{name}\" role? This action cannot be undone."
+    },
+    "system": {
+      "admin": {
+        "name": "Admin",
+        "description": "Full access to every module and to user/role management."
+      },
+      "leader": {
+        "name": "Leader",
+        "description": "Manages people, families, and activities; prints the calendar."
+      },
+      "member": {
+        "name": "Member",
+        "description": "Read-only access to people and the calendar."
+      }
+    }
+  },
   "rbac": {
     "denied": {
       "title": "You don't have permission to view this",
       "body": "Your account doesn't have the permission needed to access this section. If you think you should have it, contact an administrator.",
       "backToDashboard": "Back to home"
+    },
+    "errors": {
+      "lastAdmin": "This action would leave the panel with no active administrator. Make sure at least one administrator remains before saving.",
+      "systemRole": "The Admin role can't lose these permissions, and system roles can't be deleted.",
+      "forbidden": "You don't have permission to do this.",
+      "invalid": "The data you entered isn't valid. Please review it and try again.",
+      "notFound": "We couldn't find that role. It may have already been deleted.",
+      "conflict": "A role with that name already exists."
     }
   }
 }

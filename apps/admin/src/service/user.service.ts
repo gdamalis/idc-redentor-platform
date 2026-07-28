@@ -1,4 +1,5 @@
 import { getAdminDb } from "@src/service/database.service";
+import type { ClientSession } from "mongodb";
 import type { Locale } from "@src/i18n/config";
 import { adminUserSchema } from "./types";
 import type { AdminUser } from "./types";
@@ -10,7 +11,10 @@ interface MongoDuplicateKeyError {
   code?: number;
 }
 
-function isDuplicateKeyError(error: unknown): error is MongoDuplicateKeyError {
+/** Exported so `role.service.ts` reuses this rather than writing a second copy. */
+export function isDuplicateKeyError(
+  error: unknown,
+): error is MongoDuplicateKeyError {
   return (
     typeof error === "object" &&
     error !== null &&
@@ -105,4 +109,19 @@ export async function updatePreferredLocale(
     );
 
   return (result.matchedCount ?? 0) > 0;
+}
+
+/**
+ * ALL users, not just active — `retainsAdministrability` filters by status
+ * itself, so it needs disabled users in the snapshot too (a disabled admin
+ * must not count toward administrability).
+ */
+export async function listUsers(session?: ClientSession): Promise<AdminUser[]> {
+  await ensureAuthIndexes();
+  const docs = await getAdminDb()
+    .collection(USERS_COLLECTION)
+    .find({}, { session })
+    .toArray();
+
+  return docs.map((doc) => adminUserSchema.parse(doc));
 }
