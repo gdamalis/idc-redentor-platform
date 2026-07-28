@@ -11,6 +11,10 @@
 //     exempt from) a static .dark variant block, the print artifact's @page rule
 //   - Foundations token-inventory: every styles.css :root custom property renders
 //     a swatch in foundations.html (or is explicitly allowlisted)
+//   - token CONTRAST: every literal fg/bg token pair this stylesheet actually
+//     composites together clears its WCAG threshold (4.5:1 text, 3:1 graphical),
+//     computed directly from the HSL values in styles.css — this is genuinely
+//     static because the values themselves are static, unlike geometry (below)
 // RENDERED (launches headless Chromium, measures the real DOM — see
 // checkRenderedHitTargets): every native interactive element (button, select,
 // textarea, a[href], input excl. checkbox/radio) PLUS every element matching a
@@ -31,8 +35,9 @@
 // follow-up, not a blocker; it just hasn't been asked for yet.
 // NOT CHECKED AT ALL (by this gate or any other in the repo today): keyboard
 // focus order / visible focus rings, ARIA roles or screen-reader semantics
-// beyond a literal aria-label attribute, WCAG colour contrast of any token
-// pair, or whether an artifact's sample data reads as realistic (that's a
+// beyond a literal aria-label attribute, contrast of any RAW hex/rgb color that
+// bypasses the token system (the contrast check only understands var(--token)
+// values), and whether an artifact's sample data reads as realistic (that's a
 // human-review concern, not a mechanical one — see §8 of design-system.md).
 import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
 import { join, relative, extname } from "node:path";
@@ -114,6 +119,137 @@ function interactiveCssSelectors(cssBlocks) {
   return interactive;
 }
 
+// ===== Token CONTRAST check — genuinely static, unlike geometry: the colours
+// ARE the literal HSL values in styles.css, so recomputing WCAG contrast from
+// them is exact, not an approximation of something that only exists once
+// rendered. Every fg/bg pair actually composited together in this stylesheet
+// (found by grepping every block for a `color`/`fill`/`stroke` declaration
+// alongside a `background`/`background-color` declaration in the SAME block,
+// plus the handful of cross-block pairs this system's own conventions
+// establish — see docs/architecture/design-system.md's contrast table) is
+// checked against 4.5:1 for text or 3:1 for a graphical object (WCAG 1.4.11,
+// e.g. the birthday star's fill). Composited (translucent-over-base) pairs use
+// the same alpha-compositing math the status tokens were hand-verified with.
+function hslToRgb(h, s, l) {
+  s /= 100;
+  l /= 100;
+  const k = (n) => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n) =>
+    l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return [f(0) * 255, f(8) * 255, f(4) * 255];
+}
+function relLuminance([r, g, b]) {
+  const chan = (c) => {
+    c /= 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  const [R, G, B] = [chan(r), chan(g), chan(b)];
+  return 0.2126 * R + 0.7152 * G + 0.0722 * B;
+}
+function parseHslToken(str) {
+  const m = str
+    .trim()
+    .match(/^([\d.]+)\s+([\d.]+)%\s+([\d.]+)%(?:\s*\/\s*([\d.]+))?$/);
+  if (!m) return null;
+  return {
+    rgb: hslToRgb(parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3])),
+    alpha: m[4] !== undefined ? parseFloat(m[4]) : 1,
+  };
+}
+function contrastRatio(hslA, hslB) {
+  const a = parseHslToken(hslA);
+  const b = parseHslToken(hslB);
+  const lA = relLuminance(a.rgb);
+  const lB = relLuminance(b.rgb);
+  const [lighter, darker] = lA > lB ? [lA, lB] : [lB, lA];
+  return (lighter + 0.05) / (darker + 0.05);
+}
+function compositeOver(overStr, baseStr) {
+  const over = parseHslToken(overStr);
+  const base = parseHslToken(baseStr);
+  const rgb = over.rgb.map((c, i) => c * over.alpha + base.rgb[i] * (1 - over.alpha));
+  return relLuminance(rgb);
+}
+function contrastOverBase(fgStr, bgStr, baseStr) {
+  const bgLum = compositeOver(bgStr, baseStr);
+  const fgLum = relLuminance(parseHslToken(fgStr).rgb);
+  const [lighter, darker] = fgLum > bgLum ? [fgLum, bgLum] : [bgLum, fgLum];
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function extractThemeTokens(blocks, selector) {
+  const block = blocks.find(({ selectorList }) => selectorList.trim() === selector);
+  if (!block) return {};
+  const tokens = {};
+  const re = /--([\w-]+)\s*:\s*([^;]+);/g;
+  let m;
+  while ((m = re.exec(block.body))) tokens[m[1]] = m[2].trim();
+  return tokens;
+}
+
+// [label, fg token, bg token, threshold, composited-over-token-or-null]
+const CONTRAST_PAIRS = [
+  ["foreground on background", "foreground", "background", 4.5, null],
+  ["card-foreground on card", "card-foreground", "card", 4.5, null],
+  ["popover-foreground on popover", "popover-foreground", "popover", 4.5, null],
+  ["primary-foreground on primary", "primary-foreground", "primary", 4.5, null],
+  ["secondary-foreground on secondary", "secondary-foreground", "secondary", 4.5, null],
+  // 3:1 (not 4.5:1): this raw opaque pair's only remaining live usage is
+  // .avatar-photo's SVG icon (fill/stroke: currentColor) — graphical, not
+  // text (WCAG 1.4.11). Its two former TEXT usages (.b-inactive, then
+  // .badge.b-neutral, both a 4.34:1 AA fail) were repointed to the dedicated
+  // --status-inactive-fg/-bg pair below instead of raising this pair itself,
+  // which would have rippled into every other opaque-muted-background
+  // consumer. See docs/architecture/design-system.md §3a.
+  ["muted-foreground on muted (graphical only — see comment)", "muted-foreground", "muted", 3.0, null],
+  ["accent-foreground on accent", "accent-foreground", "accent", 4.5, null],
+  ["destructive-foreground on destructive", "destructive-foreground", "destructive", 4.5, null],
+  ["sidebar-foreground on sidebar", "sidebar-foreground", "sidebar", 4.5, null],
+  ["sidebar-primary-foreground on sidebar-primary", "sidebar-primary-foreground", "sidebar-primary", 4.5, null],
+  ["sidebar-accent-foreground on sidebar-accent", "sidebar-accent-foreground", "sidebar-accent", 4.5, null],
+  ["destructive-text on card", "destructive-text", "card", 4.5, null],
+  ["destructive-text on background", "destructive-text", "background", 4.5, null],
+  ["gold on card (graphical, .star fill)", "gold", "card", 3.0, null],
+  ["gold on background (graphical)", "gold", "background", 3.0, null],
+  ["status-active-fg on status-active-bg (over card)", "status-active-fg", "status-active-bg", 4.5, "card"],
+  ["status-occ-fg on status-occ-bg (over card)", "status-occ-fg", "status-occ-bg", 4.5, "card"],
+  ["status-inactive-fg on status-inactive-bg (over card)", "status-inactive-fg", "status-inactive-bg", 4.5, "card"],
+  // These two override the bg token's OWN alpha with an ad-hoc one applied at
+  // the usage site (thead th / .cal-dow div use `hsl(var(--muted) / 0.5)`,
+  // not --muted's own opacity) — the 6th field is that override.
+  ["thead th: muted-foreground on (muted/.5 over card)", "muted-foreground", "muted", 4.5, "card", 0.5],
+  ["status-inactive-fg on (muted/.5 over background) — .cal-dow div", "status-inactive-fg", "muted", 4.5, "background", 0.5],
+];
+
+function checkTokenContrast(cssBlocks) {
+  const light = extractThemeTokens(cssBlocks, ":root");
+  const dark = extractThemeTokens(cssBlocks, ".dark");
+  const problems = [];
+  for (const [theme, tokens] of [["light", light], ["dark", dark]]) {
+    for (const [label, fgKey, bgKey, threshold, base, bgAlphaOverride] of CONTRAST_PAIRS) {
+      const fg = tokens[fgKey];
+      let bg = tokens[bgKey];
+      if (!fg || !bg) {
+        problems.push(`${theme}: ${label} — token(s) missing (--${fgKey}/--${bgKey})`);
+        continue;
+      }
+      if (bgAlphaOverride !== undefined) {
+        bg = bg.replace(/\s*\/\s*[\d.]+\s*$/, "") + ` / ${bgAlphaOverride}`;
+      }
+      const r = base
+        ? contrastOverBase(fg, bg, tokens[base])
+        : contrastRatio(fg, bg);
+      if (r < threshold) {
+        problems.push(
+          `${theme}: ${label} = ${r.toFixed(3)}:1, below ${threshold}:1`,
+        );
+      }
+    }
+  }
+  return problems.map((p) => `styles.css (contrast): ${p}`);
+}
+
 // The fonts are declared ONCE, in the shared stylesheet — not in every artifact.
 // Asserting them per-HTML would force every artifact to embed a decorative
 // font-family purely to satisfy the gate. Assert them where they actually live,
@@ -126,7 +262,8 @@ function checkStyles(cssBlocks, cssSrc) {
   if (!/"Playfair Display"/.test(cssSrc))
     problems.push('missing "Playfair Display" font-family');
   for (const { re, why } of BANNED) if (re.test(cssSrc)) problems.push(why);
-  return problems.map((p) => `styles.css: ${p}`);
+  const styleProblems = problems.map((p) => `styles.css: ${p}`);
+  return [...styleProblems, ...checkTokenContrast(cssBlocks)];
 }
 
 // R2 requires Foundations to render every semantic colour token — the four
@@ -401,7 +538,8 @@ if (files.length === 0) {
 
 // The stylesheet is always checked, even with --only: it is shared by every
 // artifact, so a defect there affects all of them. Same for the Foundations
-// token-inventory check — it depends on styles.css's :root, not on `--only`.
+// token-inventory and contrast checks — both depend on styles.css's :root,
+// not on `--only`.
 const cssSrc = readFileSync(join(ROOT, "styles.css"), "utf8");
 const cssBlocks = parseCssBlocks(cssSrc);
 
