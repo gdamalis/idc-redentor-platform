@@ -139,6 +139,21 @@ describe("createRole", () => {
       createRole({ name: "X", permissions: [] }, session),
     ).rejects.toThrow("mongo down");
   });
+
+  // Same root cause as updateRole's description regression above: the
+  // create-role form's description input isn't `required`, so a role created
+  // without one arrives here with `input.description` `undefined`. Writing
+  // that straight into `insertOne` would serialize to BSON `null` and break
+  // every later `roleSchema.parse()` read of the new role.
+  it("never inserts an undefined or null description — omits the field entirely when absent", async () => {
+    const { createRole } = await loadService();
+    insertOne.mockResolvedValueOnce({ insertedId: { toHexString: () => "r-new" } });
+
+    await createRole({ name: "No description", permissions: [] }, session);
+
+    const [doc] = insertOne.mock.calls[0] ?? [];
+    expect(doc).not.toHaveProperty("description");
+  });
 });
 
 describe("updateRole", () => {
@@ -166,6 +181,52 @@ describe("updateRole", () => {
     expect(update.$set).not.toHaveProperty("key");
     expect(update.$set).not.toHaveProperty("isSystem");
     expect(options).toEqual({ session });
+  });
+
+  // Defense-in-depth for this service function's own contract: whatever the
+  // caller's shape, `input.description` arriving `undefined` must never
+  // reach the driver as a literal `undefined` `$set` value. (The permission
+  // matrix form round-trips the role's current description via a hidden
+  // input — see permission-matrix.test.tsx — but this function must not
+  // *depend* on every caller doing that.) The mongodb driver's default
+  // `ignoreUndefined: false` serializes an `undefined` `$set` value to BSON
+  // `null`, and `roleSchema`'s `description: z.string().optional()` rejects
+  // `null` — every later `listRoles()`/`findRolesByIds()` would then throw,
+  // a persisted, self-inflicted lockout for anyone holding that role.
+  it("never $sets an undefined or null description — $unsets it instead when absent from input", async () => {
+    const { updateRole } = await loadService();
+    updateOne.mockResolvedValueOnce({ matchedCount: 1 });
+
+    await updateRole(
+      {
+        roleId: "507f1f77bcf86cd799439011",
+        name: "Leader",
+        permissions: ["people:read", "people:write"],
+      },
+      session,
+    );
+
+    const [, update] = updateOne.mock.calls[0] ?? [];
+    expect(update.$set).not.toHaveProperty("description");
+    expect(update.$unset).toEqual({ description: "" });
+    // Belt and suspenders: `null` must never appear anywhere in the payload —
+    // confirms the driver never sees the `undefined`-serializes-to-`null` shape.
+    expect(JSON.stringify(update)).not.toContain("null");
+  });
+
+  it("$sets name/permissions (never key/isSystem) regardless of the description branch", async () => {
+    const { updateRole } = await loadService();
+    updateOne.mockResolvedValueOnce({ matchedCount: 1 });
+
+    await updateRole(
+      { roleId: "507f1f77bcf86cd799439011", name: "Leader", permissions: [] },
+      session,
+    );
+
+    const [, update] = updateOne.mock.calls[0] ?? [];
+    expect(update.$set).toMatchObject({ name: "Leader", permissions: [] });
+    expect(update.$set).not.toHaveProperty("key");
+    expect(update.$set).not.toHaveProperty("isSystem");
   });
 });
 

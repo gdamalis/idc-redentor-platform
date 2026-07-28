@@ -49,6 +49,7 @@ export default async function RolesPage({
   const matrixRoles = roles.map((role) => ({
     id: role._id.toHexString(),
     name: role.name,
+    description: role.description,
     key: role.key,
     permissions: role.permissions,
   }));

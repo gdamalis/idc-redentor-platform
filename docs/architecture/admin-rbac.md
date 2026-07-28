@@ -145,10 +145,12 @@ last administrator, each exercised in `last-admin.test.ts`:
 5. **Delete the Admin role entirely.**
 
 Every mutating action (`(app)/roles/actions.ts`, `(app)/users/actions.ts`) follows the identical
-shape: read the current `roles`/`users` inside the transaction, build the `AdminStateSnapshot` as it
-would look **after** applying the pending change (substituting the one role/user being edited,
-filtering out the one being deleted), call `retainsAdministrability(postState)`, and refuse
-`{ reason: "last-admin" }` before writing anything if it returns `false`.
+shape: touch the shared administrability guard document (see "Closing the concurrent-demotion race"
+below — this is what makes the invariant race-safe across concurrent transactions, not the
+transaction by itself), read the current `roles`/`users` inside the transaction, build the
+`AdminStateSnapshot` as it would look **after** applying the pending change (substituting the one
+role/user being edited, filtering out the one being deleted), call `retainsAdministrability(postState)`,
+and refuse `{ reason: "last-admin" }` before writing anything if it returns `false`.
 
 `ADMIN_EQUIVALENT_KEYS.every` (not `.some`) is what makes step 4 above actually require **both**
 keys — verified by mutation during CP2 (flip `.every` to `.some`, confirm the "requires BOTH keys,
@@ -192,6 +194,70 @@ transaction is opened in this app (the `MongoClient` stays private to the module
    below aborts-and-returns rather than throwing a custom `Error` for a business-rule refusal
    (`system-role`, `last-admin`, `not-found`, `conflict`), keeping the "no `Error` subclass for
    control flow" rule (`CLAUDE.md` § Code Conventions) intact even inside a transaction callback.
+
+### Closing the concurrent-demotion race — snapshot isolation is not serializability
+
+**An earlier revision of this doc claimed that running every read/write inside `withAdminTransaction`
+was, by itself, enough to make `retainsAdministrability` race-safe. That claim was wrong**, and the
+bug it hid was real: two admins concurrently demoting two _different_ users could both commit,
+leaving the panel with zero administrable users — with no error, no refusal, and no trace beyond the
+audit log showing two individually-innocent-looking edits.
+
+The mistake was conflating **snapshot isolation** (what MongoDB transactions actually give you) with
+**serializability** (what the invariant needs). A MongoDB multi-document transaction gives every read
+inside it a consistent point-in-time snapshot, and the driver detects a **write conflict** — forcing a
+retry — only when two concurrent transactions try to write **the same document**. It does **not**
+serialize transactions that never touch a common document. Concretely:
+
+> Admin A and Admin B are the only two active administrators. Admin A starts a transaction disabling
+> User B (Admin B's account); Admin B, at the same instant, starts a transaction disabling User A
+> (Admin A's account). Each transaction reads its own consistent snapshot — the one where the OTHER
+> admin is still active — builds a post-state, and `retainsAdministrability` correctly sees "the other
+> admin survives" in that snapshot and allows the write. Transaction A writes User B's document;
+> transaction B writes User A's document. **Different documents — no write conflict, no retry, both
+> commit.** The post-commit reality (zero active admins) was never checked, because neither snapshot
+> ever saw it. This is the textbook write-skew anomaly, and it is possible under snapshot isolation by
+> definition — nothing about "everything ran inside a transaction" prevents it, because the two
+> transactions were never in each other's way.
+
+**The fix is `service/rbac-guard.service.ts`'s `touchAdministrabilityGuard(session)`**, called as the
+FIRST operation inside every transaction that runs `retainsAdministrability` (role update, role
+delete, user role-assignment, user status change, user delete — every one of them, before the
+`listRoles`/`listUsers` reads that build the post-state snapshot):
+
+```ts
+await getAdminDb()
+  .collection<RbacGuardDocument>("rbacGuard")
+  .updateOne(
+    { _id: "administrability" },
+    { $inc: { rev: 1 }, $set: { updatedAt: new Date() } },
+    { upsert: true, session },
+  );
+```
+
+This manufactures exactly the shared document the two transactions above were missing: both A and B
+now write to the _same_ `rbacGuard` document before they read anything else. Whichever transaction's
+`updateOne` commits first wins outright; the other hits a real MongoDB write conflict, the driver
+retries it, and the retry re-reads `roles`/`users` **after** the winner's commit — so it observes the
+winner's demotion already applied and correctly refuses (`reason: "last-admin"`). Touching the guard
+document is what converts an untouched, mutually-invisible pair of transactions into a genuinely
+contended pair — trading "never conflict" for "always conflict," which is the entire point: a shared
+hot-spot document is the standard way to force serializability for an invariant that spans documents
+a database's conflict detection wouldn't otherwise link.
+
+Two details that matter if you touch this again:
+
+- **It must run before the invariant read, not after.** The earlier the contended write happens
+  inside the callback, the earlier a losing transaction discovers it must retry, instead of doing all
+  its other work first only to fail at commit time.
+- **It must stay idempotent.** `withAdminTransaction`'s callback can itself be retried by the driver
+  (rule 2 above) for reasons unrelated to this guard — a retried callback simply bumps `rev` again,
+  which is harmless by construction (a plain `$inc`/`$set` upsert has no side effect that isn't safe
+  to repeat).
+
+`createRoleAction` and `inviteUserAction` do **not** call `touchAdministrabilityGuard` — creating a
+role or inviting a user can only ever **add** a prospective grantee, never remove one, so neither runs
+`retainsAdministrability` in the first place and there is nothing to serialize against.
 
 ## The audit log
 

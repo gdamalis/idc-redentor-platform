@@ -11,6 +11,7 @@ import {
 } from "@src/service/role.service";
 import { listUsers } from "@src/service/user.service";
 import { appendAuditEntry } from "@src/service/rbac-audit.service";
+import { touchAdministrabilityGuard } from "@src/service/rbac-guard.service";
 import {
   ADMIN_EQUIVALENT_KEYS,
   retainsAdministrability,
@@ -102,10 +103,22 @@ export async function updateRoleAction(
   }
 
   const result = await withAdminTransaction(async (session): Promise<ActionResult> => {
+    // Bumps a shared guard document FIRST, before any read below — this is
+    // what forces a write conflict (and a driver retry, re-reading committed
+    // state) between two concurrent administrability-affecting mutations.
+    // MongoDB transactions are snapshot-isolated, not serializable: without
+    // this, two concurrent edits touching DIFFERENT role/user documents
+    // could both read "administrability survives" and both commit, leaving
+    // zero administrable users (write skew) — see admin-rbac.md.
+    await touchAdministrabilityGuard(session);
+
     // EVERY read/write below passes { session } — without it the operation
     // runs OUTSIDE the transaction and the invariant check below would read
-    // stale data (Global Constraints, transaction rules).
-    const [roles, users] = await Promise.all([listRoles(session), listUsers(session)]);
+    // stale data (Global Constraints, transaction rules). Sequential, not
+    // Promise.all: parallelizing reads on one ClientSession inside a
+    // transaction is undefined behavior (mongodb.d.ts:2465-2466).
+    const roles = await listRoles(session);
+    const users = await listUsers(session);
 
     const target = roles.find((r) => r._id.toHexString() === parsed.data.roleId);
     if (!target) {
@@ -113,13 +126,25 @@ export async function updateRoleAction(
       return { ok: false, reason: "not-found" };
     }
 
-    // System-role guard: the Admin role can never lose the admin-equivalent
-    // keys. The disabled checkbox in the matrix is convenience only — this
-    // is the real gate.
+    // The Admin role's admin-equivalent keys are PINNED: force-union them
+    // into whatever was submitted BEFORE the guard below runs. A disabled
+    // `<input type="checkbox">` is never submitted in FormData — the client
+    // mirrors these two keys with a hidden input (permission-matrix.tsx) so
+    // a legitimate save never actually omits them, but the SERVER must not
+    // depend on that: any submission that omits one (or both) — whether a
+    // browser quirk or a crafted payload — is corrected here, not refused.
+    const permissions =
+      target.key === "admin"
+        ? Array.from(new Set([...parsed.data.permissions, ...ADMIN_EQUIVALENT_KEYS]))
+        : parsed.data.permissions;
+
+    // Defense-in-depth, not the primary gate anymore: after the union above
+    // this can never actually be false for `target.key === "admin"` — kept
+    // as a guard against the union logic itself regressing, and because
+    // `ADMIN_EQUIVALENT_KEYS.every` here is exactly what's exercised by
+    // mutation testing (admin-rbac.md).
     if (target.key === "admin") {
-      const keeps = ADMIN_EQUIVALENT_KEYS.every((key) =>
-        parsed.data.permissions.includes(key),
-      );
+      const keeps = ADMIN_EQUIVALENT_KEYS.every((key) => permissions.includes(key));
       if (!keeps) {
         await session.abortTransaction();
         return { ok: false, reason: "system-role" };
@@ -136,7 +161,7 @@ export async function updateRoleAction(
       })),
       roles: roles.map((r) =>
         r._id.toHexString() === parsed.data.roleId
-          ? { id: parsed.data.roleId, permissions: parsed.data.permissions }
+          ? { id: parsed.data.roleId, permissions }
           : { id: r._id.toHexString(), permissions: r.permissions },
       ),
     };
@@ -147,7 +172,7 @@ export async function updateRoleAction(
       return { ok: false, reason: "last-admin" };
     }
 
-    await updateRole(parsed.data, session);
+    await updateRole({ ...parsed.data, permissions }, session);
     await appendAuditEntry(
       {
         actorUserId: authz.user._id.toHexString(),
@@ -155,7 +180,7 @@ export async function updateRoleAction(
         action: "role.update",
         targetId: parsed.data.roleId,
         before: { name: target.name, permissions: target.permissions },
-        after: { name: parsed.data.name, permissions: parsed.data.permissions },
+        after: { name: parsed.data.name, permissions },
       },
       session,
     );
@@ -179,7 +204,13 @@ export async function deleteRoleAction(
   }
 
   const result = await withAdminTransaction(async (session): Promise<ActionResult> => {
-    const [roles, users] = await Promise.all([listRoles(session), listUsers(session)]);
+    // See updateRoleAction's identical comment: touched first, so a
+    // concurrent administrability-affecting mutation write-conflicts here.
+    await touchAdministrabilityGuard(session);
+
+    // Sequential, not Promise.all — see updateRoleAction.
+    const roles = await listRoles(session);
+    const users = await listUsers(session);
 
     const target = roles.find((r) => r._id.toHexString() === parsed.data.roleId);
     if (!target) {

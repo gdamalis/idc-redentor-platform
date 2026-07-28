@@ -27,6 +27,9 @@ vi.mock("@src/service/user.service", () => ({ listUsers }));
 const appendAuditEntry = vi.fn();
 vi.mock("@src/service/rbac-audit.service", () => ({ appendAuditEntry }));
 
+const touchAdministrabilityGuard = vi.fn();
+vi.mock("@src/service/rbac-guard.service", () => ({ touchAdministrabilityGuard }));
+
 const revalidatePath = vi.fn();
 vi.mock("next/cache", () => ({ revalidatePath }));
 
@@ -149,6 +152,10 @@ describe("createRoleAction", () => {
       session,
     );
     expect(revalidatePath).toHaveBeenCalledWith("/[locale]/roles", "page");
+    // Creating a role can only ever ADD a grantee, never reduce
+    // administrability — it doesn't run `retainsAdministrability`, so it has
+    // no reason to touch the guard document either (scope boundary).
+    expect(touchAdministrabilityGuard).not.toHaveBeenCalled();
   });
 
   it("maps a duplicate-name conflict to reason: conflict, aborts, and does not audit", async () => {
@@ -198,7 +205,16 @@ describe("updateRoleAction", () => {
     expect(updateRole).not.toHaveBeenCalled();
   });
 
-  it("refuses removing users:manage/roles:manage from the Admin role — system-role, aborted, no write", async () => {
+  // P1 regression: a disabled `<input type="checkbox">` is never submitted
+  // in FormData, so the Admin role's protected checkboxes previously arrived
+  // here ABSENT from `permissions` on every legitimate save — and this guard
+  // used to refuse the whole edit whenever that happened, permanently
+  // bricking the Admin role (no permission change to it could ever be
+  // saved). The fix force-unions ADMIN_EQUIVALENT_KEYS into whatever was
+  // submitted BEFORE the guard runs, so the server never depends on the
+  // client actually sending them — a submission that naturally omits one
+  // (or both) is corrected, not refused.
+  it("force-unions users:manage/roles:manage back into the Admin role when the submission omits one of them, and succeeds", async () => {
     requirePermission.mockResolvedValueOnce(AUTHORIZED);
     listRoles.mockResolvedValueOnce([ADMIN_ROLE, LEADER_ROLE]);
     listUsers.mockResolvedValueOnce([ADMIN_USER]);
@@ -209,13 +225,89 @@ describe("updateRoleAction", () => {
       formDataOf({
         roleId: ADMIN_ROLE_ID,
         name: "Admin",
-        permissions: ["roles:manage"], // drops users:manage
+        permissions: ["roles:manage"], // omits users:manage
       }),
     );
 
-    expect(result).toEqual({ ok: false, reason: "system-role" });
-    expect(updateRole).not.toHaveBeenCalled();
-    expect(abortTransaction).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ ok: true, data: undefined });
+    expect(abortTransaction).not.toHaveBeenCalled();
+    expect(updateRole).toHaveBeenCalledWith(
+      expect.objectContaining({
+        roleId: ADMIN_ROLE_ID,
+        permissions: expect.arrayContaining(["roles:manage", "users:manage"]),
+      }),
+      session,
+    );
+  });
+
+  // The literal disabled-checkbox scenario: BOTH protected keys, plus every
+  // other permission on the Admin role, are absent from `permissions` — this
+  // is exactly what a real browser submits for the matrix's Admin column
+  // before the client-side hidden-input mirror renders (or for any crafted
+  // payload that omits them). Explicitly what the review asked for: "updating
+  // the Admin role's non-protected permissions succeeds and retains both
+  // protected keys."
+  it("updating the Admin role's non-protected permissions succeeds and retains both protected keys even when the submission carries neither", async () => {
+    requirePermission.mockResolvedValueOnce(AUTHORIZED);
+    listRoles.mockResolvedValueOnce([ADMIN_ROLE, LEADER_ROLE]);
+    listUsers.mockResolvedValueOnce([ADMIN_USER]);
+    const { updateRoleAction } = await loadActions();
+
+    const result = await updateRoleAction(
+      undefined,
+      formDataOf({
+        roleId: ADMIN_ROLE_ID,
+        name: "Admin",
+        permissions: ["people:read"], // a genuine, non-protected permission edit
+      }),
+    );
+
+    expect(result).toEqual({ ok: true, data: undefined });
+    expect(abortTransaction).not.toHaveBeenCalled();
+    const [input] = updateRole.mock.calls[0] ?? [];
+    expect(new Set(input.permissions)).toEqual(
+      new Set(["people:read", "users:manage", "roles:manage"]),
+    );
+    expect(appendAuditEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "role.update",
+        after: expect.objectContaining({
+          permissions: expect.arrayContaining(["people:read", "users:manage", "roles:manage"]),
+        }),
+      }),
+      session,
+    );
+  });
+
+  it("does not force-union admin-equivalent keys onto a non-admin role — a Leader role can still lose users:manage", async () => {
+    requirePermission.mockResolvedValueOnce(AUTHORIZED);
+    // CUSTOM_ADMIN_ROLE has no `key`, so it is NOT `target.key === "admin"" —
+    // this isolates the force-union from the (separate) last-admin invariant.
+    listRoles.mockResolvedValueOnce([ADMIN_ROLE, CUSTOM_ADMIN_ROLE]);
+    listUsers.mockResolvedValueOnce([
+      ADMIN_USER,
+      {
+        _id: { toHexString: () => "507f1f77bcf86cd799439022" },
+        status: "active",
+        roleIds: [CUSTOM_ADMIN_ROLE_ID],
+      },
+    ]);
+    const { updateRoleAction } = await loadActions();
+
+    const result = await updateRoleAction(
+      undefined,
+      formDataOf({
+        roleId: CUSTOM_ADMIN_ROLE_ID,
+        name: "Custom Admin",
+        permissions: ["roles:manage"], // drops users:manage — this is a real, non-admin role
+      }),
+    );
+
+    expect(result).toEqual({ ok: true, data: undefined });
+    expect(updateRole).toHaveBeenCalledWith(
+      expect.objectContaining({ permissions: ["roles:manage"] }),
+      session,
+    );
   });
 
   it("refuses an edit that would violate administrability — last-admin, aborted, no write", async () => {
@@ -237,6 +329,9 @@ describe("updateRoleAction", () => {
     expect(result).toEqual({ ok: false, reason: "last-admin" });
     expect(updateRole).not.toHaveBeenCalled();
     expect(abortTransaction).toHaveBeenCalledTimes(1);
+    // The guard is touched BEFORE the invariant read, so it still runs even
+    // on a refusal — that's what forces the write conflict this early.
+    expect(touchAdministrabilityGuard).toHaveBeenCalledWith(session);
   });
 
   it("applies a valid edit, audits it with the same session, and revalidates", async () => {
@@ -265,6 +360,11 @@ describe("updateRoleAction", () => {
     );
     expect(abortTransaction).not.toHaveBeenCalled();
     expect(revalidatePath).toHaveBeenCalledWith("/[locale]/roles", "page");
+    // P1-3: this mutation runs `retainsAdministrability`, so it must bump
+    // the shared guard document inside the SAME transaction/session — that's
+    // what forces a write conflict (and a retry) against any concurrent
+    // administrability-affecting mutation (write-skew closure).
+    expect(touchAdministrabilityGuard).toHaveBeenCalledWith(session);
   });
 
   it("returns not-found for a roleId that no longer exists, without writing", async () => {
@@ -306,6 +406,7 @@ describe("deleteRoleAction", () => {
     expect(result).toEqual({ ok: false, reason: "system-role" });
     expect(deleteRole).not.toHaveBeenCalled();
     expect(abortTransaction).toHaveBeenCalledTimes(1);
+    expect(touchAdministrabilityGuard).toHaveBeenCalledWith(session);
   });
 
   it("refuses deleting the last remaining source of admin permissions — last-admin, aborted, no write", async () => {
@@ -321,6 +422,7 @@ describe("deleteRoleAction", () => {
     expect(result).toEqual({ ok: false, reason: "last-admin" });
     expect(deleteRole).not.toHaveBeenCalled();
     expect(abortTransaction).toHaveBeenCalledTimes(1);
+    expect(touchAdministrabilityGuard).toHaveBeenCalledWith(session);
   });
 
   it("deletes a safe custom role, audits it with the same session, and revalidates", async () => {
@@ -338,6 +440,7 @@ describe("deleteRoleAction", () => {
       session,
     );
     expect(revalidatePath).toHaveBeenCalledWith("/[locale]/roles", "page");
+    expect(touchAdministrabilityGuard).toHaveBeenCalledWith(session);
   });
 
   it("returns not-found for a roleId that no longer exists, without writing", async () => {

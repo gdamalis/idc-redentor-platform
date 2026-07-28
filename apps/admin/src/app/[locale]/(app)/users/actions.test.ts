@@ -33,6 +33,9 @@ vi.mock("@src/service/auth-email", () => ({ sendInviteEmail }));
 const appendAuditEntry = vi.fn();
 vi.mock("@src/service/rbac-audit.service", () => ({ appendAuditEntry }));
 
+const touchAdministrabilityGuard = vi.fn();
+vi.mock("@src/service/rbac-guard.service", () => ({ touchAdministrabilityGuard }));
+
 const revalidatePath = vi.fn();
 vi.mock("next/cache", () => ({ revalidatePath }));
 
@@ -184,6 +187,11 @@ describe("inviteUserAction", () => {
         inviteUrl: expect.stringContaining("/es-AR/login"),
       }),
     );
+    // Inviting can only ever ADD a prospective grantee, never reduce
+    // administrability — it doesn't run `retainsAdministrability`, so it has
+    // no reason to touch the guard document either (scope boundary, mirrors
+    // createRoleAction's identical test in roles/actions.test.ts).
+    expect(touchAdministrabilityGuard).not.toHaveBeenCalled();
   });
 
   it("maps a duplicate-pending-invite conflict to reason: conflict, aborts, and never audits or emails", async () => {
@@ -310,6 +318,7 @@ describe("updateUserRolesAction", () => {
     expect(result).toEqual({ ok: false, reason: "last-admin" });
     expect(updateUserRoles).not.toHaveBeenCalled();
     expect(abortTransaction).toHaveBeenCalledTimes(1);
+    expect(touchAdministrabilityGuard).toHaveBeenCalledWith(session);
   });
 
   it("applies a valid role change, audits it with the same session, and revalidates", async () => {
@@ -335,6 +344,7 @@ describe("updateUserRolesAction", () => {
     );
     expect(abortTransaction).not.toHaveBeenCalled();
     expect(revalidatePath).toHaveBeenCalledWith("/[locale]/users", "page");
+    expect(touchAdministrabilityGuard).toHaveBeenCalledWith(session);
   });
 });
 
@@ -382,6 +392,7 @@ describe("updateUserStatusAction", () => {
     expect(result).toEqual({ ok: false, reason: "last-admin" });
     expect(updateUserStatus).not.toHaveBeenCalled();
     expect(abortTransaction).toHaveBeenCalledTimes(1);
+    expect(touchAdministrabilityGuard).toHaveBeenCalledWith(session);
   });
 
   it("disables a non-last user, audits it as user.disable, and revalidates", async () => {
@@ -402,6 +413,7 @@ describe("updateUserStatusAction", () => {
       session,
     );
     expect(revalidatePath).toHaveBeenCalledWith("/[locale]/users", "page");
+    expect(touchAdministrabilityGuard).toHaveBeenCalledWith(session);
   });
 
   it("re-enables a disabled user and audits it as user.enable", async () => {
@@ -459,6 +471,7 @@ describe("deleteUserAction", () => {
     expect(result).toEqual({ ok: false, reason: "last-admin" });
     expect(deleteUser).not.toHaveBeenCalled();
     expect(abortTransaction).toHaveBeenCalledTimes(1);
+    expect(touchAdministrabilityGuard).toHaveBeenCalledWith(session);
   });
 
   it("deletes a safe non-last user, audits it with after: null, and revalidates", async () => {
@@ -476,5 +489,6 @@ describe("deleteUserAction", () => {
       session,
     );
     expect(revalidatePath).toHaveBeenCalledWith("/[locale]/users", "page");
+    expect(touchAdministrabilityGuard).toHaveBeenCalledWith(session);
   });
 });

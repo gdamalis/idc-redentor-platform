@@ -13,6 +13,7 @@ import {
 import { createInvite } from "@src/service/invite.service";
 import { sendInviteEmail } from "@src/service/auth-email";
 import { appendAuditEntry } from "@src/service/rbac-audit.service";
+import { touchAdministrabilityGuard } from "@src/service/rbac-guard.service";
 import { retainsAdministrability } from "@src/lib/rbac/last-admin";
 import {
   inviteCreateSchema,
@@ -147,7 +148,15 @@ export async function updateUserRolesAction(
   }
 
   const result = await withAdminTransaction(async (session): Promise<ActionResult> => {
-    const [roles, users] = await Promise.all([listRoles(session), listUsers(session)]);
+    // See roles/actions.ts's updateRoleAction for the full rationale: bumped
+    // first so a concurrent administrability-affecting mutation write-
+    // conflicts here rather than both silently committing (write skew).
+    await touchAdministrabilityGuard(session);
+
+    // Sequential, not Promise.all — parallelizing reads on one ClientSession
+    // inside a transaction is undefined behavior (mongodb.d.ts:2465-2466).
+    const roles = await listRoles(session);
+    const users = await listUsers(session);
 
     const target = users.find((u) => u._id.toHexString() === parsed.data.userId);
     if (!target) {
@@ -214,7 +223,11 @@ export async function updateUserStatusAction(
   }
 
   const result = await withAdminTransaction(async (session): Promise<ActionResult> => {
-    const [roles, users] = await Promise.all([listRoles(session), listUsers(session)]);
+    // See updateUserRolesAction's identical comment above.
+    await touchAdministrabilityGuard(session);
+
+    const roles = await listRoles(session);
+    const users = await listUsers(session);
 
     const target = users.find((u) => u._id.toHexString() === parsed.data.userId);
     if (!target) {
@@ -273,7 +286,11 @@ export async function deleteUserAction(
   }
 
   const result = await withAdminTransaction(async (session): Promise<ActionResult> => {
-    const [roles, users] = await Promise.all([listRoles(session), listUsers(session)]);
+    // See updateUserRolesAction's identical comment above.
+    await touchAdministrabilityGuard(session);
+
+    const roles = await listRoles(session);
+    const users = await listUsers(session);
 
     const target = users.find((u) => u._id.toHexString() === parsed.data.userId);
     if (!target) {

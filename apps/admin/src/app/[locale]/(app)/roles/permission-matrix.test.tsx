@@ -67,3 +67,122 @@ describe("PermissionMatrix — registry extensibility", () => {
     }
   });
 });
+
+/**
+ * Regression for the P1 finding: a disabled `<input type="checkbox">` is
+ * NEVER included in `FormData` on submit — so the Admin role's protected
+ * `users:manage`/`roles:manage` checkboxes (rendered `disabled`) previously
+ * vanished from the submitted `permissions` list entirely, and the server's
+ * system-role guard then refused EVERY edit to the Admin role, bricking it.
+ * The fix mirrors each protected, disabled checkbox with a real
+ * `<input type="hidden">` carrying the same name/value/form association, so
+ * submitted `FormData` reflects what the checked-and-disabled box visually
+ * shows regardless of the browser's disabled-element submission rule.
+ */
+describe("PermissionMatrix — Admin role's protected keys survive submission", () => {
+  const ADMIN_ROLE = {
+    id: "r-admin",
+    key: "admin",
+    name: "Admin",
+    description: "Full access",
+    permissions: ["users:manage", "roles:manage", "people:read"],
+  };
+  const LEADER_ROLE = {
+    id: "r-leader",
+    key: "leader",
+    name: "Leader",
+    permissions: ["users:manage"], // same key, but NOT the admin role — must stay a plain checkbox
+  };
+
+  it("mirrors each protected, disabled checkbox on the Admin role with a hidden input of the same name/value/form", async () => {
+    const { PermissionMatrix } = await import("./permission-matrix");
+
+    const { container } = render(
+      <PermissionMatrix roles={[ADMIN_ROLE, LEADER_ROLE]} canManage />,
+    );
+
+    for (const key of ["users:manage", "roles:manage"]) {
+      const checkbox = container.querySelector<HTMLInputElement>(
+        `input[type="checkbox"][name="permissions"][value="${key}"][form="role-form-r-admin"]`,
+      );
+      expect(checkbox).toBeDisabled();
+
+      const hidden = container.querySelector<HTMLInputElement>(
+        `input[type="hidden"][name="permissions"][value="${key}"][form="role-form-r-admin"]`,
+      );
+      expect(hidden).not.toBeNull();
+    }
+
+    // An unrelated, non-admin role holding the SAME key stays a plain,
+    // enabled checkbox with no hidden mirror — the guard is scoped to
+    // `role.key === "admin"`, not to the key itself.
+    const leaderCheckbox = container.querySelector<HTMLInputElement>(
+      `input[type="checkbox"][name="permissions"][value="users:manage"][form="role-form-r-leader"]`,
+    );
+    expect(leaderCheckbox).not.toBeDisabled();
+    const leaderHidden = container.querySelector(
+      `input[type="hidden"][name="permissions"][value="users:manage"][form="role-form-r-leader"]`,
+    );
+    expect(leaderHidden).toBeNull();
+
+    // A non-protected key on the Admin role (people:read) is a plain,
+    // enabled checkbox — no hidden mirror, since it isn't pinned.
+    const peopleReadCheckbox = container.querySelector<HTMLInputElement>(
+      `input[type="checkbox"][name="permissions"][value="people:read"][form="role-form-r-admin"]`,
+    );
+    expect(peopleReadCheckbox).not.toBeDisabled();
+    const peopleReadHidden = container.querySelector(
+      `input[type="hidden"][name="permissions"][value="people:read"][form="role-form-r-admin"]`,
+    );
+    expect(peopleReadHidden).toBeNull();
+  });
+
+  it("does not render the protected-key hidden mirrors at all when canManage is false", async () => {
+    const { PermissionMatrix } = await import("./permission-matrix");
+
+    // canManage=false renders no <form> at all (see role-form guard below the
+    // table) — the hidden mirrors are pointless without a form to submit.
+    const { container } = render(
+      <PermissionMatrix roles={[ADMIN_ROLE]} canManage={false} />,
+    );
+
+    expect(
+      container.querySelector('input[type="hidden"][name="permissions"]'),
+    ).toBeNull();
+  });
+
+  /**
+   * Regression for the sibling P1 finding: the matrix form previously
+   * carried a hidden `name` field but no `description` field, so a
+   * permissions-only save always submitted `description` as absent —
+   * which (pre-fix) corrupted the role document via mongodb's
+   * undefined-serializes-to-null behavior. The form must round-trip the
+   * role's CURRENT description exactly like it already does for `name`.
+   */
+  it("round-trips the role's current description through a hidden input, exactly like name", async () => {
+    const { PermissionMatrix } = await import("./permission-matrix");
+
+    const { container } = render(
+      <PermissionMatrix roles={[ADMIN_ROLE, LEADER_ROLE]} canManage />,
+    );
+
+    const adminName = container.querySelector<HTMLInputElement>(
+      'form#role-form-r-admin input[type="hidden"][name="name"]',
+    );
+    expect(adminName?.value).toBe("Admin");
+    const adminDescription = container.querySelector<HTMLInputElement>(
+      'form#role-form-r-admin input[type="hidden"][name="description"]',
+    );
+    expect(adminDescription?.value).toBe("Full access");
+
+    // A role with no description (LEADER_ROLE has none) still gets the
+    // hidden field, just with an empty value — never `undefined` — so the
+    // submitted FormData always carries an explicit (possibly empty) string
+    // rather than omitting the key.
+    const leaderDescription = container.querySelector<HTMLInputElement>(
+      'form#role-form-r-leader input[type="hidden"][name="description"]',
+    );
+    expect(leaderDescription).not.toBeNull();
+    expect(leaderDescription?.value).toBe("");
+  });
+});

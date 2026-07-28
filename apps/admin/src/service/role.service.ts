@@ -165,7 +165,12 @@ export async function createRole(
       .insertOne(
         {
           name: input.name,
-          description: input.description,
+          // Never write `description: undefined` — the driver's default
+          // (`ignoreUndefined: false`) serializes that to BSON `null`, which
+          // `roleSchema`'s `description: z.string().optional()` rejects on
+          // every later `roleSchema.parse()` read. Omit the key entirely
+          // instead of writing a null placeholder.
+          ...(input.description !== undefined && { description: input.description }),
           permissions: [...input.permissions],
           isSystem: false,
           createdAt: now,
@@ -187,24 +192,40 @@ export interface UpdateRoleInput {
   readonly permissions: readonly string[];
 }
 
-/** Never writes `key` or `isSystem` — neither is updatable, by construction. */
+/**
+ * Never writes `key` or `isSystem` — neither is updatable, by construction.
+ *
+ * Never writes `description: undefined` either. The permission matrix form
+ * (`permission-matrix.tsx`) round-trips the role's current `description`
+ * through a hidden input, same as `name` — but this function must not
+ * *depend* on every caller doing that: if `input.description` ever arrives
+ * `undefined`, the mongodb driver's default (`ignoreUndefined: false`) would
+ * serialize an `undefined` `$set` value to BSON `null`, and `roleSchema`'s
+ * `description: z.string().optional()` accepts a missing key but rejects
+ * `null` — so a naive `$set: { description: input.description }` would corrupt
+ * the document: every later `listRoles()`/`findRolesByIds()` throws parsing
+ * it, a persisted lockout for anyone holding that role. `$unset` is
+ * schema-safe (an absent key satisfies `.optional()`); a bare `null` is not.
+ */
 export async function updateRole(
   input: UpdateRoleInput,
   session: ClientSession,
 ): Promise<void> {
   await ensureRbacIndexes();
-  await getAdminDb().collection(ROLES_COLLECTION).updateOne(
-    { _id: new ObjectId(input.roleId) },
-    {
-      $set: {
-        name: input.name,
-        description: input.description,
-        permissions: [...input.permissions],
-        updatedAt: new Date(),
-      },
-    },
-    { session },
-  );
+
+  const setFields = {
+    name: input.name,
+    permissions: [...input.permissions],
+    updatedAt: new Date(),
+  };
+  const update =
+    input.description === undefined
+      ? { $set: setFields, $unset: { description: "" } }
+      : { $set: { ...setFields, description: input.description } };
+
+  await getAdminDb()
+    .collection(ROLES_COLLECTION)
+    .updateOne({ _id: new ObjectId(input.roleId) }, update, { session });
 }
 
 export async function deleteRole(
