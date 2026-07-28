@@ -1,5 +1,12 @@
 # @idcr/admin
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies [6b3bfad]
+  - @idcr/ui@0.0.1
+
 ## 0.1.0
 
 ### Minor Changes

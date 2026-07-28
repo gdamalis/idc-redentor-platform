@@ -1,0 +1,1451 @@
+/* ==========================================================================
+   ICR-18 design-system shared stylesheet.
+   Tokens are copied verbatim from packages/ui/src/tokens.css (the light
+   :root block and the .dark block), plus two families derived by v1 and
+   documented — never shipped — in tokens.css: --gold and the status hues.
+   ========================================================================== */
+
+:root {
+  --background: 210 20% 98%;
+  --foreground: 222 47% 11%;
+  --primary: 210 100% 35%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 35 30% 90%;
+  --secondary-foreground: 24 10% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  /* Destructive — light L darkened 60.2%->46% so the button pair (this
+     --destructive as a background, with --destructive-foreground as text)
+     clears WCAG AA 4.5:1 (was 3.59:1, Codex PR #112 vigil, thread 3660378508).
+     --destructive-text is a dedicated pair for small FOREGROUND text (field
+     errors, destructive menu items) — --destructive itself is unsafe as text
+     (was 3.76:1 on --card, thread 3660378512). Mirrors packages/ui/src/tokens.css;
+     see docs/architecture/design-system.md §3a. */
+  --destructive: 0 84.2% 46%;
+  --destructive-foreground: 210 40% 98%;
+  --destructive-text: 0 84.2% 40%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 210 100% 35%;
+  --radius: 0.75rem;
+  --chart-1: 12 76% 61%;
+  --chart-2: 173 58% 39%;
+  --chart-3: 197 37% 24%;
+  --chart-4: 43 74% 66%;
+  --chart-5: 27 87% 67%;
+  --sidebar: 0 0% 98%;
+  --sidebar-foreground: 240 5.3% 26.1%;
+  --sidebar-primary: 240 5.9% 10%;
+  --sidebar-primary-foreground: 0 0% 98%;
+  --sidebar-accent: 240 4.8% 95.9%;
+  --sidebar-accent-foreground: 240 5.9% 10%;
+  --sidebar-border: 220 13% 91%;
+  --sidebar-ring: 217.2 91.2% 59.8%;
+
+  /* Derived — NOT in tokens.css. See docs/architecture/design-system.md.
+     Light L darkened 62%->46% (PR #112 whole-palette contrast sweep): as a
+     graphical fill (the birthday .star marker, WCAG 1.4.11 non-text 3:1),
+     the original was 2.293:1 on --card / 2.193:1 on --background — same hue/
+     sat, still a clearly gold/bronze tone. Verified: 3.636:1 / 3.476:1. Dark
+     gold already passed (6.464:1 / 6.907:1) and is left unchanged. */
+  --gold: 35 45% 46%;
+  /* status-*-fg darkened from v1 (Activo 34%->29%L, Ocasional 38%->33%L) to
+     clear WCAG AA 4.5:1 for 12px badge text composited over --card (white) —
+     Codex round-4 P2. Hue/sat unchanged; only lightness moved. Verified:
+     Activo 3.664:1 -> 4.765:1, Ocasional 3.811:1 -> 4.800:1. */
+  --status-active-fg: 160 60% 29%;
+  --status-active-bg: 160 60% 34% / 0.12;
+  --status-occ-fg: 35 70% 33%;
+  --status-occ-bg: 35 70% 45% / 0.14;
+  /* "Inactivo" used to reuse --muted-foreground on --muted directly (4.34:1 —
+     an AA near-miss, Codex PR #112 vigil, thread 3660378517). Same fix as the
+     two pairs above: derive a dedicated pair instead of the opaque muted
+     swatch, composited translucent over --card. fg darkened 46.9%->42%L
+     (mirrors the ~5pt darkening already applied to Activo/Ocasional above).
+     Verified (composited over --card, white): 4.34:1 -> 4.894:1. */
+  --status-inactive-fg: 215.4 16.3% 42%;
+  --status-inactive-bg: 215.4 16.3% 47% / 0.12;
+}
+
+.dark {
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+  --primary: 210 90% 60%;
+  --primary-foreground: 222 47.4% 11.2%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --card: 222 47% 14%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222 47% 11%;
+  --popover-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  /* Destructive — button pair unchanged (9.56:1, already clears AA; recorded,
+     not fixed). --destructive-text is a dedicated lighter tint safe as small
+     foreground text (was 1.67-1.79:1, effectively unreadable). See
+     docs/architecture/design-system.md §3a. */
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --destructive-text: 0 84.2% 65%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 210 90% 60%;
+  --sidebar: 240 5.9% 10%;
+  --sidebar-foreground: 240 4.8% 95.9%;
+  --sidebar-primary: 224.3 76.3% 48%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 240 3.7% 15.9%;
+  --sidebar-accent-foreground: 240 4.8% 95.9%;
+  --sidebar-border: 240 3.7% 15.9%;
+  --sidebar-ring: 217.2 91.2% 59.8%;
+
+  --gold: 35 40% 58%;
+  /* Dark-theme status pairs already clear WCAG AA over --card (222 47% 14%) —
+     Activo 6.785:1, Ocasional 6.456:1 — verified during the same Codex
+     round-4 audit as the light-theme fix above. Left unchanged. */
+  --status-active-fg: 160 55% 60%;
+  --status-active-bg: 160 55% 50% / 0.15;
+  --status-occ-fg: 35 75% 62%;
+  --status-occ-bg: 35 70% 50% / 0.16;
+  /* Dark "Inactivo" pair — the opaque muted pair already cleared AA here
+     (5.70:1), so fg is left at --muted-foreground's own value; only the bg
+     moves to a translucent wash for consistency with Activo/Ocasional and
+     with the light pair above. Verified (composited over --card): 5.501:1. */
+  --status-inactive-fg: 215 20.2% 65.1%;
+  --status-inactive-bg: 215 20.2% 50% / 0.15;
+}
+
+/* ===== Base reset + typography ===== */
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  -webkit-font-smoothing: antialiased;
+  text-wrap: pretty;
+}
+h1,
+h2,
+h3,
+h4 {
+  font-family: "Playfair Display", Georgia, serif;
+  font-weight: 700;
+  letter-spacing: -0.011em;
+  margin: 0;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ===== ≥44px hit-area baseline — the correction to v1 =====
+   Every interactive control belongs in this selector list — it is the single
+   enforcement point for the ≥44px hit target AND for `font: inherit` on
+   native form controls (leaving a <button> out of this list means it
+   renders in the browser's UA font, not Outfit). Two consecutive review
+   rounds each found one control missing (round 1: widths, round 2: heights)
+   because this list was enumerated by hand — verify-artifacts.mjs now
+   mechanically fails the build if any `cursor: pointer` (or bare <input>)
+   control's height/min-height falls under 44px anywhere in this file. */
+.btn,
+.icon-btn,
+.kebab,
+.pager button,
+.seg button,
+.nav-item,
+.filter {
+  min-height: 44px; /* hit target — quality bar */
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: inherit;
+  cursor: pointer;
+}
+/* Dense contexts keep visual compactness while preserving the hit area. */
+.dense .kebab,
+.dense .pager button {
+  min-height: 44px;
+  padding-block: 0;
+}
+
+/* The min-height above already floors .icon-btn / .kebab's rendered HEIGHT at
+   44px (min-height wins over their smaller explicit height: 36/30px), but sets
+   no WIDTH floor — those controls render 36x44 and 30x44 respectively (Codex
+   P2, PR #112). Fixed by the ::before halo pattern below, applied axis-specific
+   (inset only left/right) rather than uniformly: expanding height too would
+   push the pointer target past the already-correct 44px and into neighbouring
+   dense-table rows.
+   .pager button used to get the same halo (`inset: 0 -7px`), but with the
+   pager's 6px gap that put adjacent buttons' 44px halos 8px into each other —
+   the later-painted sibling's halo wins the overlap, so a click near a pager
+   boundary activated the neighbouring page (PR #112 vigil finding, thread
+   3660378526). Floored to min-width: 44px directly instead, below, matching
+   the round-4 precedent already used for .btn/.seg button/.nav-item/.filter/
+   .search input/.th-sort/.checkbox: pitch becomes 44+6=50px, no overlap.
+   Measured (headless, getBoundingClientRect): adjacent .pager button hit
+   areas no longer intersect on any artifact that renders the pager. */
+.icon-btn,
+.kebab {
+  position: relative;
+}
+.icon-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0 -4px; /* 36 -> 44 wide; height already 44 */
+}
+.kebab::before {
+  content: "";
+  position: absolute;
+  inset: 0 -7px; /* 30 -> 44 wide; height already 44 */
+}
+
+/* ===== Preview scaffolding used by every artifact ===== */
+.preview {
+  padding: 24px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+.ds-section {
+  padding: 24px;
+  border-bottom: 1px solid hsl(var(--border));
+}
+.ds-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+.ds-label {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.ds-swatch {
+  width: 120px;
+}
+.ds-swatch .chip {
+  height: 52px;
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+}
+.ds-swatch .name {
+  font-size: 12px;
+  margin-top: 6px;
+  font-weight: 600;
+}
+.ds-swatch .val {
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+}
+.card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* Screen artifacts ship their own shell chrome (.app/.sidebar/.topbar) that
+   must reach the frame edge — the 24px padding above is right for a
+   primitive grid but wrong for a full shell. Use on every screens/*.html
+   preview instead of an inline `style="padding: 0"` override. */
+.preview.flush {
+  padding: 0;
+}
+
+/* ==========================================================================
+   Primitive + shell classes — ported verbatim from
+   tasks/specs/design-mockups/people-list.html lines 60-181, with two
+   deltas: (a) the ≥44px hit-area rule above now governs .btn, .icon-btn,
+   .kebab, .pager button, .seg button and .nav-item; (b) v1's `.btn-ghost`
+   is renamed `.btn-outline` and real `.btn-secondary` / `.btn-ghost`
+   (transparent) / `.btn-destructive` / disabled variants are added below.
+   ========================================================================== */
+
+.app {
+  display: grid;
+  grid-template-columns: 264px 1fr;
+  min-height: 100vh;
+  position: relative; /* containing block for an overlaid .dialog-scrim (Task 6) */
+}
+
+/* ===== Sidebar ===== */
+.sidebar {
+  width: 264px; /* explicit for standalone preview — v1 set this via .app's grid track */
+  background: hsl(var(--sidebar));
+  border-right: 1px solid hsl(var(--sidebar-border));
+  color: hsl(var(--sidebar-foreground));
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+/* Collapsed icon-rail — new for Primitives B, not present in v1. Labels are
+   wrapped in `.nav-item-label` so the rail can hide them without touching
+   the icons; group headers, the "Pronto" chip and the footer name/role hide
+   the same way. */
+.sidebar.collapsed {
+  width: 76px;
+}
+.sidebar.collapsed .brand {
+  justify-content: center;
+  padding: 18px 0 14px;
+}
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+}
+.sidebar.collapsed .side-foot {
+  justify-content: center;
+}
+.sidebar.collapsed .brand-name,
+.sidebar.collapsed .brand-sub,
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .nav-item-label,
+.sidebar.collapsed .soon,
+.sidebar.collapsed .side-foot .who {
+  display: none;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 18px 14px;
+}
+.brand .mark {
+  width: 34px;
+  height: 34px;
+  border-radius: calc(var(--radius) - 2px);
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  display: grid;
+  place-items: center;
+  font-family: "Playfair Display", serif;
+  font-weight: 800;
+  font-size: 16px;
+  flex: none;
+}
+.brand .brand-name {
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.1;
+  color: hsl(var(--sidebar-accent-foreground));
+}
+.brand .brand-sub {
+  font-size: 11.5px;
+  color: hsl(var(--muted-foreground));
+}
+
+.nav {
+  padding: 6px 10px;
+  overflow-y: auto;
+  flex: 1;
+}
+.nav-group {
+  margin-top: 14px;
+}
+.nav-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: hsl(var(--muted-foreground));
+  padding: 6px 10px;
+  font-weight: 600;
+}
+.nav-item {
+  padding: 8px 10px;
+  min-width: 44px; /* real content (icon+label) already measures 77.7px+ —
+     this floor is a mechanical guarantee, not a visual change (Codex round-4 P2). */
+  border-radius: calc(var(--radius) - 2px);
+  color: hsl(var(--sidebar-foreground));
+  font-weight: 500;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+}
+.nav-item svg {
+  width: 17px;
+  height: 17px;
+  stroke: currentColor;
+  flex: none;
+  opacity: 0.85;
+}
+.nav-item:hover {
+  background: hsl(var(--sidebar-accent));
+  color: hsl(var(--sidebar-accent-foreground));
+}
+.nav-item.active {
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+}
+.dark .nav-item.active {
+  background: hsl(var(--primary) / 0.18);
+}
+.nav-item.active svg {
+  opacity: 1;
+}
+.nav-item.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.nav-item .soon {
+  margin-left: auto;
+  font-size: 10px;
+  color: hsl(var(--muted-foreground));
+  border: 1px solid hsl(var(--border));
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+.side-foot {
+  border-top: 1px solid hsl(var(--sidebar-border));
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  font-size: 12px;
+  flex: none;
+}
+/* Size variants — base .avatar is the 32px "md". Added for Primitives A
+   (not present in v1, which only ever renders the sidebar-footer size). */
+.avatar-sm {
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+}
+.avatar-lg {
+  width: 44px;
+  height: 44px;
+  font-size: 15px;
+}
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  object-fit: cover;
+}
+/* No real congregant photo exists for a design-system mockup, so the "image"
+   variant is a token-derived silhouette placeholder standing in for wherever
+   an <img> would render — never a raw hex, never a stock photo URL. */
+.avatar-photo {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+.avatar-photo svg {
+  width: 60%;
+  height: 60%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+/* Favorite marker overlay — reuses the .star fill from the people-list table. */
+.avatar-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.avatar-wrap .avatar-star {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  display: grid;
+  place-items: center;
+}
+.avatar-wrap .avatar-star .star {
+  width: 9px;
+  height: 9px;
+}
+.side-foot .who {
+  line-height: 1.15;
+  min-width: 0;
+}
+.side-foot .who b {
+  font-weight: 600;
+  font-size: 13px;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.side-foot .who span {
+  font-size: 11.5px;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ===== Main ===== */
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.topbar {
+  height: 60px;
+  border-bottom: 1px solid hsl(var(--border));
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 22px;
+  background: hsl(var(--background) / 0.85);
+  backdrop-filter: blur(6px);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.crumb {
+  color: hsl(var(--muted-foreground));
+  font-size: 13px;
+}
+.crumb b {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+.topbar .spacer {
+  flex: 1;
+}
+.seg {
+  display: inline-flex;
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  padding: 2px;
+  background: hsl(var(--card));
+}
+.seg button {
+  border: 0;
+  background: transparent;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  /* Short labels ("ES"/"EN") render under 44px wide from padding + text alone —
+     min-width floors the pointer target; justify-content re-centers the label
+     once the box is wider than its content (Codex P2, PR #112). */
+  min-width: 44px;
+  justify-content: center;
+}
+.seg button.on {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  display: grid;
+  place-items: center;
+  color: hsl(var(--foreground));
+}
+.icon-btn svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+}
+.icon-btn:hover {
+  background: hsl(var(--accent));
+}
+
+.content {
+  padding: 26px 26px 40px;
+}
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.page-head h1 {
+  font-size: 30px;
+}
+.page-head .sub {
+  color: hsl(var(--muted-foreground));
+  margin-top: 4px;
+  font-size: 13.5px;
+}
+
+.btn {
+  padding: 0 15px;
+  min-width: 44px; /* real text-button content already measures 83px+ (icon-only
+     variants get their own 44px width from .btn-icon) — this floor is a
+     mechanical guarantee, not a visual change (Codex round-4 P2). */
+  border-radius: calc(var(--radius) - 2px);
+  font-weight: 600;
+  font-size: 13.5px;
+  border: 1px solid transparent;
+}
+.btn svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+}
+.btn-primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.btn-primary:hover {
+  filter: brightness(1.06);
+}
+
+/* v1's `.btn-ghost` renamed `.btn-outline`; genuine secondary/ghost/destructive
+   and a disabled state are new additions (not present in v1). */
+.btn-secondary {
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+}
+.btn-outline {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+.btn-outline:hover {
+  background: hsl(var(--accent));
+}
+.btn-ghost {
+  background: transparent;
+  color: hsl(var(--foreground));
+  border-color: transparent;
+}
+.btn-ghost:hover {
+  background: hsl(var(--accent));
+}
+.btn-destructive {
+  background: hsl(var(--destructive));
+  color: hsl(var(--destructive-foreground));
+}
+.btn[disabled],
+.btn.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Size variants for Primitives A. The 44px hit-area rule above already
+   floors .btn's rendered height at 44px (min-height wins over the 38px
+   base height), so .btn-md is only an explicit label for that default —
+   .btn-sm shrinks the VISUAL box to 36px while keeping the hit area at
+   44px via an invisible ::before halo (a standard compact-control pattern,
+   not a visual regression of the ≥44px bar). .btn-lg grows both. */
+.btn-sm {
+  position: relative;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 12.5px;
+}
+.btn-sm::before {
+  content: "";
+  position: absolute;
+  inset: -4px 0;
+}
+.btn-md {
+  height: 44px;
+  min-height: 44px;
+}
+.btn-lg {
+  height: 48px;
+  min-height: 48px;
+  padding: 0 18px;
+  font-size: 14px;
+}
+.btn-icon {
+  width: 44px;
+  padding: 0;
+  justify-content: center;
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.search {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+  max-width: 420px;
+}
+.search svg {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  stroke: hsl(var(--muted-foreground));
+}
+.search input {
+  width: 100%;
+  height: 44px;
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid hsl(var(--input));
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  padding: 0 12px 0 34px;
+  font: inherit;
+  font-size: 13.5px;
+}
+.search input::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+.search input:focus {
+  outline: none;
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.18);
+}
+.filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px; /* hit target — quality bar (also set via the shared
+     baseline selector list above; restated here so this block is
+     self-sufficient if that list ever changes) */
+  min-width: 44px; /* real content (icon+label, e.g. "País") already measures
+     71.7px+ — this floor is a mechanical guarantee, not a visual change
+     (Codex round-4 P2). */
+  padding: 0 12px;
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.filter svg {
+  width: 15px;
+  height: 15px;
+  stroke: hsl(var(--muted-foreground));
+}
+
+/* Table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+thead th {
+  text-align: left;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+  font-weight: 600;
+  padding: 12px 16px;
+  background: hsl(var(--muted) / 0.5);
+  border-bottom: 1px solid hsl(var(--border));
+}
+tbody td {
+  padding: 12px 16px;
+  border-bottom: 1px solid hsl(var(--border));
+  vertical-align: middle;
+}
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+tbody tr:hover {
+  background: hsl(var(--accent) / 0.55);
+}
+/* ===== Table extensions — not present in v1 (Primitives B) =====
+   `.is-hover` mirrors :hover so a static artifact can SHOW the hovered look
+   (same reasoning as Input's `.is-focus`). `.selected` and `.dense` are new
+   row states; `.empty-state` is the table's empty-results layout. */
+/* .th-sort's own line-height is only ~17px — well under the 44px floor — but
+   it sits inside a thead th cell alongside plain-text headers (~42px tall).
+   A literal min-height: 44px on this inline-flex span would grow to 44px
+   PLUS the th's own padding, ballooning the whole header row past 68px
+   (measured) instead of matching its siblings. Use the same invisible
+   ::before halo already established for .btn-sm / .icon-btn / .kebab: it
+   restores the ≥44px hit target vertically without adding any layout
+   height (Codex P2, PR #112 precedent). */
+.th-sort {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 44px; /* real column-label content already measures 66px+ — this
+     floor is a mechanical guarantee, not a visual change (Codex round-4 P2).
+     Unlike the height halo above, no ::before trick is needed: a width floor
+     here doesn't risk ballooning the header row. */
+  cursor: pointer;
+}
+.th-sort::before {
+  content: "";
+  position: absolute;
+  inset: -14px 0; /* 17.25px line height -> 45.25px hit target */
+}
+.th-sort svg {
+  width: 10px;
+  height: 10px;
+  stroke: currentColor;
+}
+tbody tr.is-hover {
+  background: hsl(var(--accent) / 0.55);
+}
+tbody tr.selected {
+  background: hsl(var(--primary) / 0.08);
+}
+tbody tr.dense td {
+  padding: 6px 16px;
+}
+.empty-state {
+  padding: 56px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+.empty-state p {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+}
+.person {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.person .nm {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.person .em {
+  color: hsl(var(--muted-foreground));
+  font-size: 12.5px;
+}
+.star {
+  width: 13px;
+  height: 13px;
+  fill: hsl(var(--gold));
+  stroke: none;
+}
+.muted {
+  color: hsl(var(--muted-foreground));
+}
+.pii {
+  color: hsl(var(--muted-foreground));
+  letter-spacing: 1px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+.badge.dot::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+}
+/* Status hues are derived tokens (--status-*), never a raw hex — see the
+   :root/.dark blocks above and docs/architecture/design-system.md. */
+.b-active {
+  color: hsl(var(--status-active-fg));
+  background: hsl(var(--status-active-bg));
+}
+.b-occ {
+  color: hsl(var(--status-occ-fg));
+  background: hsl(var(--status-occ-bg));
+}
+.b-inactive {
+  color: hsl(var(--status-inactive-fg));
+  background: hsl(var(--status-inactive-bg));
+}
+
+.tag {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: hsl(var(--secondary-foreground));
+  background: hsl(var(--secondary));
+  border-radius: 6px;
+  padding: 2px 7px;
+}
+
+.kebab {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  color: hsl(var(--muted-foreground));
+}
+.kebab:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
+}
+.kebab svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+}
+
+.table-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  color: hsl(var(--muted-foreground));
+  font-size: 12.5px;
+}
+.pager {
+  display: flex;
+  gap: 6px;
+}
+.pager button {
+  min-width: 44px; /* was 30px + a ::before halo — floored directly, see the
+     comment above .icon-btn/.kebab (PR #112 vigil, thread 3660378526). */
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  font-size: 12.5px;
+}
+.pager button.on {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: transparent;
+}
+
+/* ==========================================================================
+   New primitive classes — not present in v1. Every colour derives from a
+   token (hsl(var(--…))); none is a raw hex.
+   ========================================================================== */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+.field-help {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+}
+.field-error {
+  font-size: 12px;
+  /* Small foreground text — --destructive-text, not --destructive (which is
+     a background token and unsafe as text at this size; PR #112 thread
+     3660378512). */
+  color: hsl(var(--destructive-text));
+}
+.field.has-error .input,
+.field.has-error .textarea,
+.field.has-error .select {
+  border-color: hsl(var(--destructive));
+}
+
+.input,
+.textarea,
+.select {
+  width: 100%;
+  min-height: 44px;
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid hsl(var(--input));
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  padding: 0 12px;
+  font: inherit;
+  font-size: 13.5px;
+}
+.input::placeholder,
+.textarea::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+.input:focus,
+.textarea:focus,
+.select:focus,
+/* A static artifact can't hold a real :focus state, so `.is-focus` mirrors
+   the same rule for artifacts that need to SHOW the focused look. */
+.input.is-focus,
+.textarea.is-focus,
+.select.is-focus {
+  outline: none;
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.18);
+}
+.input[disabled],
+.textarea[disabled],
+.select[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: hsl(var(--muted));
+}
+.textarea {
+  min-height: 96px;
+  padding: 10px 12px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  /* A label-only checkbox (no visible text — e.g. roles-matrix.html's 96
+     permission-grid cells) has nothing but the 18px glyph + gap to give it
+     width, measuring ~25px real (Codex round-4 P2). min-width doesn't
+     disturb the labelled variant ("Puede ver datos sensibles"), which is
+     already far wider than 44px from its own text content. */
+  min-width: 44px;
+  cursor: pointer;
+  font-size: 13.5px;
+  color: hsl(var(--foreground));
+}
+.checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid hsl(var(--input));
+  background: hsl(var(--card));
+  accent-color: hsl(var(--primary));
+  position: relative;
+}
+.checkbox input[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.checkbox.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* CSS-only indeterminate state. A native checkbox's `indeterminate` is an
+   IDL property with no HTML attribute — reachable only via <script>, which
+   is invisible to readback verification and to any renderer that screenshots
+   before scripts execute (spec E5, same reasoning as the .dark duplication
+   rule). This class fakes the look statically instead: native rendering is
+   suppressed for just this instance and a dash is drawn with a pseudo-element,
+   using only token-derived colours. */
+.checkbox.is-indeterminate input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}
+.checkbox.is-indeterminate input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 10px;
+  height: 2px;
+  border-radius: 1px;
+  background: hsl(var(--primary-foreground));
+}
+
+.dialog-scrim {
+  position: relative;
+  padding: 40px 24px;
+  background: hsl(var(--foreground) / 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dialog {
+  width: 100%;
+  max-width: 440px;
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.dialog-head {
+  padding: 18px 20px;
+  border-bottom: 1px solid hsl(var(--border));
+  font-family: "Playfair Display", Georgia, serif;
+  font-weight: 700;
+  font-size: 18px;
+}
+.dialog-body {
+  padding: 20px;
+  font-size: 13.5px;
+  color: hsl(var(--foreground));
+}
+.dialog-foot {
+  padding: 16px 20px;
+  border-top: 1px solid hsl(var(--border));
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Positions an open .menu under its trigger (e.g. a .kebab button) — a static
+   stand-in for the real component's popover anchoring. New for Primitives B. */
+.menu-anchor {
+  position: relative;
+  display: inline-block;
+}
+.menu-anchor .menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 10;
+}
+
+.menu {
+  display: inline-flex;
+  flex-direction: column;
+  min-width: 200px;
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) - 2px);
+  padding: 6px;
+  box-shadow: 0 8px 24px hsl(var(--foreground) / 0.12);
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  min-width: 44px; /* .menu's own min-width:200px already floors this via
+     flex-stretch (measures 186px+ real) — restated here so .menu-item is
+     self-sufficient if reused outside that container (Codex round-4 P2). */
+  padding: 0 10px;
+  border-radius: calc(var(--radius) - 4px);
+  font-size: 13.5px;
+  color: hsl(var(--popover-foreground));
+  cursor: pointer;
+}
+.menu-item:hover {
+  background: hsl(var(--accent));
+}
+.menu-item.destructive {
+  /* Small foreground text — --destructive-text, see .field-error above. */
+  color: hsl(var(--destructive-text));
+}
+/* The generic .menu-item:hover (accent background) left --destructive-text at
+   4.429:1 on dark --accent — an AA fail for 13.5px text (PR #112 round 10,
+   thread 3662915394; light already cleared 5.960:1, only dark failed). A
+   destructive-tinted hover is also the idiomatic pattern for a "delete" menu
+   item, so give it its own background instead of raising the shared token
+   (which would reopen the F1/F2 production-palette fix). Same alpha both
+   themes — composited over --popover (the menu's own background): light
+   5.323:1, dark 5.275:1, both comfortably clear 4.5:1. */
+.menu-item.destructive:hover {
+  background: hsl(var(--destructive) / 0.12);
+}
+.menu-sep {
+  height: 1px;
+  margin: 6px 4px;
+  background: hsl(var(--border));
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid hsl(var(--border));
+}
+.tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 44px; /* real content measured as close as 44.32px ("Notas") —
+     a near-miss that depends on the Outfit web font loading; floors it
+     explicitly instead of trusting text metrics (Codex round-4 P2). */
+  padding: 0 4px;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+}
+.tab:hover,
+.tab.is-hover {
+  color: hsl(var(--foreground));
+}
+.tab.on {
+  color: hsl(var(--primary));
+  border-bottom-color: hsl(var(--primary));
+}
+.tab.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   New for Task 5 (screens) — a generic form-card body/footer, used by
+   person-detail.html's "Datos" panel. Mirrors .dialog-body/.dialog-foot's
+   rhythm (same border-top + gap) but under its own name: these wrap a
+   whole-page form card, not a modal, so reusing .dialog-foot would be
+   misleading. Reusable by any later screen with the same pattern.
+   ========================================================================== */
+.card-body {
+  padding: 24px;
+}
+.card-foot {
+  padding: 16px 24px;
+  border-top: 1px solid hsl(var(--border));
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* A neutral informational badge — distinct from the .b-active/.b-occ/
+   .b-inactive STATUS dots (Task 4). Used for non-status pills like
+   "Requiere permiso" on a masked PII field. No leading dot: it isn't a
+   status indicator. */
+.badge.b-neutral {
+  /* Was --muted-foreground directly (4.341:1 light — an AA fail, found by the
+     PR #112 whole-palette sweep; same root pair as the original .b-inactive
+     defect). Reuses --status-inactive-fg (already darkened for exactly this)
+     as TEXT while leaving this badge's own opaque --muted background
+     untouched. Verified: light 4.341:1 -> 5.179:1; dark unchanged (5.696:1,
+     already passed — --status-inactive-fg's dark value equals
+     --muted-foreground's own). */
+  color: hsl(var(--status-inactive-fg));
+  background: hsl(var(--muted));
+  border-color: hsl(var(--border));
+}
+
+/* ==========================================================================
+   New for Task 6 (users / roles-matrix / sign-in screens).
+   ========================================================================== */
+
+/* Layers an open Dialog over a full page — used when a screen must show a
+   modal atop real content (e.g. users.html's invite dialog), rather than the
+   in-flow, self-centered .dialog-scrim that Dialog.html renders on its own.
+   Anchors to the nearest .app (now position: relative above) so the light
+   and dark previews each get their own independent overlay. */
+.dialog-scrim.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  align-items: flex-start;
+  padding-top: 15vh;
+}
+
+/* Groups permission rows under a labelled header inside a matrix table
+   (roles-matrix.html). The row's td carries table-appropriate padding and a
+   subtle background so it reads as a header row; the label itself reuses
+   .ds-label's type treatment. */
+.group-row td {
+  padding: 10px 16px;
+  background: hsl(var(--muted) / 0.3);
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+/* Full-height centering wrapper for unauthenticated screens with no .app
+   shell (sign-in.html). Distinct from .flush: a floating card wants the
+   .preview's default 24px breathing room, just centered on both axes. */
+.center-viewport {
+  min-height: calc(100vh - 48px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* "or" divider between the Google button and the email/password fields on
+   sign-in.html — two hairlines flanking a centered label. Not a reuse of
+   .seg (that's a toggle-button group), since this has no clickable segments. */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 12.5px;
+}
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: hsl(var(--border));
+}
+
+/* ==========================================================================
+   New for Task 7 (calendar month view + A4 print calendar).
+   ========================================================================== */
+
+/* Month-nav row inside .page-head: ‹ / › icon-buttons + h1 + "Hoy". Reuses
+   .icon-btn and .page-head h1 as-is — only the row layout is new. */
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Day-of-week header + the day grid are two grids sharing one column
+   template so their cells line up; the 1px gap over a border-colour
+   background fakes hairline separators without extra border rules per cell. */
+.cal-dow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: hsl(var(--border));
+  border: 1px solid hsl(var(--border));
+  border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  overflow: hidden;
+}
+.cal-dow div {
+  background: hsl(var(--muted) / 0.5);
+  padding: 9px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  /* Was --muted-foreground directly (4.441:1 light on this muted/.5-over-
+     background wash — an AA near-miss, found by the PR #112 whole-palette
+     sweep). Reuses --status-inactive-fg as TEXT, background untouched.
+     Verified: light 4.441:1 -> 5.299:1; dark unchanged (6.361:1). */
+  color: hsl(var(--status-inactive-fg));
+  text-align: center;
+}
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: hsl(var(--border));
+  border: 1px solid hsl(var(--border));
+  border-top: 0;
+  border-radius: 0 0 var(--radius) var(--radius);
+  overflow: hidden;
+}
+.cal-day {
+  background: hsl(var(--card));
+  min-height: 104px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+/* Padding cells for the leading/trailing days outside the shown month. */
+.cal-day.is-empty {
+  background: hsl(var(--muted) / 0.3);
+}
+.cal-day .num {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+}
+/* Plain-text entry line used only by the print artifact: no .badge/.tag
+   pill background, so the marker's shape (star icon vs "▪") — never colour
+   alone — is what survives a monochrome printer (spec E8/R6). */
+.cal-entry {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  line-height: 1.3;
+}
+.cal-legend {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-top: 16px;
+  font-size: 12.5px;
+  color: hsl(var(--muted-foreground));
+}
+.cal-legend .lg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ===== A4 print sheet (calendar-print-a4.html) =====
+   .print-page is an on-screen "paper" preview — sized/shadowed so the sheet
+   stays reviewable in a browser tab (spec E7) — that collapses to the real
+   printable box under @media print. That reset (and the @page rule the
+   checker requires) lives IN the artifact's own <style>, not here: a defect
+   check on that file greps the file's own source, not this shared sheet. */
+.print-page {
+  width: 186mm;
+  min-height: 273mm;
+  margin: 24px auto;
+  background: hsl(var(--card));
+  box-shadow: 0 8px 24px hsl(var(--foreground) / 0.12);
+  padding: 14mm 12mm;
+  display: flex;
+  flex-direction: column;
+}
+/* Deliberately not a reuse of .brand — that class carries sidebar-only
+   padding (18px 18px 14px) which would misalign the print letterhead. */
+.print-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.print-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid hsl(var(--border));
+  margin-bottom: 16px;
+}
+.print-title h1 {
+  font-size: 26px;
+}
+.print-title .sub {
+  color: hsl(var(--muted-foreground));
+  font-size: 13px;
+  margin-top: 2px;
+}
+.print-foot {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid hsl(var(--border));
+  text-align: center;
+  font-size: 11.5px;
+  color: hsl(var(--muted-foreground));
+}
+/* On-screen-only reviewing hint, hidden by the artifact's own @media print. */
+.no-print {
+  text-align: center;
+  padding: 10px;
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+}

@@ -296,7 +296,7 @@ schema. This ticket adds no runtime behavior.
    tokens fail to apply, the symptom is catastrophic and obvious (unstyled page), not subtle —
    caught instantly by the preview.
 4. **Tailwind class scanning.** Not a concern today: `@idcr/ui` ships no components and emits no
-   class names. When it eventually does, `globals.css` will need `@source "../../../packages/ui"`.
+   class names. When it eventually does, `globals.css` will need `@source "../../../../packages/ui"`.
    Note it in the doc; don't add it now (it would be dead config — the very thing §4.4 deletes).
 5. **`--frozen-lockfile` on Vercel.** Forgetting the lockfile fails the _deploy_, not just CI. It
    is an explicit checkpoint verification step.

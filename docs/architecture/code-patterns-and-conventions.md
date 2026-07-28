@@ -53,7 +53,7 @@ hold**, and a few **changed shape**.
 | Route handlers inconsistent (now **7** routes: `NextRequest` vs `Request`, `NextResponse.json` vs raw `Response`, uneven try/catch) (§5.4, §11.6)                                                          | Holds & broader                                                                   | **ICR-35** (+ ICR-152)           |
 | Locale list duplicated (`i18n/routing.ts` + `i18n/config.ts`); magic strings uncentralized (`constants.ts` holds only `revalidateDuration`); DB name `"website"` hardcoded across services (§11.8, §11.10) | Holds                                                                             | **ICR-36** (+ **ICR-153**, High) |
 | Zod not at **all** boundaries (contact action + `/api/likes` still hand-roll); email template `{{placeholder}}` still **unescaped** (HTML-injection surface) (§7, §11.2)                                   | Partial — Zod adopted at 2 of the 3 boundaries; escaping untouched                | **ICR-33**                       |
-| shadcn ↔ hand-rolled **seam** unconverged; two color systems; three variant strategies; `buildOgImage` still uses logical-or instead of `??` (§3, §9, §11.1)                                               | Holds                                                                             | **ICR-37** / ICR-23              |
+| shadcn ↔ hand-rolled **seam** unconverged; two color systems; three variant strategies; `buildOgImage` still uses logical-or instead of `??` (§3, §9, §11.1)                                               | Holds — target spec now in [`design-system.md`](design-system.md)                 | **ICR-37** / ICR-23              |
 | Pages/layout still fetch Contentful **sequentially** (home = 4, layout = 3 serial round-trips) (§5.6, §11.3)                                                                                               | Holds — `Promise.all` exists in the predica pipeline only, never in a page/layout | **ICR-31** (+ ICR-42)            |
 
 ### 🆕 New findings (not in the original body)
@@ -69,7 +69,7 @@ hold**, and a few **changed shape**.
 | Doc reference                                         | Ticket(s)                                                                                                        |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | §10 "Candidates to standardize" (encode the baseline) | **ICR-38** (parent Epic **ICR-9**)                                                                               |
-| §9 / §11.1 — converge the shadcn ↔ hand-rolled seam   | ICR-37, ICR-23                                                                                                   |
+| §9 / §11.1 — converge the shadcn ↔ hand-rolled seam   | ICR-37, ICR-23 — target spec: [`design-system.md`](design-system.md)                                             |
 | §11.2 — Zod at boundaries + escape email HTML         | ICR-33                                                                                                           |
 | §11.3 — parallelize getters with `Promise.all`        | ICR-31 (+ ICR-42 request-cache)                                                                                  |
 | §11.4 — real 404s + error/loading boundaries          | ICR-32                                                                                                           |

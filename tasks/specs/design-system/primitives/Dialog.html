@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="es-AR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dialog — Sistema de Diseño IDC Redentor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body>
+    <div class="preview">
+      <!-- LIGHT -->
+
+      <section class="ds-section">
+        <h2>Dialog</h2>
+        <div class="dialog-scrim" style="gap: 24px; flex-wrap: wrap">
+          <div class="dialog">
+            <div class="dialog-head">Eliminar persona</div>
+            <div class="dialog-body">
+              Esta acción no se puede deshacer. ¿Querés eliminar a Fernando Gil?
+            </div>
+            <div class="dialog-foot">
+              <button class="btn btn-md btn-outline">Cancelar</button>
+              <button class="btn btn-md btn-destructive">Eliminar</button>
+            </div>
+          </div>
+
+          <div class="dialog">
+            <div class="dialog-head">Invitar usuario</div>
+            <div class="dialog-body">
+              <div class="field">
+                <label class="field-label">Correo electrónico</label>
+                <input class="input" placeholder="nombre@idcredentor.com" />
+              </div>
+              <div class="field" style="margin-bottom: 0">
+                <label class="field-label">Rol</label>
+                <select class="select">
+                  <option>Administrador</option>
+                  <option>Líder</option>
+                  <option>Colaborador</option>
+                </select>
+              </div>
+            </div>
+            <div class="dialog-foot">
+              <button class="btn btn-md btn-outline">Cancelar</button>
+              <button class="btn btn-md btn-primary">Enviar invitación</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="preview dark">
+      <!-- DARK: the SAME content duplicated -->
+
+      <section class="ds-section">
+        <h2>Dialog</h2>
+        <div class="dialog-scrim" style="gap: 24px; flex-wrap: wrap">
+          <div class="dialog">
+            <div class="dialog-head">Eliminar persona</div>
+            <div class="dialog-body">
+              Esta acción no se puede deshacer. ¿Querés eliminar a Fernando Gil?
+            </div>
+            <div class="dialog-foot">
+              <button class="btn btn-md btn-outline">Cancelar</button>
+              <button class="btn btn-md btn-destructive">Eliminar</button>
+            </div>
+          </div>
+
+          <div class="dialog">
+            <div class="dialog-head">Invitar usuario</div>
+            <div class="dialog-body">
+              <div class="field">
+                <label class="field-label">Correo electrónico</label>
+                <input class="input" placeholder="nombre@idcredentor.com" />
+              </div>
+              <div class="field" style="margin-bottom: 0">
+                <label class="field-label">Rol</label>
+                <select class="select">
+                  <option>Administrador</option>
+                  <option>Líder</option>
+                  <option>Colaborador</option>
+                </select>
+              </div>
+            </div>
+            <div class="dialog-foot">
+              <button class="btn btn-md btn-outline">Cancelar</button>
+              <button class="btn btn-md btn-primary">Enviar invitación</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>
