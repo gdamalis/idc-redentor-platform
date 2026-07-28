@@ -447,7 +447,8 @@ AppShell (existing, protected by (app)/layout.tsx)
 └── <main>
     │
     ├── RolesPage (RSC)                      gate: roles:read → <PermissionDenied>
-    │   ├── RoleList (RSC)                   name · description · isSystem badge · member count
+    │   ├── RoleList ('use client')          name · description · isSystem badge · member count
+    │   │                                    + create form + per-role delete (see note below)
     │   └── PermissionMatrix ('use client')  <table>: rows = PERMISSION_KEYS grouped by
     │       │                                resource prefix; cols = roles
     │       ├── <input type="checkbox">      disabled when: role.isSystem && key === "admin"
@@ -467,6 +468,18 @@ AppShell (existing, protected by (app)/layout.tsx)
 **Responsive:** the matrix is the only wide surface — it scrolls horizontally inside an
 `overflow-x-auto` container with the permission-key column `sticky left-0`, so the page body never
 scrolls sideways on mobile. `UserTable` collapses row actions into a stacked layout below `sm`.
+
+> **Why `RoleList` is a client component** (amended during CP5; this diagram originally said RSC).
+> Its create and delete forms drive the same `(prevState, formData)` Server Actions as the matrix,
+> and only `useActionState` can surface their `conflict` / `system-role` / `last-admin` refusals
+> inline. Kept as RSC, those refusals would be silent no-ops — the user would click Delete on the
+> last admin role and see nothing happen. The page itself (`roles/page.tsx`) remains an RSC and does
+> all the data fetching; only the interactive shell is client-side, and roles carry no PII.
+>
+> **System-role display names.** Seeded `Role.name`/`description` are English, written once at seed
+> time. The UI renders `roles.system.<key>.name` instead, so the label is localized — while a hidden
+> input round-trips the raw DB value on submit, so an edit never overwrites the stored name with a
+> translated string. Custom roles render their stored fields directly.
 
 ---
 
