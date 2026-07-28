@@ -35,10 +35,20 @@
 // static approximations of this (round 1-4's arithmetic, then two more static
 // passes this same vigil round) each missed a real defect — geometry is a
 // rendered-layout property, so it gets checked by actually rendering the layout,
-// not by re-deriving a fourth static heuristic. Requires a downloaded Chromium
-// (`pnpm exec playwright install chromium`, cached at ~/.cache/ms-playwright);
-// if launch fails, this half of the gate WARNS LOUDLY and is skipped rather than
-// hard-failing (see runRenderedChecks) — pass --no-measure to skip it on purpose.
+// not by re-deriving a fourth static heuristic. Playwright (`@playwright/test`,
+// the repo's actually-declared dependency) is resolved via `createRequire`
+// anchored to THIS FILE's own `import.meta.url`, never `process.cwd()` — an
+// earlier cwd-based path broke under the committed `cd tasks/specs/design-system
+// && node verify-artifacts.mjs` invocation (README.md), silently skipping the
+// entire rendered pass while still printing a bare PASS (PR #112 thread
+// 3662816374). A failure to RESOLVE @playwright/test is now a hard FAIL (the
+// gate can't load its own declared dependency — that's broken, not absent) —
+// `pnpm exec playwright install chromium` cached at ~/.cache/ms-playwright); a
+// failure to LAUNCH the browser (declared dep resolves fine, no binary
+// downloaded yet) still degrades gracefully, but the skip is baked into the
+// final summary line itself ("PASS (static only — rendered pass SKIPPED: …)"),
+// never a bare "PASS" a caller could misread — pass --no-measure for a
+// deliberate, equally-labelled skip.
 // checkbox/radio CONTAINMENT: input[type=checkbox|radio] is deliberately
 // excluded from direct measurement above (an 18x18 glyph is never the actual
 // 44px target), but that exclusion used to be unchecked — every checkbox/radio
@@ -62,6 +72,7 @@
 import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
 import { join, relative, extname } from "node:path";
 import { createServer } from "node:http";
+import { createRequire } from "node:module";
 
 const ROOT = new URL(".", import.meta.url).pathname.replace(/\/$/, "");
 const argv = process.argv.slice(2);
@@ -801,25 +812,34 @@ async function checkRenderedHitTargets(files, cssBlocks, cssSrc) {
     };
   }
 
+  // Anchor resolution to THIS SCRIPT's own file location (import.meta.url),
+  // never process.cwd() — Node's module resolution for require()/import()
+  // walks up node_modules directories from the resolving file's location, not
+  // the caller's cwd, so this works identically no matter where `node` was
+  // invoked from. The committed README documents `cd tasks/specs/design-system
+  // && node verify-artifacts.mjs`; the OLD process.cwd()-based path broke
+  // under exactly that invocation (PR #112 thread 3662816374) — cwd was
+  // `.../design-system`, so the hand-built path pointed at a node_modules that
+  // doesn't exist there, and the bare `import("playwright")` fallback ALSO
+  // failed (the root only declares `@playwright/test`, never bare
+  // `playwright`), so the whole rendered pass silently skipped while the gate
+  // still printed a bare PASS. Import the actually-declared dependency,
+  // @playwright/test, which re-exports `chromium`.
+  const require = createRequire(import.meta.url);
   let chromium;
   try {
-    const entry = join(
-      process.cwd(),
-      "node_modules/.pnpm/playwright@1.61.0/node_modules/playwright/index.mjs",
+    ({ chromium } = require("@playwright/test"));
+  } catch (err) {
+    // A module-resolution failure is NOT "no browser installed" — it means
+    // the gate can't even load its own declared dependency, which is the
+    // script being broken, not an optional capability being absent. That must
+    // hard-fail rather than degrade to a graceful skip a caller could read as
+    // a clean static-only PASS (the honesty rule from thread 3662816374).
+    console.error(
+      `FAIL: could not resolve "@playwright/test" (${err.message}) — this is ` +
+        `the gate's own declared dependency; run "pnpm install" from the repo root`,
     );
-    ({ chromium } = await import(
-      `file://${existsSync(entry) ? entry : "playwright"}`
-    ));
-  } catch {
-    try {
-      ({ chromium } = await import("playwright"));
-    } catch (err) {
-      return {
-        problems: [],
-        skipped: true,
-        reason: `could not load Playwright (${err.message}) — run "pnpm exec playwright install chromium"`,
-      };
-    }
+    process.exit(1);
   }
 
   const nativeSelectors = [
@@ -956,4 +976,9 @@ if (failures.length) {
   console.error(`FAIL: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log("PASS");
+// A skipped rendered pass must never read as a full PASS (thread 3662816374's
+// honesty rule) — say so in the summary line itself, not just a warning above
+// it that a caller piping only the last line would never see.
+console.log(
+  skipped ? `PASS (static only — rendered pass SKIPPED: ${reason})` : "PASS",
+);
