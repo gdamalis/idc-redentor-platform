@@ -1388,19 +1388,34 @@ git commit -m "feat(ICR-128): add roles screen with permission matrix"
 - Consumes: everything from Tasks 1–4, plus `invite.service.ts`'s existing invite creation.
 - Produces: `inviteUserAction`, `updateUserRolesAction`, `updateUserStatusAction`, `deleteUserAction`.
 
-> **Plan correction (found during CP6).** This task's own "Interfaces" line above claims
-> `invite.service.ts` already ships invite creation — it does not. ICR-127 shipped invite
-> ACCEPTANCE only (`findPendingInvite` / `findAcceptedInviteByEmail` / `claimPendingInvite` /
+> **Plan correction (found during CP6, closed during CP7).** This task's own "Interfaces" line
+> above claims `invite.service.ts` already ships invite creation — it does not. ICR-127 shipped
+> invite ACCEPTANCE only (`findPendingInvite` / `findAcceptedInviteByEmail` / `claimPendingInvite` /
 > `revertInviteClaim`); no function ever inserted an `Invite` document, and `sendInviteEmail`
 > (`service/auth-email.ts`) had zero callers anywhere in `apps/admin`. Fixed here, mirroring the
 > Task 5 Step 0 correction: `createInvite(input, session)` is added to `invite.service.ts` —
-> session-aware, refuses `reason: "conflict"` when a still-pending unexpired invite already exists
-> for the email (mirrors `createRole`'s duplicate-name handling), and computes a 7-day `expiresAt`
-> (no TTL value is specified anywhere in the ICR-127/ICR-128 spec or docs). `inviteUserAction` calls
-> it, then `sendInviteEmail` with `inviteUrl` built from `NEXT_PUBLIC_ADMIN_BASE_URL` +
-> `/${locale}/login` — exactly what that env var's `.env.example` comment already described as its
-> purpose, just never wired up. See `invite.service.ts`'s `createInvite` doc comment for the full
-> reasoning.
+> session-aware, computes a 7-day `expiresAt` (no TTL value is specified anywhere in the
+> ICR-127/ICR-128 spec or docs). CP6 implemented uniqueness ("at most one pending invite per
+> address") as a `findOne` pre-check alone — a TOCTOU race, since Mongo transactions use snapshot
+> isolation, which does not prevent a phantom insert: two concurrent invites for the same address
+> could both observe "none pending" and both insert. CP7 closed the race with a **partial unique
+> index** added to `ensureAuthIndexes()` in `user.service.ts` (`{ email: 1 }` unique,
+> `partialFilterExpression: { status: "pending" }`), while deliberately KEEPING the pre-check: the
+> pre-check still gives a clean `conflict` result without relying on an exception in the common
+> (non-racing) case, and the index is the backstop that closes the race — `createInvite` catches
+> the resulting `E11000` from the insert and maps it to the same `reason: "conflict"` via
+> `isDuplicateKeyError`, mirroring `createRole`'s duplicate-name handling exactly. `inviteUserAction`
+> awaits the transaction to COMMIT first, then calls `sendInviteEmail` — never inside the
+> transaction callback, since the callback may be retried by the driver (Global Constraints) and an
+> email is not idempotent — with `inviteUrl` built from `NEXT_PUBLIC_ADMIN_BASE_URL` +
+> `/${locale}/login`, exactly what that env var's `.env.example` comment already described as its
+> purpose, just never wired up. A send failure is caught and logged, never fails the action — the
+> `Invite` document, already committed, is the source of truth. See `invite.service.ts`'s
+> `createInvite` doc comment for the full reasoning, including a known gap: the partial index keys
+> off `status: "pending"` alone, and nothing yet transitions an invite's status on natural expiry,
+> so an expired-but-still-`"pending"` invite can block a re-invite until it's manually cleared (no
+> revoke path exists yet either) — flagged in `tasks/todo.md` for a follow-up, not fixed in this
+> checkpoint.
 
 - [ ] **Step 1: Add the dependency**
 

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import esAR from "../../messages/es-AR.json";
 import enUS from "../../messages/en-US.json";
+import { PERMISSION_KEYS } from "@src/lib/rbac/permissions";
 
 /** Flattens {a:{b:"x"}} => ["a.b"], so a nested key can never drift between locales. */
 function flattenKeys(value: unknown, prefix = ""): string[] {
@@ -67,5 +68,146 @@ describe("auth.resetPassword + auth.email.{invite,reset} (ICR-127)", () => {
     ["en-US", enUS],
   ])("%s carries the auth.email.reset subtree with every expected key", (_locale, messages) => {
     expect(Object.keys(messages.auth.email.reset).sort()).toEqual(resetEmailKeys);
+  });
+});
+
+describe("permissions.*, roles.*, users.*, rbac.* (ICR-128)", () => {
+  const permissionGroupKeys = [
+    "people",
+    "families",
+    "activities",
+    "calendar",
+    "users",
+    "roles",
+  ].sort();
+
+  it.each([
+    ["es-AR", esAR],
+    ["en-US", enUS],
+  ])(
+    "%s carries the permissions subtree with exactly the registry keys plus groups",
+    (_locale, messages) => {
+      expect(Object.keys(messages.permissions).sort()).toEqual(
+        [...PERMISSION_KEYS, "groups"].sort(),
+      );
+      expect(Object.keys(messages.permissions.groups).sort()).toEqual(
+        permissionGroupKeys,
+      );
+    },
+  );
+
+  // The gate this ticket's registry-extensibility AC depends on: a new
+  // PERMISSION_KEYS entry with no matching translation fails CI here, in
+  // BOTH catalogs, rather than surfacing later as a next-intl runtime error
+  // or a silently-blank matrix cell.
+  it.each([
+    ["es-AR", esAR],
+    ["en-US", enUS],
+  ])(
+    "%s carries a non-empty .label and .description for EVERY PERMISSION_KEYS entry",
+    (_locale, messages) => {
+      for (const key of PERMISSION_KEYS) {
+        const entry = (messages.permissions as Record<string, { label?: string; description?: string }>)[key];
+        expect(entry, `missing permissions.${key}`).toBeDefined();
+        expect(entry.label?.length ?? 0, `missing permissions.${key}.label`).toBeGreaterThan(0);
+        expect(
+          entry.description?.length ?? 0,
+          `missing permissions.${key}.description`,
+        ).toBeGreaterThan(0);
+      }
+    },
+  );
+
+  const rolesTopLevelKeys = [
+    "title",
+    "subtitle",
+    "edit",
+    "new",
+    "delete",
+    "table",
+    "matrix",
+    "form",
+    "system",
+  ].sort();
+  const rolesTableKeys = ["name", "description", "members", "actions", "systemBadge"].sort();
+  const rolesMatrixKeys = ["permissionColumn", "save", "saved"].sort();
+  const rolesFormKeys = ["nameLabel", "descriptionLabel", "deleteConfirm"].sort();
+  const systemRoleKeys = ["name", "description"].sort();
+
+  it.each([
+    ["es-AR", esAR],
+    ["en-US", enUS],
+  ])("%s carries the roles subtree with every expected key", (_locale, messages) => {
+    expect(Object.keys(messages.roles).sort()).toEqual(rolesTopLevelKeys);
+    expect(Object.keys(messages.roles.table).sort()).toEqual(rolesTableKeys);
+    expect(Object.keys(messages.roles.matrix).sort()).toEqual(rolesMatrixKeys);
+    expect(Object.keys(messages.roles.form).sort()).toEqual(rolesFormKeys);
+    // The three seeded SystemRoleKeys (role.service.ts's SYSTEM_ROLE_SEEDS) —
+    // each rendered via roles.system.<key>.{name,description}, never the raw
+    // (English-only) DB Role.name/description.
+    expect(Object.keys(messages.roles.system).sort()).toEqual(
+      ["admin", "leader", "member"].sort(),
+    );
+    for (const key of ["admin", "leader", "member"] as const) {
+      expect(Object.keys(messages.roles.system[key]).sort()).toEqual(systemRoleKeys);
+    }
+  });
+
+  const usersTopLevelKeys = ["title", "subtitle", "table", "status", "invite"].sort();
+  const usersTableKeys = [
+    "email",
+    "displayName",
+    "roles",
+    "status",
+    "actions",
+    "saveRoles",
+    "rolesSaved",
+    "enable",
+    "disable",
+    "delete",
+    "deleteConfirm",
+  ].sort();
+  const usersStatusKeys = ["active", "disabled"].sort();
+  const usersInviteKeys = [
+    "trigger",
+    "title",
+    "description",
+    "emailLabel",
+    "rolesLabel",
+    "cancel",
+    "submit",
+  ].sort();
+
+  it.each([
+    ["es-AR", esAR],
+    ["en-US", enUS],
+  ])("%s carries the users subtree with every expected key", (_locale, messages) => {
+    expect(Object.keys(messages.users).sort()).toEqual(usersTopLevelKeys);
+    expect(Object.keys(messages.users.table).sort()).toEqual(usersTableKeys);
+    expect(Object.keys(messages.users.status).sort()).toEqual(usersStatusKeys);
+    expect(Object.keys(messages.users.invite).sort()).toEqual(usersInviteKeys);
+  });
+
+  const rbacDeniedKeys = ["title", "body", "backToDashboard"].sort();
+  // One key per `ActionFailureReason` that a Server Action can actually
+  // surface to the UI (service/types.ts) — "unauthenticated"/"no-account"/
+  // "disabled" never reach here, since those redirect instead of rendering
+  // an inline error (Task 4's `requirePermission` gate).
+  const rbacErrorKeys = [
+    "lastAdmin",
+    "systemRole",
+    "forbidden",
+    "invalid",
+    "notFound",
+    "conflict",
+  ].sort();
+
+  it.each([
+    ["es-AR", esAR],
+    ["en-US", enUS],
+  ])("%s carries the rbac subtree with every expected key", (_locale, messages) => {
+    expect(Object.keys(messages.rbac).sort()).toEqual(["denied", "errors"].sort());
+    expect(Object.keys(messages.rbac.denied).sort()).toEqual(rbacDeniedKeys);
+    expect(Object.keys(messages.rbac.errors).sort()).toEqual(rbacErrorKeys);
   });
 });

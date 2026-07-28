@@ -2,7 +2,7 @@ import type { ClientSession, ObjectId } from "mongodb";
 import { getAdminDb } from "@src/service/database.service";
 import { normalizeEmail } from "@src/lib/auth/email";
 import type { Locale } from "@src/i18n/config";
-import { ensureAuthIndexes } from "./user.service";
+import { ensureAuthIndexes, isDuplicateKeyError } from "./user.service";
 import { inviteSchema } from "./types";
 import type { Invite } from "./types";
 
@@ -35,17 +35,43 @@ const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
  * Refuses (`reason: "conflict"`) when a still-pending, unexpired invite
  * already exists for this email, rather than silently stacking duplicate
  * invites for the same address — mirrors `createRole`'s duplicate-name
- * handling. Deliberately does NOT check whether the email already belongs to
- * an active `AdminUser` — no such lookup exists yet, adding one is out of
- * this ticket's scope, and re-inviting an existing user is harmless (see
+ * handling. **Two layers, deliberately (CP7 team-lead correction):** the
+ * `findOne` pre-check below gives a clean `conflict` result without relying
+ * on an exception in the common (non-racing) case, but it is NOT sufficient
+ * on its own — MongoDB transactions use snapshot isolation, which does not
+ * prevent a phantom insert. Two concurrent invites for the same address can
+ * both observe "no pending invite" here and both proceed to insert, even
+ * inside the same transaction (this is the same read-then-write class of bug
+ * the last-admin invariant exists to prevent). `ensureAuthIndexes()`'s
+ * partial unique index on `{ email: 1 }` (`user.service.ts`,
+ * `partialFilterExpression: { status: "pending" }`) is the backstop that
+ * actually closes the race: the loser's insert raises E11000, caught below
+ * and mapped to the same `{ ok: false, reason: "conflict" }` via
+ * `isDuplicateKeyError` — exactly `createRole`'s pattern for its unique
+ * `name` index.
+ *
+ * Known gap (not fixed here — out of this ticket's scope): the partial index
+ * keys off `status: "pending"` alone, with no `expiresAt` condition, while
+ * the pre-check's `expiresAt: { $gt: new Date() }` filter treats an expired
+ * pending invite as no longer blocking. Nothing in this codebase ever
+ * transitions a `pending` invite to another status on natural expiry, so a
+ * genuinely expired-but-still-`"pending"` invite doc can pass the pre-check
+ * (it's not "live") yet still collide with the index on insert, incorrectly
+ * refusing a legitimate re-invite as `conflict`. There is no revoke path or
+ * pending-invites list UI yet to clear such a doc either. Flagged in
+ * `tasks/todo.md` for a follow-up.
+ *
+ * Deliberately does NOT check whether the email already belongs to an active
+ * `AdminUser` — no such lookup exists yet, adding one is out of this
+ * ticket's scope, and re-inviting an existing user is harmless (see
  * `inviteUserAction`, which has no administrability-invariant check to run
  * here either: inviting can only ever ADD a prospective grantee, never
  * reduce administrability).
  *
  * `session` is REQUIRED, not optional — this only ever runs inside
- * `withAdminTransaction`, and the duplicate-pending-invite READ above must
- * join the same session as the INSERT below, or a concurrent invite for the
- * same email could slip past this check (Global Constraints, transaction
+ * `withAdminTransaction`, and the duplicate-pending-invite READ below must
+ * join the same session as the INSERT, or a concurrent invite for the same
+ * email could slip past the pre-check (Global Constraints, transaction
  * rules).
  */
 export async function createInvite(
@@ -74,10 +100,15 @@ export async function createInvite(
     invitedByUserId: input.invitedByUserId,
   };
 
-  const result = await getAdminDb()
-    .collection(INVITES_COLLECTION)
-    .insertOne(doc, { session });
-  return { ok: true, inviteId: result.insertedId.toHexString() };
+  try {
+    const result = await getAdminDb()
+      .collection(INVITES_COLLECTION)
+      .insertOne(doc, { session });
+    return { ok: true, inviteId: result.insertedId.toHexString() };
+  } catch (error) {
+    if (isDuplicateKeyError(error)) return { ok: false, reason: "conflict" };
+    throw error;
+  }
 }
 
 export async function findPendingInvite(email: string): Promise<Invite | null> {

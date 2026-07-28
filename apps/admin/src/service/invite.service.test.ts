@@ -256,7 +256,7 @@ describe("createInvite", () => {
 
   it("inserts a normalized, pending invite carrying the caller's session, and computes expiresAt", async () => {
     const { createInvite } = await import("./invite.service");
-    findOne.mockResolvedValueOnce(null); // no existing pending invite
+    findOne.mockResolvedValueOnce(null); // pre-check: no existing pending invite
     insertOne.mockResolvedValueOnce({ insertedId: { toHexString: () => "inv1" } });
 
     const before = Date.now();
@@ -292,7 +292,7 @@ describe("createInvite", () => {
     expect(insertOptions).toEqual({ session });
   });
 
-  it("refuses with conflict, and never inserts, when a pending unexpired invite already exists", async () => {
+  it("refuses with conflict, and never inserts, when the pre-check finds a pending unexpired invite", async () => {
     const { createInvite } = await import("./invite.service");
     const now = new Date();
     findOne.mockResolvedValueOnce({
@@ -312,5 +312,41 @@ describe("createInvite", () => {
 
     expect(result).toEqual({ ok: false, reason: "conflict" });
     expect(insertOne).not.toHaveBeenCalled();
+  });
+
+  // CP7: the pre-check alone cannot close the race between two concurrent
+  // invites for the same address — Mongo transactions use snapshot
+  // isolation, which does not prevent a phantom insert. This simulates the
+  // loser: the pre-check sees nothing pending (the winner hasn't committed
+  // yet from this session's snapshot), but the insert itself collides with
+  // `ensureAuthIndexes()`'s partial unique index and raises E11000, which
+  // must map to the SAME `conflict` result as the pre-check hit above.
+  it("maps a duplicate-key error from the insert itself to conflict (the partial unique index is the backstop)", async () => {
+    const { createInvite } = await import("./invite.service");
+    findOne.mockResolvedValueOnce(null);
+    insertOne.mockRejectedValueOnce(
+      Object.assign(new Error("E11000 duplicate key error"), { code: 11000 }),
+    );
+
+    const result = await createInvite(
+      { email: "ana@idcr.org", roleIds: ["r1"], locale: "es-AR", invitedByUserId: "admin1" },
+      session,
+    );
+
+    expect(result).toEqual({ ok: false, reason: "conflict" });
+  });
+
+  it("rethrows a non-duplicate-key error from the insert rather than misreporting it as a conflict", async () => {
+    const { createInvite } = await import("./invite.service");
+    findOne.mockResolvedValueOnce(null);
+    const boom = new Error("connection reset");
+    insertOne.mockRejectedValueOnce(boom);
+
+    await expect(
+      createInvite(
+        { email: "ana@idcr.org", roleIds: ["r1"], locale: "es-AR", invitedByUserId: "admin1" },
+        session,
+      ),
+    ).rejects.toThrow(boom);
   });
 });

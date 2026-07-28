@@ -247,6 +247,13 @@ describe("ensureAuthIndexes", () => {
     expect(createIndex).toHaveBeenCalledWith({ email: 1 }, { unique: true });
     expect(createIndex).toHaveBeenCalledWith({ email: 1, status: 1 });
     expect(createIndex).toHaveBeenCalledWith({ expiresAt: 1 });
+    // Partial unique index (ICR-128 CP7): at most one PENDING invite per
+    // address, enforced at the DB layer as the backstop `createInvite` relies
+    // on for its E11000 mapping — the pre-check alone can't close the race.
+    expect(createIndex).toHaveBeenCalledWith(
+      { email: 1 },
+      { unique: true, partialFilterExpression: { status: "pending" } },
+    );
   });
 
   it("memoizes so a second call does not re-create the indexes", async () => {
@@ -254,6 +261,6 @@ describe("ensureAuthIndexes", () => {
     await ensureAuthIndexes();
     await ensureAuthIndexes();
 
-    expect(createIndex).toHaveBeenCalledTimes(4);
+    expect(createIndex).toHaveBeenCalledTimes(5);
   });
 });

@@ -367,6 +367,9 @@ admin app's, in every QA environment, regardless of which project's PR is being 
 
 ## Related docs
 
+- `docs/architecture/admin-rbac.md` — **ICR-128**, the sibling doc: what happens once a session is
+  authenticated — the permission registry, `requirePermission()`, the last-admin invariant, and why
+  `roleIds` (resolved here, in Mongo, never the token) is what that ticket's enforcement is built on.
 - `docs/architecture/admin-database.md` — the two-connection Mongo model (`getAdminDb()` /
   `getContentDb()`) `user.service.ts`/`invite.service.ts` read and write through.
 - `docs/architecture/i18n.md` — the next-intl setup `preferredLocale` plugs into.
