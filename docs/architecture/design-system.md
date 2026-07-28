@@ -25,13 +25,19 @@ content — never a JS toggle), and contains **no `<script>`** — a JS-only sta
 screenshots before scripts run (spec E5). The whole bundle is gated by
 `tasks/specs/design-system/verify-artifacts.mjs`, which bans gradients, emoji, Inter/Roboto, and
 missing `.dark` blocks, and enforces the one sanctioned exception: `calendar-print-a4.html`, a print
-medium that must **not** ship a dark variant (spec R6). The gate's hit-target check has two sides:
-a CSS-side check (which selectors declare `cursor: pointer`/a bare `input` and whether they clear
-≥44px on both axes) and an HTML-side check added in the PR #112 post-review vigil (thread 3660378522) — it scans each artifact's markup for native `<button>`/`<select>`/`<textarea>`/
-`<a href>`/`<input>` (excl. checkbox/radio) and confirms each resolves, via its own class or an
-ancestor class + tag, to a CSS rule the first check already verified. See the script's own comments
-for why a _static_ halo-overlap check was considered and rejected (runtime-layout-dependent; the
-browser measurement in §3b's F5 note covers it instead).
+medium that must **not** ship a dark variant (spec R6). The hit-target check is **rendered, not
+static**: three consecutive static approximations (round 1-4's px arithmetic, then two more static
+passes added and superseded within the same PR #112 post-review vigil) each missed a real defect in
+turn, because ≥44px-and-no-overlap is a rendered-layout property, not something a regex over the
+stylesheet text can fully derive. The gate now launches headless Chromium, measures every native
+interactive element (`button`/`select`/`textarea`/`a[href]`/`input` excl. checkbox/radio) plus every
+element matching a CSS-declared interactive class (`cursor: pointer`, or a bare `input` selector),
+and asserts each hit region (its own box unioned with any `::before` halo) clears 44px on both axes
+**and** that no two hit regions on the same rendered page intersect — closing the halo-overlap gap
+(thread 3660378526) the same pass that closes the markup-blindness gap (thread 3660378522), since
+both are just facets of "measure the real box." See the script's own header comment for the full
+static-vs-rendered breakdown, what's checked nowhere at all, and why this gate isn't wired into CI
+yet (nothing blocks it — see that comment for the concrete follow-up).
 
 ## 2. The token contract
 

@@ -1,14 +1,47 @@
 #!/usr/bin/env node
 // Gate for the ICR-18 design-system artifacts. Machine-enforces the quality bar from
 // tasks/specs/admin-design-prompt.md §B and the light+dark requirement from the spec.
-// Usage: node verify-artifacts.mjs [--only <substring>]
+// Usage: node verify-artifacts.mjs [--only <substring>] [--no-measure]
+//
+// ===== What this gate checks, and where (negative-space note, PR #112 vigil) =====
+// STATIC (parses styles.css/HTML text, no browser):
+//   - banned patterns (gradients, Inter/Roboto, emoji) in styles.css and every artifact
+//   - "Outfit"/"Playfair Display" font-family declared in styles.css
+//   - every artifact: links styles.css, lang="es-AR", no <script>, has (or is
+//     exempt from) a static .dark variant block, the print artifact's @page rule
+//   - Foundations token-inventory: every styles.css :root custom property renders
+//     a swatch in foundations.html (or is explicitly allowlisted)
+// RENDERED (launches headless Chromium, measures the real DOM — see
+// checkRenderedHitTargets): every native interactive element (button, select,
+// textarea, a[href], input excl. checkbox/radio) PLUS every element matching a
+// CSS-declared interactive class (cursor:pointer, or a bare `input` selector) is
+// measured for a >=44px hit region (own box unioned with any ::before halo) on
+// BOTH axes, and no two hit regions on the same rendered page may overlap. Three
+// static approximations of this (round 1-4's arithmetic, then two more static
+// passes this same vigil round) each missed a real defect — geometry is a
+// rendered-layout property, so it gets checked by actually rendering the layout,
+// not by re-deriving a fourth static heuristic. Requires a downloaded Chromium
+// (`pnpm exec playwright install chromium`, cached at ~/.cache/ms-playwright);
+// if launch fails, this half of the gate WARNS LOUDLY and is skipped rather than
+// hard-failing (see runRenderedChecks) — pass --no-measure to skip it on purpose.
+// NOT WIRED INTO CI YET: no .github/workflows/*.yml references this script as of
+// this writing — it's a local/manual pre-commit check. CI already proves Chromium
+// works here (pr.yml's predica-scripts job: `pnpm exec playwright install
+// --with-deps chromium`), so adding a CI job for this gate is a mechanical
+// follow-up, not a blocker; it just hasn't been asked for yet.
+// NOT CHECKED AT ALL (by this gate or any other in the repo today): keyboard
+// focus order / visible focus rings, ARIA roles or screen-reader semantics
+// beyond a literal aria-label attribute, WCAG colour contrast of any token
+// pair, or whether an artifact's sample data reads as realistic (that's a
+// human-review concern, not a mechanical one — see §8 of design-system.md).
 import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
 import { join, relative, extname } from "node:path";
+import { createServer } from "node:http";
 
 const ROOT = new URL(".", import.meta.url).pathname.replace(/\/$/, "");
-const only = process.argv.includes("--only")
-  ? process.argv[process.argv.indexOf("--only") + 1]
-  : null;
+const argv = process.argv.slice(2);
+const only = argv.includes("--only") ? argv[argv.indexOf("--only") + 1] : null;
+const noMeasure = argv.includes("--no-measure");
 
 // Artifacts that legitimately have NO dark variant (print medium, spec R6).
 const PRINT_ONLY = new Set(["screens/calendar-print-a4.html"]);
@@ -28,17 +61,6 @@ const BANNED = [
   },
 ];
 
-// NOT ADDED: a static halo-OVERLAP check (PR #112 thread 3660378526, the
-// pager 8px-overlap regression this same vigil round fixed — see .pager
-// button's min-width below). Considered and rejected: whether two adjacent
-// halos overlap depends on the CONTAINER's runtime `gap`/flex-wrap and
-// which sibling paints last, none of which this regex-based, non-cascading
-// block parser resolves (it doesn't even know which selectors are siblings
-// under a shared flex/grid parent, let alone the parent's computed gap).
-// A static rule here would either miss real overlaps or false-positive on
-// fine layouts — gate theater, not a gate. The real check is the browser
-// measurement (getBoundingClientRect on the rendered artifact) done for F5;
-// re-run that measurement by hand if a control near a halo'd sibling changes.
 function walk(dir, exts = [".html"]) {
   const out = [];
   for (const entry of readdirSync(dir)) {
@@ -49,10 +71,6 @@ function walk(dir, exts = [".html"]) {
   return out;
 }
 
-// ===== CSS geometry check: every interactive control must reach the ≥44px
-// hit-target floor (spec quality bar). Two consecutive review rounds each
-// missed one instance (round 1: widths, round 2: heights) because the
-// baseline selector list was enumerated by hand — this makes it mechanical.
 // Regex-based block split — this is our own hand-written stylesheet, not
 // arbitrary CSS (no @media/nesting), so a full CSS parser would be overkill.
 function parseCssBlocks(css) {
@@ -68,154 +86,32 @@ function parseCssBlocks(css) {
 
 // A bare `input` tag selector (not a `.input` class, not an attribute-narrowed
 // checkbox/radio glyph whose hit area is provided by its wrapping label, e.g.
-// `.checkbox input[type="checkbox"]`) is a real text-like control and needs
-// the same floor even with no cursor:pointer — native text inputs render a
-// text cursor, not a pointer, so cursor:pointer alone would miss them.
+// `.checkbox input[type="checkbox"]`) is a real text-like control and needs to
+// be discovered even though it carries no distinguishing class of its own.
 function isBareInputSelector(sel) {
   if (!/(^|[\s>+~])input(?![\w-])/i.test(sel)) return false;
   if (/type=["'](checkbox|radio)["']/i.test(sel)) return false;
-  // A pseudo-class (:focus), pseudo-element (::placeholder), or boolean
-  // state attribute ([disabled]/[readonly]/[checked]) refines an input that
-  // already has its own base rule elsewhere in the sheet — it declares no
-  // box properties of its own, so it isn't a distinct hit target that needs
-  // its own floor (e.g. `.search input` sets height:44px; `.search
-  // input:focus`/`::placeholder` only restyle color/outline on that SAME box).
   if (/:[a-z-]/i.test(sel)) return false;
   if (/\[(disabled|readonly|checked)\]/i.test(sel)) return false;
   return true;
 }
 
-// Every block whose selector list literally contains `sel` contributes to its
-// geometry — not just the one block that happens to establish cursor:pointer.
-// This matters because the ≥44px baseline is set in ONE shared rule
-// (`.btn, .icon-btn, .kebab, .pager button, .seg button, .nav-item, .filter`)
-// while a control's OTHER axis (or a size override) frequently lives in that
-// control's own separate block (e.g. `.seg button`'s min-width:44px is a
-// distinct rule from the shared block that gives it cursor:pointer). Scanning
-// only the "interactive" block itself — as the pre-fix height check did —
-// would make the width check blind to exactly that pattern.
-function axisFloor(sel, blocks, prop) {
-  const minRe = new RegExp(`min-${prop}:\\s*([\\d.]+)px`, "i");
-  const bareRe = new RegExp(`(?<!min-)${prop}:\\s*([\\d.]+)px`, "i");
-  // A percentage (e.g. `.search input`'s `width: 100%`) is an explicit,
-  // deliberate "fill the parent" declaration, not an undeclared floor — it
-  // just isn't expressible in px, so it can't feed the px-based max() below.
-  const pctRe = new RegExp(`(?:min-)?${prop}:\\s*[\\d.]+%`, "i");
-  let px = 0;
-  let hasPercent = false;
-  for (const { selectorList, body } of blocks) {
-    if (
-      !selectorList
-        .split(",")
-        .map((s) => s.trim())
-        .includes(sel)
-    )
-      continue;
-    const minM = body.match(minRe);
-    const bareM = body.match(bareRe);
-    if (minM) px = Math.max(px, parseFloat(minM[1]));
-    if (bareM) px = Math.max(px, parseFloat(bareM[1]));
-    if (pctRe.test(body)) hasPercent = true;
-  }
-  return { px, hasPercent };
-}
-
-// A halo only satisfies the axis its `inset` shorthand actually expands — the
-// existing halos are deliberately axis-specific (Codex round-4 P2): `.icon-btn`
-// /`.kebab`/`.pager button` use `inset: 0 -Npx` (vertical 0, horizontal -N) to
-// widen WITHOUT touching height; `.btn-sm`/`.th-sort` use `inset: -Npx 0`
-// (vertical -N, horizontal 0) to heighten WITHOUT touching width. Treating
-// "has a ::before halo" as "satisfies whichever axis is failing" (the old
-// behaviour) would silently pass a control whose halo covers the WRONG axis.
-function haloAxisCoverage(sel, blocks) {
-  const target = `${sel}::before`;
-  for (const { selectorList, body } of blocks) {
-    if (
-      !selectorList
-        .split(",")
-        .map((s) => s.trim())
-        .includes(target)
-    )
-      continue;
-    const insetMatch = body.match(/inset:\s*([^;]+);/i);
-    if (!insetMatch) return { coversHeight: false, coversWidth: false };
-    const parts = insetMatch[1].trim().split(/\s+/).map(parseFloat);
-    let vertical = 0;
-    let horizontal = 0;
-    if (parts.length === 1) {
-      vertical = parts[0];
-      horizontal = parts[0];
-    } else if (parts.length === 2) {
-      [vertical, horizontal] = parts;
-    } else if (parts.length >= 4) {
-      // top right bottom left
-      vertical = Math.max(Math.abs(parts[0]), Math.abs(parts[2]));
-      horizontal = Math.max(Math.abs(parts[1]), Math.abs(parts[3]));
-    }
-    return { coversHeight: vertical !== 0, coversWidth: horizontal !== 0 };
-  }
-  return { coversHeight: false, coversWidth: false };
-}
-
-// A selector is interactive if ANY block containing it in its selector list
-// declares cursor:pointer, or if it's a bare <input> (see isBareInputSelector).
-// Collected once, selector-keyed, so a selector repeated across several
-// blocks (e.g. `.filter` gets cursor:pointer from both the shared baseline
-// block and its own block) is only evaluated once.
-function collectInteractiveSelectors(blocks) {
-  const interactive = new Map();
-  for (const { selectorList, body } of blocks) {
+// The set of CSS selector STRINGS this stylesheet declares as interactive
+// (cursor:pointer, or a bare <input>) — feeds the rendered pass below with
+// "which classed elements to also measure" alongside plain native tags. This
+// is selector DISCOVERY only; the actual >=44px + no-overlap verdict comes
+// from measuring the real rendered box, not from re-parsing px arithmetic.
+function interactiveCssSelectors(cssBlocks) {
+  const interactive = new Set();
+  for (const { selectorList, body } of cssBlocks) {
     const selectors = selectorList.split(",").map((s) => s.trim());
     const bodyHasPointer = /cursor:\s*pointer\b/i.test(body);
     const sels = bodyHasPointer
       ? selectors
       : selectors.filter(isBareInputSelector);
-    for (const sel of sels) {
-      if (!interactive.has(sel)) {
-        interactive.set(
-          sel,
-          bodyHasPointer ? "cursor:pointer" : "a bare <input>",
-        );
-      }
-    }
+    for (const sel of sels) interactive.add(sel);
   }
   return interactive;
-}
-
-function checkHitTargets(css) {
-  const blocks = parseCssBlocks(css);
-  const problems = [];
-  const interactive = collectInteractiveSelectors(blocks);
-
-  for (const [sel, control] of interactive) {
-    const height = axisFloor(sel, blocks, "height");
-    const width = axisFloor(sel, blocks, "width");
-    const halo = haloAxisCoverage(sel, blocks);
-
-    const heightOk = height.px >= 44 || height.hasPercent || halo.coversHeight;
-    const widthOk = width.px >= 44 || width.hasPercent || halo.coversWidth;
-    if (heightOk && widthOk) continue;
-
-    const axisReasons = [];
-    if (!heightOk) {
-      axisReasons.push(
-        height.px > 0
-          ? `height floor ${height.px}px (<44) with no ::before halo covering height`
-          : `no height floor and no ::before halo covering height`,
-      );
-    }
-    if (!widthOk) {
-      axisReasons.push(
-        width.px > 0
-          ? `width floor ${width.px}px (<44) with no ::before halo covering width`
-          : `no width floor and no ::before halo covering width`,
-      );
-    }
-    problems.push(
-      `${sel} has ${control} but declares ${axisReasons.join(" and ")} (>=44px BOTH axes required)`,
-    );
-  }
-  return problems;
 }
 
 // The fonts are declared ONCE, in the shared stylesheet — not in every artifact.
@@ -223,15 +119,13 @@ function checkHitTargets(css) {
 // font-family purely to satisfy the gate. Assert them where they actually live,
 // and run the BANNED list over the stylesheet too — otherwise a gradient added
 // to styles.css (the likeliest place) bypasses the whole quality gate.
-function checkStyles() {
-  const src = readFileSync(join(ROOT, "styles.css"), "utf8");
-  if (src.trim().length === 0) return ["styles.css: EMPTY file"];
+function checkStyles(cssBlocks, cssSrc) {
+  if (cssSrc.trim().length === 0) return ["styles.css: EMPTY file"];
   const problems = [];
-  if (!/"Outfit"/.test(src)) problems.push('missing "Outfit" font-family');
-  if (!/"Playfair Display"/.test(src))
+  if (!/"Outfit"/.test(cssSrc)) problems.push('missing "Outfit" font-family');
+  if (!/"Playfair Display"/.test(cssSrc))
     problems.push('missing "Playfair Display" font-family');
-  for (const { re, why } of BANNED) if (re.test(src)) problems.push(why);
-  problems.push(...checkHitTargets(src));
+  for (const { re, why } of BANNED) if (re.test(cssSrc)) problems.push(why);
   return problems.map((p) => `styles.css: ${p}`);
 }
 
@@ -259,9 +153,8 @@ function extractRootTokenNames(blocks) {
   return names;
 }
 
-function checkFoundationsTokenCoverage() {
-  const cssSrc = readFileSync(join(ROOT, "styles.css"), "utf8");
-  const tokens = extractRootTokenNames(parseCssBlocks(cssSrc));
+function checkFoundationsTokenCoverage(cssBlocks) {
+  const tokens = extractRootTokenNames(cssBlocks);
   const foundationsPath = join(ROOT, "foundations", "foundations.html");
   if (!existsSync(foundationsPath))
     return ["foundations/foundations.html: file is missing"];
@@ -279,150 +172,7 @@ function checkFoundationsTokenCoverage() {
   return problems.map((p) => `foundations/foundations.html: ${p}`);
 }
 
-// ===== HTML-side hit-target check (PR #112 thread 3660378522): checkHitTargets
-// above only sees controls discoverable FROM THE CSS (cursor:pointer, or a bare
-// `input` selector) — a native <button>/<select>/<textarea>/<a href>/<input>
-// (excl. checkbox/radio) added to an artifact with no matching CSS rule at all
-// is invisible to it. Reproduced directly: `<button>tiny</button>` dropped into
-// an artifact still reported PASS before this check existed.
-//
-// Full class -> floor resolution (not the simpler "every native element needs
-// SOME class" rule) is what's actually sound here: several already-correct
-// controls are BARE tags matched only via an ancestor's class — `.pager
-// button`, `.seg button`, `.search input` (see people-list.html's `<button
-// class="on">ES</button>` sibling `<button>EN</button>`, and its unclassed
-// `<button>‹</button>` pager arrows) all rely on a parent's class + the tag
-// name, not a class of their own. A "must carry a class" rule would flag
-// these correct, already-floored controls, so this resolves the same way
-// checkHitTargets does: build the candidate selector strings this element
-// could be reached by (its own class(es), or an ancestor class + this tag,
-// mirroring the "A B" descendant compounds actually used in this file) and
-// ask the SAME axisFloor/haloAxisCoverage helpers whether any of them clears
-// >=44px on both axes (or is haloed). A element with no such selector — no
-// class of its own, no ancestor class this stylesheet keys off of — fails.
-const VOID_ELEMENTS = new Set([
-  "area",
-  "base",
-  "br",
-  "col",
-  "embed",
-  "hr",
-  "img",
-  "input",
-  "link",
-  "meta",
-  "param",
-  "source",
-  "track",
-  "wbr",
-]);
-const NATIVE_CONTROL_TAGS = new Set([
-  "button",
-  "select",
-  "textarea",
-  "a",
-  "input",
-]);
-
-function scanNativeControls(html) {
-  // Blank out <script>/<style>/comment bodies first so stray "<"/">" inside
-  // them (e.g. a CSS child combinator) can't desync the tag scanner.
-  const cleaned = html
-    .replace(/<!--[\s\S]*?-->/g, (m) => " ".repeat(m.length))
-    .replace(/<style[\s\S]*?<\/style>/gi, (m) => " ".repeat(m.length))
-    .replace(/<script[\s\S]*?<\/script>/gi, (m) => " ".repeat(m.length));
-
-  const tagRe = /<(\/?)([a-zA-Z][a-zA-Z0-9-]*)((?:\s+[^<>]*)?)\/?>/g;
-  const stack = []; // {tag, classes: string[]}
-  const controls = [];
-  let m;
-  while ((m = tagRe.exec(cleaned))) {
-    const [, closing, tagRaw, attrsRaw = ""] = m;
-    const tag = tagRaw.toLowerCase();
-    if (closing) {
-      for (let i = stack.length - 1; i >= 0; i--) {
-        if (stack[i].tag === tag) {
-          stack.length = i;
-          break;
-        }
-      }
-      continue;
-    }
-    const classMatch = attrsRaw.match(/\bclass=["']([^"']*)["']/i);
-    const ownClasses = classMatch
-      ? classMatch[1].trim().split(/\s+/).filter(Boolean)
-      : [];
-    const selfClosed = /\/\s*$/.test(m[0].slice(0, -1));
-    const isVoid = VOID_ELEMENTS.has(tag) || selfClosed;
-
-    if (NATIVE_CONTROL_TAGS.has(tag)) {
-      const isCheckboxOrRadio =
-        tag === "input" && /\btype=["'](checkbox|radio)["']/i.test(attrsRaw);
-      const isHreflessAnchor = tag === "a" && !/\bhref=["']/i.test(attrsRaw);
-      if (!isCheckboxOrRadio && !isHreflessAnchor) {
-        controls.push({
-          tag,
-          ownClasses,
-          ancestors: [...stack].reverse(), // closest ancestor first
-        });
-      }
-    }
-
-    if (!isVoid) stack.push({ tag, classes: ownClasses });
-  }
-  return controls;
-}
-
-function controlCandidateSelectors(control) {
-  const candidates = new Set();
-  for (const c of control.ownClasses) candidates.add(`.${c}`);
-  for (const ancestor of control.ancestors) {
-    for (const ac of ancestor.classes) {
-      candidates.add(`.${ac} ${control.tag}`);
-      for (const oc of control.ownClasses) candidates.add(`.${ac} .${oc}`);
-    }
-  }
-  if (control.tag === "input") candidates.add("input"); // mirrors isBareInputSelector
-  return candidates;
-}
-
-function checkNativeControlsFloored(html, rel, cssBlocks) {
-  const problems = [];
-  for (const control of scanNativeControls(html)) {
-    let ok = false;
-    for (const sel of controlCandidateSelectors(control)) {
-      const height = axisFloor(sel, cssBlocks, "height");
-      const width = axisFloor(sel, cssBlocks, "width");
-      const halo = haloAxisCoverage(sel, cssBlocks);
-      const heightOk =
-        height.px >= 44 || height.hasPercent || halo.coversHeight;
-      const widthOk = width.px >= 44 || width.hasPercent || halo.coversWidth;
-      if (heightOk && widthOk) {
-        ok = true;
-        break;
-      }
-    }
-    if (!ok) {
-      const desc = control.ownClasses.length
-        ? `class="${control.ownClasses.join(" ")}"`
-        : "no class";
-      const ancestorDesc = control.ancestors
-        .slice(0, 2)
-        .map((a) =>
-          a.classes.length ? `.${a.classes.join(".")}` : `<${a.tag}>`,
-        )
-        .join(" < ");
-      problems.push(
-        `<${control.tag}> (${desc}${ancestorDesc ? `, inside ${ancestorDesc}` : ""}) ` +
-          `has no CSS rule (own class, or ancestor-class + <${control.tag}>) that ` +
-          `floors >=44px on both axes or provides an axis-covering halo`,
-      );
-    }
-  }
-  return problems.map((p) => `${rel}: ${p}`);
-}
-
-function checkHtml(abs, cssBlocks) {
+function checkHtml(abs) {
   const rel = relative(ROOT, abs);
   const src = readFileSync(abs, "utf8");
   const problems = [];
@@ -458,10 +208,180 @@ function checkHtml(abs, cssBlocks) {
 
   for (const { re, why } of BANNED) if (re.test(src)) problems.push(why);
 
-  return [
-    ...problems.map((p) => `${rel}: ${p}`),
-    ...checkNativeControlsFloored(src, rel, cssBlocks),
+  return problems.map((p) => `${rel}: ${p}`);
+}
+
+// ===== Rendered hit-target + overlap check (PR #112 threads 3660378522,
+// 3660378526). Replaces three static approximations (round 1-4's px arithmetic,
+// then this same vigil round's CSS-only AND HTML-side static checks) that each
+// missed a real defect in turn. Geometry — including whether a ::before halo
+// pushes past a neighbour — is a rendered-layout property; measuring it after
+// rendering closes every one of those holes at once instead of patching a
+// fourth static heuristic. See the file-header comment for what runs where.
+async function measureArtifact(page, url, allSelectors) {
+  await page.goto(url, { waitUntil: "networkidle" });
+  return page.evaluate((selectors) => {
+    function toLTRB(rect) {
+      return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+    }
+    // inset shorthand is always resolved to 4 values (top right bottom left);
+    // a NEGATIVE value pushes that edge OUTWARD (expands the box).
+    function haloRect(rect, insetStr) {
+      if (!insetStr || insetStr === "none") return null;
+      const parts = insetStr.trim().split(/\s+/).map(parseFloat);
+      const [top, right, bottom, left] =
+        parts.length === 4
+          ? parts
+          : parts.length === 2
+            ? [parts[0], parts[1], parts[0], parts[1]]
+            : [parts[0], parts[0], parts[0], parts[0]];
+      return {
+        left: rect.left + left,
+        right: rect.right - right,
+        top: rect.top + top,
+        bottom: rect.bottom - bottom,
+      };
+    }
+
+    const seen = new Set();
+    const results = [];
+    let combined;
+    try {
+      combined = document.querySelectorAll(selectors.join(","));
+    } catch {
+      return { error: "invalid combined selector", results: [] };
+    }
+    for (const el of combined) {
+      if (seen.has(el)) continue;
+      seen.add(el);
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) continue; // not rendered (e.g. hidden variant)
+      const before = getComputedStyle(el, "::before");
+      const halo = before.content !== "none" ? haloRect(toLTRB(rect), before.inset) : null;
+      const area = halo ?? toLTRB(rect);
+      results.push({
+        tag: el.tagName.toLowerCase(),
+        cls: el.className && el.className.toString ? el.className.toString() : "",
+        left: area.left,
+        top: area.top,
+        right: area.right,
+        bottom: area.bottom,
+        w: area.right - area.left,
+        h: area.bottom - area.top,
+      });
+    }
+    return { error: null, results };
+  }, allSelectors);
+}
+
+function rectsOverlap(a, b) {
+  const ox = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+  const oy = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+  return ox > 0.5 && oy > 0.5;
+}
+
+async function checkRenderedHitTargets(files, cssBlocks, cssSrc) {
+  if (noMeasure) {
+    return {
+      problems: [],
+      skipped: true,
+      reason: "--no-measure passed explicitly",
+    };
+  }
+
+  let chromium;
+  try {
+    const entry = join(
+      process.cwd(),
+      "node_modules/.pnpm/playwright@1.61.0/node_modules/playwright/index.mjs",
+    );
+    ({ chromium } = await import(`file://${existsSync(entry) ? entry : "playwright"}`));
+  } catch {
+    try {
+      ({ chromium } = await import("playwright"));
+    } catch (err) {
+      return {
+        problems: [],
+        skipped: true,
+        reason: `could not load Playwright (${err.message}) — run "pnpm exec playwright install chromium"`,
+      };
+    }
+  }
+
+  const nativeSelectors = [
+    "button",
+    "select",
+    "textarea",
+    "a[href]",
+    'input:not([type="checkbox"]):not([type="radio"])',
   ];
+  const classSelectors = [...interactiveCssSelectors(cssBlocks)];
+  const allSelectors = [...nativeSelectors, ...classSelectors];
+
+  const server = createServer(async (req, res) => {
+    try {
+      const p = decodeURIComponent(req.url.split("?")[0]);
+      const abs = join(ROOT, p);
+      const body = readFileSync(abs);
+      const ext = extname(abs);
+      const mime =
+        { ".html": "text/html", ".css": "text/css", ".js": "text/javascript" }[ext] ??
+        "application/octet-stream";
+      res.writeHead(200, { "Content-Type": mime });
+      res.end(body);
+    } catch {
+      res.writeHead(404);
+      res.end("not found");
+    }
+  });
+  await new Promise((resolve) => server.listen(0, resolve));
+  const { port } = server.address();
+
+  let browser;
+  try {
+    browser = await chromium.launch();
+  } catch (err) {
+    server.close();
+    return {
+      problems: [],
+      skipped: true,
+      reason: `Chromium failed to launch (${err.message}) — run "pnpm exec playwright install chromium"`,
+    };
+  }
+
+  const problems = [];
+  try {
+    const page = await browser.newPage({ viewport: { width: 1400, height: 1200 } });
+    for (const abs of files) {
+      const rel = relative(ROOT, abs);
+      const url = `http://localhost:${port}/${rel}`;
+      const { error, results } = await measureArtifact(page, url, allSelectors);
+      if (error) {
+        problems.push(`${rel}: rendered check error — ${error}`);
+        continue;
+      }
+      for (const r of results) {
+        if (r.w < 44 - 0.5 || r.h < 44 - 0.5) {
+          problems.push(
+            `${rel}: <${r.tag} class="${r.cls}"> hit region ${r.w.toFixed(2)}x${r.h.toFixed(2)}px, below 44px on ${r.w < 44 ? "width" : ""}${r.w < 44 && r.h < 44 ? "+" : ""}${r.h < 44 ? "height" : ""}`,
+          );
+        }
+      }
+      for (let i = 0; i < results.length; i++) {
+        for (let j = i + 1; j < results.length; j++) {
+          if (rectsOverlap(results[i], results[j])) {
+            problems.push(
+              `${rel}: hit regions overlap — <${results[i].tag} class="${results[i].cls}"> and <${results[j].tag} class="${results[j].cls}">`,
+            );
+          }
+        }
+      }
+    }
+  } finally {
+    await browser.close();
+    server.close();
+  }
+  return { problems, skipped: false };
 }
 
 if (!existsSync(join(ROOT, "styles.css"))) {
@@ -482,18 +402,28 @@ if (files.length === 0) {
 // The stylesheet is always checked, even with --only: it is shared by every
 // artifact, so a defect there affects all of them. Same for the Foundations
 // token-inventory check — it depends on styles.css's :root, not on `--only`.
-// checkHtml's native-control floor check (F4, thread 3660378522) needs the
-// same parsed blocks checkHitTargets already builds, so it's read here once
-// and threaded through rather than re-read per artifact.
-const cssBlocks = parseCssBlocks(
-  readFileSync(join(ROOT, "styles.css"), "utf8"),
-);
-const failures = [
-  ...checkStyles(),
-  ...checkFoundationsTokenCoverage(),
-  ...files.flatMap((f) => checkHtml(f, cssBlocks)),
+const cssSrc = readFileSync(join(ROOT, "styles.css"), "utf8");
+const cssBlocks = parseCssBlocks(cssSrc);
+
+const staticFailures = [
+  ...checkStyles(cssBlocks, cssSrc),
+  ...checkFoundationsTokenCoverage(cssBlocks),
+  ...files.flatMap(checkHtml),
 ];
+
+const { problems: renderedFailures, skipped, reason } =
+  await checkRenderedHitTargets(files, cssBlocks, cssSrc);
+
+const failures = [...staticFailures, ...renderedFailures];
 console.log(`checked styles.css + ${files.length} artifact(s)`);
+if (skipped) {
+  console.warn(
+    `  !!! rendered hit-target/overlap check SKIPPED: ${reason}`,
+  );
+  console.warn(
+    "  !!! this gate cannot verify >=44px hit targets or halo overlap without it",
+  );
+}
 for (const f of failures) console.error("  ✗ " + f);
 if (failures.length) {
   console.error(`FAIL: ${failures.length} problem(s)`);
