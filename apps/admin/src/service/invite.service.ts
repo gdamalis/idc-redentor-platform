@@ -25,42 +25,45 @@ export interface CreateInviteInput {
 const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
- * Creates a new pending invite. **Plan correction (found during ICR-128
- * CP6):** ICR-127 shipped invite ACCEPTANCE only (`claimPendingInvite` /
- * `revertInviteClaim` below) — there was no invite CREATION path anywhere in
- * `apps/admin` (confirmed: `sendInviteEmail` had zero callers). This is that
- * missing write path, added here because Task 6's `inviteUserAction` needs
- * it — mirrors the Task 5 Step 0 correction for `createRole`/`listUsers`.
+ * Creates OR REFRESHES a pending invite for `email` in a single atomic
+ * upsert (ICR-128 P1 fix — compounded with the swallowed-delivery-failure
+ * bug on `inviteUserAction`: a transient Resend failure plus this function's
+ * old insert-then-conflict behavior could permanently lock an address out of
+ * an invite-only product, with no in-product recovery — see
+ * `docs/architecture/admin-rbac.md`).
  *
- * **Uniqueness rule (CP7, index-only — settled after two rounds of review):**
- * at most one pending invite per address, enforced by a single source of
- * truth — `ensureAuthIndexes()`'s partial unique index on `{ email: 1 }`
- * (`user.service.ts`, `partialFilterExpression: { status: "pending" }`).
- * `createInvite` attempts the insert directly and maps the resulting E11000
- * to `{ ok: false, reason: "conflict" }` via `isDuplicateKeyError`, exactly
- * `createRole`'s pattern for its unique `name` index — one duplicate-
- * detection idiom, not two, across this PR.
+ * **Upsert-refresh, not insert-then-catch (replaces the CP6/CP7 design).**
+ * The filter `{ email, status: "pending" }` matches ANY still-`"pending"`
+ * invite for this address — whether it's live or has quietly passed its
+ * `expiresAt` (nothing in this codebase ever transitions a pending invite to
+ * another status on natural expiry) — and refreshes it in place: new
+ * `roleIds`/`locale`/`expiresAt`/`invitedByUserId`, same `_id`. When no
+ * pending invite exists yet, the same call inserts a fresh one via
+ * `$setOnInsert`. One atomic `findOneAndUpdate`, so there is no read-then-
+ * write race, and `createInvite` no longer HAS a failure branch — re-inviting
+ * an address, whether its invite is live or long expired, always refreshes
+ * and re-sends. That's what an administrator means by "invite again."
  *
- * An earlier version of this function paired the index with a `findOne`
- * pre-check for a clean non-exception result in the common case. That was
- * deliberately removed: the pre-check used a DIFFERENT predicate than the
- * index (`expiresAt: { $gt: new Date() }`, vs. the index's bare
- * `status: "pending"`), so the two guards could disagree — a pre-check that
- * isn't authoritative doesn't fix anything the index doesn't already fix, it
- * just adds a non-atomic read that can't be trusted, and manufactures a
- * confusing "passes the pre-check, then collides on insert" path. Deleting
- * it removes the contradiction, not just the code.
+ * `refreshed` distinguishes the two outcomes for the caller
+ * (`inviteUserAction` surfaces different copy for "sent" vs. "re-sent") via
+ * `lastErrorObject.updatedExisting` — the atomic, race-free signal
+ * `includeResultMetadata: true` returns from the same operation, not a
+ * `createdAt` timestamp comparison (which would be racy at the millisecond
+ * boundary).
  *
- * **Known gap (not fixed here — out of this ticket's scope):** the partial
- * index keys off `status: "pending"` alone, with no `expiresAt` condition.
- * Nothing in this codebase ever transitions a `pending` invite to another
- * status on natural expiry (`expiresAt` is only ever a query filter
- * elsewhere, e.g. `findPendingInvite`, never written), so a genuinely
- * expired-but-still-`"pending"` invite permanently blocks re-inviting that
- * address until the doc is manually cleared — and there is no revoke path or
- * pending-invites list UI yet to do that. Flagged in `tasks/todo.md` for a
- * follow-up; the real fix is either an `expiresAt` clause in the partial
- * filter or upsert-and-refresh semantics, which is a scope decision.
+ * **The partial unique index is still the ONLY uniqueness guard** —
+ * `ensureAuthIndexes()`'s `{ email: 1 }` index with
+ * `partialFilterExpression: { status: "pending" }` (`user.service.ts`). It
+ * still guarantees at most one pending invite per address, and now also
+ * backstops the upsert itself: MongoDB's server-side upsert retry (4.2+)
+ * already resolves the common race — two concurrent upserts for a brand-new
+ * address both missing the `{ email, status: "pending" }` match and both
+ * attempting an insert — by re-running the query predicate against whichever
+ * insert won. The single client-side retry below exists only for the
+ * pathological case where that internal retry budget is exhausted: by the
+ * time we get here, SOME doc matching `{ email, status: "pending" }` exists,
+ * so the retry is guaranteed to take the update branch, not the insert
+ * branch — it can never surface a user-facing `conflict` again.
  *
  * Deliberately does NOT check whether the email already belongs to an active
  * `AdminUser` — no such lookup exists yet, adding one is out of this
@@ -70,35 +73,53 @@ const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
  * reduce administrability).
  *
  * `session` is REQUIRED, not optional — this only ever runs inside
- * `withAdminTransaction`, and the insert must join the caller's transaction
+ * `withAdminTransaction`, and the upsert must join the caller's transaction
  * (Global Constraints, transaction rules).
  */
 export async function createInvite(
   input: CreateInviteInput,
   session: ClientSession,
-): Promise<{ ok: true; inviteId: string } | { ok: false; reason: "conflict" }> {
+): Promise<{ ok: true; inviteId: string; refreshed: boolean }> {
   await ensureAuthIndexes();
   const email = normalizeEmail(input.email);
-  const now = new Date();
-  const doc: Omit<Invite, "_id"> = {
-    email,
-    roleIds: [...input.roleIds],
-    locale: input.locale,
-    status: "pending",
-    expiresAt: new Date(now.getTime() + INVITE_EXPIRY_MS),
-    createdAt: now,
-    invitedByUserId: input.invitedByUserId,
+
+  const attemptUpsert = () => {
+    const now = new Date();
+    return getAdminDb()
+      .collection(INVITES_COLLECTION)
+      .findOneAndUpdate(
+        { email, status: "pending" },
+        {
+          $set: {
+            roleIds: [...input.roleIds],
+            locale: input.locale,
+            expiresAt: new Date(now.getTime() + INVITE_EXPIRY_MS),
+            invitedByUserId: input.invitedByUserId,
+          },
+          $setOnInsert: { email, status: "pending", createdAt: now },
+        },
+        { upsert: true, returnDocument: "after", includeResultMetadata: true, session },
+      );
   };
 
+  let result;
   try {
-    const result = await getAdminDb()
-      .collection(INVITES_COLLECTION)
-      .insertOne(doc, { session });
-    return { ok: true, inviteId: result.insertedId.toHexString() };
+    result = await attemptUpsert();
   } catch (error) {
-    if (isDuplicateKeyError(error)) return { ok: false, reason: "conflict" };
-    throw error;
+    // Race backstop (see doc comment above) — retry once, by which point the
+    // winning insert is visible and this retry's filter matches it as an
+    // update, never another insert.
+    if (!isDuplicateKeyError(error)) throw error;
+    result = await attemptUpsert();
   }
+
+  const doc = result.value;
+  if (!doc) throw new Error("createInvite: upsert returned no document");
+  return {
+    ok: true,
+    inviteId: doc._id.toHexString(),
+    refreshed: result.lastErrorObject?.updatedExisting === true,
+  };
 }
 
 export async function findPendingInvite(email: string): Promise<Invite | null> {

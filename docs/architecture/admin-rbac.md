@@ -428,61 +428,84 @@ than filing a "missing gate" finding:
 | `(auth)/reset-password/actions.ts`'s `requestPasswordReset` | **Public by design, and enumeration-safe by construction** — it always returns `{ ok: true }` regardless of whether the email exists, is throttled, or the send fails (see `admin-auth.md`'s "Enumeration-safe by construction"). A permission check here would either require exposing account existence (defeating the enumeration-safety) or would be meaningless (there's no session to hold a permission yet — the requester isn't authenticated). |
 | `components/shell/locale-actions.ts`'s `setPreferredLocale` | **Self-service, and already gated on identity rather than a specific permission.** It requires a valid session (`getCurrentUser()`; no-op `{ ok: false }` without one) and writes only the calling user's own `preferredLocale` — there is no `PermissionKey` for "may change your own display language," and adding one would be pure ceremony: every provisioned user is allowed to do this by definition of having an account.                       |
 
-## `createInvite` — CP6/CP7 design decisions
+## `createInvite` — upsert-refresh semantics (ICR-128 P1 fix, supersedes CP6/CP7)
 
 `invite.service.ts`'s `createInvite(input, session)` (added in CP6 — ICR-127 shipped invite
 **acceptance** only; there was no creation path anywhere in `apps/admin` before this ticket) carries
-three judgment calls worth recording:
+these judgment calls:
 
 1. **7-day expiry.** No TTL value is specified anywhere in the ICR-127/ICR-128 spec or docs; 7 days
    is a conventional default for an admin invite link. Revisit if product wants something
    shorter/longer.
-2. **Re-inviting an email with an existing pending, unexpired invite is refused
-   (`reason: "conflict"`)**, not silently re-sent or upserted — there is no UI yet to view or revoke
-   a stuck pending invite if one is ever needed (tracked as a follow-up, not this ticket).
+2. **Re-inviting an address always refreshes and re-sends** — whether that address's existing pending
+   invite is still live or has quietly passed its `expiresAt` — rather than being refused. This is the
+   fix for a compounding P1 pair a Codex review found on the CP6/CP7 design (below) and is what an
+   administrator actually expects from "invite again."
 3. **`createInvite` does not check whether the email already belongs to an active `AdminUser`** — no
    such lookup exists in `user.service.ts`, adding one is out of scope, and re-inviting an existing
    user is harmless (`inviteUserAction` has no `retainsAdministrability` check to run here either —
    inviting can only ever **add** a prospective grantee, never reduce administrability).
 
-**Uniqueness enforcement is ONE rule (CP7, settled after two rounds of review).** CP6 implemented "at
-most one pending invite per address" as a `findOne` pre-check alone. That's a TOCTOU race: MongoDB
-transactions use snapshot isolation, which does **not** prevent a phantom insert — two concurrent
-invites for the same address can both observe "no pending invite" from their own transaction snapshot
-and both proceed to insert, even though each runs inside `withAdminTransaction`. This is the identical
-read-then-write bug class the last-admin invariant exists to prevent, just on a different collection.
+**The compounding bug this replaced.** The CP6/CP7 design (insert-then-catch-E11000, documented in the
+first release of this doc) had a known, deliberately-deferred limitation: the partial unique index keys
+off `status: "pending"` alone, and nothing in this codebase ever transitions a `pending` invite to
+another status on natural expiry — so a genuinely expired-but-still-`"pending"` invite permanently
+blocked re-inviting that address, `conflict`, with no revoke path or pending-invites UI to clear it.
+That was filed as a low-severity follow-up (ICR-185) on the theory that hitting it required an invite to
+sit unaccepted for a full 7 days. A later review connected it to a SECOND bug on the same path —
+`inviteUserAction` awaited `sendInviteEmail()`'s `boolean` return and ignored it, so a **transient**
+Resend failure (not a 7-day wait) reported success to the admin while nobody was actually invited. The
+two together meant a single transient email outage could permanently lock an address out of an
+invite-only product on day one, with no in-product recovery — reachable, not theoretical. Fixing them
+required one coherent change to the invite flow, not two independent patches.
 
-The fix is a **partial unique index** in `ensureAuthIndexes()` (`user.service.ts`, which already owns
-the `invites` indexes):
+**The fix: one atomic upsert, not insert-then-catch.**
 
 ```ts
-invites.createIndex(
-  { email: 1 },
-  { unique: true, partialFilterExpression: { status: "pending" } },
+db.collection("invites").findOneAndUpdate(
+  { email, status: "pending" },
+  {
+    $set: { roleIds, locale, expiresAt: <now + 7d>, invitedByUserId },
+    $setOnInsert: { email, status: "pending", createdAt: now },
+  },
+  { upsert: true, returnDocument: "after", includeResultMetadata: true, session },
 );
 ```
 
-`createInvite` attempts the insert directly — **no pre-check** — and maps the resulting `E11000` to
-`{ ok: false, reason: "conflict" }` via `isDuplicateKeyError` (exported from `user.service.ts`, reused
-by both `invite.service.ts` and `createRole`'s duplicate-name handling — one implementation, not two
-copies). An earlier revision paired the index with a `findOne` pre-check for a clean non-exception
-result in the common case; it was removed. The reason is stronger than "the index makes it redundant":
-the pre-check used a **different predicate** than the index — `expiresAt: { $gt: new Date() }` vs. the
-index's bare `status: "pending"` — so the two guards could **disagree** at the edges, producing a
-confusing "passes the pre-check, then collides on insert anyway" outcome for an expired-but-still-
-pending invite. Removing the pre-check collapses this to one authoritative rule instead of two rules
-that don't always agree, and matches `createRole`'s catch-only pattern against its own unique index —
-one duplicate-detection idiom in this codebase, not two.
+The filter `{ email, status: "pending" }` matches ANY still-`"pending"` invite for the address — live
+or expired, since nothing ever moves it out of `"pending"` on its own — and refreshes it in place
+(same `_id`, new `roleIds`/`locale`/`expiresAt`/`invitedByUserId`). When no pending invite exists, the
+same call inserts a fresh one via `$setOnInsert`. One atomic operation: no read-then-write race, and
+`createInvite`'s return type dropped its `{ ok: false, reason: "conflict" }` branch entirely — it now
+always returns `{ ok: true; inviteId; refreshed }`, where `refreshed` (read from
+`lastErrorObject.updatedExisting`, the atomic signal `includeResultMetadata: true` returns from the same
+operation) tells the caller whether this was a fresh invite or a refresh of an existing one.
 
-**Known limitation, not fixed here.** With one rule, the gap is simpler to state: the partial index
-keys off `status: "pending"` alone, and nothing in this codebase ever transitions a `pending` invite to
-another status on natural expiry (`expiresAt` is only ever a query filter elsewhere — e.g.
-`findPendingInvite` — never written). So a genuinely expired-but-still-`"pending"` invite permanently
-blocks re-inviting that address — it still collides with the index — until the doc is manually cleared,
-and there is no revoke path or pending-invites list UI yet to do that. Flagged in `tasks/todo.md` for a
-follow-up. The real fix is either an `expiresAt` clause added to the partial filter or upsert-and-
-refresh semantics on `createInvite` — both are scope decisions for a follow-up ticket, not a checkpoint
-detail.
+**The partial unique index is still the only uniqueness guard** —
+`ensureAuthIndexes()`'s `{ email: 1 }` index with `partialFilterExpression: { status: "pending" }`
+(`user.service.ts`) is unchanged, and still guarantees at most one pending invite per address. It now
+also backstops the upsert itself: MongoDB's server-side upsert retry (4.2+) already resolves the common
+race where two concurrent upserts for a brand-new address both miss the `{ email, status: "pending" }`
+match and both attempt an insert, by re-running the query predicate against whichever insert won.
+`createInvite` additionally retries once itself on a duplicate-key error as a belt-and-suspenders
+backstop for the pathological case where that internal retry budget is exhausted — by the time the
+retry runs, some doc matching the filter exists, so it always resolves to an update. `conflict` is no
+longer reachable from `createInvite` at all; `users.errors.conflict` / `rbac.errors.conflict` stay in
+the message catalogs regardless, since `createRole` still produces `conflict` for duplicate role names.
+
+**`inviteUserAction` (`(app)/users/actions.ts`) surfaces delivery failure instead of swallowing it.**
+It now inspects `sendInviteEmail()`'s `boolean` return (and treats a thrown error the same way) and
+reports `{ ok: true, data: { emailSent, refreshed } }` — the action still SUCCEEDS when delivery fails
+(the `Invite` document, committed inside the transaction before the send is even attempted, is the
+source of truth, and a person can be provisioned once told out of band; a Resend outage must not block
+provisioning), but the admin is told. `invite-dialog.tsx` renders three distinct outcomes instead of
+silently closing on any `ok: true`: a fresh invite delivered ("Invitation sent"), a refreshed invite
+re-delivered ("Invitation re-sent"), or a saved-but-undelivered invite (an assertive warning, not a
+quiet success) — and, since a retry now refreshes instead of conflicting, "try again" from that warning
+always works.
+
+This resolves **ICR-185** (the expired-pending-invite follow-up filed against the CP6/CP7 design) — that
+ticket can be closed.
 
 ## Related docs
 

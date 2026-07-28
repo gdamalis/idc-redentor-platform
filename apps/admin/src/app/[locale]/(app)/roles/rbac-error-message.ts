@@ -40,8 +40,12 @@ const RBAC_ERROR_MESSAGE_KEYS: Partial<
   conflict: "conflict",
 };
 
-export function rbacErrorMessageKey(
-  result: ActionResult | undefined,
+// Generic over `T` (the action's success payload) — this only ever inspects
+// the `ok: false` branch, which carries `reason`/`fieldErrors` regardless of
+// what `T` is, so callers with a non-`undefined` success payload (e.g.
+// `inviteUserAction`'s `ActionResult<InviteUserResult>`) don't need a cast.
+export function rbacErrorMessageKey<T>(
+  result: ActionResult<T> | undefined,
 ): RbacErrorMessageKey | null {
   if (!result || result.ok) return null;
   return RBAC_ERROR_MESSAGE_KEYS[result.reason] ?? null;
@@ -73,8 +77,8 @@ const USERS_CONTEXT_KEYS: ReadonlySet<RbacErrorMessageKey> = new Set([
  * keep calling `rbacErrorMessageKey()` plus their own `rbac.errors`
  * translator directly, unchanged.
  */
-export function useUsersRbacErrorMessage(
-  result: ActionResult | undefined,
+export function useUsersRbacErrorMessage<T>(
+  result: ActionResult<T> | undefined,
 ): string | null {
   const tErrors = useTranslations("rbac.errors");
   const tUsersErrors = useTranslations("users.errors");

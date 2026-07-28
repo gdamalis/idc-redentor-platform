@@ -230,7 +230,10 @@
       "emailLabel": "Email",
       "rolesLabel": "Roles",
       "cancel": "Cancel",
-      "submit": "Send invite"
+      "submit": "Send invite",
+      "sentSuccess": "Invitation sent.",
+      "resentSuccess": "Invitation re-sent.",
+      "deliveryFailed": "We saved the invitation, but couldn't send the email. You can try again."
     },
     "errors": {
       "notFound": "We couldn't find that user. They may have already been removed.",

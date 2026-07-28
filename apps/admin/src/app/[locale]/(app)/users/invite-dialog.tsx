@@ -15,6 +15,7 @@ import {
 import { Button } from "@src/components/ui/button";
 import { Input } from "@src/components/ui/input";
 import { inviteUserAction } from "./actions";
+import type { InviteUserResult } from "./actions";
 import { useUsersRbacErrorMessage } from "../roles/rbac-error-message";
 import type { ActionResult } from "@src/service/types";
 
@@ -32,31 +33,33 @@ interface InviteDialogProps {
  * The invite modal: email `<Input>` + role checkboxes, `useActionState`, and
  * server-authoritative Zod validation surfaced via `fieldErrors`/`rbac.errors`.
  * `Dialog.Title` is present (required for an accessible modal — see
- * `components/ui/dialog.tsx`). Closes itself on a successful invite; an
- * uncontrolled form naturally re-renders empty the next time it opens
- * because Radix unmounts `DialogContent` while closed.
+ * `components/ui/dialog.tsx`).
+ *
+ * **ICR-128 P1 fix.** This used to close itself unconditionally on
+ * `state.ok`, which is exactly how a swallowed email-delivery failure became
+ * a silent success: the admin saw the dialog close and had no way to know
+ * the invite was never delivered. It no longer auto-closes on success at
+ * all — instead it surfaces the three distinct outcomes `inviteUserAction`
+ * can now report (`data.emailSent` / `data.refreshed`) as an inline message
+ * and lets the admin dismiss it themselves via Cancel. (No manual form-reset
+ * logic is needed here: React resets an uncontrolled `<form action={fn}>`'s
+ * fields itself once the action settles, for every outcome — success,
+ * warning, or a validation `fieldErrors` refusal alike.) A retry after a
+ * delivery-failure warning is re-entering the email and clicking Submit
+ * again; `createInvite` refreshes rather than conflicting either way, so a
+ * retry can never hit a stale-conflict dead end (see invite.service.ts).
  */
 export function InviteDialog({ roles }: InviteDialogProps) {
   const [open, setOpen] = useState(false);
   const t = useTranslations("users.invite");
   const tSystem = useTranslations("roles.system");
-  const [state, formAction, isPending] = useActionState<ActionResult | undefined, FormData>(
-    inviteUserAction,
-    undefined,
-  );
+  const [state, formAction, isPending] = useActionState<
+    ActionResult<InviteUserResult> | undefined,
+    FormData
+  >(inviteUserAction, undefined);
   const errorMessage = useUsersRbacErrorMessage(state);
   const fieldErrors = state?.ok === false ? state.fieldErrors : undefined;
-
-  // Close on a successful invite — adjusted DURING RENDER against a ref of
-  // the previous `state`, per React's "you might not need an Effect" guide,
-  // rather than a `useEffect` (which the react-hooks/set-state-in-effect
-  // rule flags for exactly this "setState synchronously in an effect body"
-  // shape).
-  const [prevState, setPrevState] = useState(state);
-  if (state !== prevState) {
-    setPrevState(state);
-    if (state?.ok) setOpen(false);
-  }
+  const outcome = state?.ok ? state.data : undefined;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -104,6 +107,26 @@ export function InviteDialog({ roles }: InviteDialogProps) {
           {errorMessage && (
             <span role="alert" className="text-xs text-destructive">
               {errorMessage}
+            </span>
+          )}
+
+          {/* Not a silent success: a saved-but-undelivered invite gets a
+              warning (assertive `role="alert"`), never the same quiet
+              confirmation as a delivered one. */}
+          {!isPending && outcome && (
+            <span
+              role={outcome.emailSent ? "status" : "alert"}
+              className={
+                outcome.emailSent
+                  ? "text-xs text-emerald-600 dark:text-emerald-400"
+                  : "text-xs text-amber-600 dark:text-amber-400"
+              }
+            >
+              {outcome.emailSent
+                ? outcome.refreshed
+                  ? t("resentSuccess")
+                  : t("sentSuccess")
+                : t("deliveryFailed")}
             </span>
           )}
 

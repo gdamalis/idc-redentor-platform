@@ -174,7 +174,7 @@ describe("inviteUserAction", () => {
   it("creates the invite, audits it, revalidates, and sends the invitee email in the inviting admin's locale", async () => {
     requirePermission.mockResolvedValueOnce(AUTHORIZED);
     listRoles.mockResolvedValueOnce([LEADER_ROLE]);
-    createInvite.mockResolvedValueOnce({ ok: true, inviteId: "inv1" });
+    createInvite.mockResolvedValueOnce({ ok: true, inviteId: "inv1", refreshed: false });
     const { inviteUserAction } = await loadActions();
 
     const result = await inviteUserAction(
@@ -182,7 +182,7 @@ describe("inviteUserAction", () => {
       formDataOf({ email: "New@IDCR.org", roleIds: [LEADER_ROLE_ID] }),
     );
 
-    expect(result).toEqual({ ok: true, data: undefined });
+    expect(result).toEqual({ ok: true, data: { emailSent: true, refreshed: false } });
     expect(createInvite).toHaveBeenCalledWith(
       expect.objectContaining({
         email: "new@idcr.org",
@@ -211,10 +211,15 @@ describe("inviteUserAction", () => {
     expect(touchAdministrabilityGuard).not.toHaveBeenCalled();
   });
 
-  it("maps a duplicate-pending-invite conflict to reason: conflict, aborts, and never audits or emails", async () => {
+  // ICR-128 P1 regression: createInvite() refreshes an expired-but-still-
+  // pending invite instead of conflicting (see invite.service.test.ts for
+  // the service-level coverage of that). At the action level, this proves
+  // `refreshed: true` flows through end to end into the returned data, so
+  // invite-dialog.tsx can show "re-sent" instead of "sent".
+  it("reports refreshed: true when createInvite refreshed an existing (live or expired) pending invite", async () => {
     requirePermission.mockResolvedValueOnce(AUTHORIZED);
     listRoles.mockResolvedValueOnce([LEADER_ROLE]);
-    createInvite.mockResolvedValueOnce({ ok: false, reason: "conflict" });
+    createInvite.mockResolvedValueOnce({ ok: true, inviteId: "inv1", refreshed: true });
     const { inviteUserAction } = await loadActions();
 
     const result = await inviteUserAction(
@@ -222,17 +227,38 @@ describe("inviteUserAction", () => {
       formDataOf({ email: "new@idcr.org", roleIds: [LEADER_ROLE_ID] }),
     );
 
-    expect(result).toEqual({ ok: false, reason: "conflict" });
-    expect(abortTransaction).toHaveBeenCalledTimes(1);
-    expect(appendAuditEntry).not.toHaveBeenCalled();
-    expect(sendInviteEmail).not.toHaveBeenCalled();
+    expect(result).toEqual({ ok: true, data: { emailSent: true, refreshed: true } });
   });
 
-  it("still reports success when the invite was created but the email send itself throws", async () => {
+  // ICR-128 P1 fix: the previous version awaited sendInviteEmail() and
+  // ignored its boolean return, so a transient Resend failure reported
+  // success while nobody was invited. The action must still succeed (the
+  // Invite row is the source of truth and can be provisioned out of band),
+  // but must say so — the invite row is NOT rolled back on a failed send.
+  it("still reports ok:true when sendInviteEmail resolves false, but surfaces data.emailSent === false", async () => {
+    requirePermission.mockResolvedValueOnce(AUTHORIZED);
+    listRoles.mockResolvedValueOnce([LEADER_ROLE]);
+    createInvite.mockResolvedValueOnce({ ok: true, inviteId: "inv1", refreshed: false });
+    sendInviteEmail.mockResolvedValueOnce(false);
+    const { inviteUserAction } = await loadActions();
+
+    const result = await inviteUserAction(
+      undefined,
+      formDataOf({ email: "new@idcr.org", roleIds: [LEADER_ROLE_ID] }),
+    );
+
+    expect(result).toEqual({ ok: true, data: { emailSent: false, refreshed: false } });
+    // The invite was still created and audited — delivery failure never
+    // rolls back the already-committed transaction.
+    expect(createInvite).toHaveBeenCalledTimes(1);
+    expect(appendAuditEntry).toHaveBeenCalledTimes(1);
+  });
+
+  it("still reports success (with emailSent: false) when the email send itself throws", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     requirePermission.mockResolvedValueOnce(AUTHORIZED);
     listRoles.mockResolvedValueOnce([LEADER_ROLE]);
-    createInvite.mockResolvedValueOnce({ ok: true, inviteId: "inv1" });
+    createInvite.mockResolvedValueOnce({ ok: true, inviteId: "inv1", refreshed: false });
     sendInviteEmail.mockRejectedValueOnce(new Error("Resend outage"));
     const { inviteUserAction } = await loadActions();
 
@@ -241,7 +267,7 @@ describe("inviteUserAction", () => {
       formDataOf({ email: "new@idcr.org", roleIds: [LEADER_ROLE_ID] }),
     );
 
-    expect(result).toEqual({ ok: true, data: undefined });
+    expect(result).toEqual({ ok: true, data: { emailSent: false, refreshed: false } });
     consoleError.mockRestore();
   });
 });

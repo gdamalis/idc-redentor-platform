@@ -230,7 +230,10 @@
       "emailLabel": "Email",
       "rolesLabel": "Roles",
       "cancel": "Cancelar",
-      "submit": "Enviar invitación"
+      "submit": "Enviar invitación",
+      "sentSuccess": "Invitación enviada.",
+      "resentSuccess": "Invitación reenviada.",
+      "deliveryFailed": "Guardamos la invitación, pero no pudimos enviar el email. Podés intentar de nuevo."
     },
     "errors": {
       "notFound": "No encontramos a ese usuario. Puede que ya haya sido eliminado.",

@@ -34,6 +34,11 @@ function toFieldErrors(error: { flatten: () => { fieldErrors: unknown } }) {
   return error.flatten().fieldErrors as Record<string, string[]>;
 }
 
+export interface InviteUserResult {
+  readonly emailSent: boolean;
+  readonly refreshed: boolean;
+}
+
 /**
  * Inviting can never REDUCE administrability (it only adds a prospective
  * grantee), so — like `createRoleAction` — this needs no invariant check.
@@ -44,11 +49,27 @@ function toFieldErrors(error: { flatten: () => { fieldErrors: unknown } }) {
  * `createInvite` (service/invite.service.ts) is a Task 6 addition — ICR-127
  * shipped invite ACCEPTANCE only, never a creation path (plan correction,
  * documented on that function).
+ *
+ * **ICR-128 P1 fix (delivery failure was swallowed):** this used to await
+ * `sendInviteEmail` and ignore its `boolean` return, so a transient Resend
+ * outage produced a UI that reported success while nobody was actually
+ * invited — and, before `createInvite`'s Fix A, that address could then be
+ * permanently stuck: re-inviting hit `conflict` because the DB row it wrote
+ * was still `"pending"`. `createInvite` no longer returns `conflict` at all
+ * (see its doc comment), and this action now inspects `sendInviteEmail`'s
+ * result and reports it via `data.emailSent`, so the caller (`invite-dialog.tsx`)
+ * can tell the admin the invite was saved but not delivered, and that
+ * retrying (which now refreshes instead of conflicting) will work.
+ *
+ * The action still reports `ok: true` even when `emailSent` is `false` — the
+ * `Invite` document is the source of truth and a person can be provisioned
+ * once told out of band; a Resend outage must not block provisioning, only
+ * be surfaced honestly.
  */
 export async function inviteUserAction(
-  _prev: ActionResult | undefined,
+  _prev: ActionResult<InviteUserResult> | undefined,
   formData: FormData,
-): Promise<ActionResult> {
+): Promise<ActionResult<InviteUserResult>> {
   const authz = await requireActionPermission("users:manage");
   if (!authz.ok) return authz;
 
@@ -65,65 +86,66 @@ export async function inviteUserAction(
   // there is no other signal for what language the invitee prefers yet.
   const locale = authz.user.preferredLocale;
 
-  const result = await withAdminTransaction(async (session): Promise<ActionResult> => {
-    // EVERY read/write below passes { session } — without it the operation
-    // runs OUTSIDE the transaction and the existence check reads stale data.
-    const roles = await listRoles(session);
-    const roleIdSet = new Set(roles.map((r) => r._id.toHexString()));
-    const allRolesExist = parsed.data.roleIds.every((id) => roleIdSet.has(id));
-    if (!allRolesExist) {
-      await session.abortTransaction();
-      return { ok: false, reason: "not-found" };
-    }
+  const result = await withAdminTransaction(
+    async (session): Promise<ActionResult<{ refreshed: boolean }>> => {
+      // EVERY read/write below passes { session } — without it the operation
+      // runs OUTSIDE the transaction and the existence check reads stale data.
+      const roles = await listRoles(session);
+      const roleIdSet = new Set(roles.map((r) => r._id.toHexString()));
+      const allRolesExist = parsed.data.roleIds.every((id) => roleIdSet.has(id));
+      if (!allRolesExist) {
+        await session.abortTransaction();
+        return { ok: false, reason: "not-found" };
+      }
 
-    const created = await createInvite(
-      {
-        email: parsed.data.email,
-        roleIds: parsed.data.roleIds,
-        locale,
-        invitedByUserId: authz.user._id.toHexString(),
-      },
-      session,
-    );
-    if (!created.ok) {
-      // Nothing was written (the insert itself never ran) — abort is a
-      // documented no-op here, kept for consistency with every other
-      // refusal branch.
-      await session.abortTransaction();
-      return { ok: false, reason: created.reason };
-    }
+      const created = await createInvite(
+        {
+          email: parsed.data.email,
+          roleIds: parsed.data.roleIds,
+          locale,
+          invitedByUserId: authz.user._id.toHexString(),
+        },
+        session,
+      );
 
-    await appendAuditEntry(
-      {
-        actorUserId: authz.user._id.toHexString(),
-        actorEmail: authz.user.email,
-        action: "user.invite",
-        targetId: created.inviteId,
-        before: null,
-        after: { email: parsed.data.email, roleIds: parsed.data.roleIds },
-      },
-      session,
-    );
-    return { ok: true, data: undefined };
-  });
+      await appendAuditEntry(
+        {
+          actorUserId: authz.user._id.toHexString(),
+          actorEmail: authz.user.email,
+          action: "user.invite",
+          targetId: created.inviteId,
+          before: null,
+          after: { email: parsed.data.email, roleIds: parsed.data.roleIds },
+        },
+        session,
+      );
+      return { ok: true, data: { refreshed: created.refreshed } };
+    },
+  );
 
-  if (result.ok) {
-    revalidatePath(USERS_ROUTE, "page");
-    // Best-effort, deliberately OUTSIDE the transaction: the invite is
-    // already durably committed above, so a delivery failure (Resend
-    // outage, etc.) must not appear to roll back an otherwise-successful
-    // invite. Mirrors `requestPasswordReset`'s catch-and-log discipline.
-    try {
-      await sendInviteEmail({
-        to: parsed.data.email,
-        inviteUrl: `${process.env.NEXT_PUBLIC_ADMIN_BASE_URL}/${locale}/login`,
-        locale,
-      });
-    } catch (error) {
-      console.error("[users:invite] failed to send invite email", error);
-    }
+  if (!result.ok) return result;
+
+  revalidatePath(USERS_ROUTE, "page");
+
+  // Deliberately OUTSIDE the transaction: the invite is already durably
+  // committed above, so a delivery failure (Resend outage, etc.) must not
+  // appear to roll back an otherwise-successful invite — but unlike before,
+  // it's no longer swallowed either. `sendInviteEmail` returning `false` and
+  // `sendInviteEmail` throwing are both treated as "not delivered": the
+  // caller only needs to know whether to tell the admin to retry, not why.
+  let emailSent: boolean;
+  try {
+    emailSent = await sendInviteEmail({
+      to: parsed.data.email,
+      inviteUrl: `${process.env.NEXT_PUBLIC_ADMIN_BASE_URL}/${locale}/login`,
+      locale,
+    });
+  } catch (error) {
+    console.error("[users:invite] failed to send invite email", error);
+    emailSent = false;
   }
-  return result;
+
+  return { ok: true, data: { emailSent, refreshed: result.data.refreshed } };
 }
 
 /**

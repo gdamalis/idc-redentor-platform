@@ -176,6 +176,9 @@ describe("permissions.*, roles.*, users.*, rbac.* (ICR-128)", () => {
     "rolesLabel",
     "cancel",
     "submit",
+    "sentSuccess",
+    "resentSuccess",
+    "deliveryFailed",
   ].sort();
   // The `/users`-context override for the two `rbac.errors.*` keys whose
   // shared copy is role-flavored (P2 fix) — `useUsersRbacErrorMessage`
