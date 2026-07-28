@@ -161,7 +161,7 @@ describe("updateRole", () => {
     const { updateRole } = await loadService();
     updateOne.mockResolvedValueOnce({ matchedCount: 1 });
 
-    await updateRole(
+    const result = await updateRole(
       {
         roleId: "507f1f77bcf86cd799439011",
         name: "Renamed",
@@ -171,6 +171,7 @@ describe("updateRole", () => {
       session,
     );
 
+    expect(result).toEqual({ ok: true });
     const [filter, update, options] = updateOne.mock.calls[0] ?? [];
     expect(filter).toEqual({ _id: expect.anything() });
     expect(update.$set).toMatchObject({
@@ -227,6 +228,37 @@ describe("updateRole", () => {
     expect(update.$set).toMatchObject({ name: "Leader", permissions: [] });
     expect(update.$set).not.toHaveProperty("key");
     expect(update.$set).not.toHaveProperty("isSystem");
+  });
+
+  // Symmetric with createRole's identical test — renaming a role onto a name
+  // another role already holds must be a refusal, not a throw escaping the
+  // `ActionResult`-never-throws contract every other mutation path keeps.
+  it("maps a duplicate-name error to reason: conflict, without throwing", async () => {
+    const { updateRole } = await loadService();
+    updateOne.mockRejectedValueOnce(Object.assign(new Error("dup"), { code: 11000 }));
+
+    const result = await updateRole(
+      {
+        roleId: "507f1f77bcf86cd799439011",
+        name: "Leader",
+        permissions: ["people:read"],
+      },
+      session,
+    );
+
+    expect(result).toEqual({ ok: false, reason: "conflict" });
+  });
+
+  it("re-throws a non-duplicate-key error", async () => {
+    const { updateRole } = await loadService();
+    updateOne.mockRejectedValueOnce(new Error("mongo down"));
+
+    await expect(
+      updateRole(
+        { roleId: "507f1f77bcf86cd799439011", name: "X", permissions: [] },
+        session,
+      ),
+    ).rejects.toThrow("mongo down");
   });
 });
 

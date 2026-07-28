@@ -83,6 +83,28 @@ any Server Action invoked in that request all share a single Mongo role resolve,
 makes calling `requirePermission()` at the top of every page cheap enough to do everywhere rather
 than centralizing it in middleware.
 
+### `getCurrentUser` is ALSO `cache()`-memoized, independently (P2 fix)
+
+`lib/auth/current-user.ts`'s `getCurrentUser()` carries its own `cache()` wrap, not just
+`getSessionPermissions()`. Before this fix the two were memoized asymmetrically: `(app)/layout.tsx`
+calls `getCurrentUser()` directly (to render the sidebar/account menu), and `getSessionPermissions()`
+calls `getCurrentUser()` again to build the permission set for the same request — but only the
+latter call sat behind `cache()`, so those two call sites never shared work. Every authenticated
+page render paid `verifySession(cookie, true)` (a Firebase Admin network round-trip — `checkRevoked:
+true`) and a Mongo `findUserByFirebaseUid` **twice**. Wrapping `getCurrentUser` itself in `cache()`
+collapses that to once per request, and layers cleanly under `getSessionPermissions()`'s own cache:
+`getSessionPermissions()` still memoizes the `findRolesByIds` resolve on top, and its call into
+`getCurrentUser()` now also hits `getCurrentUser`'s own request-scoped memo instead of doing a
+second verify+lookup.
+
+This is safe for the same reason `getSessionPermissions()`'s memoization is safe: `cache()` scopes
+to ONE React request, so there is no cross-request staleness, and the mid-session revocation
+guarantee (AC8) is unaffected — a revoked/disabled session is still re-verified from scratch on the
+**next** request, it's only re-verified once instead of twice within the _same_ request. The
+identical testing caveat applies (see below): `current-user.test.ts` mocks `react`'s `cache` export
+the same way `require-permission.test.ts` does, so its own memoization assertion tests something
+real rather than trivially passing because Vitest resolves the passthrough `cache()`.
+
 ### `requireActionPermission` — the Server Action variant (P2 fix)
 
 RSC pages/layouts call `requirePermission` directly and do their own redirect inline, because they
@@ -136,12 +158,16 @@ alongside `"default": "./index.js"` in its `package.json` exports map; Next reso
 `react-server` condition for RSC/Server Actions (so memoization is real in production), but Vitest's
 default Node resolution does not use that condition and resolves `"default"` instead — where
 `cache()` is a plain passthrough (`return function() { return fn.apply(null, arguments) }`, no
-memoization at all). `require-permission.test.ts` therefore mocks `react`'s `cache` export with a
-minimal single-call-cached reimplementation, so the "two calls in one request hit `findRolesByIds`
-once" assertion tests something real instead of trivially passing because every mocked call happens
-to be idempotent. **Do not remove that mock** — without it, the memoization assertions would keep
-passing even if `require-permission.ts` stopped calling `cache()` at all, silently making the test
-suite blind to a real regression.
+memoization at all). Both `require-permission.test.ts` AND `current-user.test.ts` therefore mock
+`react`'s `cache` export with the same minimal single-call-cached reimplementation, so their
+respective "two calls in one request hit `findRolesByIds`/`verifySession` once" assertions test
+something real instead of trivially passing because every mocked call happens to be idempotent.
+**Do not remove either mock** — without it, the memoization assertions would keep passing even if
+`require-permission.ts`/`current-user.ts` stopped calling `cache()` at all, silently making the test
+suite blind to a real regression. (`current-user.test.ts` also needs `vi.resetModules()` before
+every test — `cache()` has no arguments to key on, so without a fresh module per test the FIRST
+test's resolved session would stay memoized for every test that runs after it in the same file;
+`require-permission.test.ts`'s `loadModule()` helper does the same for the identical reason.)
 
 ## The last-admin invariant — a post-state predicate, not an admin count
 

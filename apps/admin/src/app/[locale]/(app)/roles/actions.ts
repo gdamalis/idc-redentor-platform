@@ -74,7 +74,13 @@ export async function createRoleAction(
         action: "role.create",
         targetId: created.roleId,
         before: null,
-        after: { name: parsed.data.name, permissions: parsed.data.permissions },
+        after: {
+          name: parsed.data.name,
+          ...(parsed.data.description !== undefined && {
+            description: parsed.data.description,
+          }),
+          permissions: parsed.data.permissions,
+        },
       },
       session,
     );
@@ -169,15 +175,33 @@ export async function updateRoleAction(
       return { ok: false, reason: "last-admin" };
     }
 
-    await updateRole({ ...parsed.data, permissions }, session);
+    const updated = await updateRole({ ...parsed.data, permissions }, session);
+    if (!updated.ok) {
+      // Nothing was written (the update itself failed) — abort is a
+      // documented no-op here, kept for consistency with every other
+      // refusal branch (mirrors createRoleAction's identical conflict path).
+      await session.abortTransaction();
+      return { ok: false, reason: updated.reason };
+    }
+
     await appendAuditEntry(
       {
         actorUserId: authz.user._id.toHexString(),
         actorEmail: authz.user.email,
         action: "role.update",
         targetId: parsed.data.roleId,
-        before: { name: target.name, permissions: target.permissions },
-        after: { name: parsed.data.name, permissions },
+        before: {
+          name: target.name,
+          ...(target.description !== undefined && { description: target.description }),
+          permissions: target.permissions,
+        },
+        after: {
+          name: parsed.data.name,
+          ...(parsed.data.description !== undefined && {
+            description: parsed.data.description,
+          }),
+          permissions,
+        },
       },
       session,
     );

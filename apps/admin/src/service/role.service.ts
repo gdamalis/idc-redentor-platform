@@ -206,11 +206,17 @@ export interface UpdateRoleInput {
  * the document: every later `listRoles()`/`findRolesByIds()` throws parsing
  * it, a persisted lockout for anyone holding that role. `$unset` is
  * schema-safe (an absent key satisfies `.optional()`); a bare `null` is not.
+ *
+ * Symmetric with `createRole`: maps the unique `{ name: 1 }` index's
+ * duplicate-key error to a `conflict` refusal instead of letting it escape as
+ * a throw (Global Constraints: no throw for control flow) — renaming a role
+ * onto a name another role already holds must be a refusal `updateRoleAction`
+ * can abort-and-return on, the same as every other business-rule refusal.
  */
 export async function updateRole(
   input: UpdateRoleInput,
   session: ClientSession,
-): Promise<void> {
+): Promise<{ ok: true } | { ok: false; reason: "conflict" }> {
   await ensureRbacIndexes();
 
   const setFields = {
@@ -223,9 +229,15 @@ export async function updateRole(
       ? { $set: setFields, $unset: { description: "" } }
       : { $set: { ...setFields, description: input.description } };
 
-  await getAdminDb()
-    .collection(ROLES_COLLECTION)
-    .updateOne({ _id: new ObjectId(input.roleId) }, update, { session });
+  try {
+    await getAdminDb()
+      .collection(ROLES_COLLECTION)
+      .updateOne({ _id: new ObjectId(input.roleId) }, update, { session });
+    return { ok: true };
+  } catch (error) {
+    if (isDuplicateKeyError(error)) return { ok: false, reason: "conflict" };
+    throw error;
+  }
 }
 
 export async function deleteRole(

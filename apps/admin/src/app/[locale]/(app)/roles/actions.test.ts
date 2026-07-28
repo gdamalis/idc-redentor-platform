@@ -184,7 +184,7 @@ describe("createRoleAction", () => {
     expect(createRole).not.toHaveBeenCalled();
   });
 
-  it("creates the role, audits it, and revalidates on success", async () => {
+  it("creates the role, audits it (including description), and revalidates on success", async () => {
     requirePermission.mockResolvedValueOnce(AUTHORIZED);
     createRole.mockResolvedValueOnce({ ok: true, roleId: "r-new" });
     const { createRoleAction } = await loadActions();
@@ -199,8 +199,15 @@ describe("createRoleAction", () => {
       expect.objectContaining({ name: "New role", permissions: ["people:read"] }),
       session,
     );
+    // P2 fix: the audit snapshot is a faithful record of what was written —
+    // `description` must not silently drop out of it.
     expect(appendAuditEntry).toHaveBeenCalledWith(
-      expect.objectContaining({ action: "role.create", targetId: "r-new", before: null }),
+      expect.objectContaining({
+        action: "role.create",
+        targetId: "r-new",
+        before: null,
+        after: { name: "New role", description: "desc", permissions: ["people:read"] },
+      }),
       session,
     );
     expect(revalidatePath).toHaveBeenCalledWith("/[locale]/roles", "page");
@@ -299,6 +306,7 @@ describe("updateRoleAction", () => {
     requirePermission.mockResolvedValueOnce(AUTHORIZED);
     listRoles.mockResolvedValueOnce([ADMIN_ROLE, LEADER_ROLE]);
     listUsers.mockResolvedValueOnce([ADMIN_USER]);
+    updateRole.mockResolvedValueOnce({ ok: true });
     const { updateRoleAction } = await loadActions();
 
     const result = await updateRoleAction(
@@ -345,6 +353,7 @@ describe("updateRoleAction", () => {
         roleIds: [CUSTOM_ADMIN_ROLE_ID],
       },
     ]);
+    updateRole.mockResolvedValueOnce({ ok: true });
     const { updateRoleAction } = await loadActions();
 
     const result = await updateRoleAction(
@@ -391,6 +400,7 @@ describe("updateRoleAction", () => {
     requirePermission.mockResolvedValueOnce(AUTHORIZED);
     listRoles.mockResolvedValueOnce([ADMIN_ROLE, LEADER_ROLE]);
     listUsers.mockResolvedValueOnce([ADMIN_USER]);
+    updateRole.mockResolvedValueOnce({ ok: true });
     const { updateRoleAction } = await loadActions();
 
     const result = await updateRoleAction(
@@ -418,6 +428,59 @@ describe("updateRoleAction", () => {
     // what forces a write conflict (and a retry) against any concurrent
     // administrability-affecting mutation (write-skew closure).
     expect(touchAdministrabilityGuard).toHaveBeenCalledWith(session);
+  });
+
+  // P2 fix: the audit before/after snapshot must be a faithful record of
+  // every field the action writes, not just name/permissions — a
+  // description-only edit previously vanished from the log entirely.
+  it("audits a description-only change with before/after that differ in description", async () => {
+    requirePermission.mockResolvedValueOnce(AUTHORIZED);
+    listRoles.mockResolvedValueOnce([ADMIN_ROLE, LEADER_ROLE]);
+    listUsers.mockResolvedValueOnce([ADMIN_USER]);
+    updateRole.mockResolvedValueOnce({ ok: true });
+    const { updateRoleAction } = await loadActions();
+
+    const result = await updateRoleAction(
+      undefined,
+      formDataOf({
+        roleId: LEADER_ROLE_ID,
+        name: "Leader",
+        description: "Updated description",
+        permissions: ["people:read"],
+      }),
+    );
+
+    expect(result).toEqual({ ok: true, data: undefined });
+    expect(appendAuditEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "role.update",
+        before: expect.objectContaining({ description: LEADER_ROLE.description }),
+        after: expect.objectContaining({ description: "Updated description" }),
+      }),
+      session,
+    );
+  });
+
+  it("maps a duplicate-name conflict to reason: conflict, aborts, and does not audit", async () => {
+    requirePermission.mockResolvedValueOnce(AUTHORIZED);
+    listRoles.mockResolvedValueOnce([ADMIN_ROLE, LEADER_ROLE]);
+    listUsers.mockResolvedValueOnce([ADMIN_USER]);
+    updateRole.mockResolvedValueOnce({ ok: false, reason: "conflict" });
+    const { updateRoleAction } = await loadActions();
+
+    const result = await updateRoleAction(
+      undefined,
+      formDataOf({
+        roleId: LEADER_ROLE_ID,
+        name: "Admin", // renaming Leader onto the Admin role's existing name
+        permissions: ["people:read"],
+      }),
+    );
+
+    expect(result).toEqual({ ok: false, reason: "conflict" });
+    expect(abortTransaction).toHaveBeenCalledTimes(1);
+    expect(appendAuditEntry).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 
   it("returns not-found for a roleId that no longer exists, without writing", async () => {
