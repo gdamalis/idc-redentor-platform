@@ -39,6 +39,15 @@
 // (`pnpm exec playwright install chromium`, cached at ~/.cache/ms-playwright);
 // if launch fails, this half of the gate WARNS LOUDLY and is skipped rather than
 // hard-failing (see runRenderedChecks) — pass --no-measure to skip it on purpose.
+// checkbox/radio CONTAINMENT: input[type=checkbox|radio] is deliberately
+// excluded from direct measurement above (an 18x18 glyph is never the actual
+// 44px target), but that exclusion used to be unchecked — every checkbox/radio
+// today happens to sit inside a measured `.checkbox` label, but nothing
+// asserted it, so a future bare/unwrapped one could silently ship under 44px
+// (PR #112 thread 3662285585). Every checkbox/radio in the document is now
+// walked up its ancestor chain (and, if that finds nothing, resolved via
+// `label[for=id]`) looking for a measured element that clears 44px; fails
+// naming the input if none is found or the one found is undersized.
 // NOT WIRED INTO CI YET: no .github/workflows/*.yml references this script as of
 // this writing — it's a local/manual pre-commit check. CI already proves Chromium
 // works here (pr.yml's predica-scripts job: `pnpm exec playwright install
@@ -681,11 +690,12 @@ async function measureArtifact(page, url, allSelectors) {
 
     const seen = new Set();
     const results = [];
+    const measured = []; // {el, area} — live node refs, needed for the containment check below
     let combined;
     try {
       combined = document.querySelectorAll(selectors.join(","));
     } catch {
-      return { error: "invalid combined selector", results: [] };
+      return { error: "invalid combined selector", results: [], unlabelledControls: [] };
     }
     for (const el of combined) {
       if (seen.has(el)) continue;
@@ -696,6 +706,7 @@ async function measureArtifact(page, url, allSelectors) {
       const halo =
         before.content !== "none" ? haloRect(toLTRB(rect), before.inset) : null;
       const area = halo ?? toLTRB(rect);
+      measured.push({ el, area });
       results.push({
         tag: el.tagName.toLowerCase(),
         cls:
@@ -708,7 +719,55 @@ async function measureArtifact(page, url, allSelectors) {
         h: area.bottom - area.top,
       });
     }
-    return { error: null, results };
+
+    // ===== checkbox/radio containment (PR #112 thread 3662285585): these
+    // input types are deliberately excluded from `selectors` (a native
+    // checkbox/radio's OWN 18x18 glyph is never meant to be the 44px target —
+    // its wrapping label/text is), so they're invisible to the measurements
+    // above. That's fine as long as SOME measured element actually contains
+    // (or is associated via label[for]) each one and clears 44px — which was
+    // never asserted, so a future bare/unwrapped checkbox could silently ship
+    // under 44px. Walk each checkbox/radio's ancestor chain looking for a
+    // measured element (covers the wrapping-<label> pattern this codebase
+    // actually uses); if none contains it, fall back to a `label[for=id]`
+    // lookup and check THAT label's own ancestor chain instead (covers a
+    // sibling-label pattern this codebase doesn't use yet, but the assertion
+    // should hold either way an author associates a label).
+    function findMeasuredAncestor(node) {
+      let cur = node;
+      while (cur) {
+        const hit = measured.find((m) => m.el === cur);
+        if (hit) return hit;
+        cur = cur.parentElement;
+      }
+      return null;
+    }
+    const unlabelledControls = [];
+    for (const input of document.querySelectorAll(
+      'input[type="checkbox"], input[type="radio"]',
+    )) {
+      const rect = input.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) continue; // not rendered
+      let hit = findMeasuredAncestor(input.parentElement);
+      if (!hit && input.id) {
+        const label = document.querySelector(
+          `label[for="${CSS.escape(input.id)}"]`,
+        );
+        if (label) hit = findMeasuredAncestor(label) ?? findMeasuredAncestor(label.parentElement);
+      }
+      const desc = `input[type="${input.type}"]${input.id ? `#${input.id}` : ""}${input.name ? ` name="${input.name}"` : ""}`;
+      if (!hit) {
+        unlabelledControls.push(
+          `${desc} has no containing or label[for]-associated measured element at all (no ancestor/label wrapper found)`,
+        );
+      } else if (hit.area.right - hit.area.left < 44 - 0.5 || hit.area.bottom - hit.area.top < 44 - 0.5) {
+        unlabelledControls.push(
+          `${desc}'s labelling element <${hit.el.tagName.toLowerCase()} class="${hit.el.className}"> measures ${(hit.area.right - hit.area.left).toFixed(2)}x${(hit.area.bottom - hit.area.top).toFixed(2)}px, below 44px`,
+        );
+      }
+    }
+
+    return { error: null, results, unlabelledControls };
   }, allSelectors);
 }
 
@@ -798,7 +857,11 @@ async function checkRenderedHitTargets(files, cssBlocks, cssSrc) {
     for (const abs of files) {
       const rel = relative(ROOT, abs);
       const url = `http://localhost:${port}/${rel}`;
-      const { error, results } = await measureArtifact(page, url, allSelectors);
+      const { error, results, unlabelledControls } = await measureArtifact(
+        page,
+        url,
+        allSelectors,
+      );
       if (error) {
         problems.push(`${rel}: rendered check error — ${error}`);
         continue;
@@ -818,6 +881,9 @@ async function checkRenderedHitTargets(files, cssBlocks, cssSrc) {
             );
           }
         }
+      }
+      for (const c of unlabelledControls ?? []) {
+        problems.push(`${rel}: ${c}`);
       }
     }
   } finally {
