@@ -1098,6 +1098,14 @@ Server component; `getTranslations("rbac")`; renders `rbac.denied.title` / `.bod
 the dashboard. Rendered **inside** `AppShell`, so the user keeps their nav — `/no-access` keeps
 meaning exactly one thing (no account), per ICR-127's contract.
 
+> **Sequencing correction (found before CP4 ran).** Task 7 owns the i18n catalogs, but this component
+> needs `rbac.denied.*` to exist NOW — next-intl fails on a missing namespace, so deferring every
+> string to Task 7 would leave Tasks 4–6 unrenderable. **This task adds `rbac.denied.title`,
+> `.body`, `.backToDashboard` to BOTH `es-AR.json` and `en-US.json`**; Task 7 adds the remaining
+> namespaces (`permissions.*`, `roles.*`, `users.*`, `rbac.errors.*`) and the parity assertions.
+> The existing `src/i18n/messages.test.ts` symmetric-difference check applies from the moment a key
+> is added, so both catalogs must move together in every task, not just Task 7.
+
 - [ ] **Step 6: Gate the four stub pages**
 
 For each of `people` / `families` / `activities` / `calendar`, replace the body with:
