@@ -25,7 +25,15 @@
 //     right — that context isn't recoverable from CSS text alone (which
 //     container a translucent background sits over is a DOM fact), so the
 //     curated list stays the source of truth for bases; discovery just closes
-//     the omission hole.
+//     the omission hole. IT ONLY SEES SAME-BLOCK pairs, though: a `:hover` (or
+//     other state) rule that changes ONLY background, with the resting text
+//     colour declared in a DIFFERENT (base) rule, is a cross-block pair the
+//     scan cannot see at all (found the hard way — PR #112 round 10, thread
+//     3662915394: `.menu-item.destructive:hover` inherited the generic
+//     `.menu-item:hover`'s --accent background under --destructive-text, a
+//     dark-theme AA fail the scan never flagged). Every such state block was
+//     swept BY HAND and its pair added to CONTRAST_PAIRS below — declared
+//     pairs cover state changes; the mechanical scan covers same-block only.
 // RENDERED (launches headless Chromium, measures the real DOM — see
 // checkRenderedHitTargets): every native interactive element (button, select,
 // textarea, a[href], input excl. checkbox/radio) PLUS every element matching a
@@ -360,6 +368,52 @@ const CONTRAST_PAIRS = [
     4.5,
     "card",
     0.12,
+  ],
+  // Round 10 (thread 3662915394): the completeness pass above only sees
+  // SAME-BLOCK pairs — a `:hover` block that changes ONLY background, with
+  // the text colour set by a DIFFERENT (base) rule, is a cross-block pair
+  // discovery can't see at all. Manually swept every :hover/state block that
+  // swaps background under kept text (declared-pairs cover state changes;
+  // same-block discovery covers the rest — see the file-header comment).
+  // .menu-item.destructive:hover's own bg override (added just above the
+  // generic .menu-item.destructive rule): destructive-text on a translucent
+  // --destructive wash, composited over --popover (the menu's background).
+  [
+    ".menu-item.destructive:hover: destructive-text on (destructive/.12 over popover)",
+    "destructive-text",
+    "destructive",
+    4.5,
+    "popover",
+    0.12,
+  ],
+  // .menu-item:hover (non-destructive items): background swaps to --accent,
+  // opaque; text stays --popover-foreground from the base .menu-item rule.
+  [
+    ".menu-item:hover: popover-foreground on accent",
+    "popover-foreground",
+    "accent",
+    4.5,
+    null,
+  ],
+  // tbody tr:hover: background swaps to a translucent --accent wash,
+  // composited over --card (the table's own background); the two dominant
+  // text colours a row actually uses are --foreground (e.g. a person's name)
+  // and --muted-foreground (e.g. their email/PII line).
+  [
+    "tbody tr:hover: foreground on (accent/.55 over card)",
+    "foreground",
+    "accent",
+    4.5,
+    "card",
+    0.55,
+  ],
+  [
+    "tbody tr:hover: muted-foreground on (accent/.55 over card)",
+    "muted-foreground",
+    "accent",
+    4.5,
+    "card",
+    0.55,
   ],
 ];
 

@@ -1164,6 +1164,17 @@ tbody tr.dense td {
   /* Small foreground text — --destructive-text, see .field-error above. */
   color: hsl(var(--destructive-text));
 }
+/* The generic .menu-item:hover (accent background) left --destructive-text at
+   4.429:1 on dark --accent — an AA fail for 13.5px text (PR #112 round 10,
+   thread 3662915394; light already cleared 5.960:1, only dark failed). A
+   destructive-tinted hover is also the idiomatic pattern for a "delete" menu
+   item, so give it its own background instead of raising the shared token
+   (which would reopen the F1/F2 production-palette fix). Same alpha both
+   themes — composited over --popover (the menu's own background): light
+   5.323:1, dark 5.275:1, both comfortably clear 4.5:1. */
+.menu-item.destructive:hover {
+  background: hsl(var(--destructive) / 0.12);
+}
 .menu-sep {
   height: 1px;
   margin: 6px 4px;
