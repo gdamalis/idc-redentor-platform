@@ -239,6 +239,62 @@ describe("inviteUserAction", () => {
     expect(result).toEqual({ ok: true, data: { emailSent: true, refreshed: true } });
   });
 
+  // ICR-128 P2 fix (Codex finding): createInvite() no longer retries an
+  // insert-race in-session (that retry was dead code — see invite.service.ts
+  // and actions.ts's doc comments for why). The retry now lives here, one
+  // whole `withAdminTransaction` at a time. Simulates two admins concurrently
+  // inviting the same brand-new address: the loser's first attempt loses the
+  // race, the action re-runs the entire transaction fresh, and the retry
+  // sees the winner's committed insert — taking the update branch.
+  it("retries the whole transaction (not the upsert) on an insert-race, and succeeds with refreshed: true", async () => {
+    requirePermission.mockResolvedValueOnce(AUTHORIZED);
+    listRoles.mockResolvedValue([LEADER_ROLE]); // read again on the retry's fresh transaction
+    createInvite.mockResolvedValueOnce({ ok: false, reason: "insert-race" });
+    createInvite.mockResolvedValueOnce({ ok: true, inviteId: "inv1", refreshed: true });
+    const { inviteUserAction } = await loadActions();
+
+    const result = await inviteUserAction(
+      undefined,
+      formDataOf({ email: "new@idcr.org", roleIds: [LEADER_ROLE_ID] }),
+    );
+
+    expect(result).toEqual({ ok: true, data: { emailSent: true, refreshed: true } });
+    expect(withAdminTransaction).toHaveBeenCalledTimes(2);
+    expect(createInvite).toHaveBeenCalledTimes(2);
+    // The losing first attempt aborts; the retry does not (it commits).
+    expect(abortTransaction).toHaveBeenCalledTimes(1);
+    // Exactly one audit entry across the retry — not zero (the winning
+    // attempt must still be audited) and not two (the losing attempt, which
+    // never reached the audit write, must not produce a phantom entry).
+    expect(appendAuditEntry).toHaveBeenCalledTimes(1);
+    expect(appendAuditEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "user.invite", targetId: "inv1" }),
+      session,
+    );
+  });
+
+  // A SECOND insert-race (both attempts lost) must not throw and must not
+  // retry indefinitely — a real refusal, mapped onto the existing `conflict`
+  // reason (which already reads correctly here: "There's already a pending
+  // invitation for that email address").
+  it("returns a clean conflict refusal — no throw, no unbounded retry — when insert-race persists across both attempts", async () => {
+    requirePermission.mockResolvedValueOnce(AUTHORIZED);
+    listRoles.mockResolvedValue([LEADER_ROLE]);
+    createInvite.mockResolvedValue({ ok: false, reason: "insert-race" });
+    const { inviteUserAction } = await loadActions();
+
+    const result = await inviteUserAction(
+      undefined,
+      formDataOf({ email: "new@idcr.org", roleIds: [LEADER_ROLE_ID] }),
+    );
+
+    expect(result).toEqual({ ok: false, reason: "conflict" });
+    expect(withAdminTransaction).toHaveBeenCalledTimes(2); // exactly one retry, then stop
+    expect(createInvite).toHaveBeenCalledTimes(2);
+    expect(appendAuditEntry).not.toHaveBeenCalled();
+    expect(sendInviteEmail).not.toHaveBeenCalled();
+  });
+
   // ICR-128 P1 fix: the previous version awaited sendInviteEmail() and
   // ignored its boolean return, so a transient Resend failure reported
   // success while nobody was invited. The action must still succeed (the

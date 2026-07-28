@@ -1,5 +1,6 @@
 "use server";
 
+import type { ClientSession } from "mongodb";
 import { revalidatePath } from "next/cache";
 import { requireActionPermission } from "@src/lib/rbac/require-action-permission";
 import { withAdminTransaction } from "@src/service/database.service";
@@ -40,6 +41,18 @@ export interface InviteUserResult {
 }
 
 /**
+ * One attempt at the invite transaction (see the P2 fix note below). Not
+ * `ActionResult`: `"insert-race"` is an internal-only outcome that must
+ * never reach a client, so it deliberately doesn't share
+ * `ActionFailureReason`'s type — `inviteUserAction` maps it away before
+ * anything is returned to the caller.
+ */
+type InviteAttemptResult =
+  | { ok: true; data: { refreshed: boolean } }
+  | { ok: false; reason: "not-found" }
+  | { ok: false; reason: "insert-race" };
+
+/**
  * Inviting can never REDUCE administrability (it only adds a prospective
  * grantee), so — like `createRoleAction` — this needs no invariant check.
  * It DOES need the registry-derived existence check (spec R7): every
@@ -65,6 +78,26 @@ export interface InviteUserResult {
  * `Invite` document is the source of truth and a person can be provisioned
  * once told out of band; a Resend outage must not block provisioning, only
  * be surfaced honestly.
+ *
+ * **ICR-128 P2 fix (transaction-level retry, not in-session).** `createInvite`
+ * used to retry its own upsert once on a duplicate-key error, on the SAME
+ * `session` — dead code that could never actually run, because (1) an
+ * in-transaction duplicate-key error aborts that transaction server-side, so
+ * a same-session retry is operating on an invalid session, and (2) even if it
+ * weren't, the retry would still read the transaction's original snapshot,
+ * taken before the race's winner committed, so it could never observe the
+ * winner and could never take the update branch anyway (see `createInvite`'s
+ * doc comment). `createInvite` now returns `{ ok: false, reason:
+ * "insert-race" }` instead, and the retry happens HERE, one full transaction
+ * at a time: `attemptInviteTransaction` runs the whole role-check +
+ * `createInvite` + audit-write sequence, and is invoked a second time — a
+ * brand-new `withAdminTransaction`, brand-new session, brand-new snapshot —
+ * only when the first attempt reports `insert-race`. The fresh snapshot DOES
+ * see the now-committed winner, so the retried upsert takes the update
+ * branch and correctly returns `refreshed: true`. Exactly one retry; a
+ * SECOND `insert-race` (both attempts lost) is a genuine, if pathological,
+ * refusal, mapped onto the existing `conflict` reason rather than surfaced as
+ * a new one no UI knows how to render.
  */
 export async function inviteUserAction(
   _prev: ActionResult<InviteUserResult> | undefined,
@@ -86,44 +119,65 @@ export async function inviteUserAction(
   // there is no other signal for what language the invitee prefers yet.
   const locale = authz.user.preferredLocale;
 
-  const result = await withAdminTransaction(
-    async (session): Promise<ActionResult<{ refreshed: boolean }>> => {
-      // EVERY read/write below passes { session } — without it the operation
-      // runs OUTSIDE the transaction and the existence check reads stale data.
-      const roles = await listRoles(session);
-      const roleIdSet = new Set(roles.map((r) => r._id.toHexString()));
-      const allRolesExist = parsed.data.roleIds.every((id) => roleIdSet.has(id));
-      if (!allRolesExist) {
-        await session.abortTransaction();
-        return { ok: false, reason: "not-found" };
-      }
+  const attemptInviteTransaction = async (
+    session: ClientSession,
+  ): Promise<InviteAttemptResult> => {
+    // EVERY read/write below passes { session } — without it the operation
+    // runs OUTSIDE the transaction and the existence check reads stale data.
+    const roles = await listRoles(session);
+    const roleIdSet = new Set(roles.map((r) => r._id.toHexString()));
+    const allRolesExist = parsed.data.roleIds.every((id) => roleIdSet.has(id));
+    if (!allRolesExist) {
+      await session.abortTransaction();
+      return { ok: false, reason: "not-found" };
+    }
 
-      const created = await createInvite(
-        {
-          email: parsed.data.email,
-          roleIds: parsed.data.roleIds,
-          locale,
-          invitedByUserId: authz.user._id.toHexString(),
-        },
-        session,
-      );
+    const created = await createInvite(
+      {
+        email: parsed.data.email,
+        roleIds: parsed.data.roleIds,
+        locale,
+        invitedByUserId: authz.user._id.toHexString(),
+      },
+      session,
+    );
 
-      await appendAuditEntry(
-        {
-          actorUserId: authz.user._id.toHexString(),
-          actorEmail: authz.user.email,
-          action: "user.invite",
-          targetId: created.inviteId,
-          before: null,
-          after: { email: parsed.data.email, roleIds: parsed.data.roleIds },
-        },
-        session,
-      );
-      return { ok: true, data: { refreshed: created.refreshed } };
-    },
-  );
+    if (!created.ok) {
+      // insert-race backstop (see invite.service.ts): a concurrent insert
+      // for this brand-new address won, and this transaction's snapshot
+      // predates that commit, so it can never see it. Abort here; the retry
+      // below runs in a FRESH transaction whose snapshot does see it.
+      await session.abortTransaction();
+      return { ok: false, reason: "insert-race" };
+    }
 
-  if (!result.ok) return result;
+    await appendAuditEntry(
+      {
+        actorUserId: authz.user._id.toHexString(),
+        actorEmail: authz.user.email,
+        action: "user.invite",
+        targetId: created.inviteId,
+        before: null,
+        after: { email: parsed.data.email, roleIds: parsed.data.roleIds },
+      },
+      session,
+    );
+    return { ok: true, data: { refreshed: created.refreshed } };
+  };
+
+  const firstAttempt = await withAdminTransaction(attemptInviteTransaction);
+  // Exactly one retry, and only for insert-race — not-found is a genuine
+  // refusal, not a race, and retrying it would just re-fail identically.
+  const attemptResult =
+    !firstAttempt.ok && firstAttempt.reason === "insert-race"
+      ? await withAdminTransaction(attemptInviteTransaction)
+      : firstAttempt;
+
+  if (!attemptResult.ok) {
+    return attemptResult.reason === "insert-race"
+      ? { ok: false, reason: "conflict" } // both attempts raced; see doc comment above
+      : attemptResult;
+  }
 
   revalidatePath(USERS_ROUTE, "page");
 
@@ -145,7 +199,7 @@ export async function inviteUserAction(
     emailSent = false;
   }
 
-  return { ok: true, data: { emailSent, refreshed: result.data.refreshed } };
+  return { ok: true, data: { emailSent, refreshed: attemptResult.data.refreshed } };
 }
 
 /**

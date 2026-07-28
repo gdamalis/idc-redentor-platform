@@ -509,15 +509,39 @@ operation) tells the caller whether this was a fresh invite or a refresh of an e
 
 **The partial unique index is still the only uniqueness guard** —
 `ensureAuthIndexes()`'s `{ email: 1 }` index with `partialFilterExpression: { status: "pending" }`
-(`user.service.ts`) is unchanged, and still guarantees at most one pending invite per address. It now
-also backstops the upsert itself: MongoDB's server-side upsert retry (4.2+) already resolves the common
+(`user.service.ts`) is unchanged, and still guarantees at most one pending invite per address. It also
+backstops the upsert itself: MongoDB's server-side upsert retry (4.2+) already resolves the common
 race where two concurrent upserts for a brand-new address both miss the `{ email, status: "pending" }`
-match and both attempt an insert, by re-running the query predicate against whichever insert won.
-`createInvite` additionally retries once itself on a duplicate-key error as a belt-and-suspenders
-backstop for the pathological case where that internal retry budget is exhausted — by the time the
-retry runs, some doc matching the filter exists, so it always resolves to an update. `conflict` is no
-longer reachable from `createInvite` at all; `users.errors.conflict` / `rbac.errors.conflict` stay in
-the message catalogs regardless, since `createRole` still produces `conflict` for duplicate role names.
+match and both attempt an insert, by re-running the query predicate against whichever insert won,
+transparently to `createInvite`.
+
+**When that internal retry budget is exhausted: a transaction-level retry, not an in-session one
+(Codex P2 fix — supersedes an earlier revision of this doc).** An earlier version of `createInvite`
+retried the same upsert once itself, on the same `session`, as a belt-and-suspenders backstop. That
+retry was dead code that looked like a safety net — it could never actually run, for two independent
+reasons:
+
+1. A duplicate-key error raised by an operation inside a multi-document transaction aborts that
+   transaction **server-side**. Every subsequent operation on the same `session` — including a
+   same-session "retry" of this very upsert — is invalid once that happens.
+2. Even if the session were still usable, every operation inside a transaction reads against the
+   snapshot taken when the transaction started, which predates the winning insert's commit. A retry
+   on the SAME session can never observe the winner and could never take the update-in-place branch —
+   it would just fail the same way again.
+
+`createInvite` now returns `{ ok: false, reason: "insert-race" }` on a duplicate-key error instead of
+retrying or throwing — an internal-only signal, never surfaced to a client. The retry moved to
+`inviteUserAction` (`(app)/users/actions.ts`): on `insert-race` it re-runs its **entire**
+`withAdminTransaction(...)` block once — role-existence check, `createInvite`, and the audit write all
+together, not just the upsert. A fresh transaction gets a fresh snapshot, which DOES see the
+now-committed winner, so the retried upsert takes the update branch and correctly returns
+`refreshed: true` — the second admin's invite refreshes the first's. Exactly one retry; a SECOND
+`insert-race` (both attempts lost) is a genuine, if pathological, refusal, mapped onto the existing
+`conflict` reason rather than surfaced as a new one no UI knows how to render — `users.errors.conflict`
+("There's already a pending invitation for that email address.") already reads correctly for it.
+`conflict` is otherwise unreachable from `createInvite` itself; `users.errors.conflict` /
+`rbac.errors.conflict` stay in the message catalogs regardless, since `createRole` still produces
+`conflict` for duplicate role names.
 
 **`inviteUserAction` (`(app)/users/actions.ts`) surfaces delivery failure instead of swallowing it.**
 It now inspects `sendInviteEmail()`'s `boolean` return (and treats a thrown error the same way) and

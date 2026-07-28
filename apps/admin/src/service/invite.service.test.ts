@@ -340,30 +340,24 @@ describe("createInvite", () => {
     expect(findOneAndUpdate).toHaveBeenCalledTimes(1); // one atomic op — no duplicate document created
   });
 
-  // Race backstop: two concurrent createInvite calls for a brand-new address
-  // can both miss the { email, status: "pending" } match and both attempt an
-  // insert; the partial unique index refuses the loser's insert (E11000).
-  // MongoDB's own server-side upsert retry (4.2+) normally absorbs this, but
-  // createInvite retries once itself as a belt-and-suspenders backstop —
-  // by the retry, the winner's doc exists, so this always resolves to an
-  // update, never a second insert, and conflict is never surfaced.
-  it("retries once and succeeds when the upsert races a concurrent insert (E11000 backstop)", async () => {
+  // Codex P2 fix (see the function's doc comment for the full "why"): a
+  // duplicate-key error means the transaction this upsert ran in is already
+  // aborted server-side, and even a same-session retry would still read the
+  // pre-race snapshot — so createInvite no longer retries in-session. It
+  // returns a distinguishable outcome and leaves retrying (in a FRESH
+  // transaction) to the caller (`inviteUserAction`, see actions.test.ts).
+  it("returns { ok: false, reason: 'insert-race' } on a duplicate-key error, without retrying", async () => {
     const { createInvite } = await import("./invite.service");
     const duplicateKeyError = Object.assign(new Error("duplicate"), { code: 11000 });
     findOneAndUpdate.mockRejectedValueOnce(duplicateKeyError);
-    findOneAndUpdate.mockResolvedValueOnce({
-      ok: 1,
-      value: { _id: { toHexString: () => "inv-race" } },
-      lastErrorObject: { updatedExisting: true },
-    });
 
     const result = await createInvite(
       { email: "race@idcr.org", roleIds: ["r1"], locale: "es-AR", invitedByUserId: "admin1" },
       session,
     );
 
-    expect(result).toEqual({ ok: true, inviteId: "inv-race", refreshed: true });
-    expect(findOneAndUpdate).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({ ok: false, reason: "insert-race" });
+    expect(findOneAndUpdate).toHaveBeenCalledTimes(1); // no in-session retry
   });
 
   it("re-throws a non-duplicate-key upsert error rather than retrying or misreporting it as a conflict", async () => {
