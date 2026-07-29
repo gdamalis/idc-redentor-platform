@@ -29,7 +29,8 @@
     "calendar": "Calendario",
     "users": "Usuarios",
     "roles": "Roles",
-    "settings": "Configuración"
+    "settings": "Configuración",
+    "more": "Más"
   },
   "localeSwitcher": {
     "ariaLabel": "Cambiar idioma",

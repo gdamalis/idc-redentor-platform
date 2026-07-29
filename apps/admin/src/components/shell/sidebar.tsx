@@ -1,18 +1,14 @@
 import { NavLink } from "@src/components/shell/nav-link";
-import { getSessionPermissions } from "@src/lib/rbac/require-permission";
 import { getTranslations } from "next-intl/server";
-import type { PermissionKey } from "@src/lib/rbac/permissions";
-import { NAV_ITEMS } from "@src/components/shell/nav-items";
+import type { NavItem } from "@src/components/shell/nav-items";
 
-export async function Sidebar() {
+export async function Sidebar({
+  items,
+}: {
+  readonly items: readonly NavItem[];
+}) {
   const tShell = await getTranslations("shell");
   const tNav = await getTranslations("nav");
-
-  const authz = await getSessionPermissions();
-  const granted = authz.ok ? authz.permissions : new Set<PermissionKey>();
-  const items = NAV_ITEMS.filter(
-    (item) => !item.permission || granted.has(item.permission),
-  );
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">

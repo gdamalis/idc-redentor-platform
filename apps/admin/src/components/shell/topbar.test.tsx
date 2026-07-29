@@ -6,7 +6,16 @@ import userEvent from "@testing-library/user-event";
 // so assertions can target the exact message key without loading real copy
 // (mirrors login-form.test.tsx's mocking style).
 vi.mock("next-intl", () => ({
-  useTranslations: (namespace: string) => (key: string) => `${namespace}.${key}`,
+  useTranslations: (namespace: string) => (key: string) =>
+    `${namespace}.${key}`,
+}));
+
+// Topbar is now an async server component (it calls next-intl/server's
+// getTranslations directly for the mobile brand label) — mirrors the
+// no-access/page.test.tsx mocking style for the server-side API.
+vi.mock("next-intl/server", () => ({
+  getTranslations: async (namespace: string) => (key: string) =>
+    `${namespace}.${key}`,
 }));
 
 const pushMock = vi.fn();
@@ -55,22 +64,33 @@ describe("Topbar (Codex round-5 P1 — a working sign-out, not a disabled placeh
     fetchMock.mockResolvedValue({ ok: true, status: 200 });
     const user = userEvent.setup();
 
-    render(<Topbar />);
+    render(await Topbar());
 
-    await user.click(screen.getByRole("button", { name: "auth.signOut.label" }));
+    await user.click(
+      screen.getByRole("button", { name: "auth.signOut.label" }),
+    );
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/api/auth/session", { method: "DELETE" });
+      expect(fetchMock).toHaveBeenCalledWith("/api/auth/session", {
+        method: "DELETE",
+      });
     });
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith("/login");
     });
   });
 
-  it("still renders the locale switcher and theme toggle alongside sign-out", () => {
-    render(<Topbar />);
+  it("still renders the locale switcher and theme toggle alongside sign-out", async () => {
+    render(await Topbar());
 
     expect(screen.getByTestId("locale-switcher")).toBeDefined();
     expect(screen.getByTestId("theme-toggle")).toBeDefined();
+  });
+
+  it("shows the app name on mobile so the hidden sidebar doesn't take the brand with it", async () => {
+    render(await Topbar());
+
+    const brand = screen.getByText("shell.appName");
+    expect(brand.className).toContain("md:hidden");
   });
 });
