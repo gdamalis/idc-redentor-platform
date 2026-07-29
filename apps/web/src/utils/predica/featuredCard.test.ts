@@ -2,42 +2,135 @@ import { describe, it, expect } from "vitest";
 import {
   FEATURED_WIDTH,
   FEATURED_HEIGHT,
-  stripScriptureVersion,
-  pickPrimaryScripture,
+  deriveScripture,
   composeImageBrief,
   titleFontSize,
   buildFeaturedCardHtml,
 } from "./featuredCard";
 
-describe("stripScriptureVersion", () => {
-  it("removes a trailing version parenthetical", () => {
-    expect(stripScriptureVersion("Efesios 2:11-22 (RVR1960)")).toBe("Efesios 2:11-22");
-    expect(stripScriptureVersion("Ephesians 2:14 (NIV)")).toBe("Ephesians 2:14");
-  });
+describe("deriveScripture", () => {
+  // The real sermon.json shape: chapter/verses top-level, book locale-nested.
+  const matthew = {
+    chapter: "13",
+    fromVerse: "31",
+    toVerse: "33",
+    "es-AR": { book: "Mateo", verseContent: "…", bibleVersion: "NVI" },
+    "en-US": { book: "Matthew", verseContent: "…", bibleVersion: "NIV" },
+  };
 
-  it("leaves a plain reference untouched", () => {
-    expect(stripScriptureVersion("Salmo 27:4")).toBe("Salmo 27:4");
-  });
-});
-
-describe("pickPrimaryScripture", () => {
-  it("returns the first non-empty ref without its version", () => {
-    expect(
-      pickPrimaryScripture({ scriptureRefs: ["Efesios 2:11-22 (RVR1960)", "Juan 17:20-23"] }),
-    ).toBe("Efesios 2:11-22");
-  });
-
-  it("skips empty entries", () => {
-    expect(pickPrimaryScripture({ scriptureRefs: ["", "  ", "Romanos 8:1 (RVR1960)"] })).toBe(
-      "Romanos 8:1",
+  it("builds the reference from the locale-nested structured ref", () => {
+    expect(deriveScripture({ scriptureReferences: [matthew] })).toBe(
+      "Mateo 13:31-33",
     );
   });
 
+  it("reads the book from the requested locale", () => {
+    expect(deriveScripture({ scriptureReferences: [matthew] }, "en-US")).toBe(
+      "Matthew 13:31-33",
+    );
+  });
+
+  it("defaults to es-AR", () => {
+    expect(deriveScripture({ scriptureReferences: [matthew] }, "es-AR")).toBe(
+      deriveScripture({ scriptureReferences: [matthew] }),
+    );
+  });
+
+  it("omits the range when toVerse is absent", () => {
+    expect(
+      deriveScripture({
+        scriptureReferences: [
+          { chapter: "27", fromVerse: "4", "es-AR": { book: "Salmo" } },
+        ],
+      }),
+    ).toBe("Salmo 27:4");
+  });
+
+  it("uses only the first reference", () => {
+    expect(
+      deriveScripture({
+        scriptureReferences: [
+          { chapter: "1", fromVerse: "1", "es-AR": { book: "Juan" } },
+          { chapter: "2", fromVerse: "2", "es-AR": { book: "Hechos" } },
+        ],
+      }),
+    ).toBe("Juan 1:1");
+  });
+
+  it("tolerates a flat legacy ref shape with no locale nesting", () => {
+    expect(
+      deriveScripture({
+        scriptureReferences: [
+          { book: "Romanos", chapter: "8", fromVerse: "1" },
+        ],
+      }),
+    ).toBe("Romanos 8:1");
+  });
+
+  it("accepts numeric chapter and verse values", () => {
+    expect(
+      deriveScripture({
+        scriptureReferences: [
+          {
+            chapter: 8,
+            fromVerse: 1,
+            toVerse: 4,
+            "es-AR": { book: "Romanos" },
+          },
+        ],
+      }),
+    ).toBe("Romanos 8:1-4");
+  });
+
   it("returns undefined when there is nothing usable", () => {
-    expect(pickPrimaryScripture({ scriptureRefs: [] })).toBeUndefined();
-    expect(pickPrimaryScripture({})).toBeUndefined();
-    expect(pickPrimaryScripture(null)).toBeUndefined();
-    expect(pickPrimaryScripture(undefined)).toBeUndefined();
+    expect(deriveScripture({ scriptureReferences: [] })).toBeUndefined();
+    expect(deriveScripture({})).toBeUndefined();
+    expect(deriveScripture(null)).toBeUndefined();
+    expect(deriveScripture(undefined)).toBeUndefined();
+    expect(
+      deriveScripture({ scriptureReferences: "Efesios 2:14" }),
+    ).toBeUndefined();
+    expect(deriveScripture({ scriptureReferences: [null] })).toBeUndefined();
+  });
+
+  it("returns undefined when a required part is missing or blank", () => {
+    // no book
+    expect(
+      deriveScripture({
+        scriptureReferences: [{ chapter: "2", fromVerse: "11" }],
+      }),
+    ).toBeUndefined();
+    // blank chapter — old code emitted "Efesios :11"
+    expect(
+      deriveScripture({
+        scriptureReferences: [
+          { chapter: "", fromVerse: "11", "es-AR": { book: "Efesios" } },
+        ],
+      }),
+    ).toBeUndefined();
+    // blank fromVerse
+    expect(
+      deriveScripture({
+        scriptureReferences: [
+          { chapter: "2", fromVerse: "  ", "es-AR": { book: "Efesios" } },
+        ],
+      }),
+    ).toBeUndefined();
+  });
+
+  it("omits a blank toVerse instead of emitting a dangling dash", () => {
+    expect(
+      deriveScripture({
+        scriptureReferences: [
+          {
+            chapter: "2",
+            fromVerse: "11",
+            toVerse: "",
+            "es-AR": { book: "Efesios" },
+          },
+        ],
+      }),
+    ).toBe("Efesios 2:11");
   });
 });
 
