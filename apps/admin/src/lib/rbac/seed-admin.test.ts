@@ -430,3 +430,104 @@ describe("seedAdmin — failure paths", () => {
     expect(deps.createInvite).not.toHaveBeenCalled();
   });
 });
+
+// Codex P2: an invite cannot elevate an account that already exists.
+// `resolveOrProvision()` returns on `findUserByFirebaseUid` BEFORE it reaches
+// `claimPendingInvite`, so seeding an invite for a returning user is inert —
+// and that is exactly the lockout-recovery case guard 2 is designed to permit.
+describe("seedAdmin — guard 2b (target already has an AdminUser)", () => {
+  const userWithTargetEmail = (over: Record<string, unknown> = {}) => ({
+    _id: { toHexString: () => "u-existing" },
+    email: "first@example.com",
+    status: "active",
+    roleIds: [],
+    ...over,
+  });
+
+  it("refuses with user-exists and performs ZERO writes", async () => {
+    const deps = makeDeps({
+      listUsers: vi.fn(async () => [
+        userWithTargetEmail(),
+      ]) as unknown as SeedAdminDeps["listUsers"],
+    });
+
+    const result = await seedAdmin(ARGS, deps);
+
+    expect(result).toMatchObject({ ok: false, reason: "user-exists" });
+    expect(deps.seedSystemRoles).not.toHaveBeenCalled();
+    expect(deps.createInvite).not.toHaveBeenCalled();
+  });
+
+  it("refuses a DISABLED existing user too — the lockout-recovery trap", async () => {
+    // The panel is NOT administrable (the user holds no roles and is disabled),
+    // so guard 2 lets this through. Without 2b the script would happily create
+    // an invite that can never be claimed and report success.
+    const deps = makeDeps({
+      listUsers: vi.fn(async () => [
+        userWithTargetEmail({ status: "disabled" }),
+      ]) as unknown as SeedAdminDeps["listUsers"],
+    });
+
+    const result = await seedAdmin(ARGS, deps);
+
+    expect(result).toMatchObject({ ok: false, reason: "user-exists" });
+    expect((result as { message: string }).message).toContain("disabled");
+    expect(deps.createInvite).not.toHaveBeenCalled();
+  });
+
+  it("is NOT overridden by --force (forcing would create the same inert invite)", async () => {
+    const deps = makeDeps({
+      listUsers: vi.fn(async () => [
+        userWithTargetEmail(),
+      ]) as unknown as SeedAdminDeps["listUsers"],
+    });
+
+    const result = await seedAdmin({ ...ARGS, force: true }, deps);
+
+    expect(result).toMatchObject({ ok: false, reason: "user-exists" });
+    expect(deps.createInvite).not.toHaveBeenCalled();
+  });
+
+  it("matches on the NORMALIZED address, not the raw stored string", async () => {
+    const deps = makeDeps({
+      listUsers: vi.fn(async () => [
+        userWithTargetEmail({ email: "  First@EXAMPLE.com " }),
+      ]) as unknown as SeedAdminDeps["listUsers"],
+    });
+
+    expect(await seedAdmin(ARGS, deps)).toMatchObject({
+      ok: false,
+      reason: "user-exists",
+    });
+  });
+
+  it("does NOT fire for a different address (no false positive)", async () => {
+    const deps = makeDeps({
+      listUsers: vi.fn(async () => [
+        userWithTargetEmail({ email: "someone-else@example.com" }),
+      ]) as unknown as SeedAdminDeps["listUsers"],
+    });
+
+    expect(await seedAdmin(ARGS, deps)).toMatchObject({
+      ok: true,
+      dryRun: false,
+    });
+  });
+
+  it("blocks a --dry-run too, so the plan never claims an invite it cannot create", async () => {
+    const deps = makeDeps({
+      listUsers: vi.fn(async () => [
+        userWithTargetEmail(),
+      ]) as unknown as SeedAdminDeps["listUsers"],
+    });
+
+    expect(await seedAdmin({ ...ARGS, dryRun: true }, deps)).toMatchObject({
+      ok: false,
+      reason: "user-exists",
+    });
+  });
+
+  it("maps user-exists to exit code 2 (a guard refusal, not an operation failure)", () => {
+    expect(exitCodeFor({ ok: false, reason: "user-exists", message: "x" })).toBe(2);
+  });
+});

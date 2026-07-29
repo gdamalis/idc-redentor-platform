@@ -157,6 +157,32 @@ the database guard**. A bad `MONGODB_URI` still refuses with `db-guard` whether 
 `--force` is passed; the two guards are independent and `--force` only ever touches
 the second one.
 
+## The target must not already have an account (`user-exists`)
+
+If an `AdminUser` already exists for the address you pass, the script refuses with
+`user-exists` and writes nothing — and **`--force` does not override this one either**.
+
+The reason is that an invite simply cannot elevate an existing account.
+`resolveOrProvision()` returns on `findUserByFirebaseUid()` **before** it ever reaches
+`claimPendingInvite()` (`docs/architecture/admin-auth.md`), so once a person has signed
+in even once, any pending invite for them sits unclaimed forever. Seeding one would
+report success and change nothing.
+
+That trap lands hardest on exactly the case `--force` exists for: the sole admin got
+**disabled**, so the panel is no longer self-administrable and a re-bootstrap looks
+like the fix — but that person already has an `AdminUser`, so the invite is inert.
+Refusing loudly is the honest outcome. Recovery options, in order of preference:
+
+1. If any account can still reach `/users`, grant the role there.
+2. Seed a **different** Google-capable address that has never signed in, and use that
+   account to repair the first one.
+3. As a last resort, fix the existing user document directly (re-enable it, or attach
+   the Admin role id) — a deliberate, auditable manual step, not something this
+   bootstrap performs on your behalf.
+
+Re-roling or re-enabling an existing account is a different privilege operation with
+its own design questions; this script is a bootstrap and deliberately stops short of it.
+
 ## Exit codes and the stdout contract
 
 ```
@@ -164,9 +190,10 @@ Exit: 0 success · 1 operation failure (write-failed) · 2 usage/guard refusal
 ```
 
 `0`/`1`/`2` map onto `SeedAdminResult`/`parseSeedArgs` failures via `exitCodeFor()` —
-guard and usage refusals (`db-guard`, `admin-exists`, `invalid-email`, `usage`, a
-declined confirmation, or `CI` being set) are `2`; a genuine write failure
-(`write-failed`, e.g. the insert-race retry was exhausted) is `1`.
+guard and usage refusals (`db-guard`, `admin-exists`, `user-exists`, `invalid-email`,
+`usage`, a declined confirmation, or `CI` being set) are `2`; a genuine operational
+failure (`write-failed` — the insert-race retry was exhausted, or the database was
+unreachable) is `1`.
 
 stdout carries **exactly one JSON line**, always the machine-readable result:
 
@@ -174,12 +201,32 @@ stdout carries **exactly one JSON line**, always the machine-readable result:
 {"ok":true,"dryRun":false,"roleIds":["<hex>","<hex>","<hex>"],"inviteId":"<hex>","refreshed":false}
 {"ok":true,"dryRun":true}
 {"ok":false,"reason":"admin-exists","message":"The panel is already self-administrable…"}
+{"ok":false,"reason":"write-failed","message":"The seed failed: Topology is closed"}
 ```
 
+That holds for **unexpected** failures too, not just the guards: if Mongo is
+unreachable or authentication fails partway through, the error is converted into a
+`write-failed` result and emitted on stdout rather than escaping as a bare stack trace.
+"The database was down" is the most likely real-world failure, and a caller parsing the
+result channel must not get an empty stream for it.
+
 All human narration — the database/cluster/mode banner, the confirmation prompt, error
-text — goes to **stderr**, so a caller can safely pipe or parse stdout alone. The
-script writes that one line with a synchronous `writeSync(1, …)` before calling
-`process.exit()`, so it can never be truncated by an early exit on a piped stdout.
+text and stack traces — goes to **stderr**, so a caller can safely pipe or parse stdout
+alone. The script writes that one line with a synchronous `writeSync(1, …)` before
+calling `process.exit()`, so it can never be truncated by an early exit on a piped
+stdout.
+
+> **Parsing stdout? Use the direct `tsx` form.** `pnpm run` prints its own banner (and,
+> on failure, an `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL` block) to stdout around your
+> script's output, so the `pnpm --filter` form is fine for a human at a terminal but not
+> for a machine. `./node_modules/.bin/tsx apps/admin/scripts/seed-admin.ts …` emits
+> exactly the one line.
+
+The courtesy `--send-email` is best-effort and can never change any of this: the invite
+is already committed by the time it runs, and both a delivery failure _and_ a thrown
+mail-configuration error (e.g. `RESEND_API_KEY` unset, which makes `createResendAdapter()`
+throw) are caught, narrated to stderr, and leave the successful result and its exit 0
+intact.
 
 ## After the run
 

@@ -124,20 +124,34 @@ export async function createInvite(
       locale: input.locale,
       expiresAt: new Date(now.getTime() + INVITE_EXPIRY_MS),
     };
+
+    // The field is written by exactly ONE operator, never both — $set and
+    // $unset over the same path is a MongoDB conflict error.
+    //
+    // When the caller supplies no inviter (the ICR-155 seed path), the key must
+    // be REMOVED, not merely omitted: this is an upsert, so refreshing an
+    // invite that the /users UI created earlier would otherwise leave that
+    // admin's id on a now-seeded invite and misattribute the bootstrap to them
+    // (Codex P2). Omitting it still avoids the BSON `null` that
+    // `inviteSchema`'s `z.string().optional()` would reject on every later read.
+    const update: Record<string, unknown> = {
+      $set: set,
+      $setOnInsert: { email, status: "pending", createdAt: now },
+    };
     if (input.invitedByUserId !== undefined) {
       set.invitedByUserId = input.invitedByUserId;
+    } else {
+      update.$unset = { invitedByUserId: "" };
     }
 
     const result = await getAdminDb()
       .collection(INVITES_COLLECTION)
-      .findOneAndUpdate(
-        { email, status: "pending" },
-        {
-          $set: set,
-          $setOnInsert: { email, status: "pending", createdAt: now },
-        },
-        { upsert: true, returnDocument: "after", includeResultMetadata: true, session },
-      );
+      .findOneAndUpdate({ email, status: "pending" }, update, {
+        upsert: true,
+        returnDocument: "after",
+        includeResultMetadata: true,
+        session,
+      });
 
     const doc = result.value;
     if (!doc) throw new Error("createInvite: upsert returned no document");

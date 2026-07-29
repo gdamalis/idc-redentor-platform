@@ -24,6 +24,7 @@ export interface SeedArgs {
 export type SeedAdminFailure =
   | "db-guard"
   | "admin-exists"
+  | "user-exists"
   | "invalid-email"
   | "write-failed";
 
@@ -252,6 +253,36 @@ export async function seedAdmin(
       message:
         "The panel is already self-administrable — an active user holds both " +
         "users:manage and roles:manage. Pass --force only to recover from a genuine lockout.",
+    };
+  }
+
+  // Guard 2b — the target must not already have an `AdminUser` (Codex P2).
+  // An invite cannot elevate an existing account: `resolveOrProvision()` returns
+  // early on `findUserByFirebaseUid` BEFORE it ever calls `claimPendingInvite`,
+  // so for anyone who has signed in before, a bootstrap invite is inert — it
+  // would sit `pending` forever while the script reported success. That failure
+  // lands precisely on the lockout-recovery case guard 2 exists to permit (the
+  // sole admin got DISABLED), which is the worst possible time to lie.
+  //
+  // Refusing is deliberate rather than "fix the account here": re-enabling or
+  // re-roling an existing user is a different privilege operation with its own
+  // design questions, and this script is a bootstrap, not a role-management
+  // tool. `--force` does NOT override this — forcing would just create the same
+  // inert invite. Reuses the `users` already read above, so it costs no query.
+  const existingUser = users.find(
+    (user) => normalizeEmail(user.email) === args.email,
+  );
+  if (existingUser) {
+    return {
+      ok: false,
+      reason: "user-exists",
+      message:
+        `An AdminUser already exists for this address (status: ${existingUser.status}). ` +
+        "A bootstrap invite cannot elevate an existing account — resolveOrProvision() " +
+        "returns before claiming any invite once a user is bound to that Firebase uid, " +
+        "so the invite would never be consumed. Grant the role from /users, or if the " +
+        "account is disabled and nobody can administer the panel, fix that user document " +
+        "directly. See docs/architecture/admin-bootstrap.md.",
     };
   }
 

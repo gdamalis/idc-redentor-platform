@@ -106,7 +106,26 @@ async function main(): Promise<never> {
     }
   }
 
-  const result = await seedAdmin(args);
+  // Any rejection from the seed itself (Mongo unreachable, auth failure, an
+  // index build blowing up) must still leave stdout carrying exactly one JSON
+  // line — that is the CLI's advertised contract, and "the database was down"
+  // is the single most likely real failure (Codex P2). Letting it reach
+  // `main().catch` would exit 1 with an EMPTY stdout, so a caller parsing the
+  // result channel sees nothing at all. Guard 1's refusal is already a typed
+  // result inside `seedAdmin`; this covers everything after it.
+  let result: SeedAdminResult;
+  try {
+    result = await seedAdmin(args);
+  } catch (error) {
+    const detail =
+      error instanceof Error ? (error.stack ?? error.message) : String(error);
+    narrate(detail);
+    return emit({
+      ok: false,
+      reason: "write-failed",
+      message: `The seed failed: ${error instanceof Error ? error.message : String(error)}`,
+    });
+  }
 
   // Opt-in courtesy only. The invite URL carries no token, so a failed send is
   // never fatal: the invite is already committed and the human can sign in.
@@ -115,15 +134,28 @@ async function main(): Promise<never> {
     if (!base) {
       narrate("--send-email skipped: NEXT_PUBLIC_ADMIN_BASE_URL is not set.");
     } else {
-      const sent = await sendInviteEmail({
-        to: args.email,
-        inviteUrl: `${base}/${args.locale}/login`,
-        locale: args.locale,
-      });
+      // Best-effort means best-effort: the invite is ALREADY committed by this
+      // point, so nothing here may change the outcome. `sendEmail` resolves a
+      // boolean on an API-level failure, but it also THROWS outright when the
+      // mail provider is unconfigured (`createResendAdapter()` throws on a
+      // missing RESEND_API_KEY). An unguarded await would escape to
+      // `main().catch`, exit 1 and emit no result — reporting a successful
+      // bootstrap as a failure (Codex P2).
+      let sent = false;
+      let failure = "";
+      try {
+        sent = await sendInviteEmail({
+          to: args.email,
+          inviteUrl: `${base}/${args.locale}/login`,
+          locale: args.locale,
+        });
+      } catch (error) {
+        failure = error instanceof Error ? error.message : String(error);
+      }
       narrate(
         sent
           ? "Invite email sent."
-          : "Invite email FAILED to send (the invite is still valid).",
+          : `Invite email FAILED to send (the invite is still valid${failure ? `; ${failure}` : ""}).`,
       );
     }
   }
