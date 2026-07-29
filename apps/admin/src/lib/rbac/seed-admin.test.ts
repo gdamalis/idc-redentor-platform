@@ -561,3 +561,70 @@ describe("seedAdmin — lost insert-race aborts before retrying (Codex P2)", () 
     expect(sessionSpy.abortTransaction).not.toHaveBeenCalled();
   });
 });
+
+// Codex P2: a role KEYED "admin" is not necessarily an ADMINISTRATIVE role.
+// seedSystemRoles() seeds permissions under $setOnInsert, so an Admin role
+// previously edited down through /roles survives the seed unchanged — and
+// updateRoleAction blocks DELETING a system role, not editing one.
+describe("seedAdmin — the seeded admin role must actually be administrative", () => {
+  const degradedAdmin = (permissions: string[]) => ({
+    _id: { toHexString: () => "role-admin" },
+    key: "admin",
+    permissions,
+    isSystem: true,
+  });
+
+  it("refuses when the admin role is missing roles:manage", async () => {
+    const deps = makeDeps({
+      listRoles: vi.fn(async () => [
+        degradedAdmin(["users:manage", "people:read"]),
+      ]) as unknown as SeedAdminDeps["listRoles"],
+    });
+
+    const result = await seedAdmin(ARGS, deps);
+
+    expect(result).toMatchObject({ ok: false, reason: "write-failed" });
+    expect((result as { message: string }).message).toContain("roles:manage");
+    expect(deps.createInvite).not.toHaveBeenCalled();
+  });
+
+  it("refuses when the admin role is missing BOTH admin-equivalent keys", async () => {
+    const deps = makeDeps({
+      listRoles: vi.fn(async () => [
+        degradedAdmin(["people:read"]),
+      ]) as unknown as SeedAdminDeps["listRoles"],
+    });
+
+    const result = await seedAdmin(ARGS, deps);
+    const message = (result as { message: string }).message;
+
+    expect(result).toMatchObject({ ok: false, reason: "write-failed" });
+    expect(message).toContain("users:manage");
+    expect(message).toContain("roles:manage");
+    expect(deps.createInvite).not.toHaveBeenCalled();
+  });
+
+  it("proceeds when the admin role carries both keys", async () => {
+    const deps = makeDeps({
+      listRoles: vi.fn(async () => [
+        degradedAdmin(["users:manage", "roles:manage"]),
+      ]) as unknown as SeedAdminDeps["listRoles"],
+    });
+
+    expect(await seedAdmin(ARGS, deps)).toMatchObject({ ok: true, dryRun: false });
+    expect(deps.createInvite).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores unknown permission strings rather than counting them as grants", async () => {
+    const deps = makeDeps({
+      listRoles: vi.fn(async () => [
+        degradedAdmin(["users:manage", "roles:manage-typo"]),
+      ]) as unknown as SeedAdminDeps["listRoles"],
+    });
+
+    expect(await seedAdmin(ARGS, deps)).toMatchObject({
+      ok: false,
+      reason: "write-failed",
+    });
+  });
+});

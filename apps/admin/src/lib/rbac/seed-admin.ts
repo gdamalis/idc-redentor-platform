@@ -9,7 +9,8 @@ import {
 import { listRoles, seedSystemRoles } from "@src/service/role.service";
 import { listUsers } from "@src/service/user.service";
 import { createInvite } from "@src/service/invite.service";
-import { retainsAdministrability } from "./last-admin";
+import { ADMIN_EQUIVALENT_KEYS, retainsAdministrability } from "./last-admin";
+import { resolvePermissions } from "./resolve";
 import type { AdminStateSnapshot } from "./last-admin";
 
 export interface SeedArgs {
@@ -310,6 +311,30 @@ export async function seedAdmin(
       reason: "write-failed",
       message:
         'No role with key "admin" exists after seedSystemRoles() — the seed did not apply.',
+    };
+  }
+
+  // Having a role KEYED "admin" is not the same as having an ADMINISTRATIVE
+  // role (Codex P2). `seedSystemRoles()` seeds permissions under `$setOnInsert`
+  // — deliberately, so a re-run never clobbers a hand-tuned system role — so an
+  // Admin role whose permissions were previously edited down through the
+  // `/roles` matrix survives the seed unchanged. (`updateRoleAction` blocks
+  // DELETING a system role, not editing one.) Issuing the invite anyway would
+  // provision a user who still cannot administer anything, while the CLI
+  // reported success — the same lie guard 2b exists to prevent, and reachable
+  // in exactly the lockout this script is run to fix.
+  const granted = resolvePermissions([{ permissions: adminRole.permissions }]);
+  const missing = ADMIN_EQUIVALENT_KEYS.filter((key) => !granted.has(key));
+  if (missing.length > 0) {
+    return {
+      ok: false,
+      reason: "write-failed",
+      message:
+        `The "admin" role exists but is missing ${missing.join(" and ")}, so an invite ` +
+        "carrying it could not administer the panel. seedSystemRoles() preserves an " +
+        "existing system role's permissions by design, so the seed cannot repair this. " +
+        "Restore the missing permissions on that role (via /roles if anyone can still " +
+        "reach it, otherwise on the role document directly) and re-run.",
     };
   }
 

@@ -238,11 +238,12 @@ alone. The script writes that one line with a synchronous `writeSync(1, …)` be
 calling `process.exit()`, so it can never be truncated by an early exit on a piped
 stdout.
 
-> **Parsing stdout? Use the direct `tsx` form.** `pnpm run` prints its own banner (and,
-> on failure, an `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL` block) to stdout around your
-> script's output, so the `pnpm --filter` form is fine for a human at a terminal but not
-> for a machine. `./node_modules/.bin/tsx apps/admin/scripts/seed-admin.ts …` emits
-> exactly the one line.
+> **Parsing stdout? Use form 2 above.** `pnpm run` prints its own banner (and, on
+> failure, an `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL` block) to stdout around your script's
+> output, so form 1 is fine for a human at a terminal but not for a machine.
+> `pnpm --filter @idcr/admin exec tsx scripts/seed-admin.ts …` emits exactly the one
+> line — `exec` runs inside the package, so the tsconfig `paths` resolve and no banner
+> is added.
 
 There is deliberately **no invite-email flag**. An earlier draft carried an opt-in
 `--send-email`; it was removed because it could never work. The templates render
