@@ -16,10 +16,11 @@
  * from `MONGODB_URI`'s own path segment instead, so the resolver targets the CORRECT
  * database on every environment and **likes now work on preview/staging** — the degraded
  * path this suite exercises is no longer reachable there. Each test below starts with a
- * read-only health probe (`GET /api/likes`) and self-skips via `test.skip(...)` whenever
- * the DB responds healthy (anything other than 503), so the suite still runs and passes
- * wherever the degraded path IS genuinely reachable (e.g. an environment whose Mongo user
- * still lacks access), and skips cleanly — rather than failing — where it is not.
+ * read-only health probe (`GET /api/likes`) that self-skips via `test.skip(...)` only on
+ * a 200 (DB healthy), runs the suite as normal on a 503 (DB genuinely degraded — the
+ * state this suite exists to test), and THROWS on anything else (500, 404, 401, ...) —
+ * an unexpected status is a real deployment or route regression, not a health signal, and
+ * must fail loudly rather than being mistaken for "DB is healthy" and silently skipped.
  *
  * Covers (see tasks/specs/ICR-111-fail-soft-likes-mongo.md for the full AC list):
  *  - AC1 (blog): the blog article page still renders 200 with title, body, related
@@ -146,12 +147,32 @@ test.describe("Article/sermon page — fail-soft when likes DB is unavailable", 
   // a probe slug that will never accumulate real likes.
   test.beforeEach(async ({ request }) => {
     const res = await request.get("/api/likes?slug=probe-health-check");
-    test.skip(
-      res.status() !== 503,
-      `Likes DB is reachable here (GET /api/likes -> ${res.status()}), so the degraded ` +
-        `path cannot be exercised. ICR-143 made the DB name URI-derived, which fixed ` +
-        `likes on preview/staging (previously 503 because the hardcoded "website" DB ` +
-        `was unauthorized). Fail-soft remains covered by src/service/like.service.test.ts.`,
+    const status = res.status();
+
+    // Only 200 means "DB reachable, degraded path unexercisable here" — skip cleanly.
+    if (status === 200) {
+      test.skip(
+        true,
+        `Likes DB is reachable here (GET /api/likes -> 200), so the degraded path ` +
+          `cannot be exercised. ICR-143 made the DB name URI-derived, which fixed ` +
+          `likes on preview/staging (previously 503 because the hardcoded "website" DB ` +
+          `was unauthorized). Fail-soft remains covered by src/service/like.service.test.ts.`,
+      );
+      return;
+    }
+
+    // 503 is the degraded state this suite exists to exercise — let it run.
+    if (status === 503) {
+      return;
+    }
+
+    // Anything else (500, 404, 401, 429, ...) is not a DB-health signal this probe
+    // understands — it is a real deployment or route regression. Fail loudly instead of
+    // silently skipping, so a broken environment is never mistaken for "DB is healthy".
+    throw new Error(
+      `Health probe ${res.url()} returned unexpected status ${status} (expected 200 ` +
+        `= DB healthy or 503 = DB degraded). Not skipping: this looks like a genuine ` +
+        `deployment or route regression, not a DB-health signal.`,
     );
   });
 
