@@ -244,7 +244,46 @@ src/app/api/revalidate/route.ts
 revalidateTag("site-content")   →  drops every fetchGraphQL cache entry
 ```
 
-`CONTENTFUL_REVALIDATE_SECRET` is **required at runtime but missing from `.env.example`** — set it in the environment and configure the Contentful webhook to send the matching `x-vercel-reval-key` header. Because all requests share one tag, a single publish refreshes the entire site's content cache on next request.
+`CONTENTFUL_REVALIDATE_SECRET` is **required at runtime**; it is declared in `.env.example`. Set it in the environment and configure the Contentful webhook to send the matching `x-vercel-reval-key` header. Because all requests share one tag, a single publish refreshes the entire site's content cache on next request.
+
+### KNOWN GAP — the publish webhook does not fire in production (verified 2026-07-29, ICR-123)
+
+The diagram above describes the intent, not the current production behaviour. The `Revalidate`
+webhook filters on:
+
+```
+sys.environment.sys.id  equals  "production"
+```
+
+but publishes reach it through the **`master` alias**, and the delivered payload carries
+`sys.environment.sys.id == "master"`. The filter therefore never matches and the webhook has
+**never fired**. Evidence gathered on 2026-07-29:
+
+| Probe                                                     | Result                                            |
+| --------------------------------------------------------- | ------------------------------------------------- |
+| `GET /spaces/:id/webhooks/:id/calls` (Revalidate)         | **0 calls, ever** — active since 2026-06-29       |
+| Same endpoint for the sibling `Regenerate PDF` webhook    | healthy 2/2 — so call logging + retention do work |
+| That sibling's logged request body                        | `sys.environment.sys.id: "master"`                |
+| `broadcast_log` collection in the prod `website` database | **absent** — `sendBroadcast` has never run        |
+
+The sibling webhook filters `in ["master","production"]`, which is why it works.
+
+**Two consequences, of very different severity:**
+
+1. **Cache purging: currently harmless.** Every content page calls `shouldUseDraftMode()`, which
+   awaits `draftMode()` — a Request-time API that forces dynamic rendering. Production serves every
+   page `no-store`, so content goes live on publish whether or not the tag is ever purged. The one
+   route that _was_ genuinely cached was `sitemap.xml`; ICR-123 gave it a one-hour `revalidate` so it
+   no longer depends on this webhook.
+2. **Notification email: silently dead.** `/api/revalidate` is also the only caller of
+   `notifyOnPublish` (ICR-44). Resend key, both per-locale audience IDs and `BROADCAST_POSTAL_ADDRESS`
+   are all set in production, so the path is fully configured — it has simply never been invoked. **No
+   subscriber notification has ever been sent for any sermon or blog post.**
+
+**Before fixing the filter**, note that `sendBroadcast` dedupes on `broadcastId`
+(`<kind>:<entryId>:<locale>`) via the `broadcast_log` collection — which does not yet exist. Once the
+filter accepts `master`, the next publish of any entry, **including a re-publish of an existing one**,
+sends. Publishing a backlog of _N_ sermons would fire up to _N_ × 2 broadcasts. Sequence deliberately.
 
 ## A second webhook + the app runtime's first CMA write path (ICR-114)
 
