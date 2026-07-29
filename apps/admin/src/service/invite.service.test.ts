@@ -372,4 +372,51 @@ describe("createInvite", () => {
     ).rejects.toThrow("connection reset");
     expect(findOneAndUpdate).toHaveBeenCalledTimes(1);
   });
+
+  it("omits invitedByUserId from $set when the caller provides none (ICR-155 seed path)", async () => {
+    const { createInvite } = await import("./invite.service");
+    findOneAndUpdate.mockResolvedValueOnce({
+      value: { _id: { toHexString: () => "inv-seed" } },
+      lastErrorObject: { updatedExisting: false },
+    });
+
+    const result = await createInvite(
+      { email: "seed@example.com", roleIds: ["r-admin"], locale: "es-AR" },
+      {} as never,
+    );
+
+    expect(result).toEqual({ ok: true, inviteId: "inv-seed", refreshed: false });
+
+    const update = findOneAndUpdate.mock.calls[0]?.[1];
+    // The key must be ABSENT, not present-and-undefined: the driver serialises
+    // undefined to BSON null, and inviteSchema's z.string().optional() rejects null.
+    expect(Object.keys(update.$set)).not.toContain("invitedByUserId");
+    expect(update.$setOnInsert).toMatchObject({
+      email: "seed@example.com",
+      status: "pending",
+    });
+  });
+
+  it("still writes invitedByUserId when the caller provides one (UI path regression)", async () => {
+    const { createInvite } = await import("./invite.service");
+    findOneAndUpdate.mockResolvedValueOnce({
+      value: { _id: { toHexString: () => "inv-ui" } },
+      lastErrorObject: { updatedExisting: true },
+    });
+
+    const result = await createInvite(
+      {
+        email: "ui@example.com",
+        roleIds: ["r1"],
+        locale: "en-US",
+        invitedByUserId: "u-admin",
+      },
+      {} as never,
+    );
+
+    expect(result).toEqual({ ok: true, inviteId: "inv-ui", refreshed: true });
+    expect(findOneAndUpdate.mock.calls[0]?.[1].$set.invitedByUserId).toBe(
+      "u-admin",
+    );
+  });
 });

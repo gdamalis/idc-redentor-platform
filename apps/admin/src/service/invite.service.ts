@@ -12,7 +12,15 @@ export interface CreateInviteInput {
   readonly email: string;
   readonly roleIds: readonly string[];
   readonly locale: Locale;
-  readonly invitedByUserId: string;
+  /**
+   * Optional: the seed bootstrap (ICR-155) has no actor user, and
+   * `Invite.invitedByUserId` is already optional on the stored type
+   * ("seeded invites have none"). When absent the key is OMITTED from the
+   * `$set` below — never written as `undefined`, which the driver would
+   * serialise to BSON `null` and `inviteSchema`'s `z.string().optional()`
+   * would then reject on every subsequent read.
+   */
+  readonly invitedByUserId?: string;
 }
 
 /**
@@ -111,17 +119,21 @@ export async function createInvite(
   const now = new Date();
 
   try {
+    const set: Record<string, unknown> = {
+      roleIds: [...input.roleIds],
+      locale: input.locale,
+      expiresAt: new Date(now.getTime() + INVITE_EXPIRY_MS),
+    };
+    if (input.invitedByUserId !== undefined) {
+      set.invitedByUserId = input.invitedByUserId;
+    }
+
     const result = await getAdminDb()
       .collection(INVITES_COLLECTION)
       .findOneAndUpdate(
         { email, status: "pending" },
         {
-          $set: {
-            roleIds: [...input.roleIds],
-            locale: input.locale,
-            expiresAt: new Date(now.getTime() + INVITE_EXPIRY_MS),
-            invitedByUserId: input.invitedByUserId,
-          },
+          $set: set,
           $setOnInsert: { email, status: "pending", createdAt: now },
         },
         { upsert: true, returnDocument: "after", includeResultMetadata: true, session },
