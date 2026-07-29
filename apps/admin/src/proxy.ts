@@ -59,6 +59,7 @@ function isPublicAuthPath(appPath: string): boolean {
   return PUBLIC_AUTH_PATHS.some((publicPath) => appPath.startsWith(publicPath));
 }
 
+// See docs/architecture/admin-navigation.md
 // `webmanifest` MUST stay in this list: the matcher below catches
 // `/manifest.webmanifest`, and without a bypass an unauthenticated browser
 // fetching the manifest gets redirected to /login — so the app is not

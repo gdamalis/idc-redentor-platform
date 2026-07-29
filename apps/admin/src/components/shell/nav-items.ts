@@ -1,3 +1,4 @@
+// See docs/architecture/admin-navigation.md
 import {
   Activity,
   CalendarDays,
