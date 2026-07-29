@@ -5,7 +5,10 @@ const updateOne = vi.fn();
 const collection = vi.fn(() => ({ findOne, updateOne }));
 const db = vi.fn(() => ({ collection }));
 
-vi.mock("./database.service", () => ({ connect: vi.fn() }));
+vi.mock("./database.service", () => ({
+  connect: vi.fn(),
+  getWebsiteDb: vi.fn(() => ({ collection })),
+}));
 
 import { connect } from "./database.service";
 import { getLikes, toggleLike } from "./like.service";

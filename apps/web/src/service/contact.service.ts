@@ -1,5 +1,5 @@
 import { ContactDetails } from "@src/types/ContactDetails";
-import { connect } from "./database.service";
+import { connect, getWebsiteDb } from "./database.service";
 
 export async function sendContactForm(contactDetails: ContactDetails) {
   const client = await connect();
@@ -8,9 +8,9 @@ export async function sendContactForm(contactDetails: ContactDetails) {
   }
   
   try {
-    const db = client.db("website");
+    const db = getWebsiteDb(client);
     const collection = db.collection("contact");
-    
+
     // Add timestamp
     const documentToInsert = {
       ...contactDetails,
@@ -39,7 +39,7 @@ export async function getContactMessages() {
   }
 
   try {
-    const db = client.db("website");
+    const db = getWebsiteDb(client);
     const collection = db.collection("contact");
 
     return await collection.find().sort({ createdAt: -1 }).toArray();

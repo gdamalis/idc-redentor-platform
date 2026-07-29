@@ -1,4 +1,4 @@
-import { connect } from "./database.service";
+import { connect, getWebsiteDb } from "./database.service";
 
 interface LikesDocument {
   slug: string;
@@ -38,7 +38,7 @@ export async function getLikes(
   }
 
   try {
-    const db = client.db("website");
+    const db = getWebsiteDb(client);
     const collection = db.collection<LikesDocument>("likes");
 
     const doc = await collection.findOne({ slug });
@@ -66,7 +66,7 @@ export async function toggleLike(
   }
 
   try {
-    const db = client.db("website");
+    const db = getWebsiteDb(client);
     const collection = db.collection<LikesDocument>("likes");
 
     const existing = await collection.findOne({ slug });

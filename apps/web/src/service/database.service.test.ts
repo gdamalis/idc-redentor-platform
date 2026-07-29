@@ -128,3 +128,53 @@ describe("module surface", () => {
     expect(service).not.toHaveProperty("disconnect");
   });
 });
+
+describe("isAllowedWebsiteDbName", () => {
+  it.each([
+    "website",
+    "website-staging",
+    "website-test",
+    "website-qa",
+    "website-e2e",
+  ])("accepts %s", async (name) => {
+    const { isAllowedWebsiteDbName } = await loadService();
+    expect(isAllowedWebsiteDbName(name)).toBe(true);
+  });
+
+  // "test" is the driver's SILENT fallback when the URI carries no database path —
+  // the single most dangerous value, so it gets its own assertion.
+  it.each([
+    "test",
+    "admin",
+    "local",
+    "config",
+    "",
+    "websiteX",
+    "website-prod",
+    "Website",
+  ])("rejects %s", async (name) => {
+    const { isAllowedWebsiteDbName } = await loadService();
+    expect(isAllowedWebsiteDbName(name)).toBe(false);
+  });
+});
+
+describe("getWebsiteDb", () => {
+  it("returns the database named in the URI", async () => {
+    const { getWebsiteDb } = await loadService();
+    const fakeDb = { databaseName: "website-staging" };
+    const client = { db: vi.fn(() => fakeDb) };
+
+    expect(getWebsiteDb(client as never)).toBe(fakeDb);
+    // no argument => resolved from MONGODB_URI's path segment
+    expect(client.db).toHaveBeenCalledWith();
+  });
+
+  it("throws when the driver fell back to the test database", async () => {
+    const { getWebsiteDb } = await loadService();
+    const client = { db: vi.fn(() => ({ databaseName: "test" })) };
+
+    expect(() => getWebsiteDb(client as never)).toThrow(
+      /MONGODB_URI must include a database path/,
+    );
+  });
+});

@@ -1,6 +1,6 @@
 import type { Collection } from "mongodb";
 
-import { connect } from "../database.service";
+import { connect, getWebsiteDb } from "../database.service";
 
 export interface PdfJob {
   entryId: string; // Contentful sermon entry id — UNIQUE key
@@ -14,7 +14,6 @@ export interface PdfJob {
   lastError?: string;
 }
 
-const DB_NAME = "website";
 const COLLECTION = "pdf_jobs";
 const DEFAULT_QUIET_WINDOW_SECONDS = 90;
 
@@ -78,7 +77,7 @@ export function resolveQuietWindowMs(): number {
 async function getCollection(): Promise<Collection<PdfJob> | undefined> {
   const client = await connect();
   if (!client) return undefined;
-  const col = client.db(DB_NAME).collection<PdfJob>(COLLECTION);
+  const col = getWebsiteDb(client).collection<PdfJob>(COLLECTION);
   await ensureIndex(col);
   return col;
 }

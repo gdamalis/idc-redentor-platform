@@ -1,6 +1,6 @@
 import type { Collection } from "mongodb";
 
-import { connect } from "../database.service";
+import { connect, getWebsiteDb } from "../database.service";
 
 export type ClaimResult = "claimed" | "already-sent" | "error";
 
@@ -16,7 +16,6 @@ interface BroadcastLogDocument {
   sentAt?: Date;
 }
 
-const DB_NAME = "website";
 const COLLECTION = "broadcast_log";
 
 let indexEnsured: Promise<unknown> | null = null;
@@ -65,7 +64,7 @@ export async function claimBroadcast(broadcastId: string): Promise<ClaimResult> 
   const client = await connect();
   if (!client) return "error";
   try {
-    const col = client.db(DB_NAME).collection<BroadcastLogDocument>(COLLECTION);
+    const col = getWebsiteDb(client).collection<BroadcastLogDocument>(COLLECTION);
     await ensureBroadcastIndex(col);
     const now = new Date();
     await col.updateOne(
@@ -88,7 +87,7 @@ export async function markSent(broadcastId: string, campaignId: string): Promise
   const client = await connect();
   if (!client) return;
   try {
-    const col = client.db(DB_NAME).collection<BroadcastLogDocument>(COLLECTION);
+    const col = getWebsiteDb(client).collection<BroadcastLogDocument>(COLLECTION);
     const now = new Date();
     await col.updateOne(
       { broadcastId },
@@ -103,7 +102,7 @@ export async function markFailed(broadcastId: string, reason: string): Promise<v
   const client = await connect();
   if (!client) return;
   try {
-    const col = client.db(DB_NAME).collection<BroadcastLogDocument>(COLLECTION);
+    const col = getWebsiteDb(client).collection<BroadcastLogDocument>(COLLECTION);
     await col.updateOne(
       { broadcastId },
       { $set: { status: "failed", reason, updatedAt: new Date() } },
