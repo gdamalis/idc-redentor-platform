@@ -22,7 +22,7 @@ vi.mock("@src/lib/auth/session", () => ({
   verifySession: verifySessionMock,
 }));
 
-import { proxy } from "./proxy";
+import { isSafeAssetPath, proxy } from "./proxy";
 
 const makeRequest = (path: string, cookieHeader?: string) =>
   new NextRequest(`http://localhost:3000${path}`, {
@@ -110,9 +110,13 @@ describe("proxy", () => {
   it("injects an x-pathname header (pathname+search) into the request passed to intl middleware on an authenticated pass-through", async () => {
     verifySessionMock.mockResolvedValueOnce({ uid: "uid1" });
 
-    await proxy(makeRequest("/es-AR/people?tab=roles", "__session=valid-cookie"));
+    await proxy(
+      makeRequest("/es-AR/people?tab=roles", "__session=valid-cookie"),
+    );
 
-    const [forwardedRequest] = intlMiddlewareMock.mock.calls[0] as [NextRequest];
+    const [forwardedRequest] = intlMiddlewareMock.mock.calls[0] as [
+      NextRequest,
+    ];
     expect(forwardedRequest.headers.get("x-pathname")).toBe(
       "/es-AR/people?tab=roles",
     );
@@ -121,7 +125,39 @@ describe("proxy", () => {
   it("also injects the x-pathname header on the public-auth-path bypass", async () => {
     await proxy(makeRequest("/es-AR/login"));
 
-    const [forwardedRequest] = intlMiddlewareMock.mock.calls[0] as [NextRequest];
+    const [forwardedRequest] = intlMiddlewareMock.mock.calls[0] as [
+      NextRequest,
+    ];
     expect(forwardedRequest.headers.get("x-pathname")).toBe("/es-AR/login");
+  });
+});
+
+describe("isSafeAssetPath", () => {
+  it("lets the PWA manifest through unauthenticated", () => {
+    // Regression guard: without this the manifest 302s to /login and the app
+    // is not installable from the sign-in screen — invisible when signed in.
+    expect(isSafeAssetPath("/manifest.webmanifest")).toBe(true);
+  });
+
+  it("still bypasses the previously-allowed static asset types", () => {
+    for (const path of [
+      "/favicon.ico",
+      "/a/b.png",
+      "/x.css",
+      "/y.js",
+      "/z.woff2",
+    ]) {
+      expect(isSafeAssetPath(path)).toBe(true);
+    }
+  });
+
+  it("does not bypass application routes", () => {
+    for (const path of ["/", "/es-AR/people", "/en-US/users/123"]) {
+      expect(isSafeAssetPath(path)).toBe(false);
+    }
+  });
+
+  it("is case-insensitive about the extension", () => {
+    expect(isSafeAssetPath("/LOGO.PNG")).toBe(true);
   });
 });
