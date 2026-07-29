@@ -74,3 +74,24 @@ absent (e.g. a manifest written before a feature landed), ids are re-resolved fr
 - `.claude/agents/predica-transcriber.md` — never-overwrite guard; emits `sourceSha256`.
 - `.claude/scripts/predica/create-contentful-entry.mjs` — `--id` update-in-place path.
 - `.claude/scripts/predica/delete-contentful.mjs` — the guarded delete path (new).
+
+## Why next.config.ts pins the file-tracing root (ICR-143)
+
+The cron route renders PDFs with Chromium via `playwright-core`. That package reads its
+`browsers.json` through a **runtime-computed** require —
+`require(path.join(packageRoot, "browsers.json"))` in `lib/coreBundle.js` — which `@vercel/nft`'s
+static analysis cannot see. The file therefore never entered the Lambda, and the every-minute cron
+failed forever with `Cannot find module …/browsers.json` while the job stayed renderable.
+
+`apps/web/next.config.ts` fixes this with two settings:
+
+- `outputFileTracingRoot: path.join(__dirname, "../../")` — `playwright-core` resolves to the
+  **repo-root** pnpm store, outside `apps/web`. Pinning the root also silences Next's
+  "inferred your workspace root, but it may not be correct" multi-lockfile warning; the deployment
+  must not depend on that heuristic.
+- `outputFileTracingIncludes` — one file, keyed to `/api/predica/regenerate-pdf/cron` only. The
+  webhook route never launches Chromium and must not get the include.
+
+`pnpm --filter @idcr/web verify:trace` (CI job `trace-guard` in `.github/workflows/pr.yml`) asserts
+the asset is still traced, so a `playwright-core` upgrade that moves the file fails the build instead
+of silently breaking production. Do not "tidy away" either setting.

@@ -70,20 +70,15 @@ for (const timezoneId of TIMEZONES) {
 }
 
 /**
- * Blocked on this preview: BOTH the blog post detail page and the sermon detail page
- * 500 (Server Components render error, digest 4282309776 = MongoServerError: user is
- * not allowed to do action [find] on [website.likes]) — a pre-existing MongoDB Atlas
- * permissions issue on the preview DB user, unrelated to ICR-103 and reproducing on
- * deployments going back to 2026-06-29. Un-skip once that permission issue is fixed
- * (see the qa-runner report on ICR-103 / the stray-observations log for the ticket
- * tracking it).
+ * This block was skipped because the likes DB was unreachable outside production: the
+ * likes service hardcoded `client.db("website")`, a database name the non-production
+ * Mongo Atlas user isn't authorized to read (MongoServerError: user is not allowed to
+ * do action [find] on [website.likes]). ICR-143 made the database name URI-derived
+ * (`getWebsiteDb()`), which resolves the permission mismatch. Separately, ICR-111's
+ * fail-soft work means these detail pages render 200 even when likes data is
+ * unavailable, so the date assertions below no longer depend on likes succeeding.
  */
 test.describe("detail-page date rendering", () => {
-  test.skip(
-    true,
-    "TODO(ICR-103): unskip once the website.likes Mongo Atlas permission issue is fixed",
-  );
-
   test("blog post detail renders the authored day (es-AR)", async ({
     page,
   }) => {

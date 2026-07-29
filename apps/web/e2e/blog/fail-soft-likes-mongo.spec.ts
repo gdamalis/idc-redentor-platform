@@ -1,17 +1,26 @@
 /**
  * ICR-111: fail soft when the likes DB (MongoDB) is unavailable.
  *
- * On Vercel PREVIEW the likes DB is permanently unreachable, so every request in this
- * suite exercises the REAL degraded path, not a mock. Note the failure mode, because it
- * is NOT the one the ticket assumed: `MONGODB_URI` *is* set on preview and `connect()`
- * SUCCEEDS (it pings `admin` and logs "Connected to database") — the Atlas user simply
- * is not authorized to `find` on `website.likes`, so the QUERY throws
- * (`MongoServerError ... code 8000`) inside the try/catch.
- *
- * That distinction is the whole point of this suite: a fix that only handled the
- * `!client` (connect-failed) branch would be a NO-OP here, and these pages would still
- * 500. They return 200 only because the catch block also fails soft. See
+ * Originally, on Vercel PREVIEW the likes DB was permanently unreachable — `MONGODB_URI`
+ * *was* set and `connect()` SUCCEEDED (it pinged `admin` and logged "Connected to
+ * database"), but the Atlas user was not authorized to `find` on the hardcoded literal
+ * `website.likes`, so the QUERY threw (`MongoServerError ... code 8000`) inside the
+ * try/catch. That distinction was the whole point of this suite: a fix that only handled
+ * the `!client` (connect-failed) branch would have been a NO-OP here, and these pages
+ * would still 500. They returned 200 only because the catch block also failed soft. See
  * src/service/like.service.ts and src/app/api/likes/route.ts.
+ *
+ * ICR-143 UPDATE: the hardcoded `"website"` database name was the actual root cause of
+ * that unauthorized-query failure — it pointed at a database the preview/staging Mongo
+ * user cannot access. `database.service.ts#getWebsiteDb()` now derives the database name
+ * from `MONGODB_URI`'s own path segment instead, so the resolver targets the CORRECT
+ * database on every environment and **likes now work on preview/staging** — the degraded
+ * path this suite exercises is no longer reachable there. Each test below starts with a
+ * read-only health probe (`GET /api/likes`) that self-skips via `test.skip(...)` only on
+ * a 200 (DB healthy), runs the suite as normal on a 503 (DB genuinely degraded — the
+ * state this suite exists to test), and THROWS on anything else (500, 404, 401, ...) —
+ * an unexpected status is a real deployment or route regression, not a health signal, and
+ * must fail loudly rather than being mistaken for "DB is healthy" and silently skipped.
  *
  * Covers (see tasks/specs/ICR-111-fail-soft-likes-mongo.md for the full AC list):
  *  - AC1 (blog): the blog article page still renders 200 with title, body, related
@@ -27,8 +36,9 @@
  * that title/body/related/share/CTA rendered — not just a byte-size or code-trace
  * inference.
  *
- * The healthy-Mongo path (AC3: like count/toggle) CANNOT be exercised here — there is no
- * DB to be healthy against on preview — and is covered instead by the unit tests
+ * The healthy-Mongo path (AC3: like count/toggle) is NOT exercised by this suite — it is
+ * purpose-built for the degraded path (AC1/AC2/AC4 above) and self-skips instead once the
+ * DB is healthy (see the ICR-143 UPDATE above). AC3 is covered by the unit tests
  * (src/service/like.service.test.ts) plus post-merge staging QA.
  *
  * SAFETY (lesson ICR-44): GET only. Never POST to a live endpoint from an e2e happy
@@ -131,6 +141,41 @@ async function countOtherSlugs(
 }
 
 test.describe("Article/sermon page — fail-soft when likes DB is unavailable", () => {
+  // ICR-143 self-skip: this suite exercises the DEGRADED path on purpose, but ICR-143
+  // fixed the root cause (a hardcoded, unauthorized database name) that made the likes DB
+  // permanently unreachable on preview/staging. GET-only (see the file's SAFETY note) —
+  // a probe slug that will never accumulate real likes.
+  test.beforeEach(async ({ request }) => {
+    const res = await request.get("/api/likes?slug=probe-health-check");
+    const status = res.status();
+
+    // Only 200 means "DB reachable, degraded path unexercisable here" — skip cleanly.
+    if (status === 200) {
+      test.skip(
+        true,
+        `Likes DB is reachable here (GET /api/likes -> 200), so the degraded path ` +
+          `cannot be exercised. ICR-143 made the DB name URI-derived, which fixed ` +
+          `likes on preview/staging (previously 503 because the hardcoded "website" DB ` +
+          `was unauthorized). Fail-soft remains covered by src/service/like.service.test.ts.`,
+      );
+      return;
+    }
+
+    // 503 is the degraded state this suite exists to exercise — let it run.
+    if (status === 503) {
+      return;
+    }
+
+    // Anything else (500, 404, 401, 429, ...) is not a DB-health signal this probe
+    // understands — it is a real deployment or route regression. Fail loudly instead of
+    // silently skipping, so a broken environment is never mistaken for "DB is healthy".
+    throw new Error(
+      `Health probe ${res.url()} returned unexpected status ${status} (expected 200 ` +
+        `= DB healthy or 503 = DB degraded). Not skipping: this looks like a genuine ` +
+        `deployment or route regression, not a DB-health signal.`,
+    );
+  });
+
   for (const { ac, contentType, locale, path: pagePath, screenshot } of PAGE_CASES) {
     test(`${ac} ${contentType} ${locale}: renders 200 with title/body/related/share/CTA intact, no like control`, async ({
       page,

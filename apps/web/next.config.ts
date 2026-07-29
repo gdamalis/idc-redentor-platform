@@ -1,3 +1,4 @@
+import path from "node:path";
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
@@ -11,6 +12,19 @@ const nextConfig: NextConfig = {
   // webpack from tracing/bundling it into the Vercel function even though it's a
   // dynamic import; that branch never runs in a Vercel/Lambda environment.
   serverExternalPackages: ["@sparticuz/chromium", "playwright-core", "@playwright/test"],
+  // playwright-core loads browsers.json through a RUNTIME-computed require
+  // (lib/coreBundle.js: `require(path.join(packageRoot, "browsers.json"))`), which
+  // @vercel/nft's static analysis cannot see — so it never lands in the Lambda and the
+  // sermon-PDF cron fails forever with "Cannot find module …/browsers.json" (ICR-143).
+  // The package resolves to the REPO-ROOT pnpm store, outside apps/web, so the tracing
+  // root must be pinned to the monorepo root as well. Pinning it also silences Next's
+  // "inferred your workspace root, but it may not be correct" multi-lockfile warning.
+  outputFileTracingRoot: path.join(__dirname, "../../"),
+  outputFileTracingIncludes: {
+    "/api/predica/regenerate-pdf/cron": [
+      "../../node_modules/.pnpm/playwright-core@*/node_modules/playwright-core/browsers.json",
+    ],
+  },
   images: {
     remotePatterns: [
       {

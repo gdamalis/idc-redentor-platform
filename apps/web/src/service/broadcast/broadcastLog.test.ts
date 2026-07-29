@@ -5,7 +5,10 @@ const createIndex = vi.fn();
 const collection = vi.fn(() => ({ updateOne, createIndex }));
 const db = vi.fn(() => ({ collection }));
 
-vi.mock("../database.service", () => ({ connect: vi.fn() }));
+vi.mock("../database.service", () => ({
+  connect: vi.fn(),
+  getWebsiteDb: vi.fn(() => ({ collection })),
+}));
 
 import { connect } from "../database.service";
 import { claimBroadcast, markFailed, markSent } from "./broadcastLog";

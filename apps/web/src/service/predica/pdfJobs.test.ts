@@ -136,7 +136,10 @@ const collection = vi.fn(() => ({
 }));
 const db = vi.fn(() => ({ collection }));
 
-vi.mock("../database.service", () => ({ connect: vi.fn() }));
+vi.mock("../database.service", () => ({
+  connect: vi.fn(),
+  getWebsiteDb: vi.fn(() => ({ collection })),
+}));
 
 describe("Mongo-backed pdf_jobs functions", () => {
   beforeEach(async () => {
