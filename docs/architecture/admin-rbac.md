@@ -557,8 +557,21 @@ always works.
 This resolves **ICR-185** (the expired-pending-invite follow-up filed against the CP6/CP7 design) — that
 ticket can be closed.
 
+## Known limitations
+
+**Nobody can invite the first Admin.** Every invite path enforced above —
+`requirePermission("users:manage")`, `retainsAdministrability()`, `createInvite` — assumes at least
+one user already holds `users:manage`. A freshly-provisioned `ministry-admin*` database has no roles
+and no users, so there is no session in the system that can reach `/users` and invite anyone. That
+bootstrap gap is deliberately **not** solved inside this RBAC layer — it's solved by a separate,
+human-run, out-of-band script (ICR-155's `seed:admin`) that writes the seeded roles and one pending
+Admin invite directly to Mongo, outside `requirePermission`'s reach entirely. See
+`docs/architecture/admin-bootstrap.md` for the full runbook.
+
 ## Related docs
 
+- `docs/architecture/admin-bootstrap.md` — the ICR-155 `seed:admin` script that provisions the first
+  Admin, closing the "nobody can invite the first Admin" gap noted above.
 - `docs/architecture/admin-auth.md` — the sign-in → session-cookie → invite-gate flow this ticket
   enforces on top of; `SessionResult`, `getCurrentUser()`, the two-verification model.
 - `docs/architecture/admin-database.md` — the two-connection Mongo model `role.service.ts` /

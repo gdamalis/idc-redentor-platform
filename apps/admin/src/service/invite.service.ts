@@ -12,7 +12,15 @@ export interface CreateInviteInput {
   readonly email: string;
   readonly roleIds: readonly string[];
   readonly locale: Locale;
-  readonly invitedByUserId: string;
+  /**
+   * Optional: the seed bootstrap (ICR-155) has no actor user, and
+   * `Invite.invitedByUserId` is already optional on the stored type
+   * ("seeded invites have none"). When absent the key is OMITTED from the
+   * `$set` below — never written as `undefined`, which the driver would
+   * serialise to BSON `null` and `inviteSchema`'s `z.string().optional()`
+   * would then reject on every subsequent read.
+   */
+  readonly invitedByUserId?: string;
 }
 
 /**
@@ -111,21 +119,39 @@ export async function createInvite(
   const now = new Date();
 
   try {
+    const set: Record<string, unknown> = {
+      roleIds: [...input.roleIds],
+      locale: input.locale,
+      expiresAt: new Date(now.getTime() + INVITE_EXPIRY_MS),
+    };
+
+    // The field is written by exactly ONE operator, never both — $set and
+    // $unset over the same path is a MongoDB conflict error.
+    //
+    // When the caller supplies no inviter (the ICR-155 seed path), the key must
+    // be REMOVED, not merely omitted: this is an upsert, so refreshing an
+    // invite that the /users UI created earlier would otherwise leave that
+    // admin's id on a now-seeded invite and misattribute the bootstrap to them
+    // (Codex P2). Omitting it still avoids the BSON `null` that
+    // `inviteSchema`'s `z.string().optional()` would reject on every later read.
+    const update: Record<string, unknown> = {
+      $set: set,
+      $setOnInsert: { email, status: "pending", createdAt: now },
+    };
+    if (input.invitedByUserId !== undefined) {
+      set.invitedByUserId = input.invitedByUserId;
+    } else {
+      update.$unset = { invitedByUserId: "" };
+    }
+
     const result = await getAdminDb()
       .collection(INVITES_COLLECTION)
-      .findOneAndUpdate(
-        { email, status: "pending" },
-        {
-          $set: {
-            roleIds: [...input.roleIds],
-            locale: input.locale,
-            expiresAt: new Date(now.getTime() + INVITE_EXPIRY_MS),
-            invitedByUserId: input.invitedByUserId,
-          },
-          $setOnInsert: { email, status: "pending", createdAt: now },
-        },
-        { upsert: true, returnDocument: "after", includeResultMetadata: true, session },
-      );
+      .findOneAndUpdate({ email, status: "pending" }, update, {
+        upsert: true,
+        returnDocument: "after",
+        includeResultMetadata: true,
+        session,
+      });
 
     const doc = result.value;
     if (!doc) throw new Error("createInvite: upsert returned no document");
