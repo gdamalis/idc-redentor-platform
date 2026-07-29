@@ -48,10 +48,33 @@ Three jobs run on every PR: `validate-pr-title`, `eslint-tsc` (lint + type-check
 **`predica-scripts`**.
 
 `predica-scripts` installs Chromium (`pnpm exec playwright install --with-deps chromium`, run from the
-**repo root**) and then runs `pnpm predica:smoke`, which invokes `build-predica-pdf.mjs` and
-`build-predica-featured.mjs` against the committed fixture
-(`.claude/scripts/predica/__fixtures__/sample-sermon.json`) and asserts both exit `0` with non-empty
-output.
+**repo root**) and then runs `pnpm predica:smoke`, which drives three scripts against the committed
+fixture (`.claude/scripts/predica/__fixtures__/sample-sermon.json`):
+
+| Script                                   | Asserts                                          |
+| ---------------------------------------- | ------------------------------------------------ |
+| `build-predica-pdf.mjs`                  | exit `0` + both locale PDFs written, each ≥ 1 KB |
+| `build-predica-featured.mjs` (`--no-ai`) | exit `0` + `featured.png` written, ≥ 1 KB        |
+| `build-sermon-entry.mjs`                 | exit `0` + prints `sermon.json: VALID`           |
+
+The third case is the **schema gate** (ICR-116). The fixture has to satisfy two different validators —
+`validateSermon` for the renderers and `validateSermonForEntry` for the Contentful publisher — and for a
+while it satisfied only the first, silently. Because the fixture is the one committed example of the
+sermon contract, letting it drift means the next person to copy it inherits an invalid document. The
+entry builder is invoked with no flags, which is a pure validate-and-summarise dry run: no network, no
+credentials, no writes, so it is safe to run in CI.
+
+The fixture also now exercises the PDF's **scripture-references render path**: adding the structured
+top-level `scriptureReferences` array means `build-predica-pdf.mjs:240` (`renderScriptureReferences`) now
+produces a real "Referencias bíblicas" / "Scripture references" section, which it previously skipped
+entirely — the function returns `""` when the array is absent or empty. That is why the rendered PDFs
+are meaningfully larger than before (138154/140783 → 163097/165716 bytes), and it means this CI gate now
+covers a render path it never reached.
+
+Note that `pnpm test` does **not** cover this file — `apps/web/vitest.config.ts` only globs
+`src/**/*.{test,spec}.{ts,tsx}`, `lib/**/*.{test,spec}.{ts,tsx}`, `config/**/*.{test,spec}.{ts,tsx}`, and
+`scripts/**/*.{test,spec}.mjs` under `apps/web`, so `.claude/**` is never in Vitest's scope. This job is
+the only thing standing between the fixture and schema drift.
 
 It exists because of ICR-145: `@playwright/test` is a **root** devDependency, since the `/predica`
 scripts live at `.claude/scripts/predica/` and Node resolves bare specifiers by walking `node_modules`
