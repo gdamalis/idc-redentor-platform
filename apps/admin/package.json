@@ -12,6 +12,10 @@
     "test:watch": "vitest",
     "seed:admin": "tsx scripts/seed-admin.ts"
   },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": "eslint --fix",
+    "*.{json,md,css}": "prettier --write"
+  },
   "dependencies": {
     "@idcr/ui": "workspace:*",
     "@radix-ui/react-dialog": "^1.1.23",
