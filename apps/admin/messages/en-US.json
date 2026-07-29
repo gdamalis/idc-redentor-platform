@@ -4,7 +4,9 @@
   },
   "shell": {
     "appName": "Admin Panel",
-    "tagline": "Iglesia de Cristo Redentor"
+    "tagline": "Iglesia de Cristo Redentor",
+    "mainNavigation": "Main navigation",
+    "mobileNavigation": "Main navigation"
   },
   "notFound": {
     "title": "Page not found",

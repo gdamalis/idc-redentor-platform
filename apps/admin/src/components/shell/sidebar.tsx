@@ -1,5 +1,4 @@
-import { Link } from "@src/i18n/routing";
-import { cn } from "@idcr/ui";
+import { NavLink } from "@src/components/shell/nav-link";
 import { getSessionPermissions } from "@src/lib/rbac/require-permission";
 import { getTranslations } from "next-intl/server";
 import type { PermissionKey } from "@src/lib/rbac/permissions";
@@ -25,18 +24,21 @@ export async function Sidebar() {
           {tShell("tagline")}
         </span>
       </div>
-      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+      <nav
+        aria-label={tShell("mainNavigation")}
+        className="flex-1 space-y-1 overflow-y-auto p-3"
+      >
         {items.map(({ href, labelKey, icon: Icon }) => (
-          <Link
+          <NavLink
             key={href}
             href={href}
-            className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-            )}
+            className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
+            activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+            inactiveClassName="text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
             <Icon className="h-4 w-4 shrink-0" />
             {tNav(labelKey)}
-          </Link>
+          </NavLink>
         ))}
       </nav>
     </aside>
