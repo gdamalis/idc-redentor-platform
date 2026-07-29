@@ -214,19 +214,36 @@ function mapSermon(item: Record<string, unknown>): Sermon {
 
 const ARCHIVE_PAGE_SIZE = 100;
 
+interface SermonArchivePage<T> {
+  items: T[];
+  /**
+   * True when Contentful returned an error payload or no collection at all — i.e. `items` is
+   * "we could not read", NOT "there is nothing". The two are indistinguishable downstream
+   * otherwise, which is why the flag exists rather than a bare array.
+   */
+  hasFailed: boolean;
+}
+
 /**
  * Fetches every item of a `sermonCollection` query across pages, so the public
  * archive and the sitemap never silently truncate once there are more than
  * ARCHIVE_PAGE_SIZE sermons. `buildQuery(skip, limit)` MUST request `total`
  * alongside `items`.
+ *
+ * Reports failure rather than deciding what to do about it — the two callers need opposite
+ * behaviour. `getAllSermons` renders the public /predicas page and must degrade to an empty list
+ * (ICR-111: a likes/Contentful blip must not 500 a reader-facing page). `getAllSermonSlugs` feeds
+ * the ISR sitemap, where a *successful* regeneration returning nothing would cache an empty sitemap
+ * for an hour, so it must throw instead (ICR-123).
  */
 async function fetchAllSermonItems<T>(
   buildQuery: (skip: number, limit: number) => string,
   isDraftMode: boolean,
-): Promise<T[]> {
+): Promise<SermonArchivePage<T>> {
   const all: T[] = [];
   let skip = 0;
   let total = 0;
+  let hasFailed = false;
 
   do {
     const data = await fetchGraphQL(
@@ -240,10 +257,14 @@ async function fetchAllSermonItems<T>(
         "[getSermons] Contentful GraphQL error fetching sermon archive:",
         JSON.stringify(data.errors),
       );
+      hasFailed = true;
     }
     const collection = data?.data?.sermonCollection as
       | { total?: number; items?: T[] }
       | undefined;
+    // A missing collection means the query did not resolve (transport/auth). An empty `items` on a
+    // present collection is a legitimately empty archive.
+    if (!collection) hasFailed = true;
     const items = collection?.items ?? [];
     total = collection?.total ?? all.length + items.length;
     all.push(...items);
@@ -251,7 +272,7 @@ async function fetchAllSermonItems<T>(
     if (items.length < ARCHIVE_PAGE_SIZE) break;
   } while (skip < total);
 
-  return all;
+  return { items: all, hasFailed };
 }
 
 export async function getSermon(
@@ -382,7 +403,9 @@ export async function getAllSermons(
     options?.isDraftMode ?? false,
   );
 
-  return items.map((item) => mapSermon(item));
+  // Deliberately ignores `hasFailed`: the public /predicas page degrades to an empty archive
+  // rather than 500-ing on a Contentful blip (ICR-111).
+  return items.items.map((item) => mapSermon(item));
 }
 
 export async function getAllSermonSlugs(
@@ -412,7 +435,16 @@ export async function getAllSermonSlugs(
     false,
   );
 
-  return items.map((item) => ({
+  // Unlike getAllSermons above, an unreadable archive must NOT be reported as an empty one: the
+  // only caller is the ISR sitemap, which would otherwise cache a sitemap with every sermon
+  // removed. Throwing makes Next.js keep serving the last good copy (ICR-123).
+  if (items.hasFailed) {
+    throw new Error(
+      "[getAllSermonSlugs] Contentful did not return the sermon archive; refusing to report it as empty.",
+    );
+  }
+
+  return items.items.map((item) => ({
     slug: item.slug,
     updatedAt: item.sys.publishedAt,
   }));

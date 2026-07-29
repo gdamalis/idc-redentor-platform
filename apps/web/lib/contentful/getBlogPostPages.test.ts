@@ -6,7 +6,11 @@ vi.mock("./fetch", () => ({
 }));
 
 import { fetchGraphQL } from "./fetch";
-import { getBlogPostPage, getLatestBlogPostPages } from "./getBlogPostPages";
+import {
+  getBlogPostPage,
+  getLatestBlogPostPages,
+  getAllBlogPostSlugs,
+} from "./getBlogPostPages";
 
 const mockFetchGraphQL = vi.mocked(fetchGraphQL);
 
@@ -51,5 +55,48 @@ describe("getLatestBlogPostPages", () => {
       expect.not.stringContaining("slug_not"),
       undefined,
     );
+  });
+});
+
+describe("getAllBlogPostSlugs", () => {
+  /**
+   * ICR-123. Consumed only by the ISR sitemap, where a "successful" regeneration that silently
+   * dropped every URL would be cached for an hour. Throwing keeps the last good sitemap served.
+   * The reader-facing blog getters above are untouched and still fail soft.
+   */
+  it("throws on a Contentful error payload instead of reporting no posts", async () => {
+    mockFetchGraphQL.mockResolvedValueOnce({
+      errors: [{ message: "UNAUTHORIZED" }],
+    });
+
+    await expect(getAllBlogPostSlugs("es-AR")).rejects.toThrow(/contentful/i);
+  });
+
+  it("throws when the collection is missing entirely (transport or auth failure)", async () => {
+    mockFetchGraphQL.mockResolvedValueOnce({ data: {} });
+
+    await expect(getAllBlogPostSlugs("es-AR")).rejects.toThrow(/contentful/i);
+  });
+
+  it("does NOT throw when there are genuinely no posts", async () => {
+    mockFetchGraphQL.mockResolvedValueOnce({
+      data: { blogPostPageCollection: { items: [] } },
+    });
+
+    await expect(getAllBlogPostSlugs("es-AR")).resolves.toEqual([]);
+  });
+
+  it("maps slug + publishedAt", async () => {
+    mockFetchGraphQL.mockResolvedValueOnce({
+      data: {
+        blogPostPageCollection: {
+          items: [{ slug: "mi-post", sys: { publishedAt: "2026-06-01T00:00:00.000Z" } }],
+        },
+      },
+    });
+
+    await expect(getAllBlogPostSlugs("es-AR")).resolves.toEqual([
+      { slug: "mi-post", updatedAt: "2026-06-01T00:00:00.000Z" },
+    ]);
   });
 });

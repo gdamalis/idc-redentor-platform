@@ -80,14 +80,82 @@ Fetched by `getSeo.ts`; typed as `SeoContent` in `src/types/Seo.ts`:
 - OG + Twitter `summary_large_image` cards with a sensible default image.
 - Canonical URLs and es-AR/en-US hreflang alternates on every page.
 - `Article` JSON-LD available for blog posts via `buildArticleJsonLd`.
+- `sitemap.xml` + `robots.txt` with per-locale URLs (`src/app/sitemap.ts`, `src/app/robots.ts`) — see below.
 
 **Roadmap (see `docs/product/ai-era-strategy.md`, prioritized):**
 
 1. **More structured data.** `Organization`/`Church` (name, address, geo from `LocationComponent`, service times from `Event`), `Event` for services and conferences, `BlogPosting`, and `BreadcrumbList`. The `Article` JSON-LD is the template to follow.
-2. **`sitemap.xml` and `robots.txt`** with correct per-locale URLs. (`getAllBlogPostSlugs(locale)` in `getBlogPostPages.ts` already returns `{ slug, updatedAt }` pairs ready for a sitemap.)
-3. **Real per-page OG images** instead of the single default, for richer link/AI cards.
-4. **`llms.txt`** describing the church, beliefs, service info, and contact for AI assistants.
-5. **Consistent NAP / local discovery** (name, address, phone) tied to a Google Business listing.
+2. **Real per-page OG images** instead of the single default, for richer link/AI cards.
+3. **`llms.txt`** describing the church, beliefs, service info, and contact for AI assistants.
+4. **Consistent NAP / local discovery** (name, address, phone) tied to a Google Business listing.
+
+## `sitemap.xml` — and why it carries an explicit `revalidate`
+
+`src/app/sitemap.ts` emits the six static pages on the default locale (each with hreflang
+alternates), every blog post on the default locale, and every sermon **once per locale**.
+
+It also exports `revalidate = 3600`, and that line is load-bearing. Next.js treats `sitemap.ts` as
+"a special Route Handler that is **cached by default** unless it uses a Request-time API or dynamic
+config option". Every _page_ escapes that cache by accident — `shouldUseDraftMode()` awaits
+`draftMode()`, a Request-time API — but the sitemap calls no such thing, so without an explicit
+opt-out it is baked at build time and only changes on deploy.
+
+That is not theoretical. On 2026-07-29 the production sitemap was still the 2026-07-17 build
+(`x-vercel-cache: HIT`, `last-modified: Fri, 17 Jul 2026`) and omitted two sermons published on
+2026-07-19, while the `/predicas` page listed them correctly. The failure is invisible from the
+site itself — only crawlers see it.
+
+Why an hour, rather than `dynamic = "force-dynamic"`:
+
+- It does **not** depend on the publish webhook. That webhook does not currently fire in production
+  (see `contentful-data-layer.md` § "KNOWN GAP"), so a purely tag-driven sitemap would be inert.
+  The getters are still tagged `site-content`, so a repaired webhook purges this route immediately —
+  the hour is a floor, not a ceiling.
+- A cached copy still serves if Contentful is briefly unavailable, and crawlers never pay for a cold
+  round-trip — but only because of the failure rule below.
+
+### A failed read must throw, not return empty
+
+ISR's safety net is conditional: _"If an error is thrown while attempting to revalidate data, the
+last successfully generated data will continue to be served from the cache."_ It protects you from a
+regeneration that **fails**, not from one that **succeeds with nothing**.
+
+That distinction matters here because the data layer swallows errors by default. `fetchGraphQL` never
+checks `response.ok`, and the getters coalesce a missing payload to `[]`. Left alone, a Contentful
+blip during an hourly regeneration would produce a perfectly "successful" sitemap containing only the
+six static pages — and cache it for the next hour. Strictly worse than a stale sitemap.
+
+So the sitemap's two data sources distinguish _"we could not read"_ from _"there is nothing"_ and
+throw on the former:
+
+| Getter                | On Contentful error | Why                                                                    |
+| --------------------- | ------------------- | ---------------------------------------------------------------------- |
+| `getAllBlogPostSlugs` | throws              | sitemap-only; an empty result would be cached as a post-less sitemap   |
+| `getAllSermonSlugs`   | throws              | sitemap-only; same                                                     |
+| `getAllSermons`       | returns `[]`        | renders the public `/predicas` page — must not 500 on a blip (ICR-111) |
+
+`fetchAllSermonItems` is shared by the last two, so it **reports** failure (`{ items, hasFailed }`)
+rather than deciding: the page degrades, the sitemap refuses. An empty `items` on a _present_
+collection is a legitimately empty archive and does not throw.
+
+One consequence to know: the route is still prerendered at build, so a Contentful outage **during a
+deploy** now fails the build rather than shipping an empty sitemap. That is the intended trade —
+loud beats silent — but it does mean a deploy can be blocked by Contentful being down.
+
+### `lastModified`
+
+Only Contentful-backed entries carry one, taken from `sys.publishedAt`. The six static pages
+deliberately omit it: they are hard-coded routes with no content timestamp, and the previous
+`lastModified: new Date()` would — once regeneration became hourly — assert that all six changed
+every hour. Crawlers discount timestamps they learn to distrust, which would devalue the real ones
+alongside the fake.
+
+### Guarding it
+
+`apps/web/src/app/sitemap.test.ts` asserts the exported `revalidate`, that a failed getter propagates
+rather than yielding a partial sitemap, and that static entries carry no `lastModified` — all three
+are silent at runtime and surface only as slow SEO decay. To confirm the caching contract by hand,
+look for `Revalidate 1h` next to `/sitemap.xml` in `pnpm build` output.
 
 ## Pitfalls
 

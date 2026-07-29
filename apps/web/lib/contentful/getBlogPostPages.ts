@@ -142,14 +142,35 @@ export async function getAllBlogPostSlugs(
     false,
   );
 
-  return (
-    data?.data?.blogPostPageCollection?.items?.map(
-      (item: { slug: string; sys: { publishedAt: string } }) => ({
-        slug: item.slug,
-        updatedAt: item.sys.publishedAt,
-      }),
-    ) ?? []
-  );
+  // Consumed only by the ISR sitemap. A Contentful error must not be reported as "there are no
+  // posts" — that result would be cached as a sitemap with every post removed. Throwing makes
+  // Next.js keep serving the last good copy (ICR-123). Reader-facing getters in this module still
+  // fail soft; this strictness is deliberately scoped to the sitemap's data source.
+  if (Array.isArray(data?.errors) && data.errors.length > 0) {
+    console.error(
+      "[getAllBlogPostSlugs] Contentful GraphQL error:",
+      JSON.stringify(data.errors),
+    );
+    throw new Error(
+      "[getAllBlogPostSlugs] Contentful returned an error; refusing to report an empty post list.",
+    );
+  }
+
+  // A missing collection means the query did not resolve. A present collection with an empty
+  // `items` is a legitimately empty blog.
+  const collection = data?.data?.blogPostPageCollection as
+    | { items?: Array<{ slug: string; sys: { publishedAt: string } }> }
+    | undefined;
+  if (!collection) {
+    throw new Error(
+      "[getAllBlogPostSlugs] Contentful did not return the post collection; refusing to report it as empty.",
+    );
+  }
+
+  return (collection.items ?? []).map((item) => ({
+    slug: item.slug,
+    updatedAt: item.sys.publishedAt,
+  }));
 }
 
 export async function getBlogPostPage(

@@ -326,6 +326,47 @@ describe("getAllSermonSlugs", () => {
     expect(result).toHaveLength(120);
     expect(mockFetchGraphQL.mock.calls[1][0]).toContain("skip: 100");
   });
+
+  /**
+   * ICR-123. The sitemap is an ISR route: if regeneration SUCCEEDS with a degraded result, that
+   * degraded result is cached for the next hour. Returning [] on a Contentful error would publish a
+   * sitemap with every URL removed. Throwing instead makes Next.js keep serving the last good copy.
+   *
+   * This strictness is deliberately scoped to the slug getter. `getAllSermons` feeds the public
+   * /predicas page and must keep failing soft (ICR-111) — asserted separately below.
+   */
+  it("throws on a Contentful error payload instead of reporting an empty archive", async () => {
+    mockFetchGraphQL.mockResolvedValueOnce({
+      errors: [{ message: "TOO_COMPLEX_QUERY" }],
+    });
+
+    await expect(getAllSermonSlugs("es-AR")).rejects.toThrow(/contentful/i);
+  });
+
+  it("throws when the collection is missing entirely (transport or auth failure)", async () => {
+    mockFetchGraphQL.mockResolvedValueOnce({ data: {} });
+
+    await expect(getAllSermonSlugs("es-AR")).rejects.toThrow(/contentful/i);
+  });
+
+  it("does NOT throw for a genuinely empty archive", async () => {
+    mockFetchGraphQL.mockResolvedValueOnce({
+      data: { sermonCollection: { total: 0, items: [] } },
+    });
+
+    await expect(getAllSermonSlugs("es-AR")).resolves.toEqual([]);
+  });
+});
+
+describe("getAllSermons — stays soft on failure (ICR-111)", () => {
+  it("returns an empty list rather than throwing when Contentful errors", async () => {
+    mockFetchGraphQL.mockResolvedValueOnce({
+      errors: [{ message: "TOO_COMPLEX_QUERY" }],
+    });
+
+    // The public /predicas page renders this. A Contentful blip must not 500 the page.
+    await expect(getAllSermons("es-AR")).resolves.toEqual([]);
+  });
 });
 
 describe("getSermon — audioLanguages + interpreter (ICR-146)", () => {
