@@ -60,8 +60,8 @@ environment is misconfigured for this run.
 
 ## Invocation
 
-Two supported forms. **Do not put a `--` separator before the flags in the `pnpm`
-form** — pnpm 10 forwards that literal `--` token straight into `argv`, and
+Three supported forms. **Do not put a `--` separator before the flags in the `pnpm`
+forms** — pnpm 10 forwards that literal `--` token straight into `argv`, and
 `parseSeedArgs` correctly rejects it as `Unknown argument: --`. (This bit the first
 draft of this script: its own `USAGE` banner documented the `--` form and was
 therefore self-defeating — see the `fix(ICR-155)` commit that corrected it.)
