@@ -86,6 +86,19 @@ export interface SplitNavItems {
 }
 
 /**
+ * The ONE active-route rule, shared by NavLink and the More trigger so the two
+ * surfaces can never disagree. `pathname` must already be locale-stripped
+ * (next-intl's usePathname does this). `/` matches only exactly — a prefix
+ * match there would light up every route — and a section matches its own route
+ * plus nested routes, but NOT a route that merely shares its prefix
+ * (`/peopleXYZ` is not `/people`).
+ */
+export function isNavItemActive(pathname: string, href: string): boolean {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+/**
  * Decides what the bottom tab bar shows. `items` must already be
  * permission-filtered — a user with few permissions gets a flat bar rather
  * than a "More" sheet holding one link.

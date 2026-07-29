@@ -51,6 +51,10 @@ export async function MobileNav({
           triggerLabel={tNav("more")}
           title={tNav("more")}
           closeLabel={tCommon("close")}
+          overflowHrefs={overflow.map((item) => item.href)}
+          className={TAB_CLASS}
+          activeClassName="text-primary"
+          inactiveClassName="text-foreground/70 hover:text-foreground"
         >
           {overflow.map(({ href, labelKey, icon: Icon }) => (
             <NavLink

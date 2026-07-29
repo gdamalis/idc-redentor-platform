@@ -74,27 +74,29 @@ an icon override tries to render. Keep the `children`-based shape.
 
 ## `usePathname` must come from `@src/i18n/routing`, never `next/navigation`
 
-`NavLink`'s active-route check:
+The active-route rule lives in exactly one place, `nav-items.ts#isNavItemActive`, so `NavLink` and
+`MoreSheet`'s trigger can never disagree about what counts as active (a Codex review finding — see
+below — surfaced that `MoreSheet` originally had no active-state logic of its own):
 
 ```ts
-const pathname = usePathname();
-const isActive =
-  href === "/"
-    ? pathname === "/"
-    : pathname === href || pathname.startsWith(`${href}/`);
+export function isNavItemActive(pathname: string, href: string): boolean {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 ```
 
-only works because `usePathname` is imported from `@src/i18n/routing` (next-intl's
-`createNavigation` wrapper), which strips the locale prefix before returning the pathname. `NAV_ITEMS`
-hrefs are locale-free (`/people`, `/families`, …). The raw `next/navigation` `usePathname` returns
-the **unstripped** path — `/es-AR/people` — which matches none of `NAV_ITEMS`'s hrefs. Swap the
-import and every nav item silently goes inactive: no error, no test failure locally if you only
-render at `/` (which happens to work at both prefixed and unprefixed values by coincidence of the
-`===` check), just a shell where nothing ever highlights. This mirrors the repo-wide rule already in
-`CLAUDE.md` § Global Constraints: never `next/link` or `next/navigation` in `apps/admin`, always the
-locale-aware wrappers.
+`NavLink` (and `MoreSheet`, see below) call it with `usePathname()` imported from `@src/i18n/routing`
+(next-intl's `createNavigation` wrapper), which strips the locale prefix before returning the
+pathname. `NAV_ITEMS` hrefs are locale-free (`/people`, `/families`, …). The raw `next/navigation`
+`usePathname` returns the **unstripped** path — `/es-AR/people` — which matches none of `NAV_ITEMS`'s
+hrefs. Swap the import and every nav item silently goes inactive: no error, no test failure locally
+if you only render at `/` (which happens to work at both prefixed and unprefixed values by
+coincidence of the `===` check), just a shell where nothing ever highlights. This mirrors the
+repo-wide rule already in `CLAUDE.md` § Global Constraints: never `next/link` or `next/navigation` in
+`apps/admin`, always the locale-aware wrappers.
 
-Two related traps the active-match logic exists to avoid (both covered by `nav-link.test.tsx`):
+Two related traps the active-match logic exists to avoid (both covered by `nav-items.test.ts` and
+`nav-link.test.tsx`):
 
 - **The `/` prefix trap.** A naive `pathname.startsWith(href)` with `href === "/"` matches _every_
   route, because every path starts with `/`. Dashboard gets an exact-equality check instead.
@@ -102,6 +104,48 @@ Two related traps the active-match logic exists to avoid (both covered by `nav-l
   merely shares a string prefix. The check is `startsWith(`${href}/`)` — with the trailing slash —
   so a deep route like `/people/123` keeps `/people` active, but a sibling route with the same
   prefix does not.
+
+## `MoreSheet` is a controlled Dialog that closes itself on navigation
+
+`MoreSheet` originally rendered Radix's `<Dialog>` fully **uncontrolled** (no `open`/`onOpenChange`)
+and had no pathname awareness at all — a post-PR Codex review (P2) caught that nothing could ever
+close it. The trigger tap navigates via the `overflow` links rendered as its `children`, but `AppShell`
+is rendered by the `(app)` layout, which Next.js does **not** remount on in-app navigation — only
+`children` re-render — so the `MoreSheet` client component instance (and an uncontrolled Dialog's
+open state) survives the tap. The result: navigating to an overflow destination (e.g. `/users`) left
+the sheet, and its Radix focus trap, covering the newly loaded page until the user manually dismissed
+it.
+
+The fix makes the Dialog controlled and resets `open` whenever `usePathname()` returns a different
+value than it did on the previous render:
+
+```ts
+const pathname = usePathname();
+const [open, setOpen] = useState(false);
+const [priorPathname, setPriorPathname] = useState(pathname);
+
+if (pathname !== priorPathname) {
+  setPriorPathname(pathname);
+  setOpen(false);
+}
+```
+
+This is deliberately **not** a `useEffect` — the repo's `react-hooks/set-state-in-effect` lint rule
+(`pnpm lint`) forbids a bare `setState` call in an effect body. Comparing against a previous-value
+state and calling `setState` directly in the render body is React's documented "adjusting state when
+a prop changes" pattern: React bails out and re-renders with the reset state before committing, so
+there is no extra painted frame where the sheet is still visibly open over the page the user just
+navigated to. `more-sheet.test.tsx` pins this with the regression guard: open the sheet, re-render
+with a different pathname, assert the dialog content is gone.
+
+The same Codex round also found the trigger had a single hardcoded `className` and no `aria-current`
+— so on any of the (currently four) overflow destinations, the closed mobile bar showed **no** active
+indication anywhere. `MoreSheet` now takes `overflowHrefs: readonly string[]` (the overflow items'
+hrefs only — strings, so nothing crosses the RSC boundary illegally) and derives
+`overflowHrefs.some((href) => isNavItemActive(pathname, href))` for its own `aria-current` +
+`activeClassName`/`inactiveClassName`, mirroring `NavLink`'s prop shape exactly. `mobile-nav.tsx`
+passes it the same `TAB_CLASS`/`"text-primary"`/`"text-foreground/70 hover:text-foreground"` strings
+already used for the primary tabs, so the More cell is visually identical to its siblings.
 
 ## Permission filtering is resolved once in `AppShell` — and is still convenience only
 

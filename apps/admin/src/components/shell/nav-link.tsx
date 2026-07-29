@@ -3,6 +3,7 @@
 import { Link, usePathname } from "@src/i18n/routing";
 import { cn } from "@idcr/ui";
 import type { ReactNode } from "react";
+import { isNavItemActive } from "@src/components/shell/nav-items";
 
 interface NavLinkProps {
   readonly href: string;
@@ -32,10 +33,7 @@ export function NavLink({
   children,
 }: NavLinkProps) {
   const pathname = usePathname();
-  const isActive =
-    href === "/"
-      ? pathname === "/"
-      : pathname === href || pathname.startsWith(`${href}/`);
+  const isActive = isNavItemActive(pathname, href);
 
   return (
     <Link

@@ -3,6 +3,7 @@ import {
   NAV_ITEMS,
   TAB_BAR_FLAT_MAX,
   TAB_BAR_PRIMARY_MAX,
+  isNavItemActive,
   splitNavItems,
   type NavItem,
 } from "./nav-items";
@@ -88,5 +89,28 @@ describe("splitNavItems", () => {
       "/roles",
       "/settings",
     ]);
+  });
+});
+
+describe("isNavItemActive", () => {
+  it("marks the dashboard active only at the exact root", () => {
+    expect(isNavItemActive("/", "/")).toBe(true);
+  });
+
+  it("does NOT mark the dashboard active on another route", () => {
+    // The trap: a naive startsWith("/") lights up every single route.
+    expect(isNavItemActive("/people", "/")).toBe(false);
+  });
+
+  it("marks a section active on its own route", () => {
+    expect(isNavItemActive("/people", "/people")).toBe(true);
+  });
+
+  it("keeps the section active on a nested detail route", () => {
+    expect(isNavItemActive("/people/123", "/people")).toBe(true);
+  });
+
+  it("does NOT activate on a route that merely shares a prefix", () => {
+    expect(isNavItemActive("/peopleXYZ", "/people")).toBe(false);
   });
 });
