@@ -1,15 +1,23 @@
 #!/usr/bin/env node
 /**
- * Regression smoke check for the root-invoked /predica harness scripts (ICR-145).
+ * Regression smoke check for the root-invoked /predica harness scripts (ICR-145, ICR-116).
  *
- * Runs the PDF + featured-image scripts against the committed fixture and asserts
- * each one exits 0 AND writes a non-empty output. This guards the bare-specifier
- * resolution of "@playwright/test" from the repo root: before ICR-145 these scripts
- * died with ERR_MODULE_NOT_FOUND, because @playwright/test was installed only into
- * apps/web/node_modules and Node's resolution walk never reaches it.
+ * Runs the render scripts (PDF + featured image) and the Contentful-entry schema
+ * validator against the committed fixture, asserting each exits 0 AND produces a
+ * positive signal — a non-empty output file for the renderers, an explicit stdout
+ * marker for the validator.
  *
- * Hermetic by construction: the featured script runs with --no-ai, so there is no
- * network call and no GEMINI_API_KEY is required.
+ * Two things are guarded:
+ *   1. Bare-specifier resolution of "@playwright/test" from the repo root (ICR-145):
+ *      before that fix these scripts died with ERR_MODULE_NOT_FOUND, because
+ *      @playwright/test was installed only into apps/web/node_modules and Node's
+ *      resolution walk never reaches it.
+ *   2. Fixture/schema drift (ICR-116): the committed fixture must satisfy BOTH
+ *      validateSermon (renderers) and validateSermonForEntry (publisher). It
+ *      previously satisfied only the first, silently.
+ *
+ * Hermetic by construction: the featured script runs with --no-ai and the entry
+ * builder runs as a dry run, so there is no network call and no API key is required.
  *
  * Usage: pnpm predica:smoke
  */
@@ -29,12 +37,29 @@ const CASES = [
   {
     script: "build-predica-pdf.mjs",
     args: [],
+    usesOutDir: true,
     outputs: ["predica.es-AR.pdf", "predica.en-US.pdf"],
   },
   {
     script: "build-predica-featured.mjs",
     args: ["--no-ai"],
+    usesOutDir: true,
     outputs: ["featured.png"],
+  },
+  {
+    // Schema gate (ICR-116). The committed fixture must stay valid for the
+    // Contentful ENTRY builder, not just the renderers — the two validators are
+    // different, and the fixture used to satisfy only the first.
+    //
+    // Hermetic: invoked with no flags this script is a pure validate-and-summarise
+    // dry run (see build-sermon-entry.mjs:18) — no network, no credentials, no
+    // writes — so it is safe in CI. If that ever stops being true, this case has to
+    // be reconsidered rather than quietly dropped.
+    script: "build-sermon-entry.mjs",
+    args: [],
+    usesOutDir: false,
+    outputs: [],
+    stdoutIncludes: "sermon.json: VALID",
   },
 ];
 
@@ -52,11 +77,22 @@ try {
   if (!existsSync(FIXTURE)) {
     fail(`fixture not found: ${FIXTURE}`);
   } else {
-    for (const { script, args, outputs } of CASES) {
+    for (const {
+      script,
+      args,
+      usesOutDir,
+      outputs,
+      stdoutIncludes,
+    } of CASES) {
       const scriptPath = path.join(HERE, script);
       const res = spawnSync(
         process.execPath,
-        [scriptPath, FIXTURE, ...args, "--out", outDir],
+        [
+          scriptPath,
+          FIXTURE,
+          ...args,
+          ...(usesOutDir ? ["--out", outDir] : []),
+        ],
         { encoding: "utf8" },
       );
 
@@ -70,6 +106,19 @@ try {
             `--- stdout ---\n${res.stdout}\n--- stderr ---\n${res.stderr}`,
         );
         continue;
+      }
+
+      // Assert positively, same discipline as the byte-size check below: a validator
+      // that printed nothing is indistinguishable from one that never ran.
+      if (stdoutIncludes) {
+        if (!res.stdout.includes(stdoutIncludes)) {
+          fail(
+            `${script}: stdout did not contain ${JSON.stringify(stdoutIncludes)}\n` +
+              `--- stdout ---\n${res.stdout}\n--- stderr ---\n${res.stderr}`,
+          );
+          continue;
+        }
+        process.stdout.write(`✓ ${script} → ${stdoutIncludes}\n`);
       }
 
       // Assert positively: the artifact must exist AND be non-empty. A check that
