@@ -277,7 +277,7 @@ This is behaviour-preserving for the UI path (`inviteUserAction` always passes a
 No HTTP route, no Server Action, no public API. The CLI contract is the interface:
 
 ```
-Usage: pnpm --filter @idcr/admin seed:admin -- --email <address> [options]
+Usage: pnpm --filter @idcr/admin seed:admin --email <address> [options]
 
   --email <address>   REQUIRED (or ADMIN_SEED_EMAIL). The first Admin's address.
   --locale <loc>      es-AR | en-US   (default: es-AR)
@@ -427,7 +427,7 @@ Content the doc must carry:
 
   # Production — URI exported for one command only, never committed
   MONGODB_URI='mongodb+srv://…/ministry-admin?authSource=admin' \
-    pnpm --filter @idcr/admin seed:admin -- --email <address> --yes
+    pnpm --filter @idcr/admin seed:admin --email <address> --yes
   ```
 
 - **The database rides in the URI path** — no DB-name env var exists; a URI missing its path silently
@@ -531,7 +531,7 @@ Commit: `feat(ICR-155): add guarded seedAdmin bootstrap orchestration`
 
 **CP4 — CLI shell + package wiring**
 Files: `apps/admin/scripts/seed-admin.ts`, `apps/admin/package.json`, `pnpm-lock.yaml`
-Verify: `pnpm --filter @idcr/admin seed:admin -- --help` style paths exercised manually —
+Verify: `pnpm --filter @idcr/admin seed:admin --help` style paths exercised manually —
 `CI=1 … seed:admin` exits 2; no `--email` exits 2; `--dry-run` against a **`ministry-admin-test`**
 URI writes nothing; `MONGODB_URI` pointed at a `website*` name exits 2. `pnpm type-check` covers the
 script. Confirm `turbo.json`/workflows untouched.

@@ -430,7 +430,7 @@ const VALUE_FLAGS = {
   "--locale": "locale",
 } as const;
 
-export const USAGE = `Usage: pnpm --filter @idcr/admin seed:admin -- --email <address> [options]
+export const USAGE = `Usage: pnpm --filter @idcr/admin seed:admin --email <address> [options]
 
   --email <address>   REQUIRED (or ADMIN_SEED_EMAIL). The first Admin's address.
   --locale <loc>      ${i18n.locales.join(" | ")}   (default: ${i18n.defaultLocale})
@@ -1215,7 +1215,7 @@ Each of these must exit non-zero and write nothing. Run from the repo root.
 
 ```bash
 # Guard 5a — CI refusal (before any DB access)
-CI=1 pnpm --filter @idcr/admin seed:admin -- --email a@example.com --yes > /tmp/t4-ci.log 2>&1
+CI=1 pnpm --filter @idcr/admin seed:admin --email a@example.com --yes > /tmp/t4-ci.log 2>&1
 echo "CI refusal exit=$?  (expect 2)"; cat /tmp/t4-ci.log
 
 # Guard 4 — no email
@@ -1223,22 +1223,22 @@ pnpm --filter @idcr/admin seed:admin > /tmp/t4-noemail.log 2>&1
 echo "no-email exit=$?  (expect 2)"
 
 # Guard 4 — malformed email
-pnpm --filter @idcr/admin seed:admin -- --email nope > /tmp/t4-bademail.log 2>&1
+pnpm --filter @idcr/admin seed:admin --email nope > /tmp/t4-bademail.log 2>&1
 echo "bad-email exit=$?  (expect 2)"
 
 # Guard 1 — the driver's silent `test` fallback (URI with no path database)
 MONGODB_URI='mongodb://127.0.0.1:27017' \
-  pnpm --filter @idcr/admin seed:admin -- --email a@example.com --yes > /tmp/t4-testdb.log 2>&1
+  pnpm --filter @idcr/admin seed:admin --email a@example.com --yes > /tmp/t4-testdb.log 2>&1
 echo "test-fallback exit=$?  (expect 2)"; grep -c 'ministry-admin' /tmp/t4-testdb.log
 
 # Guard 1 — the WEBSITE database must be refused
 MONGODB_URI='mongodb://127.0.0.1:27017/website' \
-  pnpm --filter @idcr/admin seed:admin -- --email a@example.com --yes > /tmp/t4-website.log 2>&1
+  pnpm --filter @idcr/admin seed:admin --email a@example.com --yes > /tmp/t4-website.log 2>&1
 echo "website-db exit=$?  (expect 2)"
 
 # Guard 1 is NOT relaxed by --force
 MONGODB_URI='mongodb://127.0.0.1:27017/website' \
-  pnpm --filter @idcr/admin seed:admin -- --email a@example.com --yes --force > /tmp/t4-force.log 2>&1
+  pnpm --filter @idcr/admin seed:admin --email a@example.com --yes --force > /tmp/t4-force.log 2>&1
 echo "website-db+force exit=$?  (expect 2)"
 
 # Guard 6 — no secret ever reaches the output.
@@ -1246,7 +1246,7 @@ echo "website-db+force exit=$?  (expect 2)"
 # scheme-then-userinfo sequence on one line (the pre-commit hook rejects it).
 SCHEME='mongodb+srv://'; CRED='seeduser:sup3rsecret'; HOST='cluster0.abcde.mongodb.net/website'
 MONGODB_URI="$SCHEME$CRED@$HOST" \
-  pnpm --filter @idcr/admin seed:admin -- --email a@example.com --yes > /tmp/t4-secret.log 2>&1
+  pnpm --filter @idcr/admin seed:admin --email a@example.com --yes > /tmp/t4-secret.log 2>&1
 echo "exit=$?"
 grep -c 'sup3rsecret\|seeduser' /tmp/t4-secret.log   # MUST print 0
 grep -c 'cluster0.abcde.mongodb.net' /tmp/t4-secret.log  # MUST print >= 1
@@ -1321,7 +1321,7 @@ Create `docs/architecture/admin-bootstrap.md` covering, in this order:
 
    # Production — the URI is exported for ONE command and never committed
    MONGODB_URI='mongodb+srv://…/ministry-admin?authSource=admin' \
-     pnpm --filter @idcr/admin seed:admin -- --email <address> --yes
+     pnpm --filter @idcr/admin seed:admin --email <address> --yes
    ```
 
    Always `--dry-run` first and read the printed database name before re-running for real.
