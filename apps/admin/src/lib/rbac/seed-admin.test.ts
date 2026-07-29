@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  USAGE,
   exitCodeFor,
   parseSeedArgs,
   redactMongoHost,
@@ -9,7 +10,26 @@ import type { SeedAdminDeps, SeedArgs } from "./seed-admin";
 
 const noEnv = {} as NodeJS.ProcessEnv;
 
+describe("USAGE", () => {
+  // pnpm 10 forwards a literal `--` token into argv for a `--filter <pkg> <script> --` invocation,
+  // and parseSeedArgs correctly rejects it as an unknown argument (see the behavioural lock below).
+  // Printing that exact form as the documented invocation would send an operator who hits a usage
+  // error straight into a second usage error.
+  it("does NOT document the pnpm `--` separator form", () => {
+    expect(USAGE).not.toContain("seed:admin -- ");
+  });
+
+  it("documents the working direct-flag form", () => {
+    expect(USAGE).toContain("seed:admin --email");
+  });
+});
+
 describe("parseSeedArgs", () => {
+  it("refuses a bare `--` as an unknown argument (this is why the pnpm `--` form is not documented)", () => {
+    const result = parseSeedArgs(["--", "--email", "a@example.com"], noEnv);
+    expect(result).toMatchObject({ ok: false, reason: "usage" });
+  });
+
   it("parses an email and defaults locale to es-AR", () => {
     const result = parseSeedArgs(["--email", "First@Example.COM"], noEnv);
     expect(result).toEqual({

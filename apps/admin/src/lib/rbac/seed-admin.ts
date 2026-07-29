@@ -58,7 +58,7 @@ const VALUE_FLAGS = {
   "--locale": "locale",
 } as const;
 
-export const USAGE = `Usage: pnpm --filter @idcr/admin seed:admin -- --email <address> [options]
+export const USAGE = `Usage: pnpm --filter @idcr/admin seed:admin --email <address> [options]
 
   --email <address>   REQUIRED (or ADMIN_SEED_EMAIL). The first Admin's address.
   --locale <loc>      ${i18n.locales.join(" | ")}   (default: ${i18n.defaultLocale})
