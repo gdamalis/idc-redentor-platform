@@ -40,7 +40,6 @@ describe("parseSeedArgs", () => {
         force: false,
         yes: false,
         dryRun: false,
-        sendEmail: false,
       },
     });
   });
@@ -64,21 +63,25 @@ describe("parseSeedArgs", () => {
 
   it("parses every boolean flag", () => {
     const result = parseSeedArgs(
-      [
-        "--email",
-        "a@example.com",
-        "--force",
-        "--yes",
-        "--dry-run",
-        "--send-email",
-      ],
+      ["--email", "a@example.com", "--force", "--yes", "--dry-run"],
       noEnv,
     );
     expect(result.ok && result.args).toMatchObject({
       force: true,
       yes: true,
       dryRun: true,
-      sendEmail: true,
+    });
+  });
+
+  // `--send-email` was removed: the email templates render through
+  // next-intl/server's getTranslations, whose `next-intl/config` alias only
+  // exists inside a Next.js build, so a standalone tsx process could never send
+  // — it threw on every attempt. Pinned so the flag cannot quietly return
+  // without the underlying CLI-safe translation path being solved first.
+  it("rejects the removed --send-email flag as unknown", () => {
+    expect(parseSeedArgs(["--email", "a@example.com", "--send-email"], noEnv)).toMatchObject({
+      ok: false,
+      reason: "usage",
     });
   });
 
@@ -193,7 +196,6 @@ const ARGS: SeedArgs = {
   force: false,
   yes: true,
   dryRun: false,
-  sendEmail: false,
 };
 
 // Fresh, fully-controlled collaborators. No vi.mock needed: seedAdmin takes

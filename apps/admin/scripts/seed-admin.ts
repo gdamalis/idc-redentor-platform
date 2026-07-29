@@ -10,7 +10,6 @@
 import { writeSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
 import { getAdminDb } from "@src/service/database.service";
-import { sendInviteEmail } from "@src/service/auth-email";
 import {
   USAGE,
   exitCodeFor,
@@ -148,39 +147,6 @@ async function main(): Promise<never> {
       reason: "write-failed",
       message: `The seed failed: ${error instanceof Error ? error.message : String(error)}`,
     });
-  }
-
-  // Opt-in courtesy only. The invite URL carries no token, so a failed send is
-  // never fatal: the invite is already committed and the human can sign in.
-  if (result.ok && !result.dryRun && args.sendEmail) {
-    const base = process.env.NEXT_PUBLIC_ADMIN_BASE_URL;
-    if (!base) {
-      narrate("--send-email skipped: NEXT_PUBLIC_ADMIN_BASE_URL is not set.");
-    } else {
-      // Best-effort means best-effort: the invite is ALREADY committed by this
-      // point, so nothing here may change the outcome. `sendEmail` resolves a
-      // boolean on an API-level failure, but it also THROWS outright when the
-      // mail provider is unconfigured (`createResendAdapter()` throws on a
-      // missing RESEND_API_KEY). An unguarded await would escape to
-      // `main().catch`, exit 1 and emit no result — reporting a successful
-      // bootstrap as a failure (Codex P2).
-      let sent = false;
-      let failure = "";
-      try {
-        sent = await sendInviteEmail({
-          to: args.email,
-          inviteUrl: `${base}/${args.locale}/login`,
-          locale: args.locale,
-        });
-      } catch (error) {
-        failure = error instanceof Error ? error.message : String(error);
-      }
-      narrate(
-        sent
-          ? "Invite email sent."
-          : `Invite email FAILED to send (the invite is still valid${failure ? `; ${failure}` : ""}).`,
-      );
-    }
   }
 
   if (!result.ok) narrate(result.message);

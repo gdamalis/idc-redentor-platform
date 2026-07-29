@@ -114,7 +114,7 @@ shell. Rationale: `vitest` only sees `src/**`.
 **R2 — `parseSeedArgs(argv, env)`** (pure) returns
 `{ok:true; args: SeedArgs} | {ok:false; reason:"invalid-email"|"usage"; message: string}`.
 Flags: `--email <addr>` (or `ADMIN_SEED_EMAIL`), `--locale es-AR|en-US` (default `i18n.defaultLocale`),
-`--force`, `--yes`, `--dry-run`, `--send-email`. Unknown flags → `usage`. Email is Zod-validated then
+`--force`, `--yes`, `--dry-run`. Unknown flags → `usage`. Email is Zod-validated then
 run through `normalizeEmail()`.
 
 **R3 — `seedAdmin(input, deps)`** (orchestration) returns a union discriminated on `dryRun`, so a

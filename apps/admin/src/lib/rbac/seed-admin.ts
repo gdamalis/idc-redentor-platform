@@ -18,7 +18,6 @@ export interface SeedArgs {
   readonly force: boolean;
   readonly yes: boolean;
   readonly dryRun: boolean;
-  readonly sendEmail: boolean;
 }
 
 export type SeedAdminFailure =
@@ -51,7 +50,6 @@ const BOOLEAN_FLAGS = {
   "--force": "force",
   "--yes": "yes",
   "--dry-run": "dryRun",
-  "--send-email": "sendEmail",
 } as const;
 
 const VALUE_FLAGS = {
@@ -67,7 +65,6 @@ export const USAGE = `Usage: pnpm --filter @idcr/admin seed:admin --email <addre
                       Never relaxes the database guard.
   --yes               Skip the interactive confirmation.
   --dry-run           Print the plan; write nothing.
-  --send-email        Also send the courtesy invite email (opt-in; needs mail env).
 
 Env:  MONGODB_URI (required - its PATH decides the target database)
       ADMIN_SEED_EMAIL (optional alternative to --email)
@@ -79,7 +76,6 @@ const seedArgsSchema = z.object({
   force: z.boolean().default(false),
   yes: z.boolean().default(false),
   dryRun: z.boolean().default(false),
-  sendEmail: z.boolean().default(false),
 });
 
 export function parseSeedArgs(

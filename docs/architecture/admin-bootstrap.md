@@ -244,11 +244,20 @@ stdout.
 > for a machine. `./node_modules/.bin/tsx apps/admin/scripts/seed-admin.ts …` emits
 > exactly the one line.
 
-The courtesy `--send-email` is best-effort and can never change any of this: the invite
-is already committed by the time it runs, and both a delivery failure _and_ a thrown
-mail-configuration error (e.g. `RESEND_API_KEY` unset, which makes `createResendAdapter()`
-throw) are caught, narrated to stderr, and leave the successful result and its exit 0
-intact.
+There is deliberately **no invite-email flag**. An earlier draft carried an opt-in
+`--send-email`; it was removed because it could never work. The templates render
+through `next-intl/server`'s `getTranslations`, which resolves via the
+`next-intl/config` alias that `next-intl/plugin` installs during a **Next.js build** —
+so from a standalone `tsx` process it throws (`getTranslations is not supported in
+Client Components`) on every attempt. Keeping it would have shipped a flag whose only
+observable behaviour was reporting a failed send.
+
+Nothing is lost: the bootstrap invitee is the operator running the command, the invite
+URL carries no token (`${NEXT_PUBLIC_ADMIN_BASE_URL}/${locale}/login`), and the ticket
+always classed the mail as a courtesy rather than a security artifact. Removing it also
+makes the script's required environment genuinely just `MONGODB_URI` — which was the
+stated reason for making it opt-in in the first place. Invite from `/users` if you want
+the email.
 
 ## After the run
 
