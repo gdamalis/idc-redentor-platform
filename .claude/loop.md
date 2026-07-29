@@ -1,4 +1,4 @@
-Keep vigil on the current branch's open pull request using the divinelab:vigil skill.
+Keep vigil on the current branch's open pull request using the yoke:vigil skill.
 
 Each iteration:
 1. Address unresolved review comments (superpowers:receiving-code-review; reply to each thread).
