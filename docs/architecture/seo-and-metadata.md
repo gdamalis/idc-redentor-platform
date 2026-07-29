@@ -112,11 +112,50 @@ Why an hour, rather than `dynamic = "force-dynamic"`:
   The getters are still tagged `site-content`, so a repaired webhook purges this route immediately —
   the hour is a floor, not a ceiling.
 - A cached copy still serves if Contentful is briefly unavailable, and crawlers never pay for a cold
-  round-trip.
+  round-trip — but only because of the failure rule below.
 
-`apps/web/src/app/sitemap.test.ts` asserts the exported `revalidate` for exactly this reason: the
-regression is silent at runtime and shows up only as slow SEO decay. To confirm it by hand, look for
-`Revalidate 1h` next to `/sitemap.xml` in `pnpm build` output.
+### A failed read must throw, not return empty
+
+ISR's safety net is conditional: _"If an error is thrown while attempting to revalidate data, the
+last successfully generated data will continue to be served from the cache."_ It protects you from a
+regeneration that **fails**, not from one that **succeeds with nothing**.
+
+That distinction matters here because the data layer swallows errors by default. `fetchGraphQL` never
+checks `response.ok`, and the getters coalesce a missing payload to `[]`. Left alone, a Contentful
+blip during an hourly regeneration would produce a perfectly "successful" sitemap containing only the
+six static pages — and cache it for the next hour. Strictly worse than a stale sitemap.
+
+So the sitemap's two data sources distinguish _"we could not read"_ from _"there is nothing"_ and
+throw on the former:
+
+| Getter                | On Contentful error | Why                                                                    |
+| --------------------- | ------------------- | ---------------------------------------------------------------------- |
+| `getAllBlogPostSlugs` | throws              | sitemap-only; an empty result would be cached as a post-less sitemap   |
+| `getAllSermonSlugs`   | throws              | sitemap-only; same                                                     |
+| `getAllSermons`       | returns `[]`        | renders the public `/predicas` page — must not 500 on a blip (ICR-111) |
+
+`fetchAllSermonItems` is shared by the last two, so it **reports** failure (`{ items, hasFailed }`)
+rather than deciding: the page degrades, the sitemap refuses. An empty `items` on a _present_
+collection is a legitimately empty archive and does not throw.
+
+One consequence to know: the route is still prerendered at build, so a Contentful outage **during a
+deploy** now fails the build rather than shipping an empty sitemap. That is the intended trade —
+loud beats silent — but it does mean a deploy can be blocked by Contentful being down.
+
+### `lastModified`
+
+Only Contentful-backed entries carry one, taken from `sys.publishedAt`. The six static pages
+deliberately omit it: they are hard-coded routes with no content timestamp, and the previous
+`lastModified: new Date()` would — once regeneration became hourly — assert that all six changed
+every hour. Crawlers discount timestamps they learn to distrust, which would devalue the real ones
+alongside the fake.
+
+### Guarding it
+
+`apps/web/src/app/sitemap.test.ts` asserts the exported `revalidate`, that a failed getter propagates
+rather than yielding a partial sitemap, and that static entries carry no `lastModified` — all three
+are silent at runtime and surface only as slow SEO decay. To confirm the caching contract by hand,
+look for `Revalidate 1h` next to `/sitemap.xml` in `pnpm build` output.
 
 ## Pitfalls
 

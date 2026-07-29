@@ -89,4 +89,52 @@ describe("sitemap", () => {
     expect(urls).toContain(`${BASE_URL}/${i18n.defaultLocale}/predicas`);
     expect(urls).toContain(`${BASE_URL}/${i18n.defaultLocale}/blog`);
   });
+
+  /**
+   * ICR-123 review follow-up. Because this route is ISR, a regeneration that *succeeds* with a
+   * degraded result caches that degraded result for the next hour. Propagating the failure is what
+   * makes Next.js keep serving the previous complete sitemap: "If an error is thrown while
+   * attempting to revalidate data, the last successfully generated data will continue to be served
+   * from the cache."
+   */
+  it.each([
+    ["sermons", () => getAllSermonSlugs.mockRejectedValue(new Error("Contentful error"))],
+    ["blog posts", () => getAllBlogPostSlugs.mockRejectedValue(new Error("Contentful error"))],
+  ])("fails regeneration rather than emitting a sitemap missing all %s", async (_label, arrange) => {
+    arrange();
+
+    const { default: sitemap } = await importSitemap();
+
+    await expect(sitemap()).rejects.toThrow();
+  });
+
+  /**
+   * `lastModified: new Date()` on a hard-coded route is not a modification time — it is "now". Once
+   * the route regenerates hourly it would claim all six static pages changed every hour, which is
+   * exactly the kind of untrustworthy signal crawlers learn to discount. Contentful-backed entries
+   * keep their real timestamps; these have none to report, so they report none.
+   */
+  it("omits lastModified on static pages, but keeps it on Contentful-backed entries", async () => {
+    getAllBlogPostSlugs.mockResolvedValue([
+      { slug: "el-perdon-de-jesus", updatedAt: "2026-06-01T00:00:00.000Z" },
+    ]);
+    getAllSermonSlugs.mockResolvedValue([
+      { slug: "dios-toca-la-puerta", updatedAt: "2026-07-19T17:26:09.116Z" },
+    ]);
+
+    const entries = await (await importSitemap()).default();
+    const bySuffix = (suffix: string) =>
+      entries.find((entry) => entry.url.endsWith(suffix));
+
+    expect(bySuffix(`/${i18n.defaultLocale}`)?.lastModified).toBeUndefined();
+    expect(bySuffix("/predicas")?.lastModified).toBeUndefined();
+    expect(bySuffix("/blog")?.lastModified).toBeUndefined();
+
+    expect(bySuffix("/blog/el-perdon-de-jesus")?.lastModified).toEqual(
+      new Date("2026-06-01T00:00:00.000Z"),
+    );
+    expect(bySuffix("/es-AR/predicas/dios-toca-la-puerta")?.lastModified).toEqual(
+      new Date("2026-07-19T17:26:09.116Z"),
+    );
+  });
 });
