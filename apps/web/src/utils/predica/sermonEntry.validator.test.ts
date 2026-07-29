@@ -4,9 +4,11 @@
  * validateSermonForEntry() lives ONLY in the .mjs entry builder (there is no Zod and no TS
  * twin of it), so these drive the real script the way the orchestrator does — by spawning it.
  *
- * NOTE: the committed .claude/scripts/predica/__fixtures__/sample-sermon.json is a PDF
- * fixture and does NOT satisfy this validator (verified: exit 2, 9 errors, before any change
- * in this ticket). We therefore build a minimal VALID document inline instead of leaning on it.
+ * NOTE: as of ICR-116 the committed .claude/scripts/predica/__fixtures__/sample-sermon.json DOES
+ * satisfy this validator — it used to fail with exit 2 / 9 errors, and `pnpm predica:smoke` now
+ * gates that it keeps passing. These tests still build a minimal document inline on purpose: each
+ * case varies the provenance fields independently, which one shared fixture cannot express, and
+ * binding them to it would make an unrelated fixture edit fail tests that are not about fixtures.
  */
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
