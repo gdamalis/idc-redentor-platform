@@ -32,7 +32,9 @@ function withRequestPathnameHeader(request: NextRequest): NextRequest {
 const PUBLIC_AUTH_PATHS = ["/login", "/reset-password", "/no-access"];
 
 function isKnownLocale(segment: string | undefined): segment is string {
-  return segment != null && (routing.locales as readonly string[]).includes(segment);
+  return (
+    segment != null && (routing.locales as readonly string[]).includes(segment)
+  );
 }
 
 /**
@@ -42,7 +44,10 @@ function isKnownLocale(segment: string | undefined): segment is string {
  * — in that case nothing is stripped, since there's no locale segment to
  * remove.
  */
-function splitLocaleAndAppPath(pathname: string): { locale: string; appPath: string } {
+function splitLocaleAndAppPath(pathname: string): {
+  locale: string;
+  appPath: string;
+} {
   const [maybeLocale, ...rest] = pathname.split("/").filter(Boolean);
   if (isKnownLocale(maybeLocale)) {
     return { locale: maybeLocale, appPath: `/${rest.join("/")}` };
@@ -54,38 +59,48 @@ function isPublicAuthPath(appPath: string): boolean {
   return PUBLIC_AUTH_PATHS.some((publicPath) => appPath.startsWith(publicPath));
 }
 
+// `webmanifest` MUST stay in this list: the matcher below catches
+// `/manifest.webmanifest`, and without a bypass an unauthenticated browser
+// fetching the manifest gets redirected to /login — so the app is not
+// installable from the sign-in screen, which is where it gets installed.
+const SAFE_ASSET_EXTENSIONS = [
+  "ico",
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "svg",
+  "webp",
+  "css",
+  "js",
+  "json",
+  "webmanifest",
+  "xml",
+  "txt",
+  "woff",
+  "woff2",
+  "ttf",
+  "eot",
+] as const;
+
+export function isSafeAssetPath(pathname: string): boolean {
+  const extension = pathname.split(".").pop()?.toLowerCase();
+  if (!extension || extension === pathname.toLowerCase()) {
+    return false;
+  }
+  return (SAFE_ASSET_EXTENSIONS as readonly string[]).includes(extension);
+}
+
 export async function proxy(request: NextRequest) {
   // Handle CORS preflight requests
   if (request.method === "OPTIONS") {
     return new NextResponse(null, { status: 200 });
   }
 
-  // Extract file extension if present
   const pathname = request.nextUrl.pathname;
-  const fileExtension = pathname.split(".").pop()?.toLowerCase();
-
-  // Common safe assets to bypass middleware
-  const safeExtensions = [
-    "ico",
-    "png",
-    "jpg",
-    "jpeg",
-    "gif",
-    "svg",
-    "webp",
-    "css",
-    "js",
-    "json",
-    "xml",
-    "txt",
-    "woff",
-    "woff2",
-    "ttf",
-    "eot",
-  ];
 
   // Skip middleware for safe asset extensions
-  if (fileExtension && safeExtensions.includes(fileExtension)) {
+  if (isSafeAssetPath(pathname)) {
     return NextResponse.next();
   }
 
