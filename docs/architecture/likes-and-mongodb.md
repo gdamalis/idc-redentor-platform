@@ -161,6 +161,27 @@ ignored the URI path. So the safe order is always:
 
 Local development needs the same path appended in `apps/web/.env.local`.
 
+### Side effect: this fixed likes outside production
+
+The hardcoded `"website"` was not merely untidy — on staging and preview it named a database the
+Mongo user is **not authorized to read**, so `find` threw and `/api/likes` fail-softed to `503`
+everywhere except production. Deriving the name from the URI targets that environment's own
+database, so likes work there now. Measured on the same slug during ICR-143 QA:
+
+| Environment               | Code                                    | `GET /api/likes`                      |
+| ------------------------- | --------------------------------------- | ------------------------------------- |
+| `staging.idcredentor.org` | pre-ICR-143 (hardcoded `db("website")`) | `503 {"error":"Service Unavailable"}` |
+| ICR-143 preview           | URI-derived `getWebsiteDb()`            | `200 {"count":1,"hasLiked":false}`    |
+
+Two consequences for anyone reading old material:
+
+- This is the failure [ICR-103](https://divinelab.atlassian.net/browse/ICR-103) tracked; treat any
+  "the likes DB is unreachable on preview" note written before 2026-07-29 as obsolete.
+- `apps/web/e2e/blog/fail-soft-likes-mongo.spec.ts` (the ICR-111 acceptance suite) deliberately
+  exercised that degraded path against a genuinely broken database. It now probes
+  `GET /api/likes` and **self-skips when the response is not `503`**, so it still runs wherever the
+  degraded path is real. Fail-soft itself stays covered by `src/service/like.service.test.ts`.
+
 ## The like feature
 
 ### Data model
