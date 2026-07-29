@@ -42,7 +42,16 @@ export async function MobileNav({
           inactiveClassName="text-foreground/70 hover:text-foreground"
         >
           <Icon className="h-5 w-5 shrink-0" />
-          <span className="truncate">{tNav(labelKey)}</span>
+          {/* `w-full` is load-bearing, not decorative: `truncate` sets
+              `white-space: nowrap`, which makes this span's min-content width
+              equal its max-content width. As a shrink-to-fit flex item under
+              the parent's `items-center`, its fit-content width then cannot be
+              clamped below the text width — so `overflow: hidden` would clip
+              nothing and a long label (es-AR "Configuración" in a five-tab bar
+              on a narrow phone) would spill across its neighbours. Constraining
+              the box to the cell is what lets the ellipsis engage; `text-center`
+              restores the centering that `items-center` used to provide. */}
+          <span className="w-full truncate text-center">{tNav(labelKey)}</span>
         </NavLink>
       ))}
 

@@ -233,6 +233,26 @@ clearance between content and the bar (`5rem − 4rem`) — unchanged from befor
 carry the same `+ env(safe-area-inset-bottom)` term and it cancels out. No change was needed on the
 `main` side; verify this arithmetic again if either constant (`4rem`/`5rem`) ever moves.
 
+### Tab labels need `w-full`, not just `truncate`
+
+The label span carries `w-full truncate text-center`, and the `w-full` is **load-bearing** — dropping
+it silently reintroduces a layout bug that `truncate` alone cannot prevent.
+
+`truncate` expands to `overflow: hidden; text-overflow: ellipsis; white-space: nowrap`. That
+`nowrap` makes the span's **min-content width equal its max-content width**: with no legal break
+point, the smallest the text can measure is its full length. The span is a shrink-to-fit flex item
+under the tab's `items-center`, so its used width is
+`min(max-content, max(min-content, available))` — and when the text is wider than the cell, both
+`max-content` and `min-content` are that text width, so the expression collapses to the text width.
+The box grows to the text rather than clipping it, `overflow: hidden` has nothing to clip, and the
+label spills across neighbouring cells (grid items do not clip their children by default).
+
+This is reachable in the default locale: a user permitted exactly three gated items gets the
+five-tab flat bar including `Configuración` (~78px at `text-xs`), against a ~64px usable cell on a
+360px-wide phone. `w-full` constrains the box to the cell so the ellipsis can finally engage, and
+`text-center` restores the centering that `items-center` previously provided for the shrink-to-fit
+box. `mobile-nav.test.tsx` asserts both classes on every tab label.
+
 ## The manifest ships with no service worker, and is not localized
 
 `apps/admin/src/app/manifest.ts` sits at the **root** of `app/`, outside `[locale]/`, because the

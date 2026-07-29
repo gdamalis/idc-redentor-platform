@@ -109,6 +109,30 @@ describe("MobileNav", () => {
     );
   });
 
+  /**
+   * `truncate` alone is a no-op here. It sets `white-space: nowrap`, which
+   * makes the label's min-content width equal its max-content width; as a
+   * shrink-to-fit flex item under the tab's `items-center`, its fit-content
+   * width then cannot be clamped below the text width, so `overflow: hidden`
+   * clips nothing and a long label (es-AR "Configuración" in a five-tab bar on
+   * a narrow phone) spills across its neighbours. `w-full` is what constrains
+   * the box to the cell so the ellipsis can engage.
+   */
+  it("constrains tab labels to the cell so truncation can actually take effect", async () => {
+    render(await MobileNav({ items: NAV_ITEMS }));
+
+    const labels = screen
+      .getAllByRole("link")
+      .map((link) => link.querySelector("span"))
+      .filter((span): span is HTMLSpanElement => span !== null);
+
+    expect(labels).toHaveLength(4);
+    for (const label of labels) {
+      expect(label.className).toContain("w-full");
+      expect(label.className).toContain("truncate");
+    }
+  });
+
   it("shows only the permitted items for a minimal permission set", async () => {
     const items = [NAV_ITEMS[0], NAV_ITEMS[7]] as readonly NavItem[];
 
