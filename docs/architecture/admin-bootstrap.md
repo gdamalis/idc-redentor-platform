@@ -1,0 +1,177 @@
+# Admin bootstrap — the one-time `seed:admin` script
+
+`apps/admin` is invite-only (`docs/architecture/admin-auth.md`), and only a holder of
+`users:manage` can create an invite (`docs/architecture/admin-rbac.md`). A fresh
+`ministry-admin*` database has no roles and no users — so on day one there is no
+account in the system that can invite the first one. `seed:admin` (ICR-155) exists to
+break that chicken-and-egg: it writes the system roles and one pending Admin invite
+directly to Mongo, so a human can walk through the front door once and never needs
+this script again for that database.
+
+It is a **human-run, one-off CLI**, not a service. It has no route, no schedule, no
+CI wiring (verified: absent from `turbo.json`, every `.github/workflows/*` file, and
+`apps/admin/package.json`'s `postinstall`/`prepare` hooks), and it actively refuses to
+run when `CI` is set.
+
+## What it does — and does not do
+
+`seed:admin` writes **Mongo only**, and only two things:
+
+1. **Seeds the three system roles** (`seedSystemRoles()` — upsert by the immutable
+   `Role.key`, so re-running is harmless).
+2. **Creates one pending `Admin` invite** for the address you pass, via the same
+   `createInvite()` upsert the `/users` UI uses (`docs/architecture/admin-rbac.md` §
+   "`createInvite` — upsert-refresh semantics").
+
+It does **not**:
+
+- Create a Firebase user. The invite is claimed at first sign-in — `firebaseUid` is
+  only knowable then (`docs/architecture/admin-auth.md`).
+- Write an `AdminUser` document. Same reason: that document is created by
+  `resolveOrProvision` on the first successful sign-in, not by this script.
+- Need any Firebase credential. The whole call chain (`getAdminDb` →
+  `role`/`invite`/`user.service.ts` → `lib/rbac/*`) is plain Mongo TypeScript; nothing
+  in it imports `lib/firebase/admin.ts`.
+
+Every guard it enforces delegates to an already-shipped function — the script
+orchestrates, it never reimplements a check. See `apps/admin/src/lib/rbac/seed-admin.ts`
+(`seedAdmin()`, `parseSeedArgs()`, `exitCodeFor()`, `redactMongoHost()`) and the thin
+process shell at `apps/admin/scripts/seed-admin.ts`.
+
+## The database rides in the `MONGODB_URI` path — there is no DB-name variable
+
+Same rule as the rest of the admin Mongo model (`docs/architecture/admin-database.md`):
+`getAdminDb()` is the **only** database resolution the script performs, and it reads the
+path segment of `MONGODB_URI`. There is no separate `ADMIN_DB_NAME`-style variable to
+set, and the script never re-derives or second-guesses the name.
+
+This has one sharp edge: a `MONGODB_URI` with **no path database** (e.g.
+`mongodb://host:27017` with nothing after the port) makes the driver silently resolve
+`test` as the database name — which fails `getAdminDb()`'s allowlist
+(`/^ministry-admin(-staging|-test|-qa|-e2e)?$/`) and the script refuses with `db-guard`.
+That refusal is the safe outcome; the trap is assuming an empty-looking URI is somehow
+inert. **Always run with `--dry-run` first and read the printed database name** before
+running for real — the banner prints the _resolved_ name, not the URI, so a wrong
+target is visible before anything is written.
+
+`WEBSITE_MONGODB_URI` must stay **unset** for this script. It only ever touches the
+admin connection; setting the website variable does nothing for it but is a sign the
+environment is misconfigured for this run.
+
+## Invocation
+
+Two supported forms. **Do not put a `--` separator before the flags in the `pnpm`
+form** — pnpm 10 forwards that literal `--` token straight into `argv`, and
+`parseSeedArgs` correctly rejects it as `Unknown argument: --`. (This bit the first
+draft of this script: its own `USAGE` banner documented the `--` form and was
+therefore self-defeating — see the `fix(ICR-155)` commit that corrected it.)
+
+```bash
+# From a local env file (node --env-file, Node >= 20.6; this repo pins 22.14.0).
+# Direct tsx invocation — unaffected by pnpm arg forwarding either way.
+node --env-file=apps/admin/.env.local \
+  ./node_modules/.bin/tsx apps/admin/scripts/seed-admin.ts --email <address> --dry-run
+
+# Via the package script. NOTE: no `--` separator — pnpm 10 forwards it into argv
+# and the script rejects it as an unknown argument.
+MONGODB_URI='...' pnpm --filter @idcr/admin seed:admin --email <address> --yes
+```
+
+**Always run with `--dry-run` first**, using either form, and read the `database` line
+the script prints to stderr. Only once that name is the one you intend, drop
+`--dry-run` (and add `--yes` for a non-interactive run, or answer the interactive
+confirmation prompt) to write for real.
+
+## 🔴 The bootstrap address must sign in with Google, not email/password
+
+`provision.ts` refuses a first sign-in whose decoded token lacks
+`email_verified: true` (`docs/architecture/admin-auth.md`). Firebase email/password
+signup starts **unverified**, and this app never sends Firebase's verification email —
+so an address that signs up with the email/password form can never clear that gate.
+Google sign-in tokens always carry `email_verified: true`, so **the bootstrap invite
+must be claimed with the Google button**.
+
+The first Admin is `gabriel@idcredentor.org` — a Google Workspace address
+(`idcredentor.org`'s MX record is `1 smtp.google.com`), so its Google sign-in token is
+always verified. **This file is the only place in the entire repo where that address
+may appear.** It is an argument a human types at the command line when running the
+script for real — never a default parameter, fallback constant, test fixture, or any
+other code value. (Verified in review: `git diff origin/main...HEAD | grep
+'@idcredentor\.org'` returns hits only inside this file.)
+
+## Re-running is safe
+
+Both writes are idempotent, inherited from already-shipped upserts — the script adds
+no idempotency logic of its own:
+
+- **Roles** upsert by the immutable `Role.key` (`$setOnInsert`), so re-seeding never
+  duplicates or overwrites a hand-edited role.
+- **The invite** is `createInvite()`'s single atomic upsert on
+  `{ email, status: "pending" }`. A second run for the same address reports
+  `refreshed: true` instead of creating a duplicate.
+
+**A lapsed 7-day invite window needs no special handling — just re-run the script.**
+`createInvite`'s upsert filter has no `expiresAt` clause, so it matches a long-expired
+_pending_ invite the same as a live one and refreshes `expiresAt` in place
+(`docs/architecture/admin-rbac.md` § "`createInvite` — upsert-refresh semantics"). This
+is exactly why `seed:admin` ships with **no `--ttl-days` flag** — there is nothing for
+one to configure; the underlying upsert already recovers from an expired window by
+being re-run.
+
+## "Already administrable" and `--force`
+
+Before writing anything, the script checks whether the panel is already
+self-administrable: an **active** user holding **both** `users:manage` and
+`roles:manage` (the same `retainsAdministrability()` predicate documented in
+`docs/architecture/admin-rbac.md` § "The last-admin invariant"). If that's true, the
+script refuses with `admin-exists` and performs **zero writes** — not even
+`seedSystemRoles()`.
+
+`--force` overrides that refusal. It exists for a genuine lockout only (e.g. every
+admin account was disabled and nobody can invite a replacement) — **it never relaxes
+the database guard**. A bad `MONGODB_URI` still refuses with `db-guard` whether or not
+`--force` is passed; the two guards are independent and `--force` only ever touches
+the second one.
+
+## Exit codes and the stdout contract
+
+```
+Exit: 0 success · 1 operation failure (write-failed) · 2 usage/guard refusal
+```
+
+`0`/`1`/`2` map onto `SeedAdminResult`/`parseSeedArgs` failures via `exitCodeFor()` —
+guard and usage refusals (`db-guard`, `admin-exists`, `invalid-email`, `usage`, a
+declined confirmation, or `CI` being set) are `2`; a genuine write failure
+(`write-failed`, e.g. the insert-race retry was exhausted) is `1`.
+
+stdout carries **exactly one JSON line**, always the machine-readable result:
+
+```json
+{"ok":true,"dryRun":false,"roleIds":["<hex>","<hex>","<hex>"],"inviteId":"<hex>","refreshed":false}
+{"ok":true,"dryRun":true}
+{"ok":false,"reason":"admin-exists","message":"The panel is already self-administrable…"}
+```
+
+All human narration — the database/cluster/mode banner, the confirmation prompt, error
+text — goes to **stderr**, so a caller can safely pipe or parse stdout alone. The
+script writes that one line with a synchronous `writeSync(1, …)` before calling
+`process.exit()`, so it can never be truncated by an early exit on a piped stdout.
+
+## After the run
+
+1. Sign in to the admin panel with **Google**, using the address you seeded.
+2. Confirm `/users` and `/roles` render for that account.
+3. From here on, provision every other person from the admin UI — the `/users` invite
+   flow, not this script. `seed:admin` is a one-time bootstrap for the very first
+   Admin on a database that has none, not a general role-management tool.
+
+## Related docs
+
+- `docs/architecture/admin-rbac.md` — the RBAC model this script seeds into: the
+  permission registry, `retainsAdministrability()`, and `createInvite`'s
+  upsert-refresh semantics this script inherits rather than reimplements. See its §
+  Known limitations for the cross-link back to this doc.
+- `docs/architecture/admin-database.md` — the `MONGODB_URI`-path database resolution
+  and the `getAdminDb()` allowlist this script's only database guard is built on.
+- `docs/architecture/admin-auth.md` — the invite-claim and Google-sign-in-verification
+  flow the seeded invite is claimed through.
