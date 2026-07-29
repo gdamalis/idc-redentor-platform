@@ -199,6 +199,8 @@ const ARGS: SeedArgs = {
 // Fresh, fully-controlled collaborators. No vi.mock needed: seedAdmin takes
 // its dependencies as an argument, which is the whole point of the deps object
 // on the one function in this app that grants the highest privilege there is.
+const sessionSpy = { abortTransaction: vi.fn(async () => undefined) };
+
 const makeDeps = (over: Partial<SeedAdminDeps> = {}): SeedAdminDeps =>
   ({
     getAdminDb: vi.fn(() => ({ databaseName: "ministry-admin-test" })),
@@ -210,7 +212,7 @@ const makeDeps = (over: Partial<SeedAdminDeps> = {}): SeedAdminDeps =>
       inviteId: "invite-1",
       refreshed: false,
     })),
-    withAdminTransaction: vi.fn(async (fn) => fn({} as never)),
+    withAdminTransaction: vi.fn(async (fn) => fn(sessionSpy as never)),
     ...over,
   }) as unknown as SeedAdminDeps;
 
@@ -529,5 +531,31 @@ describe("seedAdmin — guard 2b (target already has an AdminUser)", () => {
 
   it("maps user-exists to exit code 2 (a guard refusal, not an operation failure)", () => {
     expect(exitCodeFor({ ok: false, reason: "user-exists", message: "x" })).toBe(2);
+  });
+});
+
+describe("seedAdmin — lost insert-race aborts before retrying (Codex P2)", () => {
+  it("aborts the losing transaction so withTransaction cannot throw while finalising", async () => {
+    sessionSpy.abortTransaction.mockClear();
+    const createInvite = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, reason: "insert-race" })
+      .mockResolvedValueOnce({ ok: true, inviteId: "invite-2", refreshed: true });
+    const deps = makeDeps({
+      createInvite: createInvite as unknown as SeedAdminDeps["createInvite"],
+    });
+
+    const result = await seedAdmin(ARGS, deps);
+
+    expect(result).toMatchObject({ ok: true, inviteId: "invite-2" });
+    // Exactly once: the losing attempt aborts, the winning one must not.
+    expect(sessionSpy.abortTransaction).toHaveBeenCalledTimes(1);
+    expect(deps.withAdminTransaction).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not abort when the invite succeeds first time", async () => {
+    sessionSpy.abortTransaction.mockClear();
+    await seedAdmin(ARGS, makeDeps());
+    expect(sessionSpy.abortTransaction).not.toHaveBeenCalled();
   });
 });

@@ -203,9 +203,20 @@ async function createBootstrapInvite(
   input: { email: string; roleIds: string[]; locale: Locale },
 ): Promise<{ ok: true; inviteId: string; refreshed: boolean } | { ok: false }> {
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const result = await deps.withAdminTransaction((session) =>
-      deps.createInvite(input, session),
-    );
+    const result = await deps.withAdminTransaction(async (session) => {
+      const created = await deps.createInvite(input, session);
+      if (!created.ok) {
+        // The duplicate key already aborted this transaction SERVER-side, but
+        // `withTransaction` does not know that — left alone it tries to commit
+        // and can throw while finalising an aborted transaction, which would
+        // escape this loop and skip the fresh-session retry entirely (Codex
+        // P2). Aborting explicitly lets `withTransaction` return the result
+        // cleanly so the retry below actually runs. Mirrors the established
+        // path in `(app)/users/actions.ts`'s `inviteUserAction`.
+        await session.abortTransaction();
+      }
+      return created;
+    });
     if (result.ok) return result;
   }
   return { ok: false };
