@@ -94,8 +94,18 @@ env vars, no writes. Safe for CI.
    removed from both locales.
 4. **R4** — `scriptureRefs` MUST be retained in both locales (R1.2). `serviceLabel`, `title`, `thesis`,
    `mainPoints`, and `content[]` MUST be retained unchanged.
-5. **R5** — `content[]` MUST NOT be modified. The rendered PDFs must remain equivalent; the only PDF
-   input that changes is the removal of fields the PDF builder never reads.
+5. **R5** — `content[]` MUST NOT be modified.
+
+   > **Corrected 2026-07-29, during implementation.** R5 originally continued: _"The rendered PDFs must
+   > remain equivalent; the only PDF input that changes is the removal of fields the PDF builder never
+   > reads."_ **That was wrong.** `build-predica-pdf.mjs:240` calls
+   > `renderScriptureReferences(common.scriptureReferences, locale)`, so the new top-level
+   > `scriptureReferences` array **is** rendered — as a "Referencias bíblicas" / "Scripture references"
+   > section. Both PDFs consequently grew (138154→163097 and 140783→165716 bytes). This is an
+   > **improvement, not a regression**: the fixture now exercises `renderScriptureReferences`, a render
+   > path the CI gate previously never reached. The `content[]`-is-untouched half of R5 stands and is
+   > asserted by the `diff` in §9.1.
+
 6. **R6** — `__smoke__.mjs` MUST additionally run `build-sermon-entry.mjs` against the fixture and fail
    the run if it does not exit 0.
 7. **R7** — The new smoke case MUST assert a positive signal (`sermon.json: VALID`) on stdout, not
@@ -402,3 +412,25 @@ non-zero for the _wrong reason_ look identical to guard checks that work.
 3. **`internalName` convention is by example, not by spec.** Taken from
    `.claude/agents/predica-writer.md:121`. If a canonical rule is ever written down, the fixture should
    follow it.
+4. **The PDF ignores `bibleVersion` and hardcodes a per-locale label — surfaced by this ticket, not
+   caused by it.** `renderScriptureReferences` (`build-predica-pdf.mjs:197`) builds its reference line
+   from `L.bibleVersion`, a fixed label in `LABELS[locale]` (`NVI` for `es-AR`, `NIV` for `en-US`), and
+   never reads the per-reference `bibleVersion`. The JSDoc at `:183-184` states this is deliberate
+   ("Uses the FIXED localized version label") and mirrors the website's `ScriptureReferences`.
+
+   The consequence is now visible for the first time, because until this ticket the fixture had no
+   `scriptureReferences` and the function returned `""`. For the same verse, this repo now emits two
+   contradicting claims: the derived Contentful dedup key says **`Efesios 2:14 (RVR1960)`**
+   (`buildBibleVerseInternalName` reads the real data), while the PDF prints **`Efesios 2:14 (NVI)`**.
+   RVR1960 and NVI are different translations, so one of them is misattributing the text.
+
+   The fixture deliberately keeps `RVR1960`, because that is genuinely the translation of the
+   `verseContent` strings it carries (they were copied verbatim from the fixture's own `keyQuotes`,
+   which were explicitly attributed to RVR1960). Relabelling the data to `NVI` to match the renderer
+   would make the fixture _look_ consistent by making it _false_ — and no NVI text is committed in this
+   repo to swap in honestly (R10).
+
+   **Deliberately out of scope here** — the fix is a product decision, not a fixture decision: either
+   the renderer should read `bibleVersion`, or the house standard really is NVI/NIV and the data model
+   should stop carrying a per-verse version. Either answer changes the PDF _and_ the public website
+   component. Raised for triage as its own issue.
