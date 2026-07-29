@@ -67,20 +67,42 @@ draft of this script: its own `USAGE` banner documented the `--` form and was
 therefore self-defeating — see the `fix(ICR-155)` commit that corrected it.)
 
 ```bash
-# From a local env file (node --env-file, Node >= 20.6; this repo pins 22.14.0).
-# Direct tsx invocation — unaffected by pnpm arg forwarding either way.
-node --env-file=apps/admin/.env.local \
-  ./node_modules/.bin/tsx apps/admin/scripts/seed-admin.ts --email <address> --dry-run
+# 1. Human at a terminal (the normal case). Prompts for confirmation.
+MONGODB_URI='...' pnpm --filter @idcr/admin seed:admin --email <address> --dry-run
 
-# Via the package script. NOTE: no `--` separator — pnpm 10 forwards it into argv
-# and the script rejects it as an unknown argument.
-MONGODB_URI='...' pnpm --filter @idcr/admin seed:admin --email <address> --yes
+# 2. Machine-readable — stdout is EXACTLY the one JSON line, no pnpm banner.
+MONGODB_URI='...' pnpm --filter @idcr/admin exec tsx scripts/seed-admin.ts \
+  --email <address> --dry-run
+
+# 3. From a local env file (node --env-file, Node >= 20.6; this repo pins 22.14.0).
+#    MUST run with apps/admin as the working directory — see the note below.
+cd apps/admin && node --env-file=.env.local --import tsx scripts/seed-admin.ts \
+  --email <address> --dry-run
 ```
 
-**Always run with `--dry-run` first**, using either form, and read the `database` line
-the script prints to stderr. Only once that name is the one you intend, drop
-`--dry-run` (and add `--yes` for a non-interactive run, or answer the interactive
-confirmation prompt) to write for real.
+> **Two path traps, both verified the hard way.**
+>
+> **The working directory must be `apps/admin` for any direct `tsx` invocation.** tsx
+> resolves tsconfig `paths` relative to the **cwd**, not to the script file, so running
+> `tsx apps/admin/scripts/seed-admin.ts` from the repo root dies with
+> `Cannot find module '@src/service/database.service'`. Form 2 above sidesteps this
+> because `pnpm --filter … exec` already runs inside the package directory.
+>
+> **There is no `tsx` at the workspace root.** It is an `apps/admin` devDependency and
+> this repo sets `shamefully-hoist=false`, so `./node_modules/.bin/tsx` does not exist
+> at the root — only `apps/admin/node_modules/.bin/tsx` does. And that shim is a _shell
+> script_, so `node --env-file=… ./node_modules/.bin/tsx …` cannot execute it either;
+> form 3 uses `node --import tsx` instead, which is tsx's supported loader entry point.
+
+**Always run with `--dry-run` first**, and read the `database` line the script prints to
+stderr. Only once that name is the one you intend, drop `--dry-run` (and add `--yes` for
+a non-interactive run, or answer the interactive confirmation prompt) to write for real.
+
+**`--yes` is mandatory whenever stdin is not a terminal** — in a pipeline, a CI-style
+runner, a `ssh host '…'` one-liner, or anything reading from `/dev/null`. Without a TTY
+the script refuses with exit `2` rather than prompting, because a `readline` question
+never settles on EOF and the process would otherwise drain the event loop and exit **0**
+having written nothing: a silent no-op that a caller reads as success.
 
 ### What `--dry-run` does and does not touch
 

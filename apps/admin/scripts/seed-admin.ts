@@ -88,13 +88,36 @@ async function main(): Promise<never> {
 
   // Guard 5b — deliberate. --yes is the non-interactive human escape hatch.
   if (!args.yes && !args.dryRun) {
+    // Refuse up front when there is no terminal to answer with (Codex P2).
+    // `readline/promises.question()` never settles on EOF, and at this point no
+    // Mongo connection is open, so the event loop simply drains and Node exits
+    // **0** — printing the prompt, writing nothing, emitting no JSON, and
+    // handing the caller a success code for a run that did nothing. For a
+    // script whose entire job is granting the highest privilege in the system,
+    // a silent no-op that reads as success is the worst available outcome.
+    if (!process.stdin.isTTY) {
+      narrate(
+        "Refusing to run: stdin is not a terminal, so the confirmation cannot be " +
+          "answered. Pass --yes for a non-interactive run (or --dry-run to preview).",
+      );
+      return emit({
+        ok: false,
+        reason: "usage",
+        message: "Confirmation required but stdin is not a TTY; pass --yes.",
+      });
+    }
+
     const rl = createInterface({
       input: process.stdin,
       output: process.stderr,
     });
-    const answer = await rl.question(
-      `Grant Admin to ${args.email} on "${databaseName}"? [y/N] `,
-    );
+    // Belt-and-braces for an EOF mid-prompt (Ctrl-D on a real terminal), which
+    // leaves `question()` pending forever: whichever settles first wins, and a
+    // close resolves to a decline rather than hanging.
+    const answer = await Promise.race([
+      rl.question(`Grant Admin to ${args.email} on "${databaseName}"? [y/N] `),
+      new Promise<string>((resolve) => rl.once("close", () => resolve(""))),
+    ]);
     rl.close();
     if (answer.trim().toLowerCase() !== "y") {
       narrate("Aborted — nothing was written.");
