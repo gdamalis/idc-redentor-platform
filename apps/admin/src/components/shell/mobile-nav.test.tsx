@@ -86,7 +86,27 @@ describe("MobileNav", () => {
       name: "shell.mobileNavigation",
     });
     expect(nav.className).toContain("md:hidden");
-    expect(nav.className).toContain("env(safe-area-inset-bottom)");
+    expect(nav.className).toContain("pb-[env(safe-area-inset-bottom)]");
+  });
+
+  /**
+   * Finding 3 (round 2) regression guard: Tailwind's preflight sets global
+   * `box-sizing: border-box`, so a bare `h-16` bar with
+   * `pb-[env(safe-area-inset-bottom)]` has the safe-area inset SUBTRACTED
+   * from its fixed 4rem height instead of growing the bar by it — on a
+   * device with a home indicator the tabs' usable content height collapses
+   * below `TAB_CLASS`'s `min-h-11` and they overflow into the padded unsafe
+   * region. The bar height must grow by the inset instead.
+   */
+  it("grows the bar height by the safe-area inset instead of shrinking its content", async () => {
+    render(await MobileNav({ items: NAV_ITEMS }));
+
+    const nav = screen.getByRole("navigation", {
+      name: "shell.mobileNavigation",
+    });
+    expect(nav.className).toContain(
+      "h-[calc(4rem+env(safe-area-inset-bottom))]",
+    );
   });
 
   it("shows only the permitted items for a minimal permission set", async () => {

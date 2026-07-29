@@ -105,7 +105,7 @@ Two related traps the active-match logic exists to avoid (both covered by `nav-i
   so a deep route like `/people/123` keeps `/people` active, but a sibling route with the same
   prefix does not.
 
-## `MoreSheet` is a controlled Dialog that closes itself on navigation
+## `MoreSheet` is a controlled Dialog that closes itself two ways
 
 `MoreSheet` originally rendered Radix's `<Dialog>` fully **uncontrolled** (no `open`/`onOpenChange`)
 and had no pathname awareness at all — a post-PR Codex review (P2) caught that nothing could ever
@@ -137,6 +137,35 @@ a prop changes" pattern: React bails out and re-renders with the reset state bef
 there is no extra painted frame where the sheet is still visibly open over the page the user just
 navigated to. `more-sheet.test.tsx` pins this with the regression guard: open the sheet, re-render
 with a different pathname, assert the dialog content is gone.
+
+**The pathname-reset alone has a hole: re-selecting the route you're already on.** A round-2 Codex
+review caught it — if the user opens More from `/users` and taps the **Users** link again, `pathname`
+never changes, so the reset above never fires, and Radix does not auto-close a `Dialog` on a link
+click inside `DialogContent`. The fix wraps `children` in a `div` with a capture-phase click handler
+that closes the sheet whenever the click target is (or is inside) an anchor:
+
+```tsx
+<div
+  onClickCapture={(event) => {
+    if ((event.target as HTMLElement).closest("a")) {
+      setOpen(false);
+    }
+  }}
+  className="contents"
+>
+  {children}
+</div>
+```
+
+Capture phase matters: the anchor still handles its own navigation, but the close fires regardless of
+whether the destination route differs. Keyboard activation is covered for free — pressing Enter on a
+focused link dispatches a `click` event, same as a pointer click. `className="contents"` (`display:
+contents`) keeps the wrapper out of the box tree entirely, so `DialogContent`'s own `grid gap-2`
+still applies directly between the links — the wrapper's children are promoted into the grid rather
+than the wrapper itself becoming an extra grid item with its own gap-affecting box.
+`more-sheet.test.tsx` pins both directions: clicking the current-route link closes the sheet even
+though `pathname` is held constant across the interaction, and clicking a non-link area (the title)
+does not close it.
 
 The same Codex round also found the trigger had a single hardcoded `className` and no `aria-current`
 — so on any of the (currently four) overflow destinations, the closed mobile bar showed **no** active
@@ -183,10 +212,26 @@ internal scroll region sized to the viewport minus the bar — that restructure 
 scroll behavior too (the whole point of `h-dvh` is to pin the shell to the viewport), and desktop
 scroll behavior is explicitly out of scope for this ticket. `fixed` + compensating padding gets the
 mobile tab bar its guaranteed screen position with a one-line, desktop-invisible (`md:pb-6` reverts
-to the original padding) change, at the cost of one magic-number coupling: if `MobileNav`'s height
-(`h-16` = 4rem) or the padding constant `5rem`/`calc(...)` ever drift apart, content can be covered
-again. There is no shared constant enforcing that relationship today — if you resize the tab bar,
-check `main`'s padding in the same change.
+to the original padding) change, at the cost of one magic-number coupling: if `MobileNav`'s height or
+the `main` padding constant ever drift apart, content can be covered again. There is no shared
+constant enforcing that relationship today — if you resize the tab bar, check `main`'s padding in the
+same change.
+
+**The bar's height must GROW by the safe-area inset, not just pad into it.** A round-2 Codex review
+caught a preflight interaction: Tailwind's global preflight sets `box-sizing: border-box`, so a bar
+declared as a bare `h-16` (fixed 4rem) plus `pb-[env(safe-area-inset-bottom)]` has that padding
+**subtracted** from the 4rem rather than extending it — on a device with a home indicator (~34px
+inset) the tabs' usable content height collapsed to ~30px while `TAB_CLASS` declares `min-h-11`
+(44px), so the tabs overflowed into the padded, physically unsafe region. The height is
+`h-[calc(4rem+env(safe-area-inset-bottom))]`, with `pb-[env(safe-area-inset-bottom)]` kept alongside
+it — the bar's total (border-box) height now grows by the inset while a full 4rem of content stays
+above the padded safe-area strip. `mobile-nav.test.tsx` pins the exact class string.
+
+This changes the arithmetic against `main`'s padding above: the bar's total occupied height is now
+`4rem + inset`, and `main`'s `pb-[calc(5rem+env(safe-area-inset-bottom))]` leaves exactly `1rem` of
+clearance between content and the bar (`5rem − 4rem`) — unchanged from before, since both sides
+carry the same `+ env(safe-area-inset-bottom)` term and it cancels out. No change was needed on the
+`main` side; verify this arithmetic again if either constant (`4rem`/`5rem`) ever moves.
 
 ## The manifest ships with no service worker, and is not localized
 

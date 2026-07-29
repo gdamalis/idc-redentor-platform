@@ -31,7 +31,7 @@ export async function MobileNav({
   return (
     <nav
       aria-label={tShell("mobileNavigation")}
-      className={`fixed inset-x-0 bottom-0 z-40 grid ${GRID_COLS[cellCount] ?? "grid-cols-5"} h-16 border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:hidden`}
+      className={`fixed inset-x-0 bottom-0 z-40 grid ${GRID_COLS[cellCount] ?? "grid-cols-5"} h-[calc(4rem+env(safe-area-inset-bottom))] border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:hidden`}
     >
       {primary.map(({ href, labelKey, icon: Icon }) => (
         <NavLink

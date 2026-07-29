@@ -132,3 +132,58 @@ describe("MoreSheet — closes on navigation (Finding 1 regression)", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
+
+/**
+ * Finding 4 (round 2) regression guard: selecting the link for the route the
+ * user is ALREADY on never changes `pathname`, so the pathname-reset above
+ * never fires. Radix does not auto-close a Dialog on a link click inside
+ * `DialogContent`, so without an explicit click-based close the sheet would
+ * keep focus-trapping the page after re-selecting the current route.
+ */
+describe("MoreSheet — closes on re-selecting the current route (Finding 4 regression)", () => {
+  it("closes the dialog when the link for the current pathname is clicked", async () => {
+    const user = userEvent.setup();
+    pathnameMock.mockReturnValue("/users");
+    render(
+      <MoreSheet
+        triggerLabel="More"
+        title="Overflow"
+        closeLabel="Close"
+        overflowHrefs={["/users"]}
+      >
+        <Link href="/users">Users</Link>
+      </MoreSheet>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "More" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    // pathname is unchanged across this interaction — the click, not a
+    // pathname change, must be what closes the sheet.
+    await user.click(screen.getByRole("link", { name: "Users" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("does not close the dialog when a non-link area inside the sheet is clicked", async () => {
+    const user = userEvent.setup();
+    pathnameMock.mockReturnValue("/people");
+    render(
+      <MoreSheet
+        triggerLabel="More"
+        title="Overflow"
+        closeLabel="Close"
+        overflowHrefs={["/users"]}
+      >
+        <Link href="/users">Users</Link>
+      </MoreSheet>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "More" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("heading", { name: "Overflow" }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+});
