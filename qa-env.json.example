@@ -1,5 +1,6 @@
 {
-  "_readme": "Per-developer QA secrets for the divinelab harness. Copy to qa-env.json (gitignored) — NEVER commit the filled file. Dot-paths in .claude/config.json are resolved INSIDE this file relative to its root: qa.env.preview.baseUrlFrom = 'preview.baseUrl' and qa.env.staging.baseUrlFrom = 'staging.baseUrl' each read the matching key below. jira.{email,apiToken} are read by the divinelab plugin's post-jira-result.mjs bin to attach QA results to Jira issues; preview/staging.baseUrl feed the QA target resolver; mongodbUri is optional (a LOCAL test DB only — never the prod cluster).",
+  "_readme": "Per-developer QA secrets for the divinelab harness. Copy to qa-env.json (gitignored) — NEVER commit the filled file. Dot-paths in .claude/config.json are resolved INSIDE this file relative to its root: each qa.env.<name>.baseUrlFrom names a key below (preview.baseUrl, staging.baseUrl, stagingAdmin.baseUrl). jira.{email,apiToken} are read by the divinelab plugin's post-jira-result.mjs bin to attach QA results to Jira issues; the baseUrl keys feed the QA target resolver; mongodbUri is optional (a LOCAL test DB only — never the prod cluster).",
+  "_twoAppsNote": "This repo deploys TWO apps, so there are TWO staging targets and 'staging' alone is ambiguous. staging.baseUrl serves the public website (apps/web); stagingAdmin.baseUrl serves the Ministry Admin Panel (apps/admin). merge.postMergeQa.byPath routes each merge to the one serving the app that changed. Pointing an apps/admin QA run at staging.baseUrl exercises none of the change and still reports PASS — which is how this gap was found (ICR-126).",
   "jira": {
     "email": "<your-jira-email>",
     "apiToken": "<your-jira-apiToken>"
@@ -9,6 +10,15 @@
   },
   "staging": {
     "baseUrl": "https://staging.idcredentor.org"
+  },
+  "stagingAdmin": {
+    "_note": "The admin app's staging deployment — a different Vercel project from the website. Distinct from admin PRODUCTION (ministerio.idcredentor.org), which is hard-denied in every env. Never put the production host here.",
+    "baseUrl": "https://staging.ministerio.idcredentor.org",
+    "auth": {
+      "_note": "Credentials for a DEDICATED, LEAST-PRIVILEGE QA user on admin STAGING only — never a real person's login, never a production credential. apps/admin is invite-only Firebase Auth, so without this every route that renders the app shell is unreachable and admin QA can only ever see /login, /reset-password and /no-access. The account must already be provisioned in the staging panel (invited + first sign-in completed) before QA can use it. Email/password is used rather than Google sign-in because the Google flow needs an interactive OAuth popup an automated browser cannot complete; signInWithEmailAndPassword is supported by the login form. Grant only what the QA actually needs — QA here is read-side by policy (qa.env.stagingAdmin.liveIntegrationPolicy = no-POST), so an admin-equivalent role is NOT required and should not be used.",
+      "email": "<staging-only QA user email>",
+      "password": "<staging-only QA user password>"
+    }
   },
   "mongodbUri": "<optional: connection string for a LOCAL test DB named website-test|website-qa|website-e2e|website-staging — never the prod 'website' cluster>"
 }

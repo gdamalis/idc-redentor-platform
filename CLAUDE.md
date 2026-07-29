@@ -153,7 +153,8 @@ Sessions are named after the active Jira ticket automatically.
 ## Testing
 
 - **Vitest** (`vitest.config.ts`, jsdom): unit smoke tests for pure utilities (`src/utils/*`, `src/i18n/config#buildLocaleAlternates`, getter shape-mappers). Run `pnpm test` (single pass) or `pnpm test:watch`. No coverage thresholds — coverage is report-only.
-- **Playwright** (`playwright.config.ts`): configured with four projects (`e2ePublic`, `e2eBlog`, `apiForms`, `apiLikes`) but **no specs in Phase 1** — the `qa-runner` agent authors specs per-ticket. Pre-merge QA runs against the PR's **Vercel preview deployment** (`*.vercel.app`); post-merge QA runs against **staging** (`staging.idcredentor.org`). **Never** against production.
+- **Playwright** (`playwright.config.ts`): configured with four projects (`e2ePublic`, `e2eBlog`, `apiForms`, `apiLikes`) but **no specs in Phase 1** — the `qa-runner` agent authors specs per-ticket. Pre-merge QA runs against the PR's **Vercel preview deployment** (`*.vercel.app`). **Never** against production.
+- **Two apps, two staging targets.** `staging.idcredentor.org` serves **`apps/web` only**; the admin app has its own host, `staging.ministerio.idcredentor.org` (a separate Vercel project). Post-merge QA picks the right one from the merged diff via `merge.postMergeQa.byPath` (`apps/admin` → `stagingAdmin`, `apps/web` → `staging`). Aiming an `apps/admin` run at the website's staging host exercises none of the change and still reports PASS — see `docs/architecture/agent-harness.md` § QA environments.
 - **No Storybook.**
 - After any change, evaluate whether a meaningful test is warranted; do not add tests for trivial boilerplate.
 
