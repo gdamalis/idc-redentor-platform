@@ -72,17 +72,38 @@ const CARD_LABELS = {
 
 // ── Pure helpers (twin of featuredCard.ts) ─────────────────────────────────────
 
-/** Strip a trailing bible-version parenthetical: "Efesios 2:14 (RVR1960)" → "Efesios 2:14". */
-export function stripScriptureVersion(ref) {
-  return ref.replace(/\s*\([^)]*\)\s*$/, "").trim();
+/** Narrow an unknown scalar to a trimmed, non-empty string (numbers included). */
+function scalarToString(value) {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return undefined;
 }
 
-/** First usable short scripture ref from a locale's scriptureRefs array (or undefined). */
-export function pickPrimaryScripture(localeData) {
-  const refs = localeData?.scriptureRefs;
-  if (!Array.isArray(refs)) return undefined;
-  const first = refs.find((r) => typeof r === "string" && r.trim().length > 0);
-  return first ? stripScriptureVersion(first) : undefined;
+/**
+ * Derive the short scripture string for the card meta line ("Mateo 13:31-33")
+ * from the sermon's structured `scriptureReferences[0]`.
+ *
+ * The per-locale `scriptureRefs` array this used to prefer was removed from the
+ * writer/entry/PDF contract by PR #75 and is no longer emitted (ICR-115).
+ */
+export function deriveScripture(sermon, locale = "es-AR") {
+  const refs = sermon?.scriptureReferences;
+  const first = Array.isArray(refs) ? refs[0] : undefined;
+  if (!first || typeof first !== "object") return undefined;
+
+  const nested = first[locale];
+  const loc = nested && typeof nested === "object" ? nested : first;
+
+  const book = scalarToString(loc.book ?? first.book);
+  const chapter = scalarToString(first.chapter ?? loc.chapter);
+  const fromVerse = scalarToString(first.fromVerse ?? loc.fromVerse);
+  const toVerse = scalarToString(first.toVerse ?? loc.toVerse);
+
+  if (!book || !chapter || !fromVerse) return undefined;
+  return `${book} ${chapter}:${fromVerse}${toVerse ? `-${toVerse}` : ""}`;
 }
 
 /** Compose the AI image brief with church-appropriate guardrails baked in. */
@@ -335,24 +356,6 @@ function validateSermon(raw) {
   else if (typeof loc.title !== "string" || !loc.title.trim())
     errs.push(`locales.${DEFAULT_LOCALE}.title: required non-empty string`);
   return errs;
-}
-
-/** Derive a short scripture string from the es-AR locale (refs array, else structured). */
-function deriveScripture(sermon) {
-  const fromRefs = pickPrimaryScripture(sermon.locales?.[DEFAULT_LOCALE]);
-  if (fromRefs) return fromRefs;
-  const sr = Array.isArray(sermon.scriptureReferences) ? sermon.scriptureReferences[0] : undefined;
-  if (sr && typeof sr === "object") {
-    const loc = sr[DEFAULT_LOCALE] ?? sr;
-    const book = loc.book ?? sr.book;
-    const chapter = sr.chapter ?? loc.chapter;
-    const from = sr.fromVerse ?? loc.fromVerse;
-    const to = sr.toVerse ?? loc.toVerse;
-    if (book && chapter != null && from != null) {
-      return `${book} ${chapter}:${from}${to != null ? `-${to}` : ""}`;
-    }
-  }
-  return undefined;
 }
 
 /** Read the light church logo as a base64 data URI (falls back to the primary logo, then null). */
