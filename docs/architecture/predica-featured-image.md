@@ -48,12 +48,12 @@ replace it with a photograph at any time.
 
 ## Files
 
-| File                                                 | Role                                                                                                                                                                    |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/utils/predica/featuredCard.ts`                  | Pure, Vitest-tested helpers: `composeImageBrief`, `buildFeaturedCardHtml`, `pickPrimaryScripture`, `titleFontSize`, `stripScriptureVersion`. Canonical source of truth. |
-| `src/utils/predica/featuredCard.test.ts`             | Unit tests for the above.                                                                                                                                               |
-| `.claude/scripts/predica/build-predica-featured.mjs` | Runtime generator. JS twin of the helpers + the Gemini REST call + Playwright screenshot + graceful fallback.                                                           |
-| `.claude/config.json` → `predica.featured`           | Script path, provider/model, `apiKeyEnv`, dimensions.                                                                                                                   |
+| File                                                 | Role                                                                                                                                      |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/utils/predica/featuredCard.ts`                  | Pure, Vitest-tested helpers: `composeImageBrief`, `buildFeaturedCardHtml`, `deriveScripture`, `titleFontSize`. Canonical source of truth. |
+| `src/utils/predica/featuredCard.test.ts`             | Unit tests for the above.                                                                                                                 |
+| `.claude/scripts/predica/build-predica-featured.mjs` | Runtime generator. JS twin of the helpers + the Gemini REST call + Playwright screenshot + graceful fallback.                             |
+| `.claude/config.json` → `predica.featured`           | Script path, provider/model, `apiKeyEnv`, dimensions.                                                                                     |
 
 The helpers ↔ `.mjs` duplication mirrors the existing `helpers.ts` ↔ `build-predica-pdf.mjs` pattern
 (the `.mjs` runs directly under Node ESM with no build step). Keep the two in sync.

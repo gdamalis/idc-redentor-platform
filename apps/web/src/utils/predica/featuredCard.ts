@@ -39,27 +39,64 @@ const CARD_LABELS = {
 // ── Scripture helpers ───────────────────────────────────────────────────────
 
 /**
- * Strip a trailing bible-version parenthetical so the card meta line stays short.
- * "Efesios 2:11-22 (RVR1960)" → "Efesios 2:11-22"
+ * The permissive shape `deriveScripture` reads. `sermon.json` is external,
+ * hand-editable data, so every field is narrowed at runtime rather than trusted.
+ * Real refs nest `book` under the locale key and keep chapter/verses top-level
+ * (see SermonScriptureRef in ./sermonEntry); older files may be flat.
  */
-export function stripScriptureVersion(ref: string): string {
-  return ref.replace(/\s*\([^)]*\)\s*$/, "").trim();
+interface ScriptureRefLike {
+  book?: unknown;
+  chapter?: unknown;
+  fromVerse?: unknown;
+  toVerse?: unknown;
+  [key: string]: unknown;
+}
+
+/** Narrow an unknown scalar to a trimmed, non-empty string (numbers included). */
+function scalarToString(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return undefined;
 }
 
 /**
- * Pick a short primary scripture reference for the card meta line from a locale's
- * `scriptureRefs` array (the first non-empty entry, version parenthetical removed).
- * Returns undefined when there is nothing usable.
+ * Derive the short scripture string for the card meta line ("Mateo 13:31-33")
+ * from the sermon's structured `scriptureReferences[0]`.
+ *
+ * This is the ONLY scripture source for the card. The per-locale `scriptureRefs`
+ * array it used to prefer was removed from the writer/entry/PDF contract by
+ * PR #75 and is no longer emitted by any data path (ICR-115).
+ *
+ * Stricter than the pre-ICR-115 code on malformed input only: a blank chapter or
+ * fromVerse now yields `undefined` instead of a half-formed "Mateo :31", and a
+ * blank toVerse no longer leaves a dangling "-". No real sermon is affected.
+ *
+ * Returns undefined when there is no usable reference — the caller omits the line.
  */
-export function pickPrimaryScripture(
-  localeData?: { scriptureRefs?: unknown } | null,
+export function deriveScripture(
+  sermon?: { scriptureReferences?: unknown } | null,
+  locale: SupportedLocale = "es-AR",
 ): string | undefined {
-  const refs = localeData?.scriptureRefs;
-  if (!Array.isArray(refs)) return undefined;
-  const first = refs.find(
-    (r): r is string => typeof r === "string" && r.trim().length > 0,
-  );
-  return first ? stripScriptureVersion(first) : undefined;
+  const refs = sermon?.scriptureReferences;
+  const first = Array.isArray(refs) ? refs[0] : undefined;
+  if (!first || typeof first !== "object") return undefined;
+
+  const ref = first as ScriptureRefLike;
+  const nested = ref[locale];
+  const loc = (
+    nested && typeof nested === "object" ? nested : ref
+  ) as ScriptureRefLike;
+
+  const book = scalarToString(loc.book ?? ref.book);
+  const chapter = scalarToString(ref.chapter ?? loc.chapter);
+  const fromVerse = scalarToString(ref.fromVerse ?? loc.fromVerse);
+  const toVerse = scalarToString(ref.toVerse ?? loc.toVerse);
+
+  if (!book || !chapter || !fromVerse) return undefined;
+  return `${book} ${chapter}:${fromVerse}${toVerse ? `-${toVerse}` : ""}`;
 }
 
 // ── Image-generation brief ──────────────────────────────────────────────────
