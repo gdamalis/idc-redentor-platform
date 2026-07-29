@@ -2,6 +2,15 @@ import { z } from "zod";
 import { i18n } from "@src/i18n/config";
 import type { Locale } from "@src/i18n/config";
 import { normalizeEmail } from "@src/lib/auth/email";
+import {
+  getAdminDb,
+  withAdminTransaction,
+} from "@src/service/database.service";
+import { listRoles, seedSystemRoles } from "@src/service/role.service";
+import { listUsers } from "@src/service/user.service";
+import { createInvite } from "@src/service/invite.service";
+import { retainsAdministrability } from "./last-admin";
+import type { AdminStateSnapshot } from "./last-admin";
 
 export interface SeedArgs {
   readonly email: string;
@@ -157,4 +166,137 @@ export function redactMongoHost(uri: string | undefined): string {
   } catch {
     return "<unparseable>";
   }
+}
+
+/**
+ * The six collaborators, injected so tests control every one of them without
+ * `vi.mock`. Each is an already-shipped function: this script orchestrates,
+ * it never reimplements a guard.
+ */
+export interface SeedAdminDeps {
+  readonly getAdminDb: typeof getAdminDb;
+  readonly seedSystemRoles: typeof seedSystemRoles;
+  readonly listRoles: typeof listRoles;
+  readonly listUsers: typeof listUsers;
+  readonly createInvite: typeof createInvite;
+  readonly withAdminTransaction: typeof withAdminTransaction;
+}
+
+export const defaultSeedAdminDeps: SeedAdminDeps = {
+  getAdminDb,
+  seedSystemRoles,
+  listRoles,
+  listUsers,
+  createInvite,
+  withAdminTransaction,
+};
+
+/**
+ * Retries the whole TRANSACTION, never the operation inside it: a duplicate
+ * key inside a transaction aborts it server-side, and a same-session retry
+ * would read the pre-race snapshot and could never observe the winner. Mirrors
+ * `inviteUserAction`'s documented pattern.
+ */
+async function createBootstrapInvite(
+  deps: SeedAdminDeps,
+  input: { email: string; roleIds: string[]; locale: Locale },
+): Promise<{ ok: true; inviteId: string; refreshed: boolean } | { ok: false }> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const result = await deps.withAdminTransaction((session) =>
+      deps.createInvite(input, session),
+    );
+    if (result.ok) return result;
+  }
+  return { ok: false };
+}
+
+export async function seedAdmin(
+  args: SeedArgs,
+  deps: SeedAdminDeps = defaultSeedAdminDeps,
+): Promise<SeedAdminResult> {
+  // Guard 1 — wrong database. Delegated entirely to getAdminDb(), which throws
+  // on any name outside its positive allowlist. Never relaxed by --force.
+  try {
+    deps.getAdminDb();
+  } catch (error) {
+    return {
+      ok: false,
+      reason: "db-guard",
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
+
+  // Guard 2 — already administrable. Evaluated BEFORE any write, so a refusal
+  // leaves the database byte-for-byte untouched. On a fresh database the
+  // snapshot is empty, the predicate is false, and the seed proceeds.
+  const [users, roles] = await Promise.all([
+    deps.listUsers(),
+    deps.listRoles(),
+  ]);
+  const snapshot: AdminStateSnapshot = {
+    users: users.map((user) => ({
+      id: user._id.toHexString(),
+      status: user.status,
+      roleIds: user.roleIds,
+    })),
+    roles: roles.map((role) => ({
+      id: role._id.toHexString(),
+      permissions: role.permissions,
+    })),
+  };
+
+  if (retainsAdministrability(snapshot) && !args.force) {
+    return {
+      ok: false,
+      reason: "admin-exists",
+      message:
+        "The panel is already self-administrable — an active user holds both " +
+        "users:manage and roles:manage. Pass --force only to recover from a genuine lockout.",
+    };
+  }
+
+  if (args.dryRun) return { ok: true, dryRun: true };
+
+  // Guard 3 — idempotency is inherited, never reimplemented: seedSystemRoles
+  // upserts by the immutable Role.key with $setOnInsert, and createInvite is a
+  // single atomic upsert on { email, status: "pending" }.
+  await deps.seedSystemRoles();
+
+  // seedSystemRoles returns void, so the Admin role id is read back by its
+  // immutable key rather than by name.
+  const seededRoles = await deps.listRoles();
+  const adminRole = seededRoles.find((role) => role.key === "admin");
+  if (!adminRole) {
+    return {
+      ok: false,
+      reason: "write-failed",
+      message:
+        'No role with key "admin" exists after seedSystemRoles() — the seed did not apply.',
+    };
+  }
+
+  const invite = await createBootstrapInvite(deps, {
+    email: args.email,
+    roleIds: [adminRole._id.toHexString()],
+    locale: args.locale,
+  });
+
+  if (!invite.ok) {
+    return {
+      ok: false,
+      reason: "write-failed",
+      message:
+        "Could not create the bootstrap invite: the upsert lost an insert race twice. Re-run the script.",
+    };
+  }
+
+  return {
+    ok: true,
+    dryRun: false,
+    roleIds: seededRoles
+      .filter((role) => role.isSystem)
+      .map((role) => role._id.toHexString()),
+    inviteId: invite.inviteId,
+    refreshed: invite.refreshed,
+  };
 }
