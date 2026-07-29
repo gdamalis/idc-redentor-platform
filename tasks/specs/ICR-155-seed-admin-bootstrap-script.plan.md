@@ -10,6 +10,26 @@
 
 **Spec:** `tasks/specs/ICR-155-seed-admin-bootstrap-script.md` — read §0 first; it documents why the ticket's "defect 1" no longer exists.
 
+> ## ⚠️ SUPERSEDED IN PART — `--send-email` was removed (2026-07-29)
+>
+> This plan is the **historical execution record** for ICR-155; its task bodies are left as they were
+> executed rather than rewritten, so the code blocks below still show an opt-in `--send-email` flag
+> (Task 2's `SeedArgs`/`BOOLEAN_FLAGS`/`USAGE`/schema, and Task 4's shell). **That flag does not exist
+> in the shipped code and must not be reintroduced from this document.**
+>
+> It was removed during post-PR review after being verified impossible: `buildInviteEmail` renders via
+> `next-intl/server`'s `getTranslations`, which resolves through the `next-intl/config` alias that
+> `next-intl/plugin` installs **during a Next.js build**. In a standalone `tsx` process it throws
+> `getTranslations is not supported in Client Components`, so every send attempt failed and the flag's
+> only observable behaviour was announcing that failure. `parseSeedArgs` now rejects `--send-email` as
+> an unknown argument and a test pins it. Supersedes the issue's open question 5 (maintainer-approved).
+>
+> The authoritative, corrected requirement is **R14** in
+> `tasks/specs/ICR-155-seed-admin-bootstrap-script.md`; the operator-facing rationale is in
+> `docs/architecture/admin-bootstrap.md`. Post-review changes not reflected in the task bodies below
+> also include the `user-exists` guard, the administrative-role check, the non-TTY refusal, the
+> transaction abort on a lost insert-race, and the corrected CLI invocations.
+
 ## Global Constraints
 
 - **Functional-first, no classes.** Outcomes are discriminated-union return values, never thrown `Error` subclasses. The single documented exception already in the codebase is `getAdminDb()`'s throw, which this code **catches at its boundary** and maps to `{ ok: false, reason: "db-guard" }`.
@@ -1061,7 +1081,7 @@ A thin, deliberately untested-by-unit shell — everything it could get wrong li
 
 **Interfaces:**
 
-- Consumes: `parseSeedArgs`, `seedAdmin`, `exitCodeFor`, `redactMongoHost`, `USAGE`, `SeedAdminResult` (Tasks 2–3); `getAdminDb` (`@src/service/database.service`); `sendInviteEmail` (`@src/service/auth-email`).
+- Consumes: `parseSeedArgs`, `seedAdmin`, `exitCodeFor`, `redactMongoHost`, `USAGE`, `SeedAdminResult` (Tasks 2–3); `getAdminDb` (`@src/service/database.service`). _(The `sendInviteEmail` import shown below was removed post-review — see the SUPERSEDED banner at the top.)_
 - Produces: the `pnpm --filter @idcr/admin seed:admin` entry point. Nothing imports this file.
 
 - [ ] **Step 1: Write the CLI shell**
@@ -1174,6 +1194,8 @@ async function main(): Promise<never> {
 
   const result = await seedAdmin(args);
 
+  // ⚠️ SUPERSEDED: this whole block was removed post-review — the templates
+  // cannot render outside a Next.js build. See the banner at the top of this plan.
   // Opt-in courtesy only. The invite URL carries no token, so a failed send is
   // never fatal: the invite is already committed and the human can sign in.
   if (result.ok && !result.dryRun && args.sendEmail) {

@@ -82,7 +82,6 @@ trusted from the issue's line numbers):
 | `retainsAdministrability()` | `src/lib/rbac/last-admin.ts:32`       | `(state: AdminStateSnapshot) => boolean`                                                                      |
 | `normalizeEmail()`          | `src/lib/auth/email.ts`               | `(value?: string \| null) => string`                                                                          |
 | `PERMISSION_KEYS`           | `src/lib/rbac/permissions.ts`         | `[PermissionKey, ...PermissionKey[]]` (15 keys)                                                               |
-| `sendInviteEmail()`         | `src/service/auth-email.ts:17`        | `({to, inviteUrl, locale}) => Promise<boolean>`                                                               |
 | `i18n` / `Locale`           | `src/i18n/config.ts`                  | `{defaultLocale:"es-AR", locales:["es-AR","en-US"]}`                                                          |
 
 **Import-chain safety (the decision that permits TypeScript + `tsx`):** the whole chain
@@ -211,9 +210,16 @@ the same session can never observe the winner). A second `insert-race` → `writ
 **R13 — Upstream relax.** `CreateInviteInput.invitedByUserId` becomes optional. **The `$set` object
 must be built conditionally so the key is omitted, never written as `null`** — see §3.
 
-**R14 — `--send-email`** is opt-in and best-effort: a failed send never fails the run (the invite is
-already written and the URL carries no token). It additionally requires `NEXT_PUBLIC_ADMIN_BASE_URL`
-and the mail-provider env — which is exactly why it is not the default (R10's minimal env surface).
+**R14 — There is NO invite-email flag.** _(Revised 2026-07-29; supersedes the issue's open question 5,
+maintainer-approved.)_ An earlier draft of this spec required an opt-in `--send-email`. It was removed
+because it can never work: `buildInviteEmail` renders through `next-intl/server`'s `getTranslations`,
+which resolves via the `next-intl/config` alias that `next-intl/plugin` installs **during a Next.js
+build**. Verified in a real standalone `tsx` process — it throws `getTranslations is not supported in
+Client Components` on every call, so the flag's only observable behaviour was reporting its own failed
+send. (`src/templates/invite.template.test.ts` mocks `next-intl/server` for exactly this reason.)
+`parseSeedArgs` now rejects `--send-email` as an unknown argument, and a test pins that, so the flag
+cannot return without the CLI-safe translation path being solved first. Removing it also makes R10's
+"minimal env surface" literally true: the script's required environment is now `MONGODB_URI` alone.
 
 **R15 — Exit codes** (mirroring `.claude/scripts/predica/delete-contentful.mjs`): `0` success ·
 `2` usage/guard refusal (`usage`, `invalid-email`, `db-guard`, `admin-exists`, CI, declined confirm) ·
@@ -285,7 +291,6 @@ Usage: pnpm --filter @idcr/admin seed:admin --email <address> [options]
                       Never relaxes the database guard.
   --yes               Skip the interactive confirmation (non-interactive human run).
   --dry-run           Print the plan; write nothing.
-  --send-email        Also send the courtesy invite email (opt-in; needs mail env).
 
 Env:  MONGODB_URI (required — its PATH decides the target database)
       ADMIN_SEED_EMAIL (optional alternative to --email)
@@ -301,7 +306,6 @@ const seedArgsSchema = z.object({
   force: z.boolean().default(false),
   yes: z.boolean().default(false),
   dryRun: z.boolean().default(false),
-  sendEmail: z.boolean().default(false),
 });
 ```
 
@@ -372,7 +376,6 @@ scripts/seed-admin.ts                        [shell — not unit-tested by desig
                   ├── ok               → { ok:true, roleIds, inviteId, refreshed }
                   └── "insert-race"    → retry ONCE in a fresh transaction
                         └── "insert-race" again → write-failed
-        ├── args.sendEmail && result.ok → sendInviteEmail(...)  [best-effort]
         ├── writeSync(1, JSON.stringify(result) + "\n")         [pipe-safe]
         └── process.exit(exitCodeFor(result))
 ```
@@ -399,7 +402,7 @@ scripts/seed-admin.ts                        [shell — not unit-tested by desig
 16. **`--dry-run`** → runs guards 1 and 2 (both read-only) and prints the plan; returns before `seedSystemRoles()`. Zero writes.
 17. **Invalid/missing email** → `invalid-email` / `usage`, exit 2, before any DB access.
 18. **Invalid `--locale`** → Zod rejects → `usage`, exit 2. (Note `inviteLocaleSchema.catch()` repairs bad locales on _read_; the CLI is stricter on _write_ so a typo is surfaced, not silently defaulted.)
-19. **`--send-email` without `NEXT_PUBLIC_ADMIN_BASE_URL`/mail env** → the invite is already committed; the send fails, is reported on stderr, and the run still exits 0. The invite URL carries no token, so the email is a courtesy.
+19. **`--send-email` passed** → rejected as an unknown argument (`usage`, exit 2). The flag was removed — see R14. No mail env is read at all.
 20. **Admin role missing after `seedSystemRoles()`** → `write-failed`, exit 1.
 
 ---
