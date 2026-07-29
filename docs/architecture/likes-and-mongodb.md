@@ -123,6 +123,44 @@ Key points:
 - **`connect()` returns the client or `undefined` on failure** (it catches, logs at error level with a `[db]` prefix, and reports to Sentry via `Sentry.captureException`) — this contract is **unchanged**. **Most callers still null-check and throw**: `contact.service`, `predica/pdfJobs`, and `broadcast/broadcastLog` all do `if (!client) throw new Error("Failed to connect to database")` — a dropped contact message, a stuck PDF job, or a lost broadcast claim is a real bug that should be loud. **The likes path is the deliberate exception (ICR-111)** — it reacts to that same `!client` signal by failing soft instead of throwing. See [The fail-soft likes contract](#the-fail-soft-likes-contract-icr-111) below.
 - **`MONGODB_URI` is required at runtime and is in `.env.example`.** Never commit a real URI.
 
+## Which database, and why it is not a literal
+
+`src/service/database.service.ts#getWebsiteDb(client)` is the only place this app decides which
+database it talks to. It calls `client.db()` with **no argument**, so the name comes from the path
+segment of `MONGODB_URI`, then asserts it against `^website(-(staging|test|qa|e2e))?$` and throws
+otherwise.
+
+Two reasons it works this way:
+
+1. **The literal was wrong outside production.** Until ICR-143 the name `"website"` was hardcoded at
+   9 call sites across `like.service.ts`, `contact.service.ts`, `predica/pdfJobs.ts` and
+   `broadcast/broadcastLog.ts`. The staging cluster contains only `website-staging`, so every one of
+   those sites targeted a database that does not exist there. It surfaced first in `pdf_jobs` purely
+   because that is the only path calling `createIndex`, which fails loudly.
+2. **The driver fails silently, so the check must fail loudly.** With no path segment in the URI,
+   `client.db().databaseName` is `"test"` — a real database the driver will happily write to. The
+   allowlist rejects `test`, the reserved `admin`/`local`/`config`, and near-misses like
+   `website-prod`.
+
+This mirrors `apps/admin` (see [admin-database.md](./admin-database.md)): one connection string
+fully determines its target database, with a positive-allowlist assertion on top.
+
+### Deploy ordering (important)
+
+`getWebsiteDb` fails closed, so **the connection string must carry a database path before this code
+runs**, or likes, contact, the sermon-PDF job queue and the broadcast log all stop working.
+
+Appending the path is a **no-op for older code**, which passed an explicit `client.db("website")` and
+ignored the URI path. So the safe order is always:
+
+1. Append the database path to `MONGODB_URI` in Vercel (Production → `/website`,
+   Preview/staging → `/website-staging`). Tracked as its own gated change:
+   [ICR-192](https://divinelab.atlassian.net/browse/ICR-192).
+2. Confirm the running site still serves likes and the contact form.
+3. Only then deploy the code that calls `getWebsiteDb`.
+
+Local development needs the same path appended in `apps/web/.env.local`.
+
 ## The like feature
 
 ### Data model
@@ -247,4 +285,4 @@ The QA harness (`qa-runner`) may **read** Mongo against a **test database only**
 
 ## Adding a stateful feature — think twice
 
-Before adding a third collection, check `docs/product/scope-and-boundaries.md`. The product is intentionally an informational, read-mostly site (no accounts, no public UGC). New write paths expand the PII/abuse surface and usually have an in-scope reframe (curated Contentful content, or a contact-form handoff) that avoids new storage. If a new collection is genuinely warranted, follow the cached-client + null-check + `db("website")` pattern above and document it in this file.
+Before adding a third collection, check `docs/product/scope-and-boundaries.md`. The product is intentionally an informational, read-mostly site (no accounts, no public UGC). New write paths expand the PII/abuse surface and usually have an in-scope reframe (curated Contentful content, or a contact-form handoff) that avoids new storage. If a new collection is genuinely warranted, follow the cached-client + null-check + `getWebsiteDb(client)` pattern above and document it in this file.
