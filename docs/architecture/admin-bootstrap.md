@@ -82,6 +82,30 @@ the script prints to stderr. Only once that name is the one you intend, drop
 `--dry-run` (and add `--yes` for a non-interactive run, or answer the interactive
 confirmation prompt) to write for real.
 
+### What `--dry-run` does and does not touch
+
+`--dry-run` writes **no documents** — no role, no invite, no user. Verified against a
+real database: after a dry run on an empty `ministry-admin-test`, all three collections
+hold `0` documents.
+
+It is not, however, a pure no-op at the _collection_ level. Guard 2 has to read the
+current users and roles to evaluate administrability, and `listUsers()` / `listRoles()`
+call `ensureAuthIndexes()` / `ensureRbacIndexes()` on the way in. `createIndex`
+implicitly creates its collection, so a dry run against a **fresh** database leaves
+behind three empty collections and their indexes:
+
+```
+invites: docs=0  indexes=[_id_, email_1_status_1, expiresAt_1, email_1]
+roles:   docs=0  indexes=[_id_, key_1, name_1]
+users:   docs=0  indexes=[_id_, email_1, firebaseUid_1]
+```
+
+This is harmless and idempotent — they are exactly the indexes the admin app creates
+the first time anyone loads `/users` — but it is worth knowing before you dry-run
+against production and watch three collections appear. Reaching a genuinely
+zero-side-effect dry run would mean bypassing the shared service layer and
+re-implementing its reads, which is precisely the drift this script exists to avoid.
+
 ## 🔴 The bootstrap address must sign in with Google, not email/password
 
 `provision.ts` refuses a first sign-in whose decoded token lacks
