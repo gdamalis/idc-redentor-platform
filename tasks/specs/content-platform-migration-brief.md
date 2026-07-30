@@ -73,10 +73,10 @@ interface ContentDoc<TFields> {
 | `sermons`            | `sermon`                                                     | slug, title, sermonDate, thesis, mainPoints, excerpt, durationSeconds, content (TipTap w/ `embeddedMedia`), featuredImageId, audioMediaId (**default-locale only**, matching today's `atDefault` audio — the en-US page surfaces the same file with the "audio in Spanish" note), pdfSummaryMediaId (**localized** — two PDFs, es/en), preacherId, additionalPreacherIds, interpreterId?, scriptureRefIds → `bible_verses`, seo fields, relatedSermonIds, **`contentHash`** (feeds PDF regen) |
 | `bible_verses`       | `bibleVerse`                                                 | **natural key** `{book, chapter, fromVerse, toVerse}` unique; per-locale `{version, text}` (NVI/NIV). Predica's upsert-by-natural-key dedup survives; reused by sermons + belief items                                                                                                                                                                                                                                                                                                        |
 | `authors`            | `author`                                                     | name, avatarMediaId, email?, plus **optional `personId` string** — the cross-DB convention (same as finance's `beneficiary.personId`): other DBs store plain-string ids; **no `$lookup` across DBs, ever** (ICR-13)                                                                                                                                                                                                                                                                           |
-| `topics`             | `churchInfoTopic` (privacy policy route `[locale]/[topic]`)  | slug, title, content (TipTap), seo, **`protected: boolean`** — publishing a protected topic requires `content:publish-protected` (replaces the `PROTECTED_ENVIRONMENTS` legal guardrail; ICR-142/163 dependency)                                                                                                                                                                                                                                                                              |
+| `topics`             | `churchInfoTopic` (privacy policy route `[locale]/[topic]`)  | slug, title, content (TipTap), seo, **`protected: boolean`** — the guardrail replacing `PROTECTED_ENVIRONMENTS` (ICR-142/163 dependency). Enforcement is downgrade-proof: `content:publish-protected` is required when **either** the persisted `published` snapshot **or** the incoming draft is protected, **and changing the `protected` value itself requires the same permission** (else write+publish could flip it off and bypass the gate)                                            |
 | `seo_entries`        | `seo`                                                        | machineName, title, description, keywords, imageId, siteName, type                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `globals`            | `navigationMenu`, `footer`, `singleEmailForm`, `contactForm` | 4 singleton docs in one collection, Zod **discriminated union** on `kind`                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `media`              | Contentful assets                                            | **`pathname` (Blob key) is canonical, URL derived** (lock-in mitigation); filename, contentType, size, width?, height?, localized title/alt, createdBy/At. Guarded delete refuses while referenced                                                                                                                                                                                                                                                                                            |
+| `media`              | Contentful assets                                            | **`pathname` (Blob key) is canonical** (the portability key: re-upload by pathname, regenerate URLs) **and the upload result's `url` is persisted alongside it** — the web read layer serves the stored `url` verbatim (it holds no Blob token and must not guess the per-store/per-env public origin); filename, contentType, size, width?, height?, localized title/alt, createdBy/At. Guarded delete refuses while referenced                                                              |
 
 Existing collections evolve: `pdf_jobs.entryId` re-keys from Contentful `sys.id` → sermon `_id`.
 Existing untouched: `likes` (slug-keyed — like keys don't change), `contact`, `broadcast_log`.
@@ -123,7 +123,11 @@ MongoDB (website) → apps/web/lib/content/get*.ts (SAME signatures/shapes as li
   requires a `ClientSession`) must hold for content mutations. Content audit entries go to a
   `content_audit` collection in `website` (same shape as `rbacAudit`).
 - **New RBAC keys** (ICR-128 registry append): `content:read`, `content:write`,
-  `content:publish`, `content:publish-protected`, `media:manage`.
+  `content:publish`, `content:publish-protected`, `media:manage`. **Plus an explicit role-grant
+  migration**: `seedSystemRoles()` seeds permissions with `$setOnInsert`
+  (`apps/admin/src/service/role.service.ts:115-132`), so appending registry keys grants nothing
+  to existing role docs — C2 ships a one-time grant adding all five keys to the stored Admin
+  role (other roles receive keys via the roles UI, per ICR-128's model).
 - **Publish flow** = one transaction (copy `draft`→`published`, set `publishedAt`, audit entry)
   then `POST <site>/api/revalidate` (existing secret header) with `{type, id}` → the site
   revalidates `site-content` **and** runs `notifyOnPublish` (email broadcast — re-keyed from
@@ -206,7 +210,12 @@ pages. Report attaches to the swap PR. Env prerequisite: the swap PR gets branch
 4. Merge the swap PR → staging + prod cut over on deploy → smoke prod (pages, likes, sitemap,
    OG, audio playback) — reuse ICR-123's verification checklist.
 5. Next sermon flows through re-targeted predica; publishing happens in admin from then on.
-6. Rollback at any point: `git revert` the swap PR (Contentful untouched, current as of freeze).
+6. Rollback — honest window, not "at any point": `git revert` of the swap PR is clean **until
+   the first post-cutover publish** (Contentful is untouched and current as of the freeze).
+   After that, Mongo and Contentful diverge — prefer **fix-forward**; if a revert is truly
+   needed, first re-key the post-cutover publications back into Contentful by hand (small N —
+   typically one sermon) or accept losing them. No dual-write machinery — deliberate
+   simplicity at this content volume.
 7. Bake ~1–2 weeks → decommission.
 
 ### 5.4 Decommission (post-bake)
