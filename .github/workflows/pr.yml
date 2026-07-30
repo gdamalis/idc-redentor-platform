@@ -84,36 +84,5 @@ jobs:
       - name: Predica scripts smoke
         run: pnpm predica:smoke
 
-  trace-guard:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22.x"
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      # Dummy, non-secret values only. The build reaches Contentful and logs auth
-      # failures, but completes and still emits the .nft.json trace manifests — file
-      # tracing does not depend on data fetching. This deliberately keeps real
-      # credentials out of GitHub Actions; they live only in Vercel.
-      - name: Build
-        run: pnpm --filter @idcr/web build
-        env:
-          NEXT_PUBLIC_BASE_URL: https://example.com
-          CONTENTFUL_SPACE_ID: dummyspace
-          CONTENTFUL_ACCESS_TOKEN: dummytoken
-          CONTENTFUL_PREVIEW_ACCESS_TOKEN: dummypreview
-
-      - name: Verify the PDF cron function traces browsers.json
-        run: pnpm --filter @idcr/web verify:trace
+  # trace-guard moved to .github/workflows/trace-guard.yml so it can be path-scoped —
+  # it runs a full production build and does not belong on doc-only PRs.
