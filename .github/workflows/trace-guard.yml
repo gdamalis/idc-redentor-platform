@@ -16,7 +16,10 @@ on:
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "turbo.json"
-      - ".github/workflows/trace-guard.yml"
+      # This file is deliberately NOT self-referenced yet. The job cannot pass today
+      # (ICR-210), so self-triggering would only guarantee a red check on any edit to
+      # this workflow, for zero signal. Add ".github/workflows/trace-guard.yml" back to
+      # this list as part of the ICR-210 fix, once the job can actually go green.
 
 permissions:
   contents: read
