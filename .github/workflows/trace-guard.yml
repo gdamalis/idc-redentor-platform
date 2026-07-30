@@ -1,0 +1,66 @@
+name: trace-guard
+
+# Extracted from pr.yml so it can be path-scoped. It runs a full production build of
+# @idcr/web, which is by far the most expensive check in the repo — there is no reason to
+# pay for it on a PR that only touches docs, tasks/, or .claude/.
+#
+# Scope = anything that can change what @vercel/nft traces into the sermon-PDF cron
+# function: the app itself (incl. next.config.ts and the route), workspace packages, and
+# the dependency graph (playwright-core's version decides where browsers.json lives).
+on:
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
+      - ".github/workflows/trace-guard.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  trace-guard:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # KNOWN BROKEN — see ICR-210. These dummy Contentful values used to be fine: the
+      # build logged auth failures but still completed, and file tracing does not depend
+      # on data fetching. ICR-123 then made getAllBlogPostSlugs throw rather than report an
+      # empty post list, and /sitemap.xml is still prerendered at build — so the build now
+      # exits 1 during static generation, BEFORE Next.js collects build traces, and
+      # verify:trace never gets a manifest to check.
+      #
+      # Consequence: this job fails on every PR that touches apps/web/**. The path filter
+      # above stops it blocking unrelated PRs; it does NOT fix this. The fix is to give the
+      # build a real read-only Contentful DELIVERY token (see ICR-210) — note the far more
+      # privileged CONTENTFUL_MANAGEMENT_ACCESS_TOKEN is already a repo secret, used by
+      # contentful-drift.yml, so the "no real credentials in Actions" rule this comment
+      # used to assert is already not the case.
+      - name: Build
+        run: pnpm --filter @idcr/web build
+        env:
+          NEXT_PUBLIC_BASE_URL: https://example.com
+          CONTENTFUL_SPACE_ID: dummyspace
+          CONTENTFUL_ACCESS_TOKEN: dummytoken
+          CONTENTFUL_PREVIEW_ACCESS_TOKEN: dummypreview
+
+      - name: Verify the PDF cron function traces browsers.json
+        run: pnpm --filter @idcr/web verify:trace
