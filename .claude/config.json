@@ -199,13 +199,38 @@
           "ministerio.idcredentor.org"
         ],
         "requirePreviewEnvironment": false,
-        "requirePreviewEnvironmentNote": "Staging is NOT a PER-PR Vercel preview deployment — it has its OWN host allowlist (^staging\\.idcredentor\\.org$), not a *.vercel.app host. It MUST NOT inherit the preview's 'must be a Vercel preview deployment (target!==production)' check. But it MUST still hard-deny every productionHostDeny host. Net: the only sanctioned non-per-PR-preview QA target is exactly staging.idcredentor.org. CAUTION — this is a statement about the QA HOST GATE, not about the build env: staging IS a Vercel BRANCH deployment, so it is built with VERCEL_ENV=preview, which makes previewLike true there (draft content + Contentful-framable CSP, X-Frame-Options omitted). Do not read 'staging is not a preview' as 'VERCEL_ENV !== preview' — verified live: staging.idcredentor.org returns frame-ancestors including app.contentful.com and no X-Frame-Options. This is what makes staging the standing Contentful Live Preview target (docs/architecture/contentful-data-layer.md § Live Preview). The admin app is a SEPARATE Vercel project (`idc-redentor-admin`) with its own production host (idc-redentor-admin.vercel.app) and custom domain (ministerio.idcredentor.org) — both hard-denied here too, even though admin has no staging host of its own yet.",
+        "requirePreviewEnvironmentNote": "Staging is NOT a PER-PR Vercel preview deployment — it has its OWN host allowlist (^staging\\.idcredentor\\.org$), not a *.vercel.app host. It MUST NOT inherit the preview's 'must be a Vercel preview deployment (target!==production)' check. But it MUST still hard-deny every productionHostDeny host. Net: the only sanctioned non-per-PR-preview QA target is exactly staging.idcredentor.org. CAUTION — this is a statement about the QA HOST GATE, not about the build env: staging IS a Vercel BRANCH deployment, so it is built with VERCEL_ENV=preview, which makes previewLike true there (draft content + Contentful-framable CSP, X-Frame-Options omitted). Do not read 'staging is not a preview' as 'VERCEL_ENV !== preview' — verified live: staging.idcredentor.org returns frame-ancestors including app.contentful.com and no X-Frame-Options. This is what makes staging the standing Contentful Live Preview target (docs/architecture/contentful-data-layer.md § Live Preview). The admin app is a SEPARATE Vercel project (`idc-redentor-admin`) with its own production host (idc-redentor-admin.vercel.app) and custom domain (ministerio.idcredentor.org) — both hard-denied here too. IMPORTANT: this env serves the WEBSITE ONLY. Admin has its own staging host and its own env block (qa.env.stagingAdmin); do not point admin QA here, it would exercise none of an apps/admin change.",
         "liveIntegrationPolicy": "no-POST",
         "liveIntegrationNote": "Staging has its OWN 'website-staging' Mongo DB (created + wired in Vercel), so Mongo reads/writes against website-staging are allowed. BUT SendGrid/Resend are presumed LIVE on staging unless sandbox creds exist — so QA must NOT happy-path POST /api/subscribe or submit the contact form (a Server Action — contactFormAction.ts; there is no /api/contact route) (it would email a real recipient / hit the live audience). Form submit/validation can be exercised up to the network boundary; full end-to-end form POST is DEFERRED until staging has sandbox mail creds or a test recipient.",
         "mongoMcp": "mongodb-localhost",
         "dbNameAllow": "^(website|ministry-admin)-(staging|test|qa|e2e)$",
         "dbNameAllowNote": "INCLUDES the real staging DBs 'website-staging' AND 'ministry-admin-staging'. DEFAULT-DENY by construction (no -(env) suffix ⇒ denied in EVERY env): the PROD DBs (bare 'website', bare 'ministry-admin'), the literal 'test' (driver's silent no-DB-in-URI fallback), and reserved 'admin'/'local'/'config'. Note 'ministry-admin-staging' is allowed on STAGING only, never on preview. QA resolves each DB name from its OWN connection URI via client.db().databaseName — MONGODB_URI -> ministry-admin*, WEBSITE_MONGODB_URI -> website* (ICR-166, one single-database credential each) — not from an env var (no ADMIN_DB_NAME).",
         "baseUrlHostAllowNote": "Default-deny allowlist for the staging QA base URL host. Two gates, both required: (1) host matches baseUrlHostAllow (^staging\\.idcredentor\\.org$); (2) host is NOT in productionHostDeny. requirePreviewEnvironment is false here (staging is not a Vercel preview), so the preview-only third gate does not apply — but production is still rejected by gate (2), which now also covers the admin app's SEPARATE Vercel project (`idc-redentor-admin`) production host + custom domain.",
+        "batchStatus": "inTesting"
+      },
+      "stagingAdmin": {
+        "_note": "Post-merge QA target for apps/admin. This repo deploys TWO apps from one tree, so 'staging' is a PER-APP fact: qa.env.staging serves the public website (apps/web) and CANNOT exercise a single line of an apps/admin change. Discovered on ICR-126, whose post-merge QA resolved to the website's staging host — verified live: staging.idcredentor.org returns the website (title 'Bienvenido a Iglesia de Cristo Redentor', /manifest.webmanifest 404s) while staging.ministerio.idcredentor.org returns the admin app and serves that manifest 200. merge.postMergeQa.byPath routes 'apps/admin' here.",
+        "target": "staging",
+        "baseUrlFrom": "stagingAdmin.baseUrl",
+        "baseUrlHostAllow": "^staging\\.ministerio\\.idcredentor\\.org$",
+        "productionHostDeny": [
+          "idcredentor.com",
+          "www.idcredentor.com",
+          "idcredentor.org",
+          "www.idcredentor.org",
+          "idc-redentor-website.vercel.app",
+          "idc-redentor-web.vercel.app",
+          "idc-redentor-admin.vercel.app",
+          "ministerio.idcredentor.org"
+        ],
+        "requirePreviewEnvironment": false,
+        "requirePreviewEnvironmentNote": "Admin staging is a fixed branch-deployment host, not a per-PR Vercel preview, so the preview-only 'target !== production' gate does not apply. It is NOT a production alias: ministerio.idcredentor.org (production, deployment target='production') and staging.ministerio.idcredentor.org are DIFFERENT deployments — proven by the ICR-126 discriminator (production predates /manifest.webmanifest and 307s it; staging serves it 200). They share a Vercel DNS CNAME only because both domains belong to the same Vercel project (idc-redentor-admin); that is normal and says nothing about which deployment each serves. Production remains hard-denied by productionHostDeny regardless.",
+        "liveIntegrationPolicy": "no-POST",
+        "liveIntegrationNote": "no-POST here means NO THIRD-PARTY / IRREVERSIBLE side effects — it does NOT forbid the sign-in POST. Signing in (POST /api/auth/session) is the PRECONDITION for any admin QA at all: every route that mounts AppShell is behind the auth gate, so a QA run that cannot sign in can only ever see /login, /reset-password and /no-access. Sign-in is idempotent and sends no mail, so it is permitted. FORBIDDEN on this env: anything that sends a real invite email (POST the /users invite flow), any write to congregant PII, any role/permission mutation, and disabling or deleting a user. Read-side admin QA — sign in, walk the nav, open pages, change locale/theme, sign out — is the sanctioned scope.",
+        "mongoMcp": "mongodb-localhost",
+        "dbNameAllow": "^(website|ministry-admin)-(staging|test|qa|e2e)$",
+        "dbNameAllowNote": "Same default-deny allowlist as the website's staging env, and deliberately BOTH prefixes: apps/admin holds one connection string per database (ICR-166) — MONGODB_URI -> ministry-admin*, WEBSITE_MONGODB_URI -> website* — so the admin app legitimately reaches both. Denied by construction (no -(env) suffix): the PROD DBs (bare 'website', bare 'ministry-admin'), the literal 'test' (the driver's silent no-DB-in-URI fallback), and reserved 'admin'/'local'/'config'. QA resolves each DB name from its OWN URI via client.db().databaseName, never from an env var.",
+        "baseUrlHostAllowNote": "Default-deny allowlist for the admin staging QA host. Two gates, both required: (1) host matches ^staging\\.ministerio\\.idcredentor\\.org$; (2) host is NOT in productionHostDeny — which covers BOTH Vercel projects' production hosts and custom domains, so a typo that drops the 'staging.' prefix lands on the denylist rather than on production.",
         "batchStatus": "inTesting"
       }
     },
@@ -287,7 +312,15 @@
     "requireCiGreen": true,
     "deleteWorktreeAndBranch": true,
     "moveTo": "inTesting",
-    "postMergeQa": "staging"
+    "postMergeQaNote": "OBJECT form (requires the plugin change in YK-8, incl. the divinelab-plugins#9 follow-up for array values) because this repo deploys TWO apps and 'staging' is a per-app fact. /merge reads the squash commit's file list and routes to the env(s) serving what actually changed; longest matching prefix wins per file, and QA runs against EVERY distinct env the diff selects — never a subset. Zero matches (root/docs/tooling-only merge) -> default. 'packages' maps to BOTH envs (an ARRAY value): the shared workspace packages are compiled into both apps (@idcr/ui is raw source both apps transpile; @idcr/config is their shared build config), so a packages/** change is live on both staging hosts and each must be proven — Codex flagged on PR #122 that routing it to the website default would false-green an admin regression. A plain string here would send every apps/admin merge to the website's staging host, where it would PASS having exercised none of the merged code — which is how ICR-126 surfaced this.",
+    "postMergeQa": {
+      "default": "staging",
+      "byPath": {
+        "apps/admin": "stagingAdmin",
+        "apps/web": "staging",
+        "packages": ["staging", "stagingAdmin"]
+      }
+    }
   },
   "branchPrefixByType": {
     "feat": "feat/",

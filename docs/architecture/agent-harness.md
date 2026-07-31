@@ -36,13 +36,13 @@ in `.claude/config.json` (canon-schema, validated by the plugin's `divinelab:can
 
 ## Commands
 
-| Command                                 | Backed by                                                                                                                                | Does                                                                                                                                                                                                                                                                                                                            | Issue transitions                                                                                |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| **`/divinelab:pm`**                     | `divinelab:product-manager`                                                                                                              | Intake a raw idea → To Do issue; refine a thin issue to ready; groom the Backlog + To Do statuses. Enforces `docs/product/scope-and-boundaries.md`. **Never implements.**                                                                                                                                                       | Creates/updates issues up to **To Do**; never past it                                            |
-| **`/divinelab:work [ICR-N]`**           | divinelab:explorer → divinelab:implementer → divinelab:verifier → divinelab:qa-runner → divinelab:acceptance-judge → divinelab:pr-author | Pick up a ready issue, refine-gate it, create a worktree + branch, (conditionally) brainstorm + spec, implement ↔ verify, open a draft PR, run always-on type-aware pre-merge QA on the preview, mark ready, then run the detached post-PR review + CI loop. Hands off to `/divinelab:merge` on an explicit in-session "merge". | **To Do → In Progress** (step 3), **In Progress → In Review** (step 14, via divinelab:pr-author) |
-| **`/divinelab:merge ICR-N`**            | `/divinelab:work` hand-off or standalone                                                                                                 | **User-triggered ONLY.** Squash-merge the PR (refuse on red/pending CI), delete the worktree + branch, transition the issue → In Testing, then run post-merge **staging** QA. **Never merges autonomously; never moves to Done.**                                                                                               | **In Review → In Testing** (after a verified squash-merge)                                       |
-| **`/divinelab:qa [ICR-N] [--preview]`** | `divinelab:qa-acceptance` (tester) → `divinelab:acceptance-judge` (verdict)                                                              | Acceptance QA against the **staging** deployment by default; `--preview` re-targets the PR's Vercel preview. Posts a structured Jira comment with inline screenshots. **Phase 1: report-only.**                                                                                                                                 | May transition To Do/In Progress → In Review on the **preview** path only; **never Done**        |
-| **`/divinelab:verify`**                 | divinelab:verifier (+ divinelab:security-reviewer)                                                                                       | Run `pnpm type-check && pnpm lint && pnpm test && pnpm build` and security checks. Local-only.                                                                                                                                                                                                                                  | none                                                                                             |
+| Command                                 | Backed by                                                                                                                                | Does                                                                                                                                                                                                                                                                                                                                       | Issue transitions                                                                                |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| **`/divinelab:pm`**                     | `divinelab:product-manager`                                                                                                              | Intake a raw idea → To Do issue; refine a thin issue to ready; groom the Backlog + To Do statuses. Enforces `docs/product/scope-and-boundaries.md`. **Never implements.**                                                                                                                                                                  | Creates/updates issues up to **To Do**; never past it                                            |
+| **`/divinelab:work [ICR-N]`**           | divinelab:explorer → divinelab:implementer → divinelab:verifier → divinelab:qa-runner → divinelab:acceptance-judge → divinelab:pr-author | Pick up a ready issue, refine-gate it, create a worktree + branch, (conditionally) brainstorm + spec, implement ↔ verify, open a draft PR, run always-on type-aware pre-merge QA on the preview, mark ready, then run the detached post-PR review + CI loop. Hands off to `/divinelab:merge` on an explicit in-session "merge".            | **To Do → In Progress** (step 3), **In Progress → In Review** (step 14, via divinelab:pr-author) |
+| **`/divinelab:merge ICR-N`**            | `/divinelab:work` hand-off or standalone                                                                                                 | **User-triggered ONLY.** Squash-merge the PR (refuse on red/pending CI), delete the worktree + branch, transition the issue → In Testing, then run post-merge **staging** QA against the env serving the app that changed (`staging` for `apps/web`, `stagingAdmin` for `apps/admin`). **Never merges autonomously; never moves to Done.** | **In Review → In Testing** (after a verified squash-merge)                                       |
+| **`/divinelab:qa [ICR-N] [--preview]`** | `divinelab:qa-acceptance` (tester) → `divinelab:acceptance-judge` (verdict)                                                              | Acceptance QA against the **staging** deployment by default; `--preview` re-targets the PR's Vercel preview. Posts a structured Jira comment with inline screenshots. **Phase 1: report-only.**                                                                                                                                            | May transition To Do/In Progress → In Review on the **preview** path only; **never Done**        |
+| **`/divinelab:verify`**                 | divinelab:verifier (+ divinelab:security-reviewer)                                                                                       | Run `pnpm type-check && pnpm lint && pnpm test && pnpm build` and security checks. Local-only.                                                                                                                                                                                                                                             | none                                                                                             |
 
 ## The agents
 
@@ -251,13 +251,18 @@ stays `false`). It is invoked standalone or via the `/divinelab:work` step-14.6 
    worktree, it leaves it first via `ExitWorktree(action: "remove")` so the shell is never stranded.
    "Already gone" is tolerated non-fatally.
 5. **Transition In Review → In Testing (automated transition #3)** — only after the verified squash-merge. **Never Done.**
-6. **Post-merge staging QA.** Validate the staging URL against `config.qa.env.staging` (host must match
-   `^staging\.idcredentor\.org$`, prod hosts hard-denied; **skip** the must-be-a-Vercel-preview check —
+6. **Post-merge staging QA.** First **resolve which staging env(s)** from the squash commit's file list via
+   `config.merge.postMergeQa.byPath` — `apps/admin` → `stagingAdmin`, `apps/web` → `staging`, `packages` →
+   **both** (the shared workspace packages are compiled into both apps), no match → `default`. When more
+   than one env matches, QA runs against **every** matched env — never a chosen subset. Then, per env,
+   validate that env's URL against its own block (the website's host
+   must match `^staging\.idcredentor\.org$`, the admin's `^staging\.ministerio\.idcredentor\.org$`;
+   prod hosts hard-denied in both; **skip** the must-be-a-Vercel-preview check —
    staging is not a **per-PR** preview deployment, so it has no `*.vercel.app` host to match. Note this
    is a statement about the QA _host_ gate only: staging **is** a Vercel branch deployment and so is
    built with `VERCEL_ENV=preview`, which is exactly what makes it draft-serving and Contentful-framable
    — see `contentful-data-layer.md` § Live Preview). Then **tester (`divinelab:qa-acceptance`) → `divinelab:acceptance-judge`** → post the result to
-   the Jira issue (`postedBy: "/divinelab:merge"`, `envName: "staging"`). A `no-POST` happy-path AC the tester correctly
+   the Jira issue (`postedBy: "/divinelab:merge"`, `envName:` the env resolved above). A `no-POST` happy-path AC the tester correctly
    skipped is **BLOCKED/deferred**, not FAIL.
 7. **Stop.** Report the merge + cleanup + the staging verdict, and remind the user that **Done is human-only**
    — deploy prod from Vercel, then transition In Testing → Done. `/divinelab:merge` **never** moves an issue to Done.
@@ -269,9 +274,36 @@ guardrails:
 
 - **Env-by-name targets (`config.qa.env.<name>`).** `/divinelab:qa`'s **default target is `staging`**
   (`staging.idcredentor.org`); pass **`--preview`** to re-target the PR's Vercel preview. `/divinelab:work`'s pre-merge
-  QA always targets **`preview`**; `/divinelab:merge`'s post-merge QA always targets **`staging`**. Every consumer
-  selects its allowlist / db-allow / live-integration policy **off the env block by name** — never hardcoding
-  preview literals.
+  QA always targets **`preview`**. Every consumer selects its allowlist / db-allow / live-integration policy
+  **off the env block by name** — never hardcoding preview literals.
+- **This repo deploys TWO apps, so there are two staging envs — `staging` and `stagingAdmin`.**
+  `qa.env.staging` (`staging.idcredentor.org`) serves **`apps/web` only**; `qa.env.stagingAdmin`
+  (`staging.ministerio.idcredentor.org`, a separate Vercel project) serves **`apps/admin`**.
+  `/divinelab:merge`'s post-merge QA no longer targets one fixed env: `merge.postMergeQa` is the
+  object form `{ default, byPath }`, and `/merge` routes on the squash commit's file list —
+  longest matching prefix wins per file, zero matches falls back to `default`, and QA runs against
+  **every** distinct env the diff selects. `packages` maps to **both** envs (an array value):
+  `@idcr/ui` is raw source both apps transpile and `@idcr/config` is their shared build config, so
+  a `packages/**` change is live on both staging hosts and each must be proven.
+
+  > **Why this exists.** Until ICR-126 there was one `staging` env, so an `apps/admin` merge ran its
+  > post-merge QA against the **website** and would have reported PASS having exercised none of the
+  > merged code. A green result that proves nothing is worse than a BLOCKED one, because it
+  > manufactures confidence. If you ever doubt which app an env serves, request a route only that app
+  > has: `/es-AR/login` is 200 on admin and 404 on the website.
+  >
+  > Requires the plugin change in **YK-8** (`postMergeQa` accepted only a bare string before it).
+  > Pre-merge `/work` QA happens to work for both apps today only because `qa.env.preview`'s host
+  > allowlist is `^[a-z0-9-]+\.vercel\.app$`, which both Vercel projects share — it is not app-aware
+  > either, it simply cannot tell them apart.
+
+  **Admin staging QA needs a credential.** `apps/admin` is invite-only Firebase Auth, so every route
+  that mounts `AppShell` is unreachable without one and QA can only ever see `/login`,
+  `/reset-password` and `/no-access`. `qa-env.json` → `stagingAdmin.auth.{email,password}` holds a
+  dedicated, least-privilege, **staging-only** QA account (see `qa-env.json.example`). Email/password
+  rather than Google sign-in, because the Google flow needs an interactive OAuth popup an automated
+  browser cannot complete.
+
 - **Production is hard-denied in EVERY env.** Both the `idcredentor` custom domains **and** the production
   `*.vercel.app` aliases (`idc-redentor-website.vercel.app`, `idc-redentor-web.vercel.app`) are rejected for
   both `preview` and `staging` (`env.productionHostDeny`). The preview env additionally runs a
@@ -281,13 +313,20 @@ guardrails:
   `divinelab:qa-acceptance`) for evidence, then a fresh `divinelab:acceptance-judge` for the authoritative verdict; results post
   via `post-jira-result.mjs` (the divinelab plugin bin, on PATH). The script uploads each screenshot as a Jira
   **attachment** and posts a comment whose ADF body references it as a `media` node (the Atlassian MCP can't
-  attach files itself). `meta.envName` is **required** and drives the `Staging:` / `Preview:` label;
+  attach files itself). `meta.envName` is **required** and drives the URL label, which is derived from the env name
+  (`staging` → `Staging:`, `stagingAdmin` → `Staging Admin:`, anything preview-ish → `Preview:`);
   `meta.postedBy` is the provenance footer (`/divinelab:qa` | `/divinelab:work` | `/divinelab:merge`). Jira creds come from
   `qa-env.json` (gitignored); on absent creds the script exits 3 and the orchestrator falls back to
   `mcp__atlassian-divinelab__addCommentToJiraIssue`.
-- **Staging is `no-POST`** (`config.qa.env.staging.liveIntegrationPolicy`): no live happy-path POST to
-  `/api/subscribe` or `/api/contact` — SendGrid/Resend are presumed LIVE on staging unless sandbox
-  creds exist, so forms are tested only up to the network boundary; full end-to-end form POST is **DEFERRED**.
+- **Both staging envs are `no-POST`**, but it means something different in each.
+  - `qa.env.staging` (website): no live happy-path POST to `/api/subscribe` or the contact Server
+    Action — SendGrid/Resend are presumed LIVE on staging unless sandbox creds exist, so forms are
+    tested only up to the network boundary; full end-to-end form POST is **DEFERRED**.
+  - `qa.env.stagingAdmin`: `no-POST` bars **third-party / irreversible** side effects — sending a real
+    invite email, writing congregant PII, mutating roles, disabling or deleting a user. It does **not**
+    bar the sign-in POST (`POST /api/auth/session`), which is the precondition for reaching any admin
+    surface at all and is idempotent and mail-free. Read-side admin QA — sign in, walk the nav, open
+    pages, switch locale/theme, sign out — is the sanctioned scope.
 - **Mongo** is gated to a **test-DB-name allowlist**. Preview: `^website-(test|qa|e2e)$`. Staging:
   `^website-(test|qa|e2e|staging)$` — it **includes** the real `website-staging` DB (created + wired in
   Vercel), so reads/writes against `website-staging` are allowed. The production `website` DB is **excluded
