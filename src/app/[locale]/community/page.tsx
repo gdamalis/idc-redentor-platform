@@ -70,8 +70,8 @@ export default async function CommunityPage({
     locale,
     isEnabled,
   );
-  const ourMissionSection = await getDuplexComponent(
-    "our-mission-section",
+  const ourMissionCollection = await getContentCollection(
+    "collection-our-mission",
     locale,
     isEnabled,
   );
@@ -91,7 +91,7 @@ export default async function CommunityPage({
       )}
       <InfoCommunity content={infoCommunity} />
       <CreedSection content={ourCreedContent} />
-      <OurMissionSection content={ourMissionSection} />
+      <OurMissionSection content={ourMissionCollection} />
       <ComponentCta content={contactCta} />
     </main>
   );

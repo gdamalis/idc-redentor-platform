@@ -1,11 +1,13 @@
 import { shouldUseDraftMode } from "@lib/contentful/draftMode";
 import { getLatestBlogPostPages } from "@lib/contentful/getBlogPostPages";
+import { getContentCollection } from "@lib/contentful/getContentCollection";
 import { getCtaComponent } from "@lib/contentful/getCtaComponent";
 import { getHeroBannerComponent } from "@lib/contentful/getHeroBannerComponent";
 import { getSeo } from "@lib/contentful/getSeo";
 import { BlogSection } from "@src/components/features/blog-section";
 import { ComponentCta } from "@src/components/features/component-cta";
 import { OurMissionCta } from "@src/components/features/our-mission-cta";
+import { OurMissionSection } from "@src/components/features/our-mission-section";
 import { localesPath } from "@src/i18n/config";
 import { type Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -55,6 +57,11 @@ export default async function Home({
     locale,
     isEnabled,
   );
+  const ourMissionCollection = await getContentCollection(
+    "collection-our-mission",
+    locale,
+    isEnabled,
+  );
   const contactCta = await getCtaComponent(
     "connect-with-us",
     locale,
@@ -67,6 +74,7 @@ export default async function Home({
   return (
     <main>
       <OurMissionCta content={ourMission} />
+      <OurMissionSection content={ourMissionCollection} />
       <BlogSection posts={latestPosts} />
       <ComponentCta content={contactCta} />
     </main>

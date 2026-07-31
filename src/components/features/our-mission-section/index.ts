@@ -1,1 +1,1 @@
-export * from './OurMissionSection';
+export { OurMissionSection } from "./OurMissionSection";
