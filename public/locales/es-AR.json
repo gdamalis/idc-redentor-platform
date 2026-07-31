@@ -17,10 +17,6 @@
   "Connect": {
     "header-title": "Vení a <highlight>Conocernos</highlight>"
   },
-  "contact-form": {
-    "title": "Conectá con Nosotros",
-    "description": "Podés escribirnos al correo <highlight>info@idcredentor.com</highlight>"
-  },
   "Community": {
     "header-title": "Nuestra <highlight>Comunidad</highlight>"
   },
@@ -29,9 +25,6 @@
     "homepage": "Página principal",
     "language": "Idioma",
     "languageDrawer": "Alternar cajón de idiomas"
-  },
-  "creed-section": {
-    "title": "Nuestro Credo"
   },
   "footer": {
     "copyright": "Iglesia de Cristo Redentor. Todos los derechos reservados.",
