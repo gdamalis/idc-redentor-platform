@@ -251,9 +251,11 @@ stays `false`). It is invoked standalone or via the `/divinelab:work` step-14.6 
    worktree, it leaves it first via `ExitWorktree(action: "remove")` so the shell is never stranded.
    "Already gone" is tolerated non-fatally.
 5. **Transition In Review → In Testing (automated transition #3)** — only after the verified squash-merge. **Never Done.**
-6. **Post-merge staging QA.** First **resolve which staging env** from the squash commit's file list via
-   `config.merge.postMergeQa.byPath` — `apps/admin` → `stagingAdmin`, `apps/web` → `staging`, no match →
-   `default`, both → ask the human. Then validate that env's URL against its own block (the website's host
+6. **Post-merge staging QA.** First **resolve which staging env(s)** from the squash commit's file list via
+   `config.merge.postMergeQa.byPath` — `apps/admin` → `stagingAdmin`, `apps/web` → `staging`, `packages` →
+   **both** (the shared workspace packages are compiled into both apps), no match → `default`. When more
+   than one env matches, QA runs against **every** matched env — never a chosen subset. Then, per env,
+   validate that env's URL against its own block (the website's host
    must match `^staging\.idcredentor\.org$`, the admin's `^staging\.ministerio\.idcredentor\.org$`;
    prod hosts hard-denied in both; **skip** the must-be-a-Vercel-preview check —
    staging is not a **per-PR** preview deployment, so it has no `*.vercel.app` host to match. Note this
@@ -279,8 +281,10 @@ guardrails:
   (`staging.ministerio.idcredentor.org`, a separate Vercel project) serves **`apps/admin`**.
   `/divinelab:merge`'s post-merge QA no longer targets one fixed env: `merge.postMergeQa` is the
   object form `{ default, byPath }`, and `/merge` routes on the squash commit's file list —
-  longest matching prefix wins, zero matches falls back to `default`, and a merge spanning both
-  apps is surfaced to the human rather than silently resolved.
+  longest matching prefix wins per file, zero matches falls back to `default`, and QA runs against
+  **every** distinct env the diff selects. `packages` maps to **both** envs (an array value):
+  `@idcr/ui` is raw source both apps transpile and `@idcr/config` is their shared build config, so
+  a `packages/**` change is live on both staging hosts and each must be proven.
 
   > **Why this exists.** Until ICR-126 there was one `staging` env, so an `apps/admin` merge ran its
   > post-merge QA against the **website** and would have reported PASS having exercised none of the

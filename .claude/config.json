@@ -312,12 +312,13 @@
     "requireCiGreen": true,
     "deleteWorktreeAndBranch": true,
     "moveTo": "inTesting",
-    "postMergeQaNote": "OBJECT form (requires the plugin change in YK-8) because this repo deploys TWO apps and 'staging' is a per-app fact. /merge reads the squash commit's file list and routes to the env serving the app that actually changed; longest matching prefix wins. Zero matches (root/docs/tooling-only merge) -> default. A merge spanning BOTH apps is surfaced to the human, never silently resolved. A plain string here would send every apps/admin merge to the website's staging host, where it would PASS having exercised none of the merged code — which is how ICR-126 surfaced this.",
+    "postMergeQaNote": "OBJECT form (requires the plugin change in YK-8, incl. the divinelab-plugins#9 follow-up for array values) because this repo deploys TWO apps and 'staging' is a per-app fact. /merge reads the squash commit's file list and routes to the env(s) serving what actually changed; longest matching prefix wins per file, and QA runs against EVERY distinct env the diff selects — never a subset. Zero matches (root/docs/tooling-only merge) -> default. 'packages' maps to BOTH envs (an ARRAY value): the shared workspace packages are compiled into both apps (@idcr/ui is raw source both apps transpile; @idcr/config is their shared build config), so a packages/** change is live on both staging hosts and each must be proven — Codex flagged on PR #122 that routing it to the website default would false-green an admin regression. A plain string here would send every apps/admin merge to the website's staging host, where it would PASS having exercised none of the merged code — which is how ICR-126 surfaced this.",
     "postMergeQa": {
       "default": "staging",
       "byPath": {
         "apps/admin": "stagingAdmin",
-        "apps/web": "staging"
+        "apps/web": "staging",
+        "packages": ["staging", "stagingAdmin"]
       }
     }
   },
