@@ -10,7 +10,7 @@ import path from 'path';
  */
 export function renderTemplate(templateName: string, variables: Record<string, string>): string {
   try {
-    const templatePath = path.resolve(process.cwd(), 'src/service/email-templates/html', `${templateName}.html`);
+    const templatePath = path.resolve(process.cwd(), 'public/assets/email-templates', `${templateName}.html`);
     
     let templateContent = fs.readFileSync(templatePath, 'utf8');
     
