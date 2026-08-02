@@ -5,8 +5,8 @@
 > **Purpose:** How to use the Claude Code agent harness on this repo — the agents and slash commands, the
 > human-gated Jira automation (Backlog → To Do → In Progress → In Review → **In Testing** → Done, with
 > **Done human-only**), the branch/PR/merge conventions, the always-on type-aware QA on both the Vercel
-> preview and **staging**, the detached **post-PR review + CI loop**, and the user-triggered `/divinelab:merge`.
-> **Harness brain:** `.claude/config.json` (canon-schema, validated by the `divinelab:canon` skill) is the single
+> preview and **staging**, the detached **post-PR review + CI loop**, and the user-triggered `/yoke:merge`.
+> **Harness brain:** `.claude/config.json` (canon-schema, validated by the `yoke:canon` skill) is the single
 > source of truth — every command and agent reads it first. This doc narrates it; on any disagreement the JSON wins.
 > **Last reviewed:** 2026-07-02 (plugin migration)
 
@@ -14,22 +14,22 @@
 
 A set of focused subagents plus orchestrating slash commands that take a church-team idea from a Jira
 issue all the way to a merged-and-staging-verified change. The harness is **human-gated at two points**:
-(1) a _conditional_ brainstorm/spec gate during `/divinelab:work`, and (2) the **merge approval** — a human triggers
-`/divinelab:merge`. Agents do the mechanical work (research, implement, verify, QA, open PRs, address review
+(1) a _conditional_ brainstorm/spec gate during `/yoke:work`, and (2) the **merge approval** — a human triggers
+`/yoke:merge`. Agents do the mechanical work (research, implement, verify, QA, open PRs, address review
 comments, run the squash-merge when asked, run staging QA, transition issues forward) but **no agent ever
 _autonomously_ merges, and no agent ever moves an issue to Done.** The harness itself — the slash commands, the
-nine dev subagents, and the session/graph hooks — ships as the **divinelab plugin** (Claude Code marketplace
+nine dev subagents, and the session/graph hooks — ships as the **yoke plugin** (Claude Code marketplace
 `DivineLab/divinelab-plugins`, enabled in `.claude/settings.json`). This repo carries only the **project facts**
-in `.claude/config.json` (canon-schema, validated by the plugin's `divinelab:canon` skill) plus the local
+in `.claude/config.json` (canon-schema, validated by the plugin's `yoke:canon` skill) plus the local
 **`/predica` domain command + its `predica-*` agents + `.claude/scripts/predica/`** (not part of the plugin).
 
 > **What changed from v1.** v1 stopped at _"idea → reviewed PR"_ — it had a human merge every PR by hand and
 > QA'd against per-PR Vercel previews only, with no dedicated staging target. v2 extended the pipeline to
 > _"idea → merged → staging-verified"_: it added the **In Testing** status, a real **staging** QA env
-> (`staging.idcredentor.org` / `website-staging` DB), the **`divinelab:acceptance-judge`** verdict agent (split
-> from the QA tester), the detached **post-PR loop**, and the user-triggered **`/divinelab:merge`** command. Merge
-> is not "humans do it by hand" — the human _triggers_ `/divinelab:merge`, which performs the squash. `autoMerge`
-> stays `false`; nothing merges autonomously. The generic harness now lives in the reusable **divinelab plugin**
+> (`staging.idcredentor.org` / `website-staging` DB), the **`yoke:acceptance-judge`** verdict agent (split
+> from the QA tester), the detached **post-PR loop**, and the user-triggered **`/yoke:merge`** command. Merge
+> is not "humans do it by hand" — the human _triggers_ `/yoke:merge`, which performs the squash. `autoMerge`
+> stays `false`; nothing merges autonomously. The generic harness now lives in the reusable **yoke plugin**
 > (shared across the Divine Lab projects); this repo supplies only the ICR-specific facts (`.claude/config.json`)
 > and the `/predica` domain pipeline, wiring the plugin to its `apps/web` monorepo, its Contentful-backed
 > no-auth site, and its Vercel staging/prod split.
@@ -38,59 +38,59 @@ in `.claude/config.json` (canon-schema, validated by the plugin's `divinelab:can
 
 | Command                                 | Backed by                                                                                                                                | Does                                                                                                                                                                                                                                                                                                                                       | Issue transitions                                                                                |
 | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
-| **`/divinelab:pm`**                     | `divinelab:product-manager`                                                                                                              | Intake a raw idea → To Do issue; refine a thin issue to ready; groom the Backlog + To Do statuses. Enforces `docs/product/scope-and-boundaries.md`. **Never implements.**                                                                                                                                                                  | Creates/updates issues up to **To Do**; never past it                                            |
-| **`/divinelab:work [ICR-N]`**           | divinelab:explorer → divinelab:implementer → divinelab:verifier → divinelab:qa-runner → divinelab:acceptance-judge → divinelab:pr-author | Pick up a ready issue, refine-gate it, create a worktree + branch, (conditionally) brainstorm + spec, implement ↔ verify, open a draft PR, run always-on type-aware pre-merge QA on the preview, mark ready, then run the detached post-PR review + CI loop. Hands off to `/divinelab:merge` on an explicit in-session "merge".            | **To Do → In Progress** (step 3), **In Progress → In Review** (step 14, via divinelab:pr-author) |
-| **`/divinelab:merge ICR-N`**            | `/divinelab:work` hand-off or standalone                                                                                                 | **User-triggered ONLY.** Squash-merge the PR (refuse on red/pending CI), delete the worktree + branch, transition the issue → In Testing, then run post-merge **staging** QA against the env serving the app that changed (`staging` for `apps/web`, `stagingAdmin` for `apps/admin`). **Never merges autonomously; never moves to Done.** | **In Review → In Testing** (after a verified squash-merge)                                       |
-| **`/divinelab:qa [ICR-N] [--preview]`** | `divinelab:qa-acceptance` (tester) → `divinelab:acceptance-judge` (verdict)                                                              | Acceptance QA against the **staging** deployment by default; `--preview` re-targets the PR's Vercel preview. Posts a structured Jira comment with inline screenshots. **Phase 1: report-only.**                                                                                                                                            | May transition To Do/In Progress → In Review on the **preview** path only; **never Done**        |
-| **`/divinelab:verify`**                 | divinelab:verifier (+ divinelab:security-reviewer)                                                                                       | Run `pnpm type-check && pnpm lint && pnpm test && pnpm build` and security checks. Local-only.                                                                                                                                                                                                                                             | none                                                                                             |
+| **`/yoke:pm`**                     | `yoke:product-manager`                                                                                                              | Intake a raw idea → To Do issue; refine a thin issue to ready; groom the Backlog + To Do statuses. Enforces `docs/product/scope-and-boundaries.md`. **Never implements.**                                                                                                                                                                  | Creates/updates issues up to **To Do**; never past it                                            |
+| **`/yoke:work [ICR-N]`**           | yoke:explorer → yoke:implementer → yoke:verifier → yoke:qa-runner → yoke:acceptance-judge → yoke:pr-author | Pick up a ready issue, refine-gate it, create a worktree + branch, (conditionally) brainstorm + spec, implement ↔ verify, open a draft PR, run always-on type-aware pre-merge QA on the preview, mark ready, then run the detached post-PR review + CI loop. Hands off to `/yoke:merge` on an explicit in-session "merge".            | **To Do → In Progress** (step 3), **In Progress → In Review** (step 14, via yoke:pr-author) |
+| **`/yoke:merge ICR-N`**            | `/yoke:work` hand-off or standalone                                                                                                 | **User-triggered ONLY.** Squash-merge the PR (refuse on red/pending CI), delete the worktree + branch, transition the issue → In Testing, then run post-merge **staging** QA against the env serving the app that changed (`staging` for `apps/web`, `stagingAdmin` for `apps/admin`). **Never merges autonomously; never moves to Done.** | **In Review → In Testing** (after a verified squash-merge)                                       |
+| **`/yoke:qa [ICR-N] [--preview]`** | `yoke:qa-acceptance` (tester) → `yoke:acceptance-judge` (verdict)                                                              | Acceptance QA against the **staging** deployment by default; `--preview` re-targets the PR's Vercel preview. Posts a structured Jira comment with inline screenshots. **Phase 1: report-only.**                                                                                                                                            | May transition To Do/In Progress → In Review on the **preview** path only; **never Done**        |
+| **`/yoke:verify`**                 | yoke:verifier (+ yoke:security-reviewer)                                                                                       | Run `pnpm type-check && pnpm lint && pnpm test && pnpm build` and security checks. Local-only.                                                                                                                                                                                                                                             | none                                                                                             |
 
 ## The agents
 
-The roster ships in the **divinelab plugin** (dispatched as `divinelab:<name>` via the Task tool) — run
+The roster ships in the **yoke plugin** (dispatched as `yoke:<name>` via the Task tool) — run
 `/agents` or check the plugin for the live set. The nine dev agents:
 
-- **`divinelab:product-manager`** (`/divinelab:pm`) — turns ideas into well-formed Jira issues and grooms the backlog, grounded
+- **`yoke:product-manager`** (`/yoke:pm`) — turns ideas into well-formed Jira issues and grooms the backlog, grounded
   in `docs/product/`. Three modes: **intake** (raw idea → To Do issue), **refine** (thin issue → ready),
   **groom** (read-only audit of **Backlog + To Do**). Never writes code, never branches/PRs, never transitions
   an issue past To Do. Flags sensitive areas (email, contact/subscribe PII, likes Mongo writes, env/secrets, CSP).
-- **`divinelab:explorer`** — read-only codebase research for `/divinelab:work`. Two modes: `ticket-context` (default) summarizes
+- **`yoke:explorer`** — read-only codebase research for `/yoke:work`. Two modes: `ticket-context` (default) summarizes
   relevant code/patterns/risks for an incoming issue **and emits two machine-readable signals**:
   `Suggested QA depth` (`light|standard|heavy`) and a `needsDesignGate: true|false` line that drives whether
-  `/divinelab:work`'s brainstorm + spec gates fire; `observation-context` enriches a stray `tasks/todo.md` line into a
+  `/yoke:work`'s brainstorm + spec gates fire; `observation-context` enriches a stray `tasks/todo.md` line into a
   Jira issue draft (JSON). Uses the graphify graph when present (see below).
-- **`divinelab:implementer`** — writes the change inside the feature-branch worktree, TDD-first, following the
+- **`yoke:implementer`** — writes the change inside the feature-branch worktree, TDD-first, following the
   conventions in `CLAUDE.md` / `AGENTS.md`. In the post-PR loop it also takes
   **PR review-comment threads** as input: it invokes `superpowers:receiving-code-review` (verify → fix →
   push back with rationale, never blind agreement), fixes on the feature branch (**never `--no-verify`**),
   and **replies once per thread** via `mcp__github__add_reply_to_pull_request_comment`. Red CI is fed back
   through the same channel.
-- **`divinelab:verifier`** — runs the gate commands (`pnpm type-check`, `pnpm lint`, `pnpm test`, `pnpm build`) per QA
+- **`yoke:verifier`** — runs the gate commands (`pnpm type-check`, `pnpm lint`, `pnpm test`, `pnpm build`) per QA
   depth and reports failures rather than inventing missing scripts. Runs on the cheap model tier (haiku).
-- **`divinelab:pr-author`** — opens the draft PR with a conventional-commit title `<type>(ICR-N): description`, fills
+- **`yoke:pr-author`** — opens the draft PR with a conventional-commit title `<type>(ICR-N): description`, fills
   the template, posts the PR-link Jira comment, and at `mark_ready` flips the PR to ready and transitions the
   issue **In Progress → In Review**. Runs a **mandatory secret-scrub** on every PR body and Jira comment write.
-  **Never merges, never moves to Done.** The `In Review → In Testing` transition is owned by `/divinelab:merge`,
+  **Never merges, never moves to Done.** The `In Review → In Testing` transition is owned by `/yoke:merge`,
   not pr-author — preserving pr-author's single responsibility.
-- **`divinelab:qa-runner`** — **tester-only**, type- and depth-aware automated QA. `qaType` decides **what** to test
+- **`yoke:qa-runner`** — **tester-only**, type- and depth-aware automated QA. `qaType` decides **what** to test
   (`ui` → MCP browser walk + screenshots **always**; `api` → request-level checks at the network boundary;
   `chore` → vitest/local only, no browser); `depth` is the **effort dial within a type, never an on/off
   switch** (there is no `light = skip`). Env-aware by name (`preview`|`staging`). It produces
   **evidence**; it does not render the verdict.
-- **`divinelab:qa-acceptance`** — **tester-only** per-issue acceptance QA: reads the issue's acceptance criteria (Spanish
+- **`yoke:qa-acceptance`** — **tester-only** per-issue acceptance QA: reads the issue's acceptance criteria (Spanish
   or English), drives a real browser via the Playwright MCP and hits APIs against the env resolved **by name**
   (`preview`|`staging`), captures screenshots, and returns a raw evidence bundle. The authoritative verdict
-  comes from the `divinelab:acceptance-judge`, not here.
-- **`divinelab:acceptance-judge`** — **fresh, evidence-only product verdict.** Modeled on
-  `divinelab:security-reviewer` (fresh context, adversarial, read-only, **no execution** — never drives a browser, runs
+  comes from the `yoke:acceptance-judge`, not here.
+- **`yoke:acceptance-judge`** — **fresh, evidence-only product verdict.** Modeled on
+  `yoke:security-reviewer` (fresh context, adversarial, read-only, **no execution** — never drives a browser, runs
   a command, hits an API/Mongo, or re-runs QA). Inputs = the tester's evidence bundle + the issue's acceptance
   criteria. Output = a structured compliance verdict (overall `pass|partial|fail` + per-AC
   `{n, text, type, verdict, rationale, evidenceRef}`) shaped to drop straight into the jira-result table.
   **Separation of concerns:** the **tester** proves _what the system does_ (evidence); the **judge** decides
   _whether that meets the issue_ (product). Never fused — the judge's verdict supersedes any provisional
   result the tester emitted.
-- **`divinelab:security-reviewer`** — fresh, diff-only security + performance review. Scans a PR/branch diff against the
+- **`yoke:security-reviewer`** — fresh, diff-only security + performance review. Scans a PR/branch diff against the
   sensitive paths (services, API routes, `proxy.ts`, `lib/contentful/fetch.ts`, `config/headers.js`, env
-  files) and returns a structured gating verdict. Used by `/divinelab:qa` and `/divinelab:verify`; can run ad hoc.
+  files) and returns a structured gating verdict. Used by `/yoke:qa` and `/yoke:verify`; can run ad hoc.
 
 ## Jira: keys, project, and the human gates
 
@@ -124,20 +124,20 @@ inventing an id.
 | ----------- | ----------------------------------------------------------------- | :--------------------: |
 | Backlog     | PM / human (backlog grooming)                                     |           no           |
 | To Do       | PM / human (ready to pick up)                                     |           no           |
-| In Progress | `/divinelab:work` step 3 (after the worktree exists)              |          yes           |
-| In Review   | `/divinelab:work` step 14 via pr-author (at PR-ready)             |          yes           |
-| In Testing  | `/divinelab:merge` (after a verified squash-merge)                |          yes           |
+| In Progress | `/yoke:work` step 3 (after the worktree exists)              |          yes           |
+| In Review   | `/yoke:work` step 14 via pr-author (at PR-ready)             |          yes           |
+| In Testing  | `/yoke:merge` (after a verified squash-merge)                |          yes           |
 | **Done**    | **HUMAN ONLY** — after the human's manual prod deploy from Vercel | **never by any agent** |
 
 There are exactly **three** automated transitions across the harness (`config.tracker.automatedTransitions`):
 
-1. **To Do → In Progress** — owned by `/divinelab:work` (step 3, right after the worktree exists).
-2. **In Progress → In Review** — owned by `/divinelab:work` via `divinelab:pr-author` (step 14, at PR-ready, paired with the
+1. **To Do → In Progress** — owned by `/yoke:work` (step 3, right after the worktree exists).
+2. **In Progress → In Review** — owned by `/yoke:work` via `yoke:pr-author` (step 14, at PR-ready, paired with the
    PR-link comment).
-3. **In Review → In Testing** — owned by **`/divinelab:merge`**, **only after a verified squash-merge**.
+3. **In Review → In Testing** — owned by **`/yoke:merge`**, **only after a verified squash-merge**.
 
-`/divinelab:work` owns exactly the first two and **never** performs transition #3 itself — even the in-session "merge"
-hand-off (see below) delegates transition #3 to `/divinelab:merge`. **No agent or command ever moves an issue to Done.**
+`/yoke:work` owns exactly the first two and **never** performs transition #3 itself — even the in-session "merge"
+hand-off (see below) delegates transition #3 to `/yoke:merge`. **No agent or command ever moves an issue to Done.**
 `config.tracker.forbiddenTransitions` blocks `→ done`. Done means: the human deployed to production from
 Vercel and then transitioned the issue to Done themselves. Nothing infers "staging passed ⇒ safe for Done."
 
@@ -146,12 +146,12 @@ Vercel and then transitioned the issue to Done themselves. Nothing infers "stagi
 The Jira **issue type** drives the commit-type hint: **Bug → `fix`**, **Story → `feat`**, **Task → `chore`**,
 with an optional label override for `perf`/`refactor` (`config.tracker.issueTypeToCommitType`). "Needs
 refinement" is tracked via a **`needs-refinement` Jira label** (`config.tracker.needsRefinementLabel`), not a
-checklist — a To Do issue **without** the `needs-refinement` label is the `/divinelab:work`-ready signal.
-`/divinelab:work` reads this at its entry gate (step 1.5).
+checklist — a To Do issue **without** the `needs-refinement` label is the `/yoke:work`-ready signal.
+`/yoke:work` reads this at its entry gate (step 1.5).
 
-## `/divinelab:work` end-to-end
+## `/yoke:work` end-to-end
 
-`/divinelab:work ICR-N` is the orchestrator playbook. The main thread follows it step by step; subagents are spawned
+`/yoke:work ICR-N` is the orchestrator playbook. The main thread follows it step by step; subagents are spawned
 only at the marked points; the human gates (★) stay in the main conversation. The shape:
 
 1. **Resolve the issue** by key `ICR-N` (`getJiraIssue`); pin its status, labels, QA depth. Infer the **commit
@@ -159,53 +159,53 @@ only at the marked points; the human gates (★) stay in the main conversation. 
    `git diff` at the QA step).
 2. **Entry gate — needs-refinement ★ (step 1.5).** Runs after the issue is resolved and **before any side
    effect** (no worktree, no transition). It reads the issue's labels; if the **`needs-refinement`** label is
-   present, it **STOPS** and offers a carrail: **(a) refine now** (dispatch `divinelab:product-manager` in
+   present, it **STOPS** and offers a carrail: **(a) refine now** (dispatch `yoke:product-manager` in
    `refine` mode, then re-read the labels) or **(b) pick another ticket** (abort cleanly — no worktree,
    no transition, no state file). An issue that fails this gate is never transitioned To Do → In Progress.
 3. **Worktree + branch (mandatory).** Create an isolated worktree under `<main-root>/.claude/worktrees/ICR-N`
    off `origin/main`, branch `<type>/ICR-N-<slug>`. Then **To Do → In Progress** (automated transition #1).
-4. **Explore (divinelab:explorer).** Returns relevant files / patterns / risks + **`needsDesignGate`** (boolean) and
-   **`Suggested QA depth`**. `/divinelab:work` parses both literally; on absence/ambiguity it **fail-safe defaults
+4. **Explore (yoke:explorer).** Returns relevant files / patterns / risks + **`needsDesignGate`** (boolean) and
+   **`Suggested QA depth`**. `/yoke:work` parses both literally; on absence/ambiguity it **fail-safe defaults
    `needsDesignGate = true`** (never auto-skip the design gate on ambiguity).
 5. **Conditional design gate ★ (brainstorm + spec).** Sections 6 + 7 run **only when
    `needsDesignGate === true`** — a sensitive area touched, QA depth above `light`, or a data-model / API /
    CSP / i18n / email change. Then the human reviews the spec (`★ HUMAN GATE ★`). When `needsDesignGate ===
-false` (a trivial copy/refactor), **both are skipped** and `/divinelab:work` auto-pilots straight to the
+false` (a trivial copy/refactor), **both are skipped** and `/yoke:work` auto-pilots straight to the
    implementation plan built from the issue + explorer summary. **The six sensitive areas always gate.**
 6. **Implement ↔ verify loop.** The implementer executes each plan checkpoint TDD-first and commits; the
    verifier runs the gate stack per depth. A **3-attempt cap** (with prior-error diff) guards the loop; on
    cap it triggers the Failure handler.
 7. **Contentful model-change gate ★ (project gate).** After the plan is written, if it changes the Contentful
    **content model** (a content-type/field create/update/delete, or an entry remap — not just a read fragment
-   in `lib/contentful/*`), `/divinelab:work` **STOPS** and confirms **which lane** before implementing (see
+   in `lib/contentful/*`), `/yoke:work` **STOPS** and confirms **which lane** before implementing (see
    "Contentful model-change workflow" below). The `implementer` then writes to the chosen **work env** only,
    never the `master` alias/production; cutover is deferred to the human. Pure read-side / code-only changes
    skip this gate.
-8. **Open a draft PR early (divinelab:pr-author).** `git push -u`, `gh pr create --draft` with a conventional title,
+8. **Open a draft PR early (yoke:pr-author).** `git push -u`, `gh pr create --draft` with a conventional title,
    fills the template, posts the PR-link Jira comment. **Issue stays In Progress.** Every later checkpoint
    commits-and-pushes to this open PR so cloud review agents can review iteratively.
 9. **Always-on pre-merge QA on the PREVIEW (step 13).** **Unconditional for every testable ticket** — no
    `light = skip`. Type-aware: `ui` → browser walk + screenshots; `api` → API/request-level checks;
-   `chore` → vitest/local only. The **tester (`divinelab:qa-runner`) → `divinelab:acceptance-judge` (verdict)** split applies;
+   `chore` → vitest/local only. The **tester (`yoke:qa-runner`) → `yoke:acceptance-judge` (verdict)** split applies;
    the loop's pass/fail decision keys off the **judge's** verdict. Evidence is **dual-posted to BOTH the PR
    and the Jira issue** (screenshots attach to the Jira issue; the PR carries the written report + per-AC verdict
    table + a link to the Jira issue). A 3-attempt QA cap mirrors the verify loop; it auto-remediates but
    **never auto-merges**.
-10. **Docs evaluation (step 13.5)** then **mark ready (step 14, divinelab:pr-author).** `gh pr ready`, a final Jira
-    comment, and **In Progress → In Review** (automated transition #2). This is `/divinelab:work`'s last automated transition.
+10. **Docs evaluation (step 13.5)** then **mark ready (step 14, yoke:pr-author).** `gh pr ready`, a final Jira
+    comment, and **In Progress → In Review** (automated transition #2). This is `/yoke:work`'s last automated transition.
 11. **Detached post-PR review + CI loop (step 14.5).** See the next section.
 12. **In-session merge hand-off (step 14.6).** After the loop reaches its CLEAN/CAP exit and the human has
-    reviewed, the human may say **"merge"** in the same conversation; only then does `/divinelab:work` route the live
-    session into the **`/divinelab:merge ICR-N`** logic (it does **not** reimplement merge). Merge is never autonomous.
-13. **Triage stray observations (step 15)** and **lessons (step 16)**, then stop. `/divinelab:work` deletes its state
+    reviewed, the human may say **"merge"** in the same conversation; only then does `/yoke:work` route the live
+    session into the **`/yoke:merge ICR-N`** logic (it does **not** reimplement merge). Merge is never autonomous.
+13. **Triage stray observations (step 15)** and **lessons (step 16)**, then stop. `/yoke:work` deletes its state
     file on success. **It never merges and never moves an issue to Done.**
 
-`/divinelab:work` persists progress to a state file (`tasks/specs/ICR-N-<slug>.state.json`) so an aborted run (Ctrl-C,
+`/yoke:work` persists progress to a state file (`tasks/specs/ICR-N-<slug>.state.json`) so an aborted run (Ctrl-C,
 sleep, network drop) can resume — including resuming mid-loop without double-replying to a thread.
 
 ### The detached post-PR review + CI loop (step 14.5)
 
-After the PR is ready and the issue is In Review, `/divinelab:work` enters a **detached, dynamic-paced loop** driven by
+After the PR is ready and the issue is In Review, `/yoke:work` enters a **detached, dynamic-paced loop** driven by
 `config.reviewLoop`. It watches the PR's **code-review comment threads** (including the **Codex review bot**,
 which posts a few minutes after PR-ready) **and CI checks**, auto-remediates, and notifies the user when the
 PR is ready for their eyes. **The loop NEVER merges and NEVER transitions an issue** — it only fixes, replies, and
@@ -216,13 +216,13 @@ notifies.
   signal; idle re-checks use `pollSeconds` (270s, inside the prompt-cache window); after the loop pushes a
   fix it waits `afterPushSeconds` (420s) for the fresh CI run.
 - **Graceful one-shot fallback (required).** If `config.reviewLoop` is absent **or** `ScheduleWakeup` is
-  unavailable at runtime, `/divinelab:work` **skips the detached loop**, does a **single one-shot** check (pull review
+  unavailable at runtime, `/yoke:work` **skips the detached loop**, does a **single one-shot** check (pull review
   threads + CI once), fires **one** notification telling the user to watch the PR manually, and falls through
-  to triage. The rest of `/divinelab:work` must not break when the loop can't run — it is purely additive.
+  to triage. The rest of `/yoke:work` must not break when the loop can't run — it is purely additive.
 - **Each tick:** kill-switch check first (`maxIterations` 8 / `totalTimeoutSeconds` 40m), then pull review
   threads + CI + the latest QA verdict. **Actionable threads** = unresolved, not our own replies, and not
   already in `addressedThreadIds`.
-  - **FIX branch** (actionable threads and/or red CI): dispatch the `divinelab:implementer` with `prReviewThreads` +
+  - **FIX branch** (actionable threads and/or red CI): dispatch the `yoke:implementer` with `prReviewThreads` +
     `replyPerThread: true`; it invokes `superpowers:receiving-code-review`, fixes on-branch, pushes, and
     replies **once per thread**. The orchestrator persists every addressed `threadId` **immediately** on
     return (`idempotency: "reply-marker"`) so a crash-then-resume never double-replies, then schedules the
@@ -232,22 +232,22 @@ notifies.
     not clean only because CI is still pending → schedule an idle wakeup. On `maxIterations` /
     `totalTimeoutSeconds` → **CAP exit**: notify "needs your eyes" with the reason and stop scheduling.
 
-## `/divinelab:merge ICR-N` (user-triggered)
+## `/yoke:merge ICR-N` (user-triggered)
 
-`/divinelab:merge` is the **only** owner of the squash-merge and of the `In Review → In Testing` transition. It runs
+`/yoke:merge` is the **only** owner of the squash-merge and of the `In Review → In Testing` transition. It runs
 **only when a human explicitly asks** (`config.merge.requireUserTrigger`; `config.qa.autoMerge.enabled`
-stays `false`). It is invoked standalone or via the `/divinelab:work` step-14.6 hand-off.
+stays `false`). It is invoked standalone or via the `/yoke:work` step-14.6 hand-off.
 
 1. **Pre-flight + guards.** Pin `config.merge` and `config.qa.env.staging` by name. The issue **must** be
    in **In Review**; resolve the PR by `ICR-N`. Refuse if the PR is a draft.
 2. **CI gate (refuse on red).** With `config.merge.requireCiGreen`, anything not `SUCCESS`/`NEUTRAL`/`SKIPPED`
    — including still-`PENDING`/`IN_PROGRESS` — is **not green**. On not-green: **REFUSE**, leave the issue In
-   Review, do not merge or clean up. (Re-read PR state right before merging — a `/divinelab:work` loop tick may have
+   Review, do not merge or clean up. (Re-read PR state right before merging — a `/yoke:work` loop tick may have
    pushed after the human said "merge"; the CI gate + not-draft guard catch an in-flight fix.)
 3. **Squash-merge ONLY.** `gh pr merge <n> --squash --delete-branch` (never `--merge`/`--rebase`). Verify the
    PR is MERGED afterward; on merge failure, stop and leave the issue In Review.
 4. **Clean up worktree + local branch.** `--delete-branch` removed the remote branch; this step removes the
-   local worktree + branch, anchored to `MAIN_REPO_ROOT`. If `/divinelab:merge` is running **inside** the target
+   local worktree + branch, anchored to `MAIN_REPO_ROOT`. If `/yoke:merge` is running **inside** the target
    worktree, it leaves it first via `ExitWorktree(action: "remove")` so the shell is never stranded.
    "Already gone" is tolerated non-fatally.
 5. **Transition In Review → In Testing (automated transition #3)** — only after the verified squash-merge. **Never Done.**
@@ -261,25 +261,25 @@ stays `false`). It is invoked standalone or via the `/divinelab:work` step-14.6 
    staging is not a **per-PR** preview deployment, so it has no `*.vercel.app` host to match. Note this
    is a statement about the QA _host_ gate only: staging **is** a Vercel branch deployment and so is
    built with `VERCEL_ENV=preview`, which is exactly what makes it draft-serving and Contentful-framable
-   — see `contentful-data-layer.md` § Live Preview). Then **tester (`divinelab:qa-acceptance`) → `divinelab:acceptance-judge`** → post the result to
-   the Jira issue (`postedBy: "/divinelab:merge"`, `envName:` the env resolved above). A `no-POST` happy-path AC the tester correctly
+   — see `contentful-data-layer.md` § Live Preview). Then **tester (`yoke:qa-acceptance`) → `yoke:acceptance-judge`** → post the result to
+   the Jira issue (`postedBy: "/yoke:merge"`, `envName:` the env resolved above). A `no-POST` happy-path AC the tester correctly
    skipped is **BLOCKED/deferred**, not FAIL.
 7. **Stop.** Report the merge + cleanup + the staging verdict, and remind the user that **Done is human-only**
-   — deploy prod from Vercel, then transition In Testing → Done. `/divinelab:merge` **never** moves an issue to Done.
+   — deploy prod from Vercel, then transition In Testing → Done. `/yoke:merge` **never** moves an issue to Done.
 
 ## QA loop (Phase 1: report-only)
 
-`/divinelab:qa`, `/divinelab:work`'s step 13, and `/divinelab:merge`'s post-merge QA are all driven by `config.qa`. The important
+`/yoke:qa`, `/yoke:work`'s step 13, and `/yoke:merge`'s post-merge QA are all driven by `config.qa`. The important
 guardrails:
 
-- **Env-by-name targets (`config.qa.env.<name>`).** `/divinelab:qa`'s **default target is `staging`**
-  (`staging.idcredentor.org`); pass **`--preview`** to re-target the PR's Vercel preview. `/divinelab:work`'s pre-merge
+- **Env-by-name targets (`config.qa.env.<name>`).** `/yoke:qa`'s **default target is `staging`**
+  (`staging.idcredentor.org`); pass **`--preview`** to re-target the PR's Vercel preview. `/yoke:work`'s pre-merge
   QA always targets **`preview`**. Every consumer selects its allowlist / db-allow / live-integration policy
   **off the env block by name** — never hardcoding preview literals.
 - **This repo deploys TWO apps, so there are two staging envs — `staging` and `stagingAdmin`.**
   `qa.env.staging` (`staging.idcredentor.org`) serves **`apps/web` only**; `qa.env.stagingAdmin`
   (`staging.ministerio.idcredentor.org`, a separate Vercel project) serves **`apps/admin`**.
-  `/divinelab:merge`'s post-merge QA no longer targets one fixed env: `merge.postMergeQa` is the
+  `/yoke:merge`'s post-merge QA no longer targets one fixed env: `merge.postMergeQa` is the
   object form `{ default, byPath }`, and `/merge` routes on the squash commit's file list —
   longest matching prefix wins per file, zero matches falls back to `default`, and QA runs against
   **every** distinct env the diff selects. `packages` maps to **both** envs (an array value):
@@ -309,13 +309,13 @@ guardrails:
   both `preview` and `staging` (`env.productionHostDeny`). The preview env additionally runs a
   must-be-a-Vercel-preview check (`requirePreviewEnvironment: true`); **staging skips that check**
   (`requirePreviewEnvironment: false` — it has its own allowlist) but **keeps the prod hard-deny**.
-- **tester → acceptance-judge split everywhere.** Every QA path runs a fresh tester (`divinelab:qa-runner` or
-  `divinelab:qa-acceptance`) for evidence, then a fresh `divinelab:acceptance-judge` for the authoritative verdict; results post
-  via `post-jira-result.mjs` (the divinelab plugin bin, on PATH). The script uploads each screenshot as a Jira
+- **tester → acceptance-judge split everywhere.** Every QA path runs a fresh tester (`yoke:qa-runner` or
+  `yoke:qa-acceptance`) for evidence, then a fresh `yoke:acceptance-judge` for the authoritative verdict; results post
+  via `post-jira-result.mjs` (the yoke plugin bin, on PATH). The script uploads each screenshot as a Jira
   **attachment** and posts a comment whose ADF body references it as a `media` node (the Atlassian MCP can't
   attach files itself). `meta.envName` is **required** and drives the URL label, which is derived from the env name
   (`staging` → `Staging:`, `stagingAdmin` → `Staging Admin:`, anything preview-ish → `Preview:`);
-  `meta.postedBy` is the provenance footer (`/divinelab:qa` | `/divinelab:work` | `/divinelab:merge`). Jira creds come from
+  `meta.postedBy` is the provenance footer (`/yoke:qa` | `/yoke:work` | `/yoke:merge`). Jira creds come from
   `qa-env.json` (gitignored); on absent creds the script exits 3 and the orchestrator falls back to
   `mcp__atlassian-divinelab__addCommentToJiraIssue`.
 - **Both staging envs are `no-POST`**, but it means something different in each.
@@ -334,7 +334,7 @@ guardrails:
 - **Modes** are `report | seed | fix | auto`, but **only `report` is enabled in Phase 1.** The others are
   recognized and gated.
 - **Auto-merge is disabled** (`config.qa.autoMerge.enabled` stays `false`, a kill switch). Even when
-  `fix`/`auto` land later, nothing merges autonomously — the human triggers `/divinelab:merge`, which performs the
+  `fix`/`auto` land later, nothing merges autonomously — the human triggers `/yoke:merge`, which performs the
   squash. Sensitive paths (`apps/web/src/service/**`, `apps/web/src/templates/**`, `apps/web/src/app/api/**`,
   `apps/web/src/proxy.ts`, `apps/web/src/i18n/**`, `apps/web/lib/contentful/fetch.ts`, `apps/web/config/**`,
   `apps/web/next.config.*`, `package.json`, `.env*`, `.github/**`) raise the bar further.
@@ -361,9 +361,9 @@ fixes, a sermon — happen live in production and need none of this.)
   breaking, minor = additive, patch = fix) and a human **re-points the `master` alias** at cutover — atomic,
   with instant flip-back rollback. The single free-tier work-env slot is shared, so only one lane runs at a
   time. (Epic ICR-76 uses this lane → `master-1.0.0`.)
-- **`/divinelab:work` Contentful gate (step 7 / former step 8.2):** if the plan touches the model, `/divinelab:work` stops, asks
+- **`/yoke:work` Contentful gate (step 7 / former step 8.2):** if the plan touches the model, `/yoke:work` stops, asks
   **which lane**, requires the spec's "Data Model Changes" section to carry the cutover plan, and defers the
-  cutover to the human. The `divinelab:implementer` operates the MCP against the chosen **work env**, never the alias.
+  cutover to the human. The `yoke:implementer` operates the MCP against the chosen **work env**, never the alias.
 - **The cutover is HUMAN-ONLY** — agents never apply to production or re-point the `master` alias (like
   merge/Done).
 
@@ -384,10 +384,10 @@ If a script is absent at runtime, the verifier/qa-runner **reports it** rather t
 
 ## Worktrees
 
-`/divinelab:work` creates an isolated git worktree per ticket under `.claude/worktrees/<ICR-N>`, based on `origin/main`
-(`config.worktree`). This keeps the user's working copy and other parallel jobs untouched. `/divinelab:merge` removes
+`/yoke:work` creates an isolated git worktree per ticket under `.claude/worktrees/<ICR-N>`, based on `origin/main`
+(`config.worktree`). This keeps the user's working copy and other parallel jobs untouched. `/yoke:merge` removes
 the worktree + local branch after a verified squash-merge (leaving the worktree first via `ExitWorktree` if it
-is running inside it). The divinelab plugin's `session-namer` hook (SessionStart + UserPromptSubmit) reads the
+is running inside it). The yoke plugin's `session-namer` hook (SessionStart + UserPromptSubmit) reads the
 worktree dir (or branch) to title the session `ICR-N-<slug>` — deterministic and idempotent, so **don't run
 `/rename`**; a manual rename is respected. See [`contributing.md`](./contributing.md) for the full
 branch/worktree flow.
@@ -397,7 +397,7 @@ branch/worktree flow.
 - `tasks/todo.md`, `tasks/lessons.md` — working scratchpads (gitignored).
 - `tasks/specs/` — implementation specs + plans + per-run `.state.json` files for non-trivial tickets (read
   the spec before implementing).
-- `docs/product/` — the church product brain the `divinelab:product-manager` loads every run.
+- `docs/product/` — the church product brain the `yoke:product-manager` loads every run.
 
 ## graphify (codebase knowledge graph)
 
@@ -406,16 +406,16 @@ Querying it answers "how does X work / what calls Y / trace Z" from a pre-built 
 than scanning the tree. It's an **accelerator, not a dependency**: every consumer falls back to
 Grep/Read on an empty/stale/absent graph and notes it. Full guide: [`graphify.md`](./graphify.md).
 
-- **Who queries** (`config.graphify.policy.whoQueries`): `divinelab:explorer` always (query/explain/path);
-  `divinelab:implementer` for caller/dep + `explain` impact lookups before edits/deletes; `divinelab:security-reviewer` for
-  `explain` blast-radius on changed shared symbols; `divinelab:product-manager` for reuse lookups. `divinelab:verifier`/
-  `divinelab:qa-runner`/`divinelab:pr-author` never. Ad-hoc sessions follow the same rule via the `## graphify` section in `CLAUDE.md`.
+- **Who queries** (`config.graphify.policy.whoQueries`): `yoke:explorer` always (query/explain/path);
+  `yoke:implementer` for caller/dep + `explain` impact lookups before edits/deletes; `yoke:security-reviewer` for
+  `explain` blast-radius on changed shared symbols; `yoke:product-manager` for reuse lookups. `yoke:verifier`/
+  `yoke:qa-runner`/`yoke:pr-author` never. Ad-hoc sessions follow the same rule via the `## graphify` section in `CLAUDE.md`.
 - **Who refreshes** (two layers): the **git post-commit hook** (`.husky/post-commit`) keeps the
   shared graph in sync with `main` on every commit (AST, no LLM, free; resolves the main repo root via
-  the common git dir so it works from worktrees, lock-guarded); `/divinelab:work` additionally runs
+  the common git dir so it works from worktrees, lock-guarded); `/yoke:work` additionally runs
   `graphify update` once per session (lock-guarded) to catch _doc/content_ (semantic) drift.
   `enabled: "auto"` detects the graph at runtime. A worktree's feature code enters the graph on merge.
-  (The divinelab plugin also ships a `graphify-hint` hook that nudges agents toward the graph.)
+  (The yoke plugin also ships a `graphify-hint` hook that nudges agents toward the graph.)
 - **Verbs** (`config.graphify.verbs`): `query` (BFS context), `explain` (one-node onboarding + direction —
   the reliable impact lookup on this undirected graph), `path` (shortest dependency path), `affected`
   (reverse/blast-radius — needs a directed graph; prefer `explain` until rebuilt with `--directed`),
@@ -427,11 +427,11 @@ Grep/Read on an empty/stale/absent graph and notes it. Full guide: [`graphify.md
 
 1. **Never move an issue to Done** — that's the human gate, after their manual prod deploy.
 2. **No autonomous merge** — `autoMerge` stays `false`. Agents never merge on their own; the human triggers
-   `/divinelab:merge`, which executes the squash-merge.
+   `/yoke:merge`, which executes the squash-merge.
 3. **Never run QA against production — in any env** — prod custom domains AND prod `*.vercel.app` aliases are
    hard-denied for both `preview` and `staging`.
 4. **Never invent a script or a Jira transition** — report drift instead; transition issues by status name.
-5. **Tester proves, judge decides** — never fuse the QA tester and the `divinelab:acceptance-judge`; the judge's
+5. **Tester proves, judge decides** — never fuse the QA tester and the `yoke:acceptance-judge`; the judge's
    verdict is authoritative.
 6. **Respect the product scope** (`docs/product/scope-and-boundaries.md`) — the PM rejects/reframes
    out-of-scope ideas.
@@ -440,4 +440,4 @@ Grep/Read on an empty/stale/absent graph and notes it. Full guide: [`graphify.md
 8. **Never apply Contentful model changes to production or re-point the `master` alias** — that's a human
    promotion, like merge/Done. Agents make changes in a **work env** (the permanent `staging`, or a versioned
    env for big breaking changes) via the MCP + `scripts/contentful/` and propose; the human cuts over. See
-   `docs/architecture/contentful-environments.md` (the `/divinelab:work` Contentful gate enforces this).
+   `docs/architecture/contentful-environments.md` (the `/yoke:work` Contentful gate enforces this).
