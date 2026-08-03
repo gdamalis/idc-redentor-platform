@@ -1,5 +1,12 @@
 # ICR-140 — Teach the harness about `apps/admin` (safety rails, before the scaffold)
 
+> **Path note 2026-08-03 (AOS-11):** the plugin `divinelab` → `yoke`, so the canon-schema path cited
+> below — `~/.claude/plugins/cache/divinelab/divinelab/*/skills/canon/config.schema.json` — no longer
+> resolves; that cache tree has been removed. Invoke the **`yoke:canon`** skill instead, or read the
+> schema from the marketplace checkout at
+> `<divinelab-plugins>/plugins/yoke/skills/canon/config.schema.json`. The text below is preserved as
+> of its original date.
+
 **Type:** Task (`chore`) · **Priority:** High · **Labels:** admin, harness, security
 **Sensitive areas:** `env-secrets` (DB allowlist), harness sensitive-paths / design-gate machinery. **This ticket _is_ the sensitive-area configuration.**
 **Scope:** config-only — the sole file changed is repo-root `.claude/config.json`. No app code.

@@ -1,5 +1,12 @@
 # ICR-140 Admin Safety Rails — Implementation Plan
 
+> **Path note 2026-08-03 (AOS-11):** the plugin `divinelab` → `yoke`. Step 8 below cites the
+> `divinelab:canon` skill and the cache path
+> `~/.claude/plugins/cache/divinelab/divinelab/*/skills/canon/config.schema.json`; neither resolves
+> any more — that cache tree has been removed. Use the **`yoke:canon`** skill, or the schema in the
+> marketplace checkout at `<divinelab-plugins>/plugins/yoke/skills/canon/config.schema.json`. The
+> text below is preserved as of its original date.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans (or subagent-driven-development) to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Teach the divinelab harness about the future `apps/admin` app by adding admin coverage to three regions of repo-root `.claude/config.json` — before the ICR-124 scaffold exists.
