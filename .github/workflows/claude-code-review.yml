@@ -1,0 +1,64 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+jobs:
+  claude-review:
+    # The review command declines to review drafts, so running on one can only produce a green
+    # check that reviewed nothing. A skipped job is the honest signal. See AOS-13.
+    if: github.event.pull_request.draft == false
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # `write` per the action's setup docs. Note this was NOT what silenced the workflow: the
+      # action mints its own app token via OIDC and does not write with the workflow token.
+      pull-requests: write
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
+          plugins: "code-review@claude-code-plugins"
+
+          # `--comment` is REQUIRED. Without it the command runs the full review and prints it to a
+          # terminal nobody reads: "If --comment argument was NOT provided, stop here. Do not post
+          # any GitHub comments." That single missing flag is why this workflow was green and silent
+          # on every PR in every repo. See AOS-13.
+          prompt: "/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }} --comment"
+
+          # Surfaces the review in the job summary. Without it the transcript is suppressed and a
+          # silent run is indistinguishable from a clean one.
+          display_report: true
+
+          # Load-bearing, not a nicety. In agent mode the action only installs the comment MCP
+          # server when claude_args names a github comment tool:
+          #   shouldIncludeCommentServer = !isAgentMode || hasGitHubCommentTools
+          # With claude_args empty, `mcp__github_inline_comment__create_inline_comment` does not
+          # exist, so the review's found-issues path has no channel to post through.
+          #
+          # The list must also stay wide enough for the command's own pipeline: it dispatches
+          # subagents (Task) and shells out to `gh`. Narrowing it breaks the review.
+          claude_args: |
+            --allowedTools "Task,Read,Grep,Glob,TodoWrite,mcp__github_inline_comment__create_inline_comment,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*),Bash(git log:*),Bash(git blame:*),Bash(git diff:*)"
+
+      # A green check must mean "this PR was reviewed", never "the action exited 0".
+      - name: Assert a review was actually posted
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: ./.github/scripts/assert-review-posted.sh
