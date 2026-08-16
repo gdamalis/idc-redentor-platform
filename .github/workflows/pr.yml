@@ -44,6 +44,19 @@ jobs:
       - name: Vitest
         run: pnpm test
 
+  # The review guard cannot prove itself on the PRs that change it — the review action refuses to
+  # run whenever a PR edits claude-code-review.yml, so its own check reports inconclusive there.
+  # These fixtures are where its filter is actually exercised. bash, jq and awk only, so no setup.
+  review-guard:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Review-guard fixtures
+        run: ./.github/scripts/assert-review-posted.test.sh
+
   predica-scripts:
     runs-on: ubuntu-latest
 
