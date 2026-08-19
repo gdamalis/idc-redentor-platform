@@ -150,16 +150,43 @@ jobs:
           EXECUTION_FILE: ${{ steps.claude-review.outputs.execution_file }}
         run: |
           set -euo pipefail
-          trusted="$(mktemp)"
-          if gh api "repos/${REPO}/contents/${GUARD_PATH}?ref=${BASE_SHA}" \
-               -H 'Accept: application/vnd.github.raw' > "$trusted"; then
-            bash "$trusted"
-          else
-            printf '::warning::Review guard INCONCLUSIVE on %s#%s — %s does not exist at base commit %s.\n' \
-              "$REPO" "$PR" "$GUARD_PATH" "$BASE_SHA"
-            echo "The guard runs only from the base revision, so the PR that introduces it has" >&2
-            echo "nothing trusted to run yet. This resolves itself once that PR merges." >&2
-          fi
+
+          # Read the trusted guard out of the base revision, distinguishing "not there yet" from
+          # "could not tell". `gh` exits nonzero for ANY failure — a 404, but equally a rate limit,
+          # an API outage, a revoked `contents: read` scope or an unresolvable ref — so branching on
+          # its exit code alone would treat every one of those as the missing-file case, skip the
+          # assertion and leave the job green having proven nothing. That is precisely the false
+          # green this workflow exists to eliminate, rebuilt in the step that loads the guard. The
+          # HTTP status is therefore read explicitly and only 404 may take the inconclusive path.
+          response="$(mktemp)"
+          gh api "repos/${REPO}/contents/${GUARD_PATH}?ref=${BASE_SHA}" \
+            -H 'Accept: application/vnd.github.raw' -i > "$response" 2>/dev/null || true
+          http_code="$(head -n 1 "$response" | awk '{print $2}')"
+
+          case "$http_code" in
+            200)
+              trusted="$(mktemp)"
+              # Drop the header block: everything up to and including the first blank line. The
+              # separator carries a CR, hence `\r*` rather than a bare empty-line match.
+              sed -e '1,/^\r*$/d' "$response" > "$trusted"
+              bash "$trusted"
+              ;;
+            404)
+              printf '::warning::Review guard INCONCLUSIVE on %s#%s — %s does not exist at base commit %s.\n' \
+                "$REPO" "$PR" "$GUARD_PATH" "$BASE_SHA"
+              echo "The guard runs only from the base revision, so the PR that introduces it has" >&2
+              echo "nothing trusted to run yet. This resolves itself once that PR merges." >&2
+              ;;
+            *)
+              printf '::error::Could not read the review guard %s at base commit %s (HTTP %s).\n' \
+                "$GUARD_PATH" "$BASE_SHA" "${http_code:-no response}" >&2
+              echo "This fails the job rather than skipping the assertion. Only a 404 means the guard" >&2
+              echo "is legitimately absent from the base revision; every other outcome leaves it" >&2
+              echo "unknown whether this PR was reviewed, and an unverifiable review is an unproven" >&2
+              echo "one — the same standard the guard itself applies to the GitHub API." >&2
+              exit 1
+              ;;
+          esac
 
       # Keep the run's own transcript when something goes wrong, because none of it is reachable
       # afterwards. Diagnosing a silent run is otherwise archaeology: `display_report: true` renders
