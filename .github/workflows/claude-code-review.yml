@@ -1,0 +1,187 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+jobs:
+  claude-review:
+    # The review command declines to review drafts, so running on one can only produce a green
+    # check that reviewed nothing. A skipped job is the honest signal. See AOS-13.
+    if: github.event.pull_request.draft == false
+
+    runs-on: ubuntu-latest
+    permissions:
+      # `contents: read` also covers the guard step, which reads its own script back out of the
+      # base revision through the contents API.
+      contents: read
+      # `write` per the action's setup docs. Note this was NOT what silenced the workflow: the
+      # action mints its own app token via OIDC and does not write with the workflow token.
+      pull-requests: write
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Full history, NOT the default shallow clone. On a `pull_request` trigger the checkout is
+          # the PR's merge ref, so with `fetch-depth: 1` the base commit is not present locally and
+          # every `git diff <base>...HEAD` / `git log <base>..HEAD` the review reaches for fails.
+          # The review's only recourse is `git fetch`, which the allowlist below does not grant and
+          # must not — a review has no business mutating the repo state it is reviewing. Paying for
+          # the history up front is what makes the read-only allowlist sufficient.
+          fetch-depth: 0
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
+          plugins: "code-review@claude-code-plugins"
+
+          # `--comment` is REQUIRED. Without it the command runs the full review and prints it to a
+          # terminal nobody reads: "If --comment argument was NOT provided, stop here. Do not post
+          # any GitHub comments." That single missing flag is why this workflow was green and silent
+          # on every PR in every repo. See AOS-13.
+          #
+          # Everything after the command is a completion contract, and it is load-bearing twice over.
+          #
+          # Item 1 is a real defect, not a precaution. The command's pipeline is built on parallel
+          # subagents, and the reviewer kept dispatching them and then ending its turn to "wait" for
+          # results that were already sitting in its context — runs died this way after 3 turns and
+          # 13s, and after 25 and 33 turns, always at the step-4 fan-out, with
+          # permission_denials_count 0 and is_error false. The action reports subtype "success" for
+          # all of them, so no output distinguishes an abandoned review from a completed one.
+          #
+          # Item 2 closes the gap that made the check permanently red. The command has THREE terminal
+          # states but posts on only two: it stops at step 1 for a closed, draft, trivial, automated
+          # or already-reviewed PR and posts nothing at all. A correctly-declined PR is then
+          # byte-for-byte indistinguishable from a broken run, and the guard reddens it. Making the
+          # decline post its reason lets the guard's existing heading contract pass it green, with no
+          # change to what counts as a review and no weakening of the guard.
+          #
+          # Item 2 names each ending's OWN channel rather than demanding one uniform comment, because
+          # the command posts findings as inline review comments and only a clean result as a summary
+          # comment — never both. Requiring a `## Code review` comment unconditionally would have put
+          # the contract at odds with the found-issues path it is supposed to leave alone.
+          #
+          # Item 3 exists because "already reviewed" is a decline that must stay SILENT. The guard
+          # deliberately counts a review from any earlier run, so the standing review already carries
+          # the check; posting again would add one comment per push for the life of the PR, and the
+          # anti-abandonment rule above would otherwise oblige exactly that.
+          prompt: |
+            /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }} --comment
+
+            Completion contract for this run. Where these conflict with a step above, these win:
+
+            1. Subagent (Task) results are returned SYNCHRONOUSLY, in the tool result itself. They
+               do not arrive later and nothing will notify you when they are done. Never end your
+               turn to wait for, or check back on, a subagent. Read the results already in your
+               context and continue immediately.
+            2. Do not end your turn until you have posted your result to the pull request. There are
+               exactly three endings, each with its own channel:
+               - issues found    -> inline review comments, as the command specifies
+               - no issues found -> a comment headed `## Code review`, reading
+                                    `No issues found. Checked for bugs and CLAUDE.md compliance.`
+               - declining       -> a comment headed `## Code review`, reading
+                                    `Declined: <one-line reason>`
+                                    (the PR is closed, a draft, trivial, or automated)
+               "Stop and do not proceed" means stop reviewing. It never means stop without posting.
+            3. One exception, and only this one: if you are declining because this pull request
+               already carries a `## Code review` comment from an earlier run, that review still
+               stands. Say so in the terminal and stop WITHOUT posting — otherwise every push would
+               add another duplicate comment.
+
+          # Surfaces the review in the job summary. Without it the transcript is suppressed and a
+          # silent run is indistinguishable from a clean one.
+          display_report: true
+
+          # Load-bearing, not a nicety. In agent mode the action only installs the comment MCP
+          # server when claude_args names a github comment tool:
+          #   shouldIncludeCommentServer = !isAgentMode || hasGitHubCommentTools
+          # With claude_args empty, `mcp__github_inline_comment__create_inline_comment` does not
+          # exist, so the review's found-issues path has no channel to post through.
+          #
+          # The list must also stay wide enough for the command's own pipeline: it dispatches
+          # subagents (Task) and shells out to `gh`. Narrowing it breaks the review.
+          #
+          # The git verbs below were added because the list was too narrow to finish a review, not
+          # to be thorough for its own sake. Symptom: the action exited SUCCESS having posted
+          # nothing, with num_turns 6, 23s and permission_denials_count 2 — the run asked for
+          # something twice, was refused twice, and gave up. `git log`/`git diff` were already
+          # granted but are useless against a base commit a shallow clone never fetched (see
+          # `fetch-depth` above), so the natural next reach is a verb that is not on this list.
+          #
+          # Everything added is READ-ONLY by construction. `Bash(gh api:*)` is deliberately NOT
+          # added despite being the obvious catch-all: the pattern cannot constrain the HTTP method,
+          # so it would hand a reviewer POST, PATCH and DELETE over the whole API. `gh pr comment`
+          # is the one mutation this workflow intends, and it is already named.
+          claude_args: |
+            --allowedTools "Task,Read,Grep,Glob,TodoWrite,mcp__github_inline_comment__create_inline_comment,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh pr list:*),Bash(gh pr checks:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*),Bash(git log:*),Bash(git blame:*),Bash(git diff:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git status:*),Bash(git ls-files:*)"
+
+      # A green check must mean "this PR was reviewed", never "the action exited 0".
+      #
+      # The guard is read back out of the PR's BASE revision rather than executed from the working
+      # tree. On a `pull_request` trigger the checkout is the PR's own merge ref, so
+      # `./.github/scripts/assert-review-posted.sh` would be the PR's copy of the guard — a PR could
+      # replace it with `exit 0` and award itself a green "reviewed" check.
+      #
+      # What this does NOT close, because a `pull_request` trigger cannot: GitHub runs the workflow
+      # definition itself from the PR's merge ref, so a PR that edits THIS file can still delete the
+      # step. Inlining the assertion here instead of shipping a script would not have helped for the
+      # same reason. The control for that residual is human review — `.github/**` is a sensitive
+      # path that never auto-merges — plus branch protection requiring this check, which stops the
+      # whole job from being dropped.
+      - name: Assert a review was actually posted
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          GUARD_PATH: .github/scripts/assert-review-posted.sh
+          # The action's own transcript. An abandoned run reports subtype "success" with is_error
+          # false, so the job log cannot tell it from a review that found nothing to say; the
+          # transcript's final `result` string is the one place that difference is visible. The
+          # guard quotes it when it fails, which is what turns a mystery red into a self-diagnosing
+          # one. Advisory only — the guard's verdict never depends on this file being present.
+          EXECUTION_FILE: ${{ steps.claude-review.outputs.execution_file }}
+        run: |
+          set -euo pipefail
+          trusted="$(mktemp)"
+          if gh api "repos/${REPO}/contents/${GUARD_PATH}?ref=${BASE_SHA}" \
+               -H 'Accept: application/vnd.github.raw' > "$trusted"; then
+            bash "$trusted"
+          else
+            printf '::warning::Review guard INCONCLUSIVE on %s#%s — %s does not exist at base commit %s.\n' \
+              "$REPO" "$PR" "$GUARD_PATH" "$BASE_SHA"
+            echo "The guard runs only from the base revision, so the PR that introduces it has" >&2
+            echo "nothing trusted to run yet. This resolves itself once that PR merges." >&2
+          fi
+
+      # Keep the run's own transcript when something goes wrong, because none of it is reachable
+      # afterwards. Diagnosing a silent run is otherwise archaeology: `display_report: true` renders
+      # to the job summary, which the REST API does not expose (`check-runs[].output.summary` comes
+      # back empty), the per-turn JSON stream is not in the job log, and the run produces zero
+      # artifacts. All that survives is the aggregate line `permission_denials_count` — enough to
+      # know a permission was refused, not which one.
+      #
+      # MUST stay LAST, after the assertion. `failure()` "returns true when any previous step of a
+      # job fails" — previous only. Placed before the guard it would be evaluated while the action
+      # step was still green, so the one failure mode this exists to explain (the action exits 0
+      # having posted nothing, and the guard reddens the job) would skip the upload and discard the
+      # transcript. Sitting last, it catches both an action failure and a guard failure.
+      #
+      # `if: failure()` rather than `always()`: on a green run this is noise, and the artifact
+      # carries the full review transcript, so retaining it by default is both wasteful and a wider
+      # disclosure surface than the job summary already is.
+      - name: Preserve the execution transcript for diagnosis
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-review-execution-log
+          path: ${{ runner.temp }}/claude-execution-output.json
+          if-no-files-found: warn
+          retention-days: 14
