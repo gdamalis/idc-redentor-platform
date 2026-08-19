@@ -6,10 +6,7 @@
 # process ran" while reading as "this PR was reviewed and found clean". This guard makes the check
 # mean what people already assume it means. See AOS-13.
 #
-# Passes when the PR carries a Claude-authored review on ANY surface, including one from an earlier
-# run: the review command declines by design to re-review a PR it has already commented on, so
-# requiring a same-run review would turn every re-push red, and a chronically red check gets ignored
-# — which would recreate the bug in reverse.
+# WHAT COUNTS AS A REVIEW
 #
 # Evidence must LOOK like a review, not merely come from Claude. The tag-mode workflow in
 # claude.yml answers `@claude` mentions under the very same `claude[bot]` identity, so counting
@@ -17,18 +14,35 @@
 # never happened. That is not a corner case: the review command's FIRST step declines any PR that
 # "Claude has already commented on", so one `@claude` exchange both suppresses the review and
 # supplies the comment that would have vouched for it — the original silent false positive,
-# restored. Only the two surfaces the review command actually posts on count:
+# restored. Only the surfaces the review command actually posts on count:
 #
-#   * A summary comment headed "## Code review" — the whole output of the no-issues-found path,
-#     posted with `gh pr comment` in a format the command mandates verbatim.
-#   * Standalone inline comments on the diff — the output of the issues-found path, posted with
-#     `mcp__github_inline_comment__create_inline_comment`.
+#   * found issues  -> standalone inline comments on the diff (pulls/{pr}/comments), posted with
+#                      `mcp__github_inline_comment__create_inline_comment`. Threaded replies are
+#                      excluded: those are conversation, and tag mode produces them.
+#   * found nothing -> one summary comment headed "## Code review" (issues/{pr}/comments), posted
+#                      with `gh pr comment` in a format the command mandates verbatim.
+#   * declined      -> the same "## Code review" comment, bodied "Declined: <reason>".
 #
-# Tag mode posts neither. Its tracking comment is a plain issue comment carrying a job link and no
-# such heading, and on `pull_request_review_comment` events it is a REPLY inside an existing thread
-# (`createReplyForReviewComment`), which carries `in_reply_to_id` and is excluded below.
+# That third state needs no special handling here, and that is the point: the heading is the whole
+# contract, so a decline satisfies it exactly as a clean review does. The command itself posts
+# nothing when it declines — it stops at its eligibility check — which is why the workflow's
+# `prompt:` carries a completion contract obliging it to say so. Before that contract existed, a
+# correctly-declined PR (a one-line docs fix, say) was indistinguishable from a broken run and this
+# guard reddened it, leaving a check no amount of work on the PR could clear.
 #
-# Env: GH_TOKEN, REPO (owner/name), PR (number).
+# A formal review carrying that same heading counts too, which is what a human-requested
+# `@claude review` produces — a real review, just via the other door.
+#
+# Matching on the heading means a change to the command's output format turns this check red rather
+# than silently green. That is the intended direction for a guard: the failure message below names
+# the heading it looked for, so the fix is a one-line edit here.
+#
+# Reviews from ANY earlier run count, not just this one. The review command declines by design to
+# re-review a PR it has already commented on, so requiring a same-run review would turn every
+# re-push red — and a chronically red check gets ignored, which recreates the original bug in
+# reverse.
+#
+# Env: GH_TOKEN, REPO (owner/name), PR (number). EXECUTION_FILE is optional and advisory.
 
 set -euo pipefail
 
@@ -42,16 +56,21 @@ fail() { printf '::error::%s\n' "$*" >&2; exit 1; }
 [[ "$REPO" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]] || fail "REPO must be owner/name, got: ${REPO}"
 
 # The review action mints its own GitHub App token via OIDC and posts as `claude[bot]`
-# (CLAUDE_BOT_LOGIN in anthropics/claude-code-action). Matched exactly rather than by substring: a
-# substring also matches a human account such as `claude-hernandez`, and the app's numeric user id
-# has already drifted between releases, so the login is the only stable handle. If either workflow
-# is ever given a `github_token`, comments post under that token's account and this must change.
-BY_CLAUDE='((.user.login // "") | ascii_downcase) == "claude[bot]"'
+# (CLAUDE_BOT_LOGIN in anthropics/claude-code-action); `claude-code[bot]` is the same app under the
+# name older releases used. Matched exactly rather than by substring: a substring also matches a
+# human account such as `claude-hernandez`, and the app's numeric user id has already drifted
+# between releases, so the login is the only stable handle. If either workflow is ever given a
+# `github_token`, comments post under that token's account and this must change.
+BY_CLAUDE='(((.user.login // "") | ascii_downcase) | (. == "claude[bot]" or . == "claude-code[bot]"))'
 
-# The heading the review command is required to post verbatim when it finds nothing. The level is
-# matched loosely because it has already moved between plugin versions ("### " became "## "), but
-# the heading must stand alone on its line: "## Code review workflow" is prose about the review,
-# which a tag-mode answer could easily contain, and prose is not evidence that one happened.
+# The heading the review command is required to post verbatim on every ending it is allowed to
+# reach. The level is matched loosely because it has already moved between plugin versions ("### "
+# became "## "), but the heading must stand ALONE on its line.
+#
+# That trailing anchor is the whole point and is easy to drop by accident. Without it the pattern
+# is a prefix match, so "## Code review workflow" — prose ABOUT the review, exactly what a tag-mode
+# answer to "how does CI work?" produces — satisfies the guard and the check goes green with no
+# review behind it. That is the AOS-13 failure shape rebuilt inside the thing meant to catch it.
 REVIEW_HEADING='((.body // "") | test("(^|\\n)[ \\t]*#{1,6}[ \\t]*code review[ \\t\\r]*(\\n|$)"; "i"))'
 
 # Count entries matching a jq predicate on one endpoint.
@@ -113,19 +132,60 @@ EOF
   exit 0
 fi
 
+# Quote the run's own last words before failing.
+#
+# The action reports subtype "success" with is_error false whether the review finished or was
+# abandoned partway, so no exit code, no log line and no job status separates the two. The only
+# place the difference survives is the final `result` string in the execution transcript: a
+# finished run states a verdict, an abandoned one says it is waiting for subagents whose results
+# have already returned. Printing it is the difference between a red check that explains itself and
+# one that costs an hour of digging.
+#
+# Advisory only, and deliberately so. EXECUTION_FILE may be unset (older workflow), absent (the
+# action wrote nothing) or malformed, and none of those change the verdict — the guard has already
+# decided by the time this runs. Hence the existence test, the `|| true` on jq, and no `set -e`
+# exposure: a diagnostic that can itself fail the guard is worse than no diagnostic.
+report_run_conclusion() {
+  [ -n "${EXECUTION_FILE:-}" ] && [ -r "${EXECUTION_FILE}" ] || return 0
+
+  local summary
+  summary=$(jq -r '
+      def f($k): if has($k) then (.[$k] | tostring) else "?" end;
+      [ .[]? | select(.type == "result") ] | last
+      | select(. != null)
+      | "  turns=\(f("num_turns"))  duration_ms=\(f("duration_ms"))  is_error=\(f("is_error"))\n  final: \(if (.result // "") == "" then "(no result text)" else .result end)"
+    ' "${EXECUTION_FILE}" 2>/dev/null) || true
+
+  [ -n "$summary" ] || return 0
+
+  echo "" >&2
+  echo "What the review run itself reported:" >&2
+  printf '%s\n' "$summary" >&2
+}
+
 if [ "$total" -eq 0 ]; then
   printf '::error::Claude Code Review posted no review on %s#%s.\n' "$REPO" "$PR" >&2
   cat >&2 <<'EOF'
 This check fails instead of passing green, because a green check here is read as "reviewed and
 clean" and there is no review to back that up.
 
-Usual causes:
+Every ending the reviewer is allowed to reach posts a `## Code review` comment — findings, "No
+issues found", or "Declined: <reason>". Reaching none of them means the review did not finish.
+
+Usual causes, likeliest first:
+  * The run was abandoned mid-pipeline: the reviewer dispatched subagents and ended its turn
+    saying it would wait for them, which the action still reports as success. The `final:` line
+    below will read like "waiting for the agents" instead of a verdict. Re-run the job; if it
+    recurs, the completion contract in this workflow's `prompt:` needs strengthening.
+  * The reviewer declined the PR (closed, draft, trivial, automated, already reviewed) but did
+    not post its `Declined:` comment — the completion contract was weakened or dropped.
+  * The command changed the heading on its summary comment. This guard looks for a Markdown
+    heading standing alone on its line and matching `Code review`; comments by Claude that carry
+    no such heading are treated as conversation, not as a review.
   * The review command was invoked without `--comment`, so it printed its review to the job log
-    instead of posting it. Check the `prompt:` in this workflow.
-  * `claude_args` no longer names a github comment tool, so the comment MCP server was not
-    installed and the found-issues path had nowhere to post.
-  * The command declined the PR as closed, trivial, or already reviewed. Check the job summary
-    (`display_report: true`) for what it actually concluded.
+    instead of posting it, or `claude_args` no longer names a github comment tool so the comment
+    MCP server was never installed and the found-issues path had nowhere to post. Both are
+    regressions in this workflow's own inputs; check them before looking anywhere else.
 EOF
 
   # Worth a fourth API call only now that the check is already failing.
@@ -140,7 +200,7 @@ EOF
 EOF
   fi
 
-  printf '\nSee AOS-13 for the full root cause.\n' >&2
+  report_run_conclusion
   exit 1
 fi
 

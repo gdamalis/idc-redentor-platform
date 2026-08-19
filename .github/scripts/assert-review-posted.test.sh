@@ -48,9 +48,24 @@ export PATH="$TMP/bin:$PATH"
 
 TRACKING='Claude Code is working on this...\n\n[View job run](https://github.com/o/r/actions/runs/1)'
 SUMMARY='## Code review\n\nNo issues found. Checked for bugs and CLAUDE.md compliance.'
+DECLINED='## Code review\n\nDeclined: trivial change that is obviously correct.'
 OLD_SUMMARY='### Code review\n\nFound 3 issues:\n\n1. thing'
 WF='[{"filename":".github/workflows/claude-code-review.yml"}]'
-OTHER='[{"filename":"apps/web/src/app/page.tsx"}]'
+OTHER='[{"filename":"src/app/page.tsx"}]'
+
+# An execution transcript in the shape the action writes: a JSON array whose last `result` entry
+# carries the run's final words. The abandoned-run text is the real symptom the diagnostic exists
+# to surface.
+ABANDONED_LOG="$TMP/abandoned.json"
+cat > "$ABANDONED_LOG" <<'LOG'
+[
+  {"type":"system","subtype":"init"},
+  {"type":"result","subtype":"success","is_error":false,"num_turns":3,"duration_ms":13600,
+   "result":"I've launched both checks. Waiting for results before proceeding."}
+]
+LOG
+MALFORMED_LOG="$TMP/malformed.json"
+printf 'not json at all {{{' > "$MALFORMED_LOG"
 
 pass=0
 fail=0
@@ -63,9 +78,9 @@ fixture() { # name issue-comments inline-comments reviews files
   printf '%s' "$5" > "$TMP/fix/$1/files.json"
 }
 
-expect() { # description fixture want-exit want-substring [fail-endpoint] [pr]
-  local desc=$1 fix=$2 want=$3 substr=$4 failep=${5:-} pr=${6:-1} out rc
-  out=$(FIXTURE_DIR="$TMP/fix/$fix" FAIL_ENDPOINT="$failep" \
+expect() { # description fixture want-exit want-substring [fail-endpoint] [pr] [execution-file]
+  local desc=$1 fix=$2 want=$3 substr=$4 failep=${5:-} pr=${6:-1} execfile=${7:-} out rc
+  out=$(FIXTURE_DIR="$TMP/fix/$fix" FAIL_ENDPOINT="$failep" EXECUTION_FILE="$execfile" \
         GH_TOKEN=x REPO=o/r PR="$pr" bash "$SCRIPT" 2>&1)
   rc=$?
   if [ "$rc" -eq "$want" ] && printf '%s' "$out" | grep -qF "$substr"; then
@@ -97,7 +112,11 @@ fixture otherbot \
   '[{"user":{"login":"cursor[bot]"},"body":"bug"}]' '[]' "$OTHER"
 expect "another bot's comment is not the review" otherbot 1 "posted no review"
 
-# The two shapes the review command really posts.
+# The app has shipped under both logins; either is the same reviewer.
+fixture altlogin "[{\"user\":{\"login\":\"claude-code[bot]\"},\"body\":\"$SUMMARY\"}]" '[]' '[]' "$OTHER"
+expect "the claude-code[bot] login also counts" altlogin 0 "1 summary comment(s)"
+
+# The three shapes the review command really posts.
 fixture clean "[{\"user\":{\"login\":\"claude[bot]\"},\"body\":\"$SUMMARY\"}]" '[]' '[]' "$OTHER"
 expect "the no-issues summary comment counts" clean 0 "1 summary comment(s)"
 
@@ -106,11 +125,17 @@ fixture inline '[]' \
   '[]' "$OTHER"
 expect "standalone inline findings count" inline 0 "2 inline comment(s)"
 
+# A decline is a completed review, not a broken run. Before the workflow's completion contract made
+# the reviewer say so, a correctly-declined PR was indistinguishable from silence and went red.
+fixture declined "[{\"user\":{\"login\":\"claude[bot]\"},\"body\":\"$DECLINED\"}]" '[]' '[]' "$OTHER"
+expect "a 'Declined:' summary comment counts as a review" declined 0 "1 summary comment(s)"
+
 # The heading level moved between plugin versions, so it is matched loosely.
 fixture oldfmt "[{\"user\":{\"login\":\"claude[bot]\"},\"body\":\"$OLD_SUMMARY\"}]" '[]' '[]' "$OTHER"
 expect "an older '###' heading still counts" oldfmt 0 "1 summary comment(s)"
 
-# ...but the heading must stand alone. A tag-mode answer explaining the workflow is not a review.
+# ...but the heading must stand alone. A tag-mode answer explaining the workflow is not a review,
+# and a prefix-only match would let exactly that comment award a green check.
 fixture prose \
   '[{"user":{"login":"claude[bot]"},"body":"## Code review workflow\n\nIt runs on every PR."}]' \
   '[]' '[]' "$OTHER"
@@ -147,6 +172,18 @@ expect "an unreachable comments API fails closed" apifail 1 "unverifiable review
 expect "an unreachable files API fails closed" apifail 1 "Cannot tell whether this PR edits" files.json
 
 expect "a non-numeric PR is rejected" apifail 1 "PR must be a number" "" abc
+
+# The transcript diagnostic. An abandoned run and a clean one are both reported as success by the
+# action, so the run's own final words are the only thing that tells them apart — quoting them is
+# what makes a red check self-explaining instead of a mystery.
+expect "a failing run quotes the transcript" tagmode 1 "What the review run itself reported:" "" 1 "$ABANDONED_LOG"
+expect "the quoted transcript shows the abandonment" tagmode 1 "Waiting for results before proceeding" "" 1 "$ABANDONED_LOG"
+expect "the quoted transcript shows the turn count" tagmode 1 "turns=3" "" 1 "$ABANDONED_LOG"
+
+# The diagnostic is advisory: it must never change the verdict or crash the guard.
+expect "a malformed transcript does not break the guard" tagmode 1 "posted no review" "" 1 "$MALFORMED_LOG"
+expect "a missing transcript does not break the guard" tagmode 1 "posted no review" "" 1 "$TMP/does-not-exist.json"
+expect "a transcript is not consulted on a passing run" clean 0 "Review confirmed" "" 1 "$ABANDONED_LOG"
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
