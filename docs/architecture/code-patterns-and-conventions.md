@@ -12,7 +12,7 @@
 
 > **⚠️ Snapshot + validation layer — read this first.** The body (§1–§11 + Appendix) is the
 > **original 2026-06-22 code-review**, preserved verbatim because its section numbering is cited by
-> Jira **Epic ICR-9** ("Code quality, reliability & DX") and its children **ICR-30 → ICR-38**. This
+> **Epic ICR-9** ("Code quality, reliability & DX"; a Linear project since the 2026-11-14 move off Jira) and its children **ICR-30 → ICR-38**. This
 > doc is the _origin analysis_ of that whole ticket cluster; it was authored into a session but
 > **never committed to `docs/` until now**. The **[Validation status](#validation-status--ticket-map-2026-07-20)**
 > section below (2026-07-20) records what changed since — **several 🔴 findings are already resolved
@@ -64,7 +64,7 @@ hold**, and a few **changed shape**.
 4. **`who-is-jesus/page.tsx` is a non-async placeholder** (a bare `<div>`, no `params`/`setRequestLocale`) — an exception to the §5.1 page signature.
 5. **`like.service` migrated to a discriminated-union `LikesOutcome`** (no longer throws) — a _good_ evolution that matches the repo's "functional-first, model failures as return values" rule; but `contact.service` still throws, which is exactly the §6.4 contract-divergence to unify under ICR-34.
 
-### Finding → Jira ticket map
+### Finding → ticket map
 
 | Doc reference                                         | Ticket(s)                                                                                                        |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |

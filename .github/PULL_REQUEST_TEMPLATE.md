@@ -1,8 +1,8 @@
 # Description
 
-<!-- What does this PR do and why? Link the Jira issue: [ICR-N](https://divinelab.atlassian.net/browse/ICR-N) -->
+<!-- What does this PR do and why? Link the Linear issue: [ICR-N](https://linear.app/divinelab/issue/ICR-N) -->
 
-Ticket: [ICR-N](https://divinelab.atlassian.net/browse/ICR-N)
+Ticket: [ICR-N](https://linear.app/divinelab/issue/ICR-N)
 Type: <!-- feat | fix | perf | docs | chore | refactor -->
 
 # Changes

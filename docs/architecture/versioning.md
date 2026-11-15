@@ -47,7 +47,7 @@ no changeset cuts no release, whatever its title.
 
 We still write Conventional Commit messages/PR titles (enforced by
 `amannn/action-semantic-pull-request` in `pr.yml`) — they drive history and readability. Only the
-_bump decision_ moved to changeset files. The mapping from Jira-issue-type-derived commit type to
+_bump decision_ moved to changeset files. The mapping from issue-type-derived commit type to
 changeset bump (standard conventional-changelog preset):
 
 | Commit type                          | Changeset bump |

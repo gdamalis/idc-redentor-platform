@@ -175,7 +175,7 @@ Sunday arrives (see the ticket for the full proposed approach, alternatives, and
 - Spec: `tasks/specs/sermon-pipeline.md`
 - Render rule: `apps/web/src/utils/sermon/audioLanguage.ts` · Types: `apps/web/src/types/Sermon.ts`
 - Entry builder: `.claude/scripts/predica/build-sermon-entry.mjs` ↔ `apps/web/src/utils/predica/sermonEntry.ts`
-- Tickets: [ICR-146](https://divinelab.atlassian.net/browse/ICR-146) (fields + UI, shipped) ·
-  [ICR-147](https://divinelab.atlassian.net/browse/ICR-147) (flags + voice guard, shipped) ·
-  [ICR-149](https://divinelab.atlassian.net/browse/ICR-149) (write interpreter/audio fields, shipped) ·
-  [ICR-165](https://divinelab.atlassian.net/browse/ICR-165) (multi-audio assembly — Backlog)
+- Tickets: [ICR-146](https://linear.app/divinelab/issue/ICR-146) (fields + UI, shipped) ·
+  [ICR-147](https://linear.app/divinelab/issue/ICR-147) (flags + voice guard, shipped) ·
+  [ICR-149](https://linear.app/divinelab/issue/ICR-149) (write interpreter/audio fields, shipped) ·
+  [ICR-165](https://linear.app/divinelab/issue/ICR-165) (multi-audio assembly — Backlog)
