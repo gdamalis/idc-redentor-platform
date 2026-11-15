@@ -145,6 +145,27 @@
   },
   "qa": {
     "_note": "Drives /qa + qa-acceptance + the embedded /work and /merge QA steps. Reads the tracker block for the Jira project key + status names. QA targets are env-by-name (qa.env.<name>): 'preview' = the per-PR Vercel preview deployment (pre-merge QA), 'staging' = the dedicated staging env at staging.idcredentor.org / website-staging DB (post-merge QA). Production is hard-denied in EVERY env. autoMerge disabled (kill switch); merge is user-triggered via /merge.",
+    "apps": [
+      {
+        "_note": "The public marketing/blog site. 'packages' is listed on BOTH apps deliberately — @idcr/ui is raw source both apps transpile and @idcr/config is their shared build config, so a packages/** change is live on both and each must be proven. The resolver selects both, and QA runs against each; never a subset.",
+        "name": "web",
+        "paths": ["apps/web", "packages"],
+        "previewEnv": "preview",
+        "stagingEnv": "staging",
+        "deployEnvironment": "Preview – idc-redentor-web",
+        "vercelProject": "idc-redentor-web"
+      },
+      {
+        "_note": "The internal admin app — a SEPARATE Vercel project since ICR-127/ICR-141.",
+        "name": "admin",
+        "paths": ["apps/admin", "packages"],
+        "previewEnv": "previewAdmin",
+        "stagingEnv": "stagingAdmin",
+        "deployEnvironment": "Preview – idc-redentor-admin",
+        "vercelProject": "idc-redentor-admin"
+      }
+    ],
+    "appsNote": "Declares the repo's deployed apps ONCE; every command that picks a QA env routes changed paths through this list (canon rule 7, resolved by plugins/yoke/bin/resolve-qa-env.mjs). YK-8 fixed only post-merge QA, via merge.postMergeQa.byPath; this fixes the pre-merge side that /work and /qa use. The deployEnvironment strings contain an EN DASH (U+2013), not an ASCII hyphen — copied verbatim from the GitHub Deployments API; an ASCII hyphen will not match. They are per-app precisely because qa.deploy.environment's bare 'Preview' last deployed 2026-07-15, before the app split: resolving through it hands QA a stale pre-split build that passes while exercising none of the changed code. merge.postMergeQa below is retained as supported legacy and agrees with this declaration.",
     "depth": {
       "default": "standard",
       "allowed": ["light", "standard", "heavy"],
@@ -162,8 +183,10 @@
     },
     "env": {
       "preview": {
+        "_note": "Pre-merge QA target for apps/web. qa.apps routes an apps/web (or packages/**) branch here; an apps/admin branch goes to previewAdmin instead. deployEnvironment lives per-app on qa.apps, NOT on qa.deploy.environment — the bare 'Preview' environment this repo used to share last deployed 2026-07-15, before the app split, so resolving through it would hand QA a stale pre-split build.",
         "target": "vercel-preview",
-        "vercelProject": "idc-redentor-website",
+        "vercelProject": "idc-redentor-web",
+        "vercelProjectNote": "Was 'idc-redentor-website' (ICR-211) — a Vercel project that no longer deploys. The website's live project is 'idc-redentor-web'; the admin app is the separate 'idc-redentor-admin'.",
         "baseUrlFrom": "preview.baseUrl",
         "baseUrlHostAllow": "^[a-z0-9-]+\\.vercel\\.app$",
         "productionHostDeny": [
@@ -182,6 +205,32 @@
         "mongoMcp": "mongodb-localhost",
         "dbNameAllow": "^(website|ministry-admin)-(test|qa|e2e)$",
         "dbNote": "Mongo backs the website (blog 'likes' + saved 'contact', DB 'website') AND the admin app (congregant PII, DB 'ministry-admin'). This is a DEFAULT-DENY allowlist: preview QA may only touch '{website,ministry-admin}-{test,qa,e2e}'. Denied in EVERY env by construction (they lack the required -(env) suffix): the PROD DBs (bare 'website', bare 'ministry-admin'), the literal 'test' (the mongodb driver's silent no-DB-in-URI fallback), and the reserved system DBs 'admin'/'local'/'config'. QA resolves each target DB name from its OWN connection URI via client.db().databaseName. apps/admin carries one connection string per database (ICR-166): MONGODB_URI -> ministry-admin*, WEBSITE_MONGODB_URI -> website*, each authenticating as a single-database Atlas user. Names never come from an env var (there is no ADMIN_DB_NAME). Phase 1: no Mongo writes at all.",
+        "batchStatus": "inReview"
+      },
+      "previewAdmin": {
+        "_note": "Pre-merge QA target for apps/admin (ICR-211). The admin app is a SEPARATE Vercel project ('idc-redentor-admin') with its own per-PR previews, so a preview is a PER-APP fact exactly as staging already is: qa.env.preview serves the website and cannot exercise a single line of an apps/admin change. This is the pre-merge mirror of what YK-8 fixed post-merge with stagingAdmin. qa.apps routes 'apps/admin' here.",
+        "target": "vercel-preview",
+        "vercelProject": "idc-redentor-admin",
+        "baseUrlFrom": "previewAdmin.baseUrl",
+        "baseUrlHostAllow": "^[a-z0-9-]+\\.vercel\\.app$",
+        "productionHostDeny": [
+          "idcredentor.com",
+          "www.idcredentor.com",
+          "idcredentor.org",
+          "www.idcredentor.org",
+          "idc-redentor-website.vercel.app",
+          "idc-redentor-web.vercel.app",
+          "idc-redentor-admin.vercel.app",
+          "ministerio.idcredentor.org"
+        ],
+        "requirePreviewEnvironment": true,
+        "requirePreviewEnvironmentNote": "Same three-gate rule as qa.env.preview, and for the same reason: the admin app's PRODUCTION deployment also carries a *.vercel.app alias (idc-redentor-admin.vercel.app) that the host regex alone would accept. Before ANY browser/API action, confirm the resolved deployment is a PREVIEW — target !== 'production', or the GitHub deployment environment is 'Preview – idc-redentor-admin'. Reject a Production deployment even when its host ends in .vercel.app. NOTE the host allowlist cannot tell the two apps apart (both projects deploy to *.vercel.app); app separation comes from qa.apps[].deployEnvironment, not from this regex.",
+        "baseUrlHostAllowNote": "Default-deny allowlist for the admin preview host, identical in shape to qa.env.preview's. It is deliberately NOT app-discriminating — see requirePreviewEnvironmentNote. productionHostDeny covers BOTH Vercel projects' production hosts and custom domains, so a misresolution lands on the denylist rather than on production.",
+        "liveIntegrationPolicy": "no-POST",
+        "liveIntegrationNote": "As on stagingAdmin: no-POST means no THIRD-PARTY or irreversible side effects — it does NOT forbid the sign-in POST (/api/auth/session), which is the precondition for any admin QA at all, since every route mounting AppShell is behind the auth gate. Sign-in is idempotent and sends no mail. FORBIDDEN: sending a real invite email, any write to congregant PII, any role/permission mutation, disabling or deleting a user.",
+        "mongoMcp": "mongodb-localhost",
+        "dbNameAllow": "^(website|ministry-admin)-(test|qa|e2e)$",
+        "dbNameAllowNote": "Preview-tier allowlist — the same one qa.env.preview uses, and deliberately NOT the staging tier: 'ministry-admin-staging' is allowed on stagingAdmin only, never on a preview. Both prefixes appear because apps/admin holds one connection string per database (ICR-166): MONGODB_URI -> ministry-admin*, WEBSITE_MONGODB_URI -> website*. Denied by construction (no -(env) suffix): the PROD DBs, the literal 'test', and reserved 'admin'/'local'/'config'.",
         "batchStatus": "inReview"
       },
       "staging": {
