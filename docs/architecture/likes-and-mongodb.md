@@ -155,7 +155,7 @@ ignored the URI path. So the safe order is always:
 
 1. Append the database path to `MONGODB_URI` in Vercel (Production → `/website`,
    Preview/staging → `/website-staging`). Tracked as its own gated change:
-   [ICR-192](https://divinelab.atlassian.net/browse/ICR-192).
+   [ICR-192](https://linear.app/divinelab/issue/ICR-192).
 2. Confirm the running site still serves likes and the contact form.
 3. Only then deploy the code that calls `getWebsiteDb`.
 
@@ -175,7 +175,7 @@ database, so likes work there now. Measured on the same slug during ICR-143 QA:
 
 Two consequences for anyone reading old material:
 
-- This is the failure [ICR-103](https://divinelab.atlassian.net/browse/ICR-103) tracked; treat any
+- This is the failure [ICR-103](https://linear.app/divinelab/issue/ICR-103) tracked; treat any
   "the likes DB is unreachable on preview" note written before 2026-07-29 as obsolete.
 - `apps/web/e2e/blog/fail-soft-likes-mongo.spec.ts` (the ICR-111 acceptance suite) deliberately
   exercised that degraded path against a genuinely broken database. It now probes

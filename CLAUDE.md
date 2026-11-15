@@ -143,7 +143,7 @@ Distilled from `.cursorrules` (which `AGENTS.md` supersedes). Apply these by def
 
 ## Session naming (ticket-aware)
 
-Sessions are named after the active Jira ticket automatically.
+Sessions are named after the active Linear ticket automatically.
 
 - **The naming is automatic; you don't (and can't) run `/rename` yourself.** The yoke plugin's `session-namer` hook derives the ticket from the git branch (`<type>/ICR-N-<slug>`) or worktree dir (`.claude/worktrees/ICR-N`) and sets the session title via the `sessionTitle` hook field on `SessionStart` and each `UserPromptSubmit`. Title = `ICR-N-<first ~4 kebab words of the slug>`. The prefix (`ICR`, plus the `IDCR` alias) comes from `.claude/config.json` → `project.ticketPrefix`.
 - The hook is idempotent and backs off once the live name carries the ticket, so a manual `/rename` is respected.
@@ -204,18 +204,18 @@ Sessions are named after the active Jira ticket automatically.
 
 ## Task Workflow
 
-The dev harness ships as the **yoke plugin** (Claude Code marketplace `DivineLab/divinelab-plugins`, enabled in `.claude/settings.json`) and runs an idea → merged → staging-verified pipeline against Jira. The generic commands, agents, and hooks (session-namer + graphify-hint) all live in the plugin; this repo carries only the **project facts** — `.claude/config.json` (canon-schema, validated by the plugin's `yoke:canon` skill) — plus the **`/predica` domain command, its `predica-*` agents, and `.claude/scripts/predica/`** (the local sermon pipeline; stays project-local). `.claude/config.json` is the single source of truth; `docs/architecture/agent-harness.md` is the full description.
+The dev harness ships as the **yoke plugin** (Claude Code marketplace `DivineLab/divinelab-plugins`, enabled in `.claude/settings.json`) and runs an idea → merged → staging-verified pipeline against Linear. The generic commands, agents, and hooks (session-namer + graphify-hint) all live in the plugin; this repo carries only the **project facts** — `.claude/config.json` (canon-schema, validated by the plugin's `yoke:canon` skill) — plus the **`/predica` domain command, its `predica-*` agents, and `.claude/scripts/predica/`** (the local sermon pipeline; stays project-local). `.claude/config.json` is the single source of truth; `docs/architecture/agent-harness.md` is the full description.
 
 ### Where work lives
 
-1. **Jira** — project **IDC Redentor** (key `ICR`) on `divinelab.atlassian.net` (via the `atlassian-divinelab` MCP). Issues are native keys `ICR-N` (the `IDCR` alias also resolves); acceptance criteria live in the issue description.
+1. **Linear** — team **IdC Redentor** (key `ICR`) in the `divinelab` workspace (moved from Jira on 2026-11-14; issue numbers kept). Issues are `ICR-N` (the `IDCR` alias also resolves); acceptance criteria live in the issue description. Every tracker write goes through the yoke tracker script — never the Linear connector (the plugin refuses it).
 2. **`tasks/specs/`** — local per-ticket artifacts written during a `/yoke:work` run.
 
 ### Harness commands (yoke plugin)
 
-- `/yoke:pm` — intake / refine / groom a Jira issue against `docs/product/` (human-gated; never past To Do).
-- `/yoke:work ICR-N` — the orchestrator: mandatory worktree + branch → explore → (conditional design gate) → plan → implement (TDD) ↔ verify → draft PR → preview QA → mark ready → detached post-PR review + CI loop. Owns exactly **two** Jira transitions: To Do→In Progress and In Progress→In Review.
-- `/yoke:qa ICR-N` — acceptance QA (staging by default; `--preview` targets the PR's Vercel preview). Report-only; posts a structured Jira comment.
+- `/yoke:pm` — intake / refine / groom a Linear issue against `docs/product/` (human-gated; never past Todo).
+- `/yoke:work ICR-N` — the orchestrator: mandatory worktree + branch → explore → (conditional design gate) → plan → implement (TDD) ↔ verify → draft PR → preview QA → mark ready → detached post-PR review + CI loop. Owns exactly **two** status moves: Todo→In Progress and In Progress→In Review.
+- `/yoke:qa ICR-N` — acceptance QA (staging by default; `--preview` targets the PR's Vercel preview). Report-only; posts the QA evidence as a Linear comment.
 - `/yoke:verify` — `pnpm type-check` + `pnpm lint` + `pnpm test` (+ `pnpm build`) plus security checks.
 - `/yoke:merge ICR-N` — **human-triggered** squash-merge → In Review→In Testing → post-merge **staging** QA. Never deploys prod, never sets Done.
 
@@ -249,7 +249,7 @@ A human always merges the PR and closes the issue (transitions it to **Done**). 
 - **Product brain (the "church definition")** — [`docs/product/`](docs/product/README.md): the one-paragraph definition, mission/values/voice (draft), `scope-and-boundaries.md` (the hard IN/OUT/DEFERRED filter — no logins, no payments, no public UGC, no in-product AI), `content-types.md`, `editorial-and-content-rules.md`, and `ai-era-strategy.md`. The `product-manager` agent loads this folder on every run. Read it before shaping product work.
 - **Engineering docs** — in `docs/architecture/`:
   - `architecture.md` — App Router groups, the Contentful↔MongoDB split, request lifecycle, path aliases, security posture.
-  - `code-patterns-and-conventions.md` — the observed "how it's actually written" code-review (2026-06-22, **validated 2026-07-20**): the RSC/fetch-in-page mental model, the shadcn↔hand-rolled UI seam, per-finding status + the Jira map (Epic ICR-9 / ICR-30→38). The §10 "candidates to standardize" list is the payload for ICR-38.
+  - `code-patterns-and-conventions.md` — the observed "how it's actually written" code-review (2026-06-22, **validated 2026-07-20**): the RSC/fetch-in-page mental model, the shadcn↔hand-rolled UI seam, per-finding status + the ticket map (Epic ICR-9 / ICR-30→38). The §10 "candidates to standardize" list is the payload for ICR-38.
   - `monorepo-packages.md` — the `@idcr/config` + `@idcr/ui` workspace packages: what each exports, why `@idcr/ui` ships raw source via `transpilePackages`, why `paths` aliases must stay out of the shared tsconfig base, why there's no Tailwind preset, the logo-path-vs-bytes split, the verified Vercel/pnpm workspace deploy behavior, and the tokens contract `apps/admin` must satisfy.
   - `design-system.md` — the shared design system for both apps: the token contract, derived tokens, the primitives-shared/features-local boundary, the per-primitive shadcn→`@idcr/ui` migration table, the `@source` scanner prerequisite, and the known token/Divider defects.
   - `admin-database.md` — `apps/admin`'s two-connection MongoDB model: one self-contained connection string per database (`MONGODB_URI` → `ministry-admin*`, `WEBSITE_MONGODB_URI` → `website*`), each with a single-database Atlas user; the positive-allowlist name assertions, the two-layer (grant + assertion) safety argument, and the verified driver fail-closed behavior.
@@ -265,7 +265,7 @@ A human always merges the PR and closes the issue (transitions it to **Done**). 
   - `likes-and-mongodb.md` — the cached Mongo client, the `likes`/`contact` collections, visitor de-dup, write safety.
   - `seo-and-metadata.md` — `lib/metadata.ts`, the Contentful `Seo` type, OG/Twitter cards, JSON-LD, locale alternates.
   - `observability-sentry.md` — `@sentry/nextjs` across server/edge/client, the `options.ts` single source of truth, the `/monitoring` tunnel vs. CSP/proxy-matcher traps, and the locked PII posture.
-  - `agent-harness.md` — how to use the agents and commands; the human-gated Jira automation.
+  - `agent-harness.md` — how to use the agents and commands; the human-gated tracker automation.
   - `predica-bibleverse-reuse.md` — how `/predica` dedups scripture: the derived, version-scoped `bibleVerse` `internalName` (`"Joel 2:13 (NVI)"`) + the `--upsert-by-internal-name` CMA flag; cross-sermon reuse + sermon re-run safety.
   - `predica-rerun-idempotency.md` — re-running `/predica` safely: pre-flight transcript reuse by audio hash, **Gate 0** existing-sermon detection, regenerate by **update-in-place** (`--id`) instead of duplicating, and the guarded `delete-contentful.mjs` cleanup of superseded assets + orphaned legacy verses.
   - `predica-voice-profiles.md` — the per-preacher voice-coach learning loop: `predica-voice-coach` (step 2.5) learns the preacher's style from the **corrected transcript only** and maintains a local-only (gitignored), human-curatable two-zone profile (`tasks/predicas/_voices/<preacher-slug>.md`: Zone A human-curated + Zone B append-only log) that the writer reads to compound voice quality. Idempotent, non-blocking, style-only.

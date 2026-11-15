@@ -2,7 +2,7 @@
 
 > **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
 
-> **Purpose:** The hard filter for what the IDC Redentor website is and is not. Every new idea or Jira issue is checked against this. When in doubt, this document wins.
+> **Purpose:** The hard filter for what the IDC Redentor website is and is not. Every new idea or Linear issue is checked against this. When in doubt, this document wins.
 > **Last reviewed:** 2026-07-14
 > **Status:** DRAFT — sensible defaults for the maintainer ([@gdamalis](https://github.com/gdamalis)) and church leadership to confirm/refine.
 
@@ -36,7 +36,7 @@ privately.
 - **Informational pages, content-managed in Contentful** — home, "¿Quién es Jesús?" / who-is-jesus, community (mission, values, the Creed/Credo), and the worship-service "come meet us" page (service day/time + address + embedded map). Editable by non-technical editors without code changes, per locale.
 - **Bilingual UI (es-AR primary, en-US secondary)** via next-intl. Content is authored per-locale in Contentful; UI strings live in `public/locales/{es-AR,en-US}.json`.
 - **Blog** — articles with rich text, featured image, author, category, and published date; a lightweight, anonymous **"like"** (slug-keyed via `/api/likes` — the same like also serves sermons). Related-posts surfacing.
-- **Sermon archive (`/predicas`)** — sermons as Contentful content (title, thesis, main points, scripture references, rich-text body, a downloadable **PDF summary**, and a **self-hosted audio** recording played inline on the sermon's own page), plus the **`/predica` pipeline** that produces them. Carries the same anonymous **"like"** as blog posts. _Shipped today: the recording is authored at the **default locale** (es-AR) only — `sermonEntry.ts` writes `audio` with `atDefault(…)` — and the en-US page surfaces that same file with an "audio is in Spanish" note. **Per-locale audio is IN scope but NOT yet built: it is [ICR-146](https://divinelab.atlassian.net/browse/ICR-146).** Read this bullet as the scope boundary, not as a description of what already works._
+- **Sermon archive (`/predicas`)** — sermons as Contentful content (title, thesis, main points, scripture references, rich-text body, a downloadable **PDF summary**, and a **self-hosted audio** recording played inline on the sermon's own page), plus the **`/predica` pipeline** that produces them. Carries the same anonymous **"like"** as blog posts. _Shipped today: the recording is authored at the **default locale** (es-AR) only — `sermonEntry.ts` writes `audio` with `atDefault(…)` — and the en-US page surfaces that same file with an "audio is in Spanish" note. **Per-locale audio is IN scope but NOT yet built: it is [ICR-146](https://linear.app/divinelab/issue/ICR-146).** Read this bullet as the scope boundary, not as a description of what already works._
 - **Events / announcements** — event banners and event info (day of week, date, time, note, location), e.g. the **ladies conference** and recurring **worship services**, surfaced on the relevant pages.
 - **Newsletter signup** — email capture to a per-locale **Resend** audience (`/api/subscribe` → `subscribe.service.ts` → `resendAudience.ts`). The subscriber's email is stored at Resend, **never in our own database**.
 - **Contact form** — message capture (saved to MongoDB + emailed to the church), with spam/PII discipline.
@@ -84,6 +84,6 @@ Ticketable but tagged roadmap; revisit deliberately. Tie each to the discoverabi
 
 The `product-manager` agent loads this file on every run and applies it as a filter:
 
-- An idea inside **IN scope** → draft a Jira issue.
+- An idea inside **IN scope** → draft a Linear issue.
 - An idea in **OUT of scope** → reject it or offer the reframe above, citing the specific boundary.
 - An idea in **DEFERRED** → create an issue, tag it roadmap/deferred, and tie it to the discoverability/structured-data thesis.

@@ -3,16 +3,16 @@
 > **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
 
 > **Purpose:** How to use the Claude Code agent harness on this repo — the agents and slash commands, the
-> human-gated Jira automation (Backlog → To Do → In Progress → In Review → **In Testing** → Done, with
+> human-gated Linear automation (Backlog → Todo → In Progress → In Review → **In Testing** → Done, with
 > **Done human-only**), the branch/PR/merge conventions, the always-on type-aware QA on both the Vercel
 > preview and **staging**, the detached **post-PR review + CI loop**, and the user-triggered `/yoke:merge`.
 > **Harness brain:** `.claude/config.json` (canon-schema, validated by the `yoke:canon` skill) is the single
 > source of truth — every command and agent reads it first. This doc narrates it; on any disagreement the JSON wins.
-> **Last reviewed:** 2026-07-02 (plugin migration)
+> **Last reviewed:** 2026-11-15 (Jira → Linear move, ICR-212)
 
 ## What it is
 
-A set of focused subagents plus orchestrating slash commands that take a church-team idea from a Jira
+A set of focused subagents plus orchestrating slash commands that take a church-team idea from a Linear
 issue all the way to a merged-and-staging-verified change. The harness is **human-gated at two points**:
 (1) a _conditional_ brainstorm/spec gate during `/yoke:work`, and (2) the **merge approval** — a human triggers
 `/yoke:merge`. Agents do the mechanical work (research, implement, verify, QA, open PRs, address review
@@ -38,10 +38,10 @@ in `.claude/config.json` (canon-schema, validated by the plugin's `yoke:canon` s
 
 | Command                                 | Backed by                                                                                                                                | Does                                                                                                                                                                                                                                                                                                                                       | Issue transitions                                                                                |
 | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
-| **`/yoke:pm`**                     | `yoke:product-manager`                                                                                                              | Intake a raw idea → To Do issue; refine a thin issue to ready; groom the Backlog + To Do statuses. Enforces `docs/product/scope-and-boundaries.md`. **Never implements.**                                                                                                                                                                  | Creates/updates issues up to **To Do**; never past it                                            |
-| **`/yoke:work [ICR-N]`**           | yoke:explorer → yoke:implementer → yoke:verifier → yoke:qa-runner → yoke:acceptance-judge → yoke:pr-author | Pick up a ready issue, refine-gate it, create a worktree + branch, (conditionally) brainstorm + spec, implement ↔ verify, open a draft PR, run always-on type-aware pre-merge QA on the preview, mark ready, then run the detached post-PR review + CI loop. Hands off to `/yoke:merge` on an explicit in-session "merge".            | **To Do → In Progress** (step 3), **In Progress → In Review** (step 14, via yoke:pr-author) |
+| **`/yoke:pm`**                     | `yoke:product-manager`                                                                                                              | Intake a raw idea → Todo issue; refine a thin issue to ready; groom the Backlog + Todo statuses. Enforces `docs/product/scope-and-boundaries.md`. **Never implements.**                                                                                                                                                                  | Creates/updates issues up to **Todo**; never past it                                            |
+| **`/yoke:work [ICR-N]`**           | yoke:explorer → yoke:implementer → yoke:verifier → yoke:qa-runner → yoke:acceptance-judge → yoke:pr-author | Pick up a ready issue, refine-gate it, create a worktree + branch, (conditionally) brainstorm + spec, implement ↔ verify, open a draft PR, run always-on type-aware pre-merge QA on the preview, mark ready, then run the detached post-PR review + CI loop. Hands off to `/yoke:merge` on an explicit in-session "merge".            | **Todo → In Progress** (step 3), **In Progress → In Review** (step 14, via yoke:pr-author) |
 | **`/yoke:merge ICR-N`**            | `/yoke:work` hand-off or standalone                                                                                                 | **User-triggered ONLY.** Squash-merge the PR (refuse on red/pending CI), delete the worktree + branch, transition the issue → In Testing, then run post-merge **staging** QA against the env serving the app that changed (`staging` for `apps/web`, `stagingAdmin` for `apps/admin`). **Never merges autonomously; never moves to Done.** | **In Review → In Testing** (after a verified squash-merge)                                       |
-| **`/yoke:qa [ICR-N] [--preview]`** | `yoke:qa-acceptance` (tester) → `yoke:acceptance-judge` (verdict)                                                              | Acceptance QA against the **staging** deployment by default; `--preview` re-targets the PR's Vercel preview. Posts a structured Jira comment with inline screenshots. **Phase 1: report-only.**                                                                                                                                            | May transition To Do/In Progress → In Review on the **preview** path only; **never Done**        |
+| **`/yoke:qa [ICR-N] [--preview]`** | `yoke:qa-acceptance` (tester) → `yoke:acceptance-judge` (verdict)                                                              | Acceptance QA against the **staging** deployment by default; `--preview` re-targets the PR's Vercel preview. Posts the QA evidence as one Linear comment with inline screenshots. **Phase 1: report-only.**                                                                                                                                            | May move Todo/In Progress → In Review on the **preview** path only; **never Done**        |
 | **`/yoke:verify`**                 | yoke:verifier (+ yoke:security-reviewer)                                                                                       | Run `pnpm type-check && pnpm lint && pnpm test && pnpm build` and security checks. Local-only.                                                                                                                                                                                                                                             | none                                                                                             |
 
 ## The agents
@@ -49,15 +49,15 @@ in `.claude/config.json` (canon-schema, validated by the plugin's `yoke:canon` s
 The roster ships in the **yoke plugin** (dispatched as `yoke:<name>` via the Task tool) — run
 `/agents` or check the plugin for the live set. The nine dev agents:
 
-- **`yoke:product-manager`** (`/yoke:pm`) — turns ideas into well-formed Jira issues and grooms the backlog, grounded
-  in `docs/product/`. Three modes: **intake** (raw idea → To Do issue), **refine** (thin issue → ready),
-  **groom** (read-only audit of **Backlog + To Do**). Never writes code, never branches/PRs, never transitions
-  an issue past To Do. Flags sensitive areas (email, contact/subscribe PII, likes Mongo writes, env/secrets, CSP).
+- **`yoke:product-manager`** (`/yoke:pm`) — turns ideas into well-formed Linear issues and grooms the backlog, grounded
+  in `docs/product/`. Three modes: **intake** (raw idea → Todo issue), **refine** (thin issue → ready),
+  **groom** (read-only audit of **Backlog + Todo**). Never writes code, never branches/PRs, never moves
+  an issue past Todo. Flags sensitive areas (email, contact/subscribe PII, likes Mongo writes, env/secrets, CSP).
 - **`yoke:explorer`** — read-only codebase research for `/yoke:work`. Two modes: `ticket-context` (default) summarizes
   relevant code/patterns/risks for an incoming issue **and emits two machine-readable signals**:
   `Suggested QA depth` (`light|standard|heavy`) and a `needsDesignGate: true|false` line that drives whether
   `/yoke:work`'s brainstorm + spec gates fire; `observation-context` enriches a stray `tasks/todo.md` line into a
-  Jira issue draft (JSON). Uses the graphify graph when present (see below).
+  Linear issue draft (JSON). Uses the graphify graph when present (see below).
 - **`yoke:implementer`** — writes the change inside the feature-branch worktree, TDD-first, following the
   conventions in `CLAUDE.md` / `AGENTS.md`. In the post-PR loop it also takes
   **PR review-comment threads** as input: it invokes `superpowers:receiving-code-review` (verify → fix →
@@ -67,8 +67,8 @@ The roster ships in the **yoke plugin** (dispatched as `yoke:<name>` via the Tas
 - **`yoke:verifier`** — runs the gate commands (`pnpm type-check`, `pnpm lint`, `pnpm test`, `pnpm build`) per QA
   depth and reports failures rather than inventing missing scripts. Runs on the cheap model tier (haiku).
 - **`yoke:pr-author`** — opens the draft PR with a conventional-commit title `<type>(ICR-N): description`, fills
-  the template, posts the PR-link Jira comment, and at `mark_ready` flips the PR to ready and transitions the
-  issue **In Progress → In Review**. Runs a **mandatory secret-scrub** on every PR body and Jira comment write.
+  the template, posts the PR-link Linear comment, and at `mark_ready` flips the PR to ready and transitions the
+  issue **In Progress → In Review**. Runs a **mandatory secret-scrub** on every PR body and Linear comment write.
   **Never merges, never moves to Done.** The `In Review → In Testing` transition is owned by `/yoke:merge`,
   not pr-author — preserving pr-author's single responsibility.
 - **`yoke:qa-runner`** — **tester-only**, type- and depth-aware automated QA. `qaType` decides **what** to test
@@ -84,7 +84,7 @@ The roster ships in the **yoke plugin** (dispatched as `yoke:<name>` via the Tas
   `yoke:security-reviewer` (fresh context, adversarial, read-only, **no execution** — never drives a browser, runs
   a command, hits an API/Mongo, or re-runs QA). Inputs = the tester's evidence bundle + the issue's acceptance
   criteria. Output = a structured compliance verdict (overall `pass|partial|fail` + per-AC
-  `{n, text, type, verdict, rationale, evidenceRef}`) shaped to drop straight into the jira-result table.
+  `{n, text, type, verdict, rationale, evidenceRef}`) shaped to drop straight into the QA evidence table.
   **Separation of concerns:** the **tester** proves _what the system does_ (evidence); the **judge** decides
   _whether that meets the issue_ (product). Never fused — the judge's verdict supersedes any provisional
   result the tester emitted.
@@ -92,61 +92,70 @@ The roster ships in the **yoke plugin** (dispatched as `yoke:<name>` via the Tas
   sensitive paths (services, API routes, `proxy.ts`, `lib/contentful/fetch.ts`, `config/headers.js`, env
   files) and returns a structured gating verdict. Used by `/yoke:qa` and `/yoke:verify`; can run ad hoc.
 
-## Jira: keys, project, and the human gates
+## Linear: keys, team, and the human gates
 
-The tracker is the Jira project **IDC Redentor** (key `ICR`) on `divinelab.atlassian.net` — a
-company-managed software project, accessed via the Atlassian MCP (`mcp__atlassian-divinelab__*`). The project
-key, cloudId, and the status/transition names come from `.claude/config.json` → `tracker` — never inline literal
-ids. The MCP namespace and cloudId are **per-site** (shared with the other Divine Lab projects) — never renamed
-per project.
+The tracker is the Linear team **IdC Redentor** (key `ICR`) in the `divinelab` workspace
+(https://linear.app/divinelab/team/ICR). It moved from Jira on 2026-11-14 (ICR-212). The team key, the
+status names and the label names come from `.claude/config.json` → `tracker` — never inline literals.
+
+**Every tracker read and write goes through the yoke plugin's tracker script** (`tracker.mjs`: `get`,
+`transition`, `comment`, `evidence`, `create`, `update`, `link`). The plugin's guard hook refuses writes
+through the Linear connector in this repo, and the script refuses any move into or out of a finished
+status (Done, Canceled, Duplicate) whatever the config says. `tracker.mjs doctor` checks the whole setup
+(key, team, statuses, labels, Linear automations). Each machine needs its own Linear API key in
+`~/.config/yoke/credentials.json` with an `allow` entry for team `ICR` — see the plugin's `docs/tracker.md`,
+"Setting up the key".
 
 ### Issue keys (`ICR-N`)
 
-`ICR-N` is the **native Jira issue key** — `N` is the issue number, not a Trello idShort (the `IDCR` alias also
-resolves). There is no scan-to-resolve step: fetch the issue directly via `getJiraIssue(cloudId, "ICR-N")` and
-use the `ICR-N` key for every read, write, and transition. Branches, commits, and PR titles use the same
-`ICR-N` string.
+`ICR-N` is the Linear issue key — `N` is the issue number, not a Trello idShort (the `IDCR` alias also
+resolves). Issue numbers were kept on the move from Jira, so every `ICR-N` in specs, commits, PR titles and
+the changelog points at the same issue in Linear (`https://linear.app/divinelab/issue/ICR-N`). The old Jira
+**epics** became Linear **projects**, so their keys (ICR-1…14, 96…98, 118…122, 142, 171, 193) have no issue.
+Branches, commits, and PR titles use the same `ICR-N` string.
 
 ### Workflow statuses
 
 ```
-Backlog → To Do → In Progress → In Review → In Testing → Done
- (PM)     (PM)     (#1 work)    (#2 work)   (#3 merge)   (HUMAN, after prod deploy)
+Backlog → Todo → In Progress → In Review → In Testing → Done        (+ Canceled, Duplicate)
+ (PM)     (PM)    (#1 work)    (#2 work)   (#3 merge)   (HUMAN, after prod deploy)
 ```
 
-Transition issues by **status name** (`config.tracker.transitionResolution: "by-name"`, from
-`config.tracker.workflow`), resolved at runtime via `getTransitionsForJiraIssue` matching `transition.to.name` —
-never hardcode numeric transition ids. The status name is the contract; if a transition isn't offered at
-runtime (the status is missing from the project's workflow, or was renamed), surface the drift rather than
-inventing an id.
+Moves name a **status key** from `config.tracker.statuses` (`inProgress`, `inReview`, `inTesting`, …); the
+script maps it to the Linear status. If a status is missing or renamed in Linear, `doctor` and the script
+report the drift rather than guessing.
 
 | Status      | Set by                                                            |       Automated?       |
 | ----------- | ----------------------------------------------------------------- | :--------------------: |
 | Backlog     | PM / human (backlog grooming)                                     |           no           |
-| To Do       | PM / human (ready to pick up)                                     |           no           |
-| In Progress | `/yoke:work` step 3 (after the worktree exists)              |          yes           |
-| In Review   | `/yoke:work` step 14 via pr-author (at PR-ready)             |          yes           |
-| In Testing  | `/yoke:merge` (after a verified squash-merge)                |          yes           |
+| Todo        | PM / human (ready to pick up)                                     |           no           |
+| In Progress | `/yoke:work` step 3 (after the worktree exists)                   |          yes           |
+| In Review   | `/yoke:work` step 14 via pr-author (at PR-ready)                  |          yes           |
+| In Testing  | `/yoke:merge` (after a verified squash-merge)                     |          yes           |
 | **Done**    | **HUMAN ONLY** — after the human's manual prod deploy from Vercel | **never by any agent** |
+| Canceled    | human only                                                        |           no           |
+| Duplicate   | Linear, when an issue is marked a duplicate                       |           no           |
 
 There are exactly **three** automated transitions across the harness (`config.tracker.automatedTransitions`):
 
-1. **To Do → In Progress** — owned by `/yoke:work` (step 3, right after the worktree exists).
+1. **Todo → In Progress** — owned by `/yoke:work` (step 3, right after the worktree exists).
 2. **In Progress → In Review** — owned by `/yoke:work` via `yoke:pr-author` (step 14, at PR-ready, paired with the
    PR-link comment).
 3. **In Review → In Testing** — owned by **`/yoke:merge`**, **only after a verified squash-merge**.
 
 `/yoke:work` owns exactly the first two and **never** performs transition #3 itself — even the in-session "merge"
 hand-off (see below) delegates transition #3 to `/yoke:merge`. **No agent or command ever moves an issue to Done.**
-`config.tracker.forbiddenTransitions` blocks `→ done`. Done means: the human deployed to production from
-Vercel and then transitioned the issue to Done themselves. Nothing infers "staging passed ⇒ safe for Done."
+`config.tracker.forbiddenTransitions` blocks `→ done`, and the script's own floor blocks every finished status.
+Done means: the human deployed to production from Vercel and then moved the issue to Done themselves. Nothing
+infers "staging passed ⇒ safe for Done."
 
 ### Issue type → commit type
 
-The Jira **issue type** drives the commit-type hint: **Bug → `fix`**, **Story → `feat`**, **Task → `chore`**,
-with an optional label override for `perf`/`refactor` (`config.tracker.issueTypeToCommitType`). "Needs
-refinement" is tracked via a **`needs-refinement` Jira label** (`config.tracker.needsRefinementLabel`), not a
-checklist — a To Do issue **without** the `needs-refinement` label is the `/yoke:work`-ready signal.
+The issue's **type label** drives the commit-type hint: **Bug → `fix`**, **Story / Feature / Improvement →
+`feat`**, **Task / Chore → `chore`**, **Spec → `docs`**, with an optional label override for `perf`/`refactor`
+(`config.tracker.issueTypeToCommitType`). The app is a **component label** (`Website`, `Ministry Admin Panel`,
+`Shared`, `Infra`). "Needs refinement" is tracked via a **`needs-refinement` label**
+(`config.tracker.needsRefinementLabel`) — a Todo issue **without** it is the `/yoke:work`-ready signal.
 `/yoke:work` reads this at its entry gate (step 1.5).
 
 ## `/yoke:work` end-to-end
@@ -154,16 +163,16 @@ checklist — a To Do issue **without** the `needs-refinement` label is the `/yo
 `/yoke:work ICR-N` is the orchestrator playbook. The main thread follows it step by step; subagents are spawned
 only at the marked points; the human gates (★) stay in the main conversation. The shape:
 
-1. **Resolve the issue** by key `ICR-N` (`getJiraIssue`); pin its status, labels, QA depth. Infer the **commit
+1. **Resolve the issue** by key `ICR-N` (`tracker.mjs get`); pin its status, labels, QA depth. Infer the **commit
    type** (from the issue type) and the **QA TYPE** (`ui` | `api` | `chore`, independent of depth — reconciled against the real
    `git diff` at the QA step).
 2. **Entry gate — needs-refinement ★ (step 1.5).** Runs after the issue is resolved and **before any side
    effect** (no worktree, no transition). It reads the issue's labels; if the **`needs-refinement`** label is
    present, it **STOPS** and offers a carrail: **(a) refine now** (dispatch `yoke:product-manager` in
    `refine` mode, then re-read the labels) or **(b) pick another ticket** (abort cleanly — no worktree,
-   no transition, no state file). An issue that fails this gate is never transitioned To Do → In Progress.
+   no transition, no state file). An issue that fails this gate is never moved Todo → In Progress.
 3. **Worktree + branch (mandatory).** Create an isolated worktree under `<main-root>/.claude/worktrees/ICR-N`
-   off `origin/main`, branch `<type>/ICR-N-<slug>`. Then **To Do → In Progress** (automated transition #1).
+   off `origin/main`, branch `<type>/ICR-N-<slug>`. Then **Todo → In Progress** (automated transition #1).
 4. **Explore (yoke:explorer).** Returns relevant files / patterns / risks + **`needsDesignGate`** (boolean) and
    **`Suggested QA depth`**. `/yoke:work` parses both literally; on absence/ambiguity it **fail-safe defaults
    `needsDesignGate = true`** (never auto-skip the design gate on ambiguity).
@@ -182,16 +191,16 @@ false` (a trivial copy/refactor), **both are skipped** and `/yoke:work` auto-pil
    never the `master` alias/production; cutover is deferred to the human. Pure read-side / code-only changes
    skip this gate.
 8. **Open a draft PR early (yoke:pr-author).** `git push -u`, `gh pr create --draft` with a conventional title,
-   fills the template, posts the PR-link Jira comment. **Issue stays In Progress.** Every later checkpoint
+   fills the template, posts the PR-link Linear comment. **Issue stays In Progress.** Every later checkpoint
    commits-and-pushes to this open PR so cloud review agents can review iteratively.
 9. **Always-on pre-merge QA on the PREVIEW (step 13).** **Unconditional for every testable ticket** — no
    `light = skip`. Type-aware: `ui` → browser walk + screenshots; `api` → API/request-level checks;
    `chore` → vitest/local only. The **tester (`yoke:qa-runner`) → `yoke:acceptance-judge` (verdict)** split applies;
    the loop's pass/fail decision keys off the **judge's** verdict. Evidence is **dual-posted to BOTH the PR
-   and the Jira issue** (screenshots attach to the Jira issue; the PR carries the written report + per-AC verdict
-   table + a link to the Jira issue). A 3-attempt QA cap mirrors the verify loop; it auto-remediates but
+   and the Linear issue** (screenshots are uploaded inline on the Linear issue; the PR carries the written report +
+   per-AC verdict table + a link to the Linear issue). A 3-attempt QA cap mirrors the verify loop; it auto-remediates but
    **never auto-merges**.
-10. **Docs evaluation (step 13.5)** then **mark ready (step 14, yoke:pr-author).** `gh pr ready`, a final Jira
+10. **Docs evaluation (step 13.5)** then **mark ready (step 14, yoke:pr-author).** `gh pr ready`, a final Linear
     comment, and **In Progress → In Review** (automated transition #2). This is `/yoke:work`'s last automated transition.
 11. **Detached post-PR review + CI loop (step 14.5).** See the next section.
 12. **In-session merge hand-off (step 14.6).** After the loop reaches its CLEAN/CAP exit and the human has
@@ -262,10 +271,10 @@ stays `false`). It is invoked standalone or via the `/yoke:work` step-14.6 hand-
    is a statement about the QA _host_ gate only: staging **is** a Vercel branch deployment and so is
    built with `VERCEL_ENV=preview`, which is exactly what makes it draft-serving and Contentful-framable
    — see `contentful-data-layer.md` § Live Preview). Then **tester (`yoke:qa-acceptance`) → `yoke:acceptance-judge`** → post the result to
-   the Jira issue (`postedBy: "/yoke:merge"`, `envName:` the env resolved above). A `no-POST` happy-path AC the tester correctly
+   the Linear issue (`postedBy: "/yoke:merge"`, `envName:` the env resolved above). A `no-POST` happy-path AC the tester correctly
    skipped is **BLOCKED/deferred**, not FAIL.
 7. **Stop.** Report the merge + cleanup + the staging verdict, and remind the user that **Done is human-only**
-   — deploy prod from Vercel, then transition In Testing → Done. `/yoke:merge` **never** moves an issue to Done.
+   — deploy prod from Vercel, then move In Testing → Done. `/yoke:merge` **never** moves an issue to Done.
 
 ## QA loop (Phase 1: report-only)
 
@@ -311,13 +320,11 @@ guardrails:
   (`requirePreviewEnvironment: false` — it has its own allowlist) but **keeps the prod hard-deny**.
 - **tester → acceptance-judge split everywhere.** Every QA path runs a fresh tester (`yoke:qa-runner` or
   `yoke:qa-acceptance`) for evidence, then a fresh `yoke:acceptance-judge` for the authoritative verdict; results post
-  via `post-jira-result.mjs` (the yoke plugin bin, on PATH). The script uploads each screenshot as a Jira
-  **attachment** and posts a comment whose ADF body references it as a `media` node (the Atlassian MCP can't
-  attach files itself). `meta.envName` is **required** and drives the URL label, which is derived from the env name
-  (`staging` → `Staging:`, `stagingAdmin` → `Staging Admin:`, anything preview-ish → `Preview:`);
-  `meta.postedBy` is the provenance footer (`/yoke:qa` | `/yoke:work` | `/yoke:merge`). Jira creds come from
-  `qa-env.json` (gitignored); on absent creds the script exits 3 and the orchestrator falls back to
-  `mcp__atlassian-divinelab__addCommentToJiraIssue`.
+  via the tracker script's `evidence` verb (`tracker.mjs evidence --input <file>`): one Linear comment with every
+  screenshot uploaded and shown inline. `meta.envName` is **required** and drives the URL label, which is derived
+  from the env name (`staging` → `Staging:`, `stagingAdmin` → `Staging Admin:`, anything preview-ish → `Preview:`);
+  `meta.postedBy` is the provenance footer (`/yoke:qa` | `/yoke:work` | `/yoke:merge`). The Linear key comes from
+  `~/.config/yoke/credentials.json`, not `qa-env.json`.
 - **Both staging envs are `no-POST`**, but it means something different in each.
   - `qa.env.staging` (website): no live happy-path POST to `/api/subscribe` or the contact Server
     Action — SendGrid/Resend are presumed LIVE on staging unless sandbox creds exist, so forms are
@@ -339,7 +346,7 @@ guardrails:
   `apps/web/src/proxy.ts`, `apps/web/src/i18n/**`, `apps/web/lib/contentful/fetch.ts`, `apps/web/config/**`,
   `apps/web/next.config.*`, `package.json`, `.env*`, `.github/**`) raise the bar further.
 - **QA depth** (`light`/`standard`/`heavy`, default `standard`) is the **effort dial within a type**, resolved
-  from a `qa-<depth>` Jira label or a `QA: <depth>` description token. **There is no `light = skip` tier** —
+  from a `qa-<depth>` label or a `QA: <depth>` description token. **There is no `light = skip` tier** —
   every testable ticket runs its TYPE's baseline.
 
 ## Contentful model-change workflow (two lanes)
@@ -430,7 +437,7 @@ Grep/Read on an empty/stale/absent graph and notes it. Full guide: [`graphify.md
    `/yoke:merge`, which executes the squash-merge.
 3. **Never run QA against production — in any env** — prod custom domains AND prod `*.vercel.app` aliases are
    hard-denied for both `preview` and `staging`.
-4. **Never invent a script or a Jira transition** — report drift instead; transition issues by status name.
+4. **Never invent a script or a status move** — report drift instead; move issues by status key through the tracker script.
 5. **Tester proves, judge decides** — never fuse the QA tester and the `yoke:acceptance-judge`; the judge's
    verdict is authoritative.
 6. **Respect the product scope** (`docs/product/scope-and-boundaries.md`) — the PM rejects/reframes

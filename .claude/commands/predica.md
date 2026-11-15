@@ -250,7 +250,7 @@ Then tell the user, verbatim intent:
 > **featured image** (replace it if you'd rather use a photo), and **Publish** (the publish webhook
 > revalidates the site). Then paste the WhatsApp text. **No agent publishes or sends.**"
 
-**Never transition any Jira issue to Done. Never publish. Never send.**
+**Never move any Linear issue to Done. Never publish. Never send.**
 
 ## Failure handling
 

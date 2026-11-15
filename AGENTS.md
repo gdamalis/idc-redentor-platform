@@ -116,12 +116,12 @@ ENVIRONMENT_NAME
 VERCEL_ENV              # injected by Vercel; drives draft mode
 ```
 
-## Tracker (Jira)
+## Tracker (Linear)
 
-- Project: **IDC Redentor** (key `ICR`) on `divinelab.atlassian.net` — a company-managed software project. Access via the Atlassian MCP (`mcp__atlassian-divinelab__*`).
-- **`ICR-N`** is the **native Jira issue key** — `N` is the issue number, not a Trello idShort. Fetch the issue directly via `getJiraIssue(cloudId, "ICR-N")` (no scan-to-resolve); all Atlassian calls use the `ICR-N` key.
+- Team: **IdC Redentor** (key `ICR`) in the `divinelab` Linear workspace — https://linear.app/divinelab/team/ICR. Moved from Jira on 2026-11-14; issue numbers were kept. Every tracker write goes through the yoke plugin's tracker script; the plugin refuses writes through the Linear connector.
+- **`ICR-N`** is the Linear issue key — `N` is the issue number, not a Trello idShort. Link: `https://linear.app/divinelab/issue/ICR-N`. The old Jira epics became Linear projects, so their keys (ICR-1…14, 96…98, 118…122, 142, 171, 193) have no issue.
 - Branches: `<type>/ICR-N-<slug>` · PR titles: `<type>(ICR-N): description`.
-- Workflow statuses: **Backlog** → **To Do** → **In Progress** → **In Review** → **In Testing** → **Done**. `/yoke:work` transitions To Do → In Progress → In Review; `/yoke:merge` transitions In Review → In Testing (after a user-triggered squash-merge). **No agent ever transitions an issue to Done** — a human does that after deploying to production. Transitions resolve **by name** at runtime (`getTransitionsForJiraIssue` matching `transition.to.name`); the status name is the contract, never hardcode numeric transition ids.
+- Workflow statuses: **Backlog** → **Todo** → **In Progress** → **In Review** → **In Testing** → **Done**. `/yoke:work` moves Todo → In Progress → In Review; `/yoke:merge` moves In Review → In Testing (after a user-triggered squash-merge). **No agent ever moves an issue to Done** (or Canceled / Duplicate) — a human does that after deploying to production. Status keys map to Linear status names in `.claude/config.json` → `tracker.statuses`.
 
 ## Git & Release
 

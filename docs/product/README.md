@@ -21,7 +21,7 @@ This folder is the **canonical product definition** for the Iglesia de Cristo Re
 
 The `product-manager` agent loads this folder on every run and applies **[scope-and-boundaries.md](./scope-and-boundaries.md)** as a hard filter:
 
-- An idea inside **IN scope** → draft a Jira issue.
+- An idea inside **IN scope** → draft a Linear issue.
 - An idea **OUT of scope** → reject it or offer the in-scope reframe, citing the specific boundary.
 - An idea in **DEFERRED** → create an issue, tag it roadmap/deferred, and tie it to the discoverability thesis in [ai-era-strategy.md](./ai-era-strategy.md).
 

@@ -4,73 +4,47 @@
     "name": "idc-redentor-platform",
     "ticketPrefix": "ICR",
     "ticketPrefixAliases": ["IDCR"],
-    "ticketLinkBase": "https://divinelab.atlassian.net/browse/",
+    "ticketLinkBase": "https://linear.app/divinelab/issue/",
     "stagingUrl": "https://staging.idcredentor.org",
     "prodUrl": "https://www.idcredentor.org",
     "packageManager": "pnpm"
   },
   "tracker": {
-    "type": "jira",
-    "site": "divinelab.atlassian.net",
-    "cloudId": "0228eaa6-e8fa-4746-b2ac-6c58f1478e42",
-    "projectKey": "ICR",
-    "projectId": "10038",
-    "projectName": "IDC Redentor",
-    "projectType": "company-managed-classic",
-    "mcpServer": "atlassian-divinelab",
-    "ticketKeyNote": "ICR-N is the NATIVE Jira issue key — N is the Jira issue number (not a Trello idShort). Fetch directly via getJiraIssue(cloudId, issueIdOrKey='ICR-N'); there is no board/list scan. Branches/PRs/commits and all Atlassian WRITE calls use the ICR-N key string. cloudId is required on every mcp__atlassian-divinelab__* call.",
-    "components": {
-      "web": {
-        "id": "10001",
-        "name": "Website",
-        "note": "the public marketing/blog site (apps/web)"
-      },
-      "admin": {
-        "id": "10000",
-        "name": "Ministry Admin Panel",
-        "note": "the internal admin app (apps/admin)"
-      },
-      "shared": {
-        "id": "10003",
-        "name": "Shared"
-      },
-      "infra": {
-        "id": "10002",
-        "name": "Infra"
-      }
-    },
-    "componentNote": "ICR is ONE Jira project for the whole monorepo; the source app is the Jira Component (Website vs Ministry Admin Panel), not a separate project. Set components:[{name}] at create. Default a new issue's component from its work area: apps/web -> Website, apps/admin -> Ministry Admin Panel.",
+    "type": "linear",
+    "workspace": "divinelab",
+    "teamKey": "ICR",
+    "_note": "Moved from Jira project ICR (divinelab.atlassian.net) to Linear on 2026-11-14 (ICR-212). ICR is a team of its own, so the whole team is the board (no linearProject, no productLabel). Issue numbers were kept on import (ICR-211 is still ICR-211), so every ICR-n in specs, commits and the changelog still resolves. Jira epics became Linear projects, so ICR-1..14, 96..98, 118..122, 142, 171 and 193 have no issue. Every write goes through the yoke tracker script, never the Linear connector. Every issue from the Jira import carries the label 'Migrated'; issues that first came from the legacy Trello boards also carry 'migrated-from-trello' and a description-footer backlink to the archived card (the Trello idShort is NOT the issue number).",
     "statuses": {
-      "discovery": "Backlog",
-      "todo": "To Do",
+      "backlog": "Backlog",
+      "todo": "Todo",
       "inProgress": "In Progress",
       "inReview": "In Review",
       "inTesting": "In Testing",
-      "done": "Done"
+      "done": "Done",
+      "canceled": "Canceled",
+      "duplicate": "Duplicate"
     },
-    "transitionResolution": "by-name",
-    "transitionResolutionNote": "Jira issues move between STATUSES by workflow transition, not by id or list. Resolve at runtime: getTransitionsForJiraIssue(cloudId, key) -> pick the transition whose to.name === the target status name (from statuses above; compare case-insensitive/trimmed) -> transitionJiraIssue(cloudId, key, transitionId). NEVER hardcode numeric transition ids. If the target status isn't directly reachable in one hop, advance along workflow[].order without overshooting; if still unreachable, surface the drift — never invent an id.",
     "workflow": [
       {
-        "key": "discovery",
+        "key": "backlog",
         "name": "Backlog",
         "order": 1,
         "automated": false,
-        "setBy": "PM / human (backlog grooming)"
+        "setBy": "human/PM"
       },
       {
         "key": "todo",
-        "name": "To Do",
+        "name": "Todo",
         "order": 2,
         "automated": false,
-        "setBy": "PM / human (ready to pick up)"
+        "setBy": "human/PM, or /pm on intake"
       },
       {
         "key": "inProgress",
         "name": "In Progress",
         "order": 3,
         "automated": true,
-        "setBy": "/work step 3 (To Do -> In Progress)"
+        "setBy": "/work step 3 (Todo -> In Progress)"
       },
       {
         "key": "inReview",
@@ -92,6 +66,20 @@
         "order": 6,
         "automated": false,
         "setBy": "HUMAN ONLY — set when the human deploys to prod and closes the issue. NEVER set by any agent or command."
+      },
+      {
+        "key": "canceled",
+        "name": "Canceled",
+        "order": 7,
+        "automated": false,
+        "setBy": "human only"
+      },
+      {
+        "key": "duplicate",
+        "name": "Duplicate",
+        "order": 8,
+        "automated": false,
+        "setBy": "Linear, when an issue is marked a duplicate"
       }
     ],
     "automatedTransitions": [
@@ -117,38 +105,60 @@
     "forbiddenTransitions": [
       {
         "to": "done",
-        "reason": "Human-only. /work and all agents MUST NOT transition any issue to Done. Done == merged, deployed, and closed by a human."
+        "reason": "Human-only. /work and all agents MUST NOT move any issue to Done. Done == merged, deployed, and closed by a human."
       }
     ],
     "issueTypeToCommitType": {
       "Bug": {
-        "id": "10068",
         "commitType": "fix"
       },
       "Story": {
-        "id": "10006",
+        "commitType": "feat"
+      },
+      "Feature": {
+        "commitType": "feat"
+      },
+      "Improvement": {
         "commitType": "feat"
       },
       "Task": {
-        "id": "10066",
         "commitType": "chore",
         "alt": ["refactor", "perf", "feat"],
         "note": "default chore; use refactor/perf/feat when the work is purely that. A 'perf'/'refactor' label overrides."
+      },
+      "Chore": {
+        "commitType": "chore"
+      },
+      "Spec": {
+        "commitType": "docs"
       }
     },
-    "issueTypeNote": "Commit type derives from the Jira ISSUE TYPE (not a label): Bug->fix, Story->feat, Task->chore. Epic (id 10000) is the parent/initiative level; child issues set parent:{key:'ICR-<epic>'} at create (the system 'parent' field — Epic Link is deprecated in company-managed projects).",
+    "issueTypeToCommitTypeNote": "Commit type derives from the issue's TYPE label. The Jira import labelled every issue Task, Story or Bug; Feature, Improvement, Chore and Spec are the team's newer type labels. Epics became Linear projects: a child issue belongs to its project, not to a parent issue.",
+    "components": {
+      "web": {
+        "name": "Website"
+      },
+      "admin": {
+        "name": "Ministry Admin Panel"
+      },
+      "shared": {
+        "name": "Shared"
+      },
+      "infra": {
+        "name": "Infra"
+      }
+    },
+    "componentsNote": "ICR is ONE Linear team for the whole monorepo; the source app is a component LABEL (Website vs Ministry Admin Panel), not a separate team. Default a new issue's component from its work area: apps/web -> Website, apps/admin -> Ministry Admin Panel.",
     "needsRefinementMechanism": "label",
     "needsRefinementLabel": "needs-refinement",
-    "needsRefinementNote": "Refinement state is a Jira LABEL. An intake issue (To Do) carries the 'needs-refinement' label; refine removes it via editJiraIssue. A To Do issue WITHOUT the 'needs-refinement' label is the /work-ready signal. /work reads issue labels at its entry gate (step 1.5) and stops with a guardrail if 'needs-refinement' is still present.",
-    "humanGateNote": "Every tracker WRITE (transitionJiraIssue, addCommentToJiraIssue, editJiraIssue) happens at or after a human gate. /work owns exactly two automated transitions (todo->inProgress, inProgress->inReview) and posts the PR-link comment at PR-ready. It NEVER transitions an issue to Done.",
-    "migrationNote": "Issues imported from the legacy Trello boards carry a 'migrated-from-trello' label plus a 'trello-web-<n>'/'trello-admin-<n>' label and a description-footer backlink to the archived Trello card. The legacy Trello idShort is NOT the Jira key (numbers differ)."
+    "needsRefinementLabelNote": "Refinement state is a LABEL. An intake issue (Todo) carries 'needs-refinement'; refine removes it. A Todo issue WITHOUT 'needs-refinement' is the /work-ready signal; /work stops with a guardrail while it is present."
   },
   "qa": {
-    "_note": "Drives /qa + qa-acceptance + the embedded /work and /merge QA steps. Reads the tracker block for the Jira project key + status names. QA targets are env-by-name (qa.env.<name>): 'preview' = the per-PR Vercel preview deployment (pre-merge QA), 'staging' = the dedicated staging env at staging.idcredentor.org / website-staging DB (post-merge QA). Production is hard-denied in EVERY env. autoMerge disabled (kill switch); merge is user-triggered via /merge.",
+    "_note": "Drives /qa + qa-acceptance + the embedded /work and /merge QA steps. Reads the tracker block for the Linear team key + status names. QA targets are env-by-name (qa.env.<name>): 'preview' = the per-PR Vercel preview deployment (pre-merge QA), 'staging' = the dedicated staging env at staging.idcredentor.org / website-staging DB (post-merge QA). Production is hard-denied in EVERY env. autoMerge disabled (kill switch); merge is user-triggered via /merge.",
     "depth": {
       "default": "standard",
       "allowed": ["light", "standard", "heavy"],
-      "sourceNote": "Jira has no default 'QA Depth' field. Resolve in priority order: (1) a 'qa-<depth>' label on the issue (e.g. qa-heavy); (2) a 'QA: <depth>' token in the issue description; (3) fall back to qa.depth.default. Reject values not in qa.depth.allowed."
+      "sourceNote": "Linear has no 'QA Depth' field. Resolve in priority order: (1) a 'qa-<depth>' label on the issue (e.g. qa-heavy); (2) a 'QA: <depth>' token in the issue description; (3) fall back to qa.depth.default. Reject values not in qa.depth.allowed."
     },
     "defaultMode": "report",
     "enabledModes": ["report"],
@@ -235,7 +245,7 @@
       }
     },
     "transitions": {
-      "_note": "Jira status moves by transition-by-name (tracker.transitionResolution). Phase 1 report-only: /qa may transition To Do/In Progress -> In Review, never Done. When fix/auto land later, onRemediationReady moves inProgress->inReview via pr-author.",
+      "_note": "Status moves go through the yoke tracker script by status key. Phase 1 report-only: /qa may move Todo/In Progress -> In Review, never Done. When fix/auto land later, onRemediationReady moves inProgress->inReview via pr-author.",
       "onPickup": "inReview",
       "onRemediationStart": "inProgress",
       "onRemediationReady": "inReview"
