@@ -148,11 +148,10 @@ a thrown error, which is a new failure mode with no connection-budget benefit.
 
 **Verifying it.** `apps/web/scripts/check-mongo-pool.mjs` runs a burst of concurrent pings against a
 baseline (driver default) pool and the capped pool, and counts connections through the driver's CMAP
-events. The package script `pnpm --filter @idcr/web mongo:pool-check` reads `.env.local`, which usually
-points at production, so in practice run it from `apps/web` against a dedicated env file:
+events. Run it through the package script, which loads `apps/web/.env.pool-check` (not `.env.local`):
 
 ```bash
-node --env-file=.env.pool-check scripts/check-mongo-pool.mjs --concurrency 200
+pnpm --filter @idcr/web mongo:pool-check -- --concurrency 200
 ```
 
 The script needs a **non-production** URI and refuses any database that does not match
