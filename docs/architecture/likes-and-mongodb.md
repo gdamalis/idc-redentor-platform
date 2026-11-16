@@ -162,6 +162,18 @@ The script needs a **non-production** URI and refuses any database that does not
 Exit codes: `0` the capped pool stayed within the cap, `1` it went over the cap or the run errored,
 `2` the script refused the target database.
 
+**Measured (2026-11-16, driver 6.21.0, `website-staging` on the M0 cluster).** Concurrent pings in one
+burst, peak open pool connections:
+
+| Concurrency | Baseline (driver default) | Capped | Elapsed, baseline → capped |
+| ----------- | ------------------------- | ------ | -------------------------- |
+| 200         | 13                        | 10     | 2114 ms → 2274 ms          |
+| 500         | 19                        | 10     | 5068 ms → 5213 ms          |
+
+The uncapped pool keeps growing with demand (the driver opens at most 2 connections at a time, so it
+ramps rather than jumping to 100); the capped pool stays at 10 at a cost of roughly 3–7% wall time on
+a burst far larger than the site's real traffic.
+
 `apps/admin` has the same exposure. ICR-124 applies the same cap there and re-checks the cluster budget.
 
 ## Which database, and why it is not a literal
