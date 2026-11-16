@@ -58,6 +58,15 @@ export function createPoolTracker() {
   return { record, summary: () => ({ created, peakOpen, peakCheckedOut }) };
 }
 
+// exitCode 1 when the capped pool exceeded the cap. isInconclusive when the uncapped baseline never
+// exceeded the cap either, so the burst did not exercise it and a pass proves nothing.
+export function evaluateRun({ baseline, capped }, maxPoolSize) {
+  return {
+    exitCode: capped.peakOpen > maxPoolSize ? 1 : 0,
+    isInconclusive: baseline.peakOpen <= maxPoolSize,
+  };
+}
+
 function parseConcurrency(argv) {
   const index = argv.indexOf("--concurrency");
   if (index === -1) return DEFAULT_CONCURRENCY;
@@ -122,7 +131,18 @@ export async function main(argv = process.argv.slice(2)) {
     console.log(
       "Note: monitoring sockets (up to 2 per server) are outside the pool and not counted.",
     );
-    return capped.peakOpen <= POOL_OPTIONS.maxPoolSize ? 0 : 1;
+    const { exitCode, isInconclusive } = evaluateRun(
+      { baseline, capped },
+      POOL_OPTIONS.maxPoolSize,
+    );
+    if (isInconclusive) {
+      console.warn(
+        `WARNING: inconclusive. The baseline peaked at ${baseline.peakOpen} open connections, ` +
+          `which does not exceed maxPoolSize (${POOL_OPTIONS.maxPoolSize}), so the burst never ` +
+          "exercised the cap. Re-run with a higher --concurrency.",
+      );
+    }
+    return exitCode;
   } catch (error) {
     console.error(`Pool check failed: ${error?.message ?? "unknown error"}`);
     return 1;

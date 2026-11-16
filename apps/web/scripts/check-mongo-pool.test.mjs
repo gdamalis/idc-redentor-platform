@@ -7,8 +7,39 @@ import { MONGODB_OPTIONS } from "../src/service/database.service";
 import {
   POOL_OPTIONS,
   createPoolTracker,
+  evaluateRun,
   isNonProdWebsiteDb,
 } from "./check-mongo-pool.mjs";
+
+describe("evaluateRun", () => {
+  const max = POOL_OPTIONS.maxPoolSize;
+
+  it("passes conclusively when the baseline exceeded the cap and the capped run stayed within it", () => {
+    expect(
+      evaluateRun({ baseline: { peakOpen: 19 }, capped: { peakOpen: 10 } }, max),
+    ).toEqual({ exitCode: 0, isInconclusive: false });
+  });
+
+  it("passes but is inconclusive when the burst never exceeded the cap", () => {
+    expect(
+      evaluateRun({ baseline: { peakOpen: 8 }, capped: { peakOpen: 8 } }, max),
+    ).toEqual({ exitCode: 0, isInconclusive: true });
+  });
+
+  it("fails when the capped run exceeds the cap", () => {
+    expect(
+      evaluateRun({ baseline: { peakOpen: 19 }, capped: { peakOpen: 11 } }, max)
+        .exitCode,
+    ).toBe(1);
+  });
+
+  it("is inconclusive when the baseline is exactly the cap", () => {
+    expect(
+      evaluateRun({ baseline: { peakOpen: 10 }, capped: { peakOpen: 10 } }, max)
+        .isInconclusive,
+    ).toBe(true);
+  });
+});
 
 describe("isNonProdWebsiteDb", () => {
   it.each(["website-staging", "website-test", "website-qa", "website-e2e"])(

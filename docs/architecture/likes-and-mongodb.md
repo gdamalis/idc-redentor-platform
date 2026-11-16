@@ -148,7 +148,7 @@ a thrown error, which is a new failure mode with no connection-budget benefit.
 
 **Verifying it.** `apps/web/scripts/check-mongo-pool.mjs` runs a burst of concurrent pings against a
 baseline (driver default) pool and the capped pool, and counts connections through the driver's CMAP
-events. Run it through the package script, which loads `apps/web/.env.pool-check` (not `.env.local`):
+events. Run it through the package script, which loads `apps/web/.env.pool-check` (not `.env.local`). If the baseline never opens more connections than the cap, the script prints an "inconclusive" warning (the exit code stays 0) and you should re-run with a higher `--concurrency`:
 
 ```bash
 pnpm --filter @idcr/web mongo:pool-check -- --concurrency 200
