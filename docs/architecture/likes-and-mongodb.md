@@ -119,9 +119,51 @@ export async function connect() {
 Key points:
 
 - **Single cached client.** In development it's stashed on `globalThis._mongoClient` so Hot Module Reload doesn't open a new pool on every edit. In production it's a module-level singleton. This is the standard Next.js + MongoDB pattern and avoids connection-pool exhaustion.
-- **`MONGODB_OPTIONS`** pins the Stable API (`serverApi: { version: v1, strict: true, deprecationErrors: true }`).
+- **`MONGODB_OPTIONS`** pins the Stable API (`serverApi: { version: v1, strict: true, deprecationErrors: true }`) and caps the pool: `maxPoolSize: 10`, `maxIdleTimeMS: 60_000`. See [Connection pool cap](#connection-pool-cap-icr-157).
 - **`connect()` returns the client or `undefined` on failure** (it catches, logs at error level with a `[db]` prefix, and reports to Sentry via `Sentry.captureException`) — this contract is **unchanged**. **Most callers still null-check and throw**: `contact.service`, `predica/pdfJobs`, and `broadcast/broadcastLog` all do `if (!client) throw new Error("Failed to connect to database")` — a dropped contact message, a stuck PDF job, or a lost broadcast claim is a real bug that should be loud. **The likes path is the deliberate exception (ICR-111)** — it reacts to that same `!client` signal by failing soft instead of throwing. See [The fail-soft likes contract](#the-fail-soft-likes-contract-icr-111) below.
 - **`MONGODB_URI` is required at runtime and is in `.env.example`.** Never commit a real URI.
+
+## Connection pool cap (ICR-157)
+
+`MONGODB_OPTIONS` sets `maxPoolSize: 10` and `maxIdleTimeMS: 60_000`. **Do not remove them.**
+
+**Why.** The Atlas M0 cluster allows 500 simultaneous connections in total, shared by every client of
+the cluster, including `apps/admin`. Each serverless instance holds its own pool. The driver default
+`maxPoolSize` is 100 per instance, so five warm instances under a burst could open 500 connections and
+exhaust the cluster. With the cap, one instance holds at most 10 pool connections, so the budget
+supports many more instances.
+
+**Driver facts** (`mongodb` 6.21.0). Defaults: `maxPoolSize` 100 per server, `minPoolSize` 0,
+`maxIdleTimeMS` 0 (idle connections never close), and an unbounded wait queue. Each server also uses up
+to 2 monitoring sockets outside the pool, so budget about 12 connections per instance, not 10. The
+current (v7.x) docs describe these defaults; the v6 API reference lists none. Sources:
+
+- https://www.mongodb.com/docs/drivers/node/current/connect/connection-options/connection-pools/
+- https://www.mongodb.com/docs/atlas/manage-connections-aws-lambda/
+
+**Queueing.** When all 10 connections are checked out, further operations wait in the driver queue
+instead of opening more connections. That is the intended trade: a burst gets slightly slower but never
+overruns the cluster. `waitQueueTimeoutMS` stays unset, because a timeout would turn a short wait into
+a thrown error, which is a new failure mode with no connection-budget benefit.
+
+**Verifying it.** `apps/web/scripts/check-mongo-pool.mjs` runs a burst of concurrent pings against a
+baseline (driver default) pool and the capped pool, and counts connections through the driver's CMAP
+events. The package script `pnpm --filter @idcr/web mongo:pool-check` reads `.env.local`, which usually
+points at production, so in practice run it from `apps/web` against a dedicated env file:
+
+```bash
+node --env-file=.env.pool-check scripts/check-mongo-pool.mjs --concurrency 200
+```
+
+The script needs a **non-production** URI and refuses any database that does not match
+`website-(staging|test|qa|e2e)`. A developer's normal `.env.local` usually points at production
+`website`, so the script refuses it by design. Put only `MONGODB_URI` for a non-production database in
+`.env.pool-check`, which is gitignored by the `.env*` rule. Never edit `.env.local` for this.
+
+Exit codes: `0` the capped pool stayed within the cap, `1` it went over the cap or the run errored,
+`2` the script refused the target database.
+
+`apps/admin` has the same exposure. ICR-124 applies the same cap there and re-checks the cluster budget.
 
 ## Which database, and why it is not a literal
 
