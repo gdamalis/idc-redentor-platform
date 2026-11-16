@@ -1,13 +1,25 @@
 import * as Sentry from "@sentry/nextjs";
-import { type Db, MongoClient, ServerApiVersion } from "mongodb";
+import {
+  type Db,
+  MongoClient,
+  type MongoClientOptions,
+  ServerApiVersion,
+} from "mongodb";
 
-const MONGODB_OPTIONS = {
+// Atlas M0 allows 500 connections cluster-wide, shared with apps/admin. Every warm Vercel
+// instance holds its own pool and the driver default is maxPoolSize 100 per server, so a few
+// instances could exhaust the cluster. maxIdleTimeMS releases idle sockets (Atlas serverless
+// guidance). minPoolSize is deliberately unset (default 0).
+// Do not remove — see docs/architecture/likes-and-mongodb.md § Connection pool cap.
+export const MONGODB_OPTIONS = {
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
   },
-};
+  maxPoolSize: 10,
+  maxIdleTimeMS: 60_000,
+} satisfies MongoClientOptions;
 
 let client: MongoClient | null = null;
 
