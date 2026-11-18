@@ -1,5 +1,11 @@
 # @idcr/web
 
+## 1.27.5
+
+### Patch Changes
+
+- 94074d0: Cap the MongoDB connection pool (10 per instance) and release idle connections after 60s.
+
 ## 1.27.4
 
 ### Patch Changes
