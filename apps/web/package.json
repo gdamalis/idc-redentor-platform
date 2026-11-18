@@ -14,7 +14,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "contentful:migrate": "node scripts/contentful/run.mjs",
-    "verify:trace": "node scripts/verify-pdf-trace.mjs"
+    "verify:trace": "node scripts/verify-pdf-trace.mjs",
+    "mongo:pool-check": "node --env-file=.env.pool-check scripts/check-mongo-pool.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": "eslint --fix",

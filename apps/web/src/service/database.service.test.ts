@@ -121,6 +121,22 @@ describe("connect", () => {
   });
 });
 
+describe("MONGODB_OPTIONS", () => {
+  it("caps the pool and releases idle connections (ICR-157)", async () => {
+    const { connect } = await loadService();
+    await connect();
+    expect(MongoClientMock).toHaveBeenCalledWith(
+      "mongodb://localhost:27017/website",
+      expect.objectContaining({ maxPoolSize: 10, maxIdleTimeMS: 60_000 }),
+    );
+    const [, options] = MongoClientMock.mock.calls[0] as unknown as [
+      string,
+      object,
+    ];
+    expect(options).not.toHaveProperty("minPoolSize");
+  });
+});
+
 describe("module surface", () => {
   it("no longer exports disconnect", async () => {
     const service = await loadService();
