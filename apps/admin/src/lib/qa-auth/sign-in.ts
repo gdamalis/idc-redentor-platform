@@ -188,128 +188,173 @@ function opaqueHandle(uid: string): string {
   return `qa-admin-${createHash("sha256").update(uid).digest("hex").slice(0, 16)}`;
 }
 
-export async function runSignIn(
-  input: SignInInput,
-  deps: SignInDeps,
-): Promise<SignInOutcome> {
+type Validated =
+  | { ok: true; origin: string; credentials: Credentials }
+  | { ok: false; outcome: SignInOutcome };
+
+/**
+ * Every check that runs BEFORE any network call. Wrapped by `validateInput`
+ * so that a throw anywhere in it is still a refusal (exit 2), never exit 1 —
+ * a refused input must never look like a failed sign-in attempt.
+ */
+function validateInputUnguarded(input: SignInInput): Validated {
   const { env } = input;
 
   if (env.YOKE_QA_AUTH_CONTRACT !== QA_AUTH_CONTRACT) {
-    return fail(2, `YOKE_QA_AUTH_CONTRACT must be ${QA_AUTH_CONTRACT}`);
+    return {
+      ok: false,
+      outcome: fail(2, `YOKE_QA_AUTH_CONTRACT must be ${QA_AUTH_CONTRACT}`),
+    };
   }
 
   const role = env.YOKE_QA_AUTH_ROLE;
   if (role !== undefined && role !== "" && !QA_AUTH_ROLES.includes(role)) {
-    return fail(
-      3,
-      `role "${role}" is not offered; available: ${QA_AUTH_ROLES.join(", ")}`,
-    );
+    return {
+      ok: false,
+      outcome: fail(
+        3,
+        `role "${role}" is not offered; available: ${QA_AUTH_ROLES.join(", ")}`,
+      ),
+    };
   }
 
   const host = checkQaHost(env.YOKE_QA_AUTH_BASE_URL, env.YOKE_QA_AUTH_ENV);
-  if (!host.ok) return fail(2, `host gate: ${host.reason} — ${host.message}`);
+  if (!host.ok) {
+    return {
+      ok: false,
+      outcome: fail(2, `host gate: ${host.reason} — ${host.message}`),
+    };
+  }
 
   const parsed = parseSignInStdin(input.stdin);
-  if (!parsed.ok) return fail(2, parsed.diagnostic);
-  const { credentials } = parsed;
+  if (!parsed.ok) return { ok: false, outcome: fail(2, parsed.diagnostic) };
+
+  return { ok: true, origin: host.origin, credentials: parsed.credentials };
+}
+
+function validateInput(input: SignInInput): Validated {
+  try {
+    return validateInputUnguarded(input);
+  } catch (error) {
+    const name = error instanceof Error ? error.name : "Error";
+    return {
+      ok: false,
+      outcome: fail(2, `input refused: ${name} during validation`),
+    };
+  }
+}
+
+export async function runSignIn(
+  input: SignInInput,
+  deps: SignInDeps,
+): Promise<SignInOutcome> {
+  const validated = validateInput(input);
+  if (!validated.ok) return validated.outcome;
+  const { credentials } = validated;
+  const host = { origin: validated.origin };
 
   try {
-    // 1. Firebase email/password sign-in. The key is a public web API key; it
-    //    still never reaches a diagnostic. The Referer matches what a browser
-    //    on the target would send, for keys restricted by HTTP referrer.
-    const firebaseResponse = await deps.fetch(
-      `${FIREBASE_SIGN_IN_URL}?key=${encodeURIComponent(credentials.firebaseApiKey)}`,
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          referer: `${host.origin}/`,
-        },
-        body: JSON.stringify({
-          email: credentials.email,
-          password: credentials.password,
-          returnSecureToken: true,
-        }),
-      },
-    );
-    const firebaseBody = await readJson(firebaseResponse);
-    const idToken = firebaseBody.idToken;
-    const uid = firebaseBody.localId;
-    if (
-      !firebaseResponse.ok ||
-      typeof idToken !== "string" ||
-      typeof uid !== "string"
-    ) {
-      const error = firebaseBody.error as { message?: unknown } | undefined;
-      const code =
-        typeof error?.message === "string"
-          ? error.message.split(" ")[0]
-          : "unknown-error";
-      return fail(
-        1,
-        `firebase sign-in refused: HTTP ${firebaseResponse.status} ${code}`,
-      );
-    }
-
-    // 2. The app's own session exchange — the invite gate runs here unchanged.
-    const sessionResponse = await deps.fetch(
-      `${host.origin}/api/auth/session`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ idToken }),
-        redirect: "manual",
-      },
-    );
-    if (sessionResponse.status !== 200) {
-      const body = await readJson(sessionResponse);
-      const reason =
-        typeof body.reason === "string" ? body.reason : "no-reason";
-      return fail(
-        1,
-        `session exchange refused: HTTP ${sessionResponse.status} ${reason}`,
-      );
-    }
-
-    const cookie = readSessionCookie(sessionResponse.headers);
-    if (!cookie)
-      return fail(
-        1,
-        `session exchange returned 200 without a ${SESSION_COOKIE_NAME} cookie`,
-      );
-
-    const expiresAt = new Date(
-      deps.now().getTime() + cookie.maxAgeSeconds * 1000,
-    ).toISOString();
-    return {
-      exitCode: 0,
-      envelope: {
-        contract: QA_AUTH_CONTRACT,
-        ok: true,
-        identity: {
-          handle: opaqueHandle(uid),
-          roles: ["admin"],
-          entitlements: [],
-        },
-        session: {
-          cookies: [
-            {
-              name: SESSION_COOKIE_NAME,
-              value: cookie.value,
-              domain: new URL(host.origin).hostname,
-              path: "/",
-            },
-          ],
-          bearer: null,
-          expiresAt,
-        },
-        cleanup: { handle: null, residual: [] },
-        diagnostics: [],
-      },
-    };
+    return await signInValidated(host, credentials, deps);
   } catch (error) {
     // Network failure. The message is the runtime's own (no request data).
     const name = error instanceof Error ? error.name : "Error";
     return fail(1, `network error during sign-in: ${name}`);
   }
+}
+
+async function signInValidated(
+  host: { origin: string },
+  credentials: Credentials,
+  deps: SignInDeps,
+): Promise<SignInOutcome> {
+  // 1. Firebase email/password sign-in. The key is a public web API key; it
+  //    still never reaches a diagnostic. The Referer matches what a browser
+  //    on the target would send, for keys restricted by HTTP referrer.
+  const firebaseResponse = await deps.fetch(
+    `${FIREBASE_SIGN_IN_URL}?key=${encodeURIComponent(credentials.firebaseApiKey)}`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        referer: `${host.origin}/`,
+      },
+      body: JSON.stringify({
+        email: credentials.email,
+        password: credentials.password,
+        returnSecureToken: true,
+      }),
+    },
+  );
+  const firebaseBody = await readJson(firebaseResponse);
+  const idToken = firebaseBody.idToken;
+  const uid = firebaseBody.localId;
+  if (
+    !firebaseResponse.ok ||
+    typeof idToken !== "string" ||
+    typeof uid !== "string"
+  ) {
+    const error = firebaseBody.error as { message?: unknown } | undefined;
+    const code =
+      typeof error?.message === "string"
+        ? error.message.split(" ")[0]
+        : "unknown-error";
+    return fail(
+      1,
+      `firebase sign-in refused: HTTP ${firebaseResponse.status} ${code}`,
+    );
+  }
+
+  // 2. The app's own session exchange — the invite gate runs here unchanged.
+  const sessionResponse = await deps.fetch(`${host.origin}/api/auth/session`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ idToken }),
+    redirect: "manual",
+  });
+  if (sessionResponse.status !== 200) {
+    const body = await readJson(sessionResponse);
+    const reason = typeof body.reason === "string" ? body.reason : "no-reason";
+    return fail(
+      1,
+      `session exchange refused: HTTP ${sessionResponse.status} ${reason}`,
+    );
+  }
+
+  const cookie = readSessionCookie(sessionResponse.headers);
+  if (!cookie) {
+    return fail(
+      1,
+      `session exchange returned 200 without a ${SESSION_COOKIE_NAME} cookie`,
+    );
+  }
+
+  const expiresAt = new Date(
+    deps.now().getTime() + cookie.maxAgeSeconds * 1000,
+  ).toISOString();
+  return {
+    exitCode: 0,
+    envelope: {
+      contract: QA_AUTH_CONTRACT,
+      ok: true,
+      identity: {
+        handle: opaqueHandle(uid),
+        roles: ["admin"],
+        entitlements: [],
+      },
+      session: {
+        cookies: [
+          {
+            name: SESSION_COOKIE_NAME,
+            value: cookie.value,
+            domain: new URL(host.origin).hostname,
+            path: "/",
+          },
+        ],
+        bearer: null,
+        expiresAt,
+      },
+      cleanup: { handle: null, residual: [] },
+      diagnostics: [],
+    },
+  };
 }

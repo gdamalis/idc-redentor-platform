@@ -141,6 +141,29 @@ describe("runSignIn", () => {
     },
   );
 
+  it.each(["constructor", "toString", "__proto__", "hasOwnProperty"])(
+    "refuses (exit 2, no network) the prototype-key env name %s",
+    async (envName) => {
+      const { deps, calls } = fakeDeps();
+      const outcome = await runSignIn(
+        {
+          env: {
+            ...baseEnv,
+            YOKE_QA_AUTH_ENV: envName,
+            YOKE_QA_AUTH_BASE_URL:
+              "https://idc-redentor-admin-jxo67ax9h-divine-lab.vercel.app.evil.com",
+          },
+          stdin: goodStdin,
+        },
+        deps,
+      );
+
+      expect(outcome.exitCode).toBe(2);
+      expect(outcome.envelope.ok).toBe(false);
+      expect(calls).toHaveLength(0);
+    },
+  );
+
   it("refuses a missing base URL and an env with no rule", async () => {
     const { deps, calls } = fakeDeps();
     const noUrl = await runSignIn(

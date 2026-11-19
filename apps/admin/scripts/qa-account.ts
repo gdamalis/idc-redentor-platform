@@ -165,6 +165,7 @@ async function main(): Promise<never> {
             {
               email: args.email,
               expectedFirebaseProject: args.expectedFirebaseProject,
+              reuse: args.reuse,
             },
             deps,
           )

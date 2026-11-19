@@ -66,8 +66,46 @@ describe("parseQaAccountArgs", () => {
         email: EMAIL,
         qaEnvPath: "/x/qa-env.json",
         expectedFirebaseProject: "some-firebase-project",
+        reuse: false,
       },
     });
+  });
+
+  it("parses --reuse on provision, in any position", () => {
+    expect(
+      parseQaAccountArgs([
+        "provision",
+        "--reuse",
+        "--email",
+        EMAIL,
+        "--firebase-project",
+        "p",
+        "--qa-env",
+        "/x",
+      ]),
+    ).toEqual({
+      ok: true,
+      args: {
+        verb: "provision",
+        email: EMAIL,
+        qaEnvPath: "/x",
+        expectedFirebaseProject: "p",
+        reuse: true,
+      },
+    });
+  });
+
+  it("refuses --reuse on rotate", () => {
+    expect(
+      parseQaAccountArgs([
+        "rotate",
+        "--reuse",
+        "--firebase-project",
+        "p",
+        "--qa-env",
+        "/x",
+      ]).ok,
+    ).toBe(false);
   });
 
   it("parses rotate without an email", () => {
@@ -217,11 +255,38 @@ describe("provisionQaAccount", () => {
     });
   });
 
-  it("updates an existing Firebase user instead of creating one", async () => {
+  it("refuses an existing Firebase user without --reuse, before any write", async () => {
+    const { deps, firebase, written } = fakeDeps();
+    firebase.getUserByEmail.mockResolvedValueOnce({ uid: "uid-9" });
+    const result = await provisionQaAccount(
+      { email: EMAIL, expectedFirebaseProject: PROJECT, reuse: false },
+      deps,
+    );
+
+    expect(result).toMatchObject({ ok: false, reason: "firebase-user-exists" });
+    expect(firebase.createUser).not.toHaveBeenCalled();
+    expect(firebase.updateUser).not.toHaveBeenCalled();
+    expect(written).toHaveLength(0);
+    expect(deps.createAdminInvite).not.toHaveBeenCalled();
+  });
+
+  it("refuses an existing Firebase user when reuse is omitted", async () => {
     const { deps, firebase } = fakeDeps();
     firebase.getUserByEmail.mockResolvedValueOnce({ uid: "uid-9" });
     const result = await provisionQaAccount(
       { email: EMAIL, expectedFirebaseProject: PROJECT },
+      deps,
+    );
+
+    expect(result).toMatchObject({ ok: false, reason: "firebase-user-exists" });
+    expect(firebase.updateUser).not.toHaveBeenCalled();
+  });
+
+  it("updates an existing Firebase user with --reuse instead of creating one", async () => {
+    const { deps, firebase } = fakeDeps();
+    firebase.getUserByEmail.mockResolvedValueOnce({ uid: "uid-9" });
+    const result = await provisionQaAccount(
+      { email: EMAIL, expectedFirebaseProject: PROJECT, reuse: true },
       deps,
     );
 

@@ -153,15 +153,25 @@ node --env-file=/tmp/qa-staging.env --import tsx scripts/qa-account.ts provision
 `--firebase-project` is your statement of the project you mean to write to; the run refuses
 (`project-mismatch`, exit 2) unless it equals the env's `FIREBASE_PROJECT_ID`.
 
-Creates (or updates) the Firebase user with a verified email and a freshly generated 43-character
-password, writes `adminQa.users.admin` into `qa-env.json` (mode 600, other keys preserved), and
-creates one pending Admin invite through `createInvite()` (no email is sent). The **first QA
-sign-in** then claims the invite and creates the `AdminUser` through the normal invite gate.
+Creates the Firebase user with a verified email and a freshly generated 43-character password,
+writes `adminQa.users.admin` into `qa-env.json` (mode 600, other keys preserved), and creates one
+pending Admin invite through `createInvite()` (no email is sent). The **first QA sign-in** then
+claims the invite and creates the `AdminUser` through the normal invite gate.
 
-It refuses `no-admin-role` when the database has no `admin` system role (seed the system roles
-first: `seed:admin`, `docs/architecture/admin-bootstrap.md`), and `user-exists` when an
-`AdminUser` already holds the address (an invite cannot elevate an existing user — use `rotate`).
-The invite expires after 7 days; if the first sign-in comes later, re-run `provision`.
+It refuses, before any write:
+
+- `no-admin-role` — the database has no `admin` system role (seed the system roles first:
+  `seed:admin`, `docs/architecture/admin-bootstrap.md`);
+- `user-exists` — an `AdminUser` already holds the address (an invite cannot elevate an existing
+  user — use `rotate`);
+- `firebase-user-exists` — a **Firebase** user already holds the address. That may be a real
+  person's account behind a mistyped `--email`, and taking it over would replace their password.
+  Check the address; only if it is the QA account itself (for example, re-provisioning after the
+  staging database was reset, while the Firebase user survived), add **`--reuse`**, which
+  updates that user's password and verified flag instead of creating one.
+
+The invite expires after 7 days. If the first sign-in comes later, re-run `provision` with
+`--reuse` (the Firebase user exists by then).
 
 ### Rotate the password
 

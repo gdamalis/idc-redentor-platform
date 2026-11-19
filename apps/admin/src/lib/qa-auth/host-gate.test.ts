@@ -199,6 +199,50 @@ describe("checkQaHost", () => {
     });
   });
 
+  // The port/userinfo branch on its own: these messages come only from it.
+  // Without it, the raw-authority check would still refuse, but with a
+  // different message — so these assertions go red if the branch is removed.
+  it.each([
+    `${STAGING}:8443`,
+    "https://user:pw@staging.ministerio.idcredentor.org",
+    "https://user@staging.ministerio.idcredentor.org",
+  ])("refuses %s in the port/userinfo check itself", (url) => {
+    expect(checkQaHost(url, "stagingAdmin")).toEqual({
+      ok: false,
+      reason: "bad-url",
+      message: "The base URL must not carry a port or credentials.",
+    });
+  });
+
+  // Prototype keys must never resolve to a host rule (validator finding).
+  it.each([
+    "constructor",
+    "toString",
+    "__proto__",
+    "hasOwnProperty",
+    "valueOf",
+  ])(
+    "treats the env name %s as unknown, even for a look-alike host",
+    (envName) => {
+      expect(() =>
+        checkQaHost(
+          "https://idc-redentor-admin-jxo67ax9h-divine-lab.vercel.app.evil.com",
+          envName,
+        ),
+      ).not.toThrow();
+      expect(
+        checkQaHost(
+          "https://idc-redentor-admin-jxo67ax9h-divine-lab.vercel.app.evil.com",
+          envName,
+        ),
+      ).toMatchObject({ ok: false, reason: "unknown-env" });
+      expect(checkQaHost(STAGING, envName)).toMatchObject({
+        ok: false,
+        reason: "unknown-env",
+      });
+    },
+  );
+
   it("denies at least every production host the QA config denies", () => {
     const configPath = resolve(__dirname, "../../../../../.claude/config.json");
     const config = JSON.parse(readFileSync(configPath, "utf8")) as {

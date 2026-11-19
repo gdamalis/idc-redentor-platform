@@ -42,6 +42,8 @@ export type QaAccountArgs =
       email: string;
       qaEnvPath: string;
       expectedFirebaseProject: string;
+      /** Allow taking over a Firebase user that already holds the address. */
+      reuse: boolean;
     }
   | { verb: "rotate"; qaEnvPath: string; expectedFirebaseProject: string };
 
@@ -51,12 +53,14 @@ export type ParseQaAccountArgsResult =
 
 export const QA_ACCOUNT_USAGE = `Usage (from apps/admin, with the STAGING env loaded):
   node --env-file=<staging.env> --import tsx scripts/qa-account.ts provision --email <address> \\
-    --firebase-project <staging project id> --qa-env <path>
+    --firebase-project <staging project id> --qa-env <path> [--reuse]
   node --env-file=<staging.env> --import tsx scripts/qa-account.ts rotate \\
     --firebase-project <staging project id> --qa-env <path>
 
 --firebase-project names the Firebase project the operator means to write to;
 the run refuses unless it equals the loaded env's FIREBASE_PROJECT_ID.
+--reuse (provision only) allows taking over a Firebase user that already holds
+the address — its password is replaced. Without it, provision refuses.
 
 Env: MONGODB_URI (path must be ${QA_ACCOUNT_DB_NAME}), FIREBASE_PROJECT_ID,
      FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, NEXT_PUBLIC_FIREBASE_API_KEY
@@ -74,8 +78,14 @@ export function parseQaAccountArgs(
   }
 
   const values: Record<string, string> = {};
+  let reuse = false;
   for (let index = 0; index < rest.length; index += 2) {
     const flag = rest[index] ?? "";
+    if (flag === "--reuse") {
+      reuse = true;
+      index -= 1; // a boolean flag takes no value
+      continue;
+    }
     const value = rest[index + 1];
     if (
       flag !== "--email" &&
@@ -95,6 +105,8 @@ export function parseQaAccountArgs(
     return { ok: false, message: "--firebase-project <id> is required." };
 
   if (verb === "rotate") {
+    if (reuse)
+      return { ok: false, message: "--reuse applies to provision only." };
     if (values["--email"] !== undefined)
       return {
         ok: false,
@@ -112,7 +124,7 @@ export function parseQaAccountArgs(
   }
   return {
     ok: true,
-    args: { verb, email, qaEnvPath, expectedFirebaseProject },
+    args: { verb, email, qaEnvPath, expectedFirebaseProject, reuse },
   };
 }
 
@@ -211,6 +223,7 @@ export type QaAccountFailure =
   | "project-mismatch"
   | "no-admin-role"
   | "user-exists"
+  | "firebase-user-exists"
   | "not-provisioned"
   | "invite-failed";
 
@@ -284,7 +297,7 @@ function preflight(
 }
 
 export async function provisionQaAccount(
-  args: { email: string; expectedFirebaseProject: string },
+  args: { email: string; expectedFirebaseProject: string; reuse?: boolean },
   deps: QaAccountDeps,
 ): Promise<QaAccountResult> {
   const checked = preflight(deps, args.expectedFirebaseProject);
@@ -310,8 +323,20 @@ export async function provisionQaAccount(
     };
   }
 
-  const password = deps.generatePassword();
+  // A Firebase user already at this address may be a REAL person (a mistyped
+  // --email): taking it over would replace their password. Only an explicit
+  // --reuse allows that; the check runs before any write.
   const existing = await deps.firebase.getUserByEmail(args.email);
+  if (existing && args.reuse !== true) {
+    return {
+      ok: false,
+      reason: "firebase-user-exists",
+      message:
+        "A Firebase user already holds this address. Check --email; pass --reuse only if it is the QA account itself (its password will be replaced).",
+    };
+  }
+
+  const password = deps.generatePassword();
   if (existing) {
     await deps.firebase.updateUser(existing.uid, {
       password,

@@ -46,10 +46,30 @@ const PREVIEW_HOST = /^idc-redentor-admin-[a-z0-9]{9}-divine-lab\.vercel\.app$/;
  * refuses the sign-in even if one slipped through.
  * See docs/architecture/admin-qa-account.md § "The sign-in command".
  */
-const ENV_HOST_RULES: Readonly<Record<string, (host: string) => boolean>> = {
-  stagingAdmin: (host) => host === "staging.ministerio.idcredentor.org",
-  previewAdmin: (host) => PREVIEW_HOST.test(host),
-};
+const ENV_HOST_RULES: Readonly<Record<string, (host: string) => boolean>> =
+  Object.freeze(
+    Object.assign(
+      Object.create(null) as Record<string, (host: string) => boolean>,
+      {
+        stagingAdmin: (host: string) =>
+          host === "staging.ministerio.idcredentor.org",
+        previewAdmin: (host: string) => PREVIEW_HOST.test(host),
+      },
+    ),
+  );
+
+/**
+ * Own-property lookup only. The env name comes from the caller's environment,
+ * so a prototype key (`constructor`, `toString`, `__proto__`, …) must never
+ * resolve to a function and pass as a host rule. The null prototype above and
+ * the `Object.hasOwn` check here each close that on their own.
+ */
+function ruleFor(
+  envName: string | undefined,
+): ((host: string) => boolean) | null {
+  if (!envName || !Object.hasOwn(ENV_HOST_RULES, envName)) return null;
+  return ENV_HOST_RULES[envName] ?? null;
+}
 
 /**
  * The authority exactly as the caller wrote it. Compared with the parsed host
@@ -118,7 +138,7 @@ export function checkQaHost(
     };
   }
 
-  const rule = envName ? ENV_HOST_RULES[envName] : undefined;
+  const rule = ruleFor(envName);
   if (!rule) {
     return {
       ok: false,
