@@ -26,18 +26,39 @@ export const PRODUCTION_HOST_DENY: readonly string[] = [
 ];
 
 /**
- * The only hosts each QA env may sign in to. Previews are the admin project's
- * per-deployment URLs (`idc-redentor-admin-<hash>-divine-lab.vercel.app`);
- * staging is one fixed host. Note: a production deployment's own unique URL
- * has the same shape as a preview's — the harness's `requirePreviewEnvironment`
- * gate rejects those, and production holds no invite or user for the QA
- * account, so it answers `403 no-invite` even if one slipped through.
+ * The admin project's per-deployment preview URL:
+ * `<project>-<hash>-<team>.vercel.app`, where the hash is exactly 9 lowercase
+ * base-36 characters (verified 2026-11-19 against the 30 most recent
+ * `Preview – idc-redentor-admin` GitHub deployments). Deliberately NOT allowed:
+ * branch aliases (`idc-redentor-admin-git-<branch>-divine-lab.vercel.app`),
+ * which move with the branch — the harness resolves a unique deployment URL,
+ * so it never needs one.
+ */
+const PREVIEW_HOST = /^idc-redentor-admin-[a-z0-9]{9}-divine-lab\.vercel\.app$/;
+
+/**
+ * The only hosts each QA env may sign in to. This gate is the SECOND layer:
+ * the harness first proves the target is a preview of this repo
+ * (`requirePreviewEnvironment`, from a GitHub Deployment), and a host pattern
+ * is not proof of ownership on its own. Note: a production deployment's own
+ * unique URL has the same shape as a preview's — the harness gate rejects
+ * those, and production's separate Firebase project has no QA account, so it
+ * refuses the sign-in even if one slipped through.
+ * See docs/architecture/admin-qa-account.md § "The sign-in command".
  */
 const ENV_HOST_RULES: Readonly<Record<string, (host: string) => boolean>> = {
   stagingAdmin: (host) => host === "staging.ministerio.idcredentor.org",
-  previewAdmin: (host) =>
-    /^idc-redentor-admin-[a-z0-9]+-divine-lab\.vercel\.app$/.test(host),
+  previewAdmin: (host) => PREVIEW_HOST.test(host),
 };
+
+/**
+ * The authority exactly as the caller wrote it. Compared with the parsed host
+ * so that nothing the URL parser normalises away can pass: uppercase, a
+ * trailing dot, percent-encoding, backslashes, userinfo or a port.
+ */
+function rawAuthority(baseUrl: string): string | null {
+  return /^https:\/\/([^/?#]*)/.exec(baseUrl)?.[1] ?? null;
+}
 
 export type QaHostRefusal =
   | "bad-url"
@@ -81,6 +102,14 @@ export function checkQaHost(
   }
 
   const host = url.hostname;
+  if (rawAuthority(baseUrl ?? "") !== host) {
+    return {
+      ok: false,
+      reason: "bad-url",
+      message:
+        "The base URL's host must be written exactly as a plain lowercase hostname.",
+    };
+  }
   if (PRODUCTION_HOST_DENY.includes(host)) {
     return {
       ok: false,

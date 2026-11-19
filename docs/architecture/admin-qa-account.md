@@ -87,8 +87,24 @@ sh -c 'cd apps/admin && exec node --import tsx scripts/qa-auth.ts sign-in'
   · `3` declined (a role it does not offer).
 - **Host gate** (`apps/admin/src/lib/qa-auth/host-gate.ts`): `stagingAdmin` →
   `staging.ministerio.idcredentor.org` only; `previewAdmin` →
-  `idc-redentor-admin-<hash>-divine-lab.vercel.app` only; every production host is refused;
-  https only, no port, no userinfo. A test keeps its deny list a superset of the config's.
+  `idc-redentor-admin-<9 lowercase base-36 chars>-divine-lab.vercel.app` only (the shape of
+  every real admin preview; branch aliases `…-git-<branch>-…` are deliberately refused). Every
+  production host is refused. The host must be written exactly as a plain lowercase hostname over
+  https: no uppercase, trailing dot, percent-encoding, backslash, userinfo or port. A test keeps
+  its deny list a superset of the config's.
+
+**The host gate is the second layer, not the first.** A hostname pattern is not proof that a
+host belongs to this project. The proof comes first, from the harness: before any auth verb runs,
+`qa.env.previewAdmin.requirePreviewEnvironment` requires the URL to come from a GitHub Deployment
+of this repository in the `Preview – idc-redentor-admin` environment, and `qa.apps` routes only
+admin changes there. The gate then refuses anything that is not shaped like this team's admin
+preview, which also requires the `divine-lab` Vercel team suffix.
+
+**Blast radius if a token still leaked to a wrong host:** the request carries a Firebase ID token
+for the QA account in the **staging** project only. It cannot be used against production, which
+verifies tokens for `idcr-admin`. It expires after one hour, and `rotate` revokes every session and
+replaces the password at once.
+
 - **Why `node --import tsx`, not `pnpm`:** pnpm rewrites every non-zero exit to `1`, erasing the
   contract's `2` and `3`. The cwd must be `apps/admin` because tsx resolves `@src/*` from it.
 
