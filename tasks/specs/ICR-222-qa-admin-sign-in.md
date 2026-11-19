@@ -1,7 +1,10 @@
 # ICR-222 — QA agents sign in to the admin panel on preview and staging
 
-Status: **draft for spec approval** (no external write made yet). Commit type `chore`, QA depth
+Status: **approved 2026-11-19**, amended the same day (see § 13). Commit type `chore`, QA depth
 `standard`, sensitive areas: **auth**, **env-secrets**, **QA config**.
+
+> § 0–12 record the design as approved. **§ 13 supersedes them where they disagree** — above all,
+> the single shared Firebase project described in § 0 is being replaced by a separate staging one.
 
 ## 0. Facts established in explore
 
@@ -234,3 +237,28 @@ No production DB write. No email sent. No other user, role or invite touched.
    provisioning script can write only to `ministry-admin-staging`) — weakest.
 3. Identity probe via page status (`/es-AR/roles` 200 vs 307) instead of adding a JSON
    `GET /api/auth/session` — _recommended_ (the ticket puts admin auth code out of scope).
+
+## 13. Amendments after approval (2026-11-19)
+
+**Owner decisions.** Q1: widen `previewAdmin.dbNameAllow` to include `-staging` (done). Q3: page
+status probes (done). Q2 (AC2 proof): put on hold, then superseded by the item below. No
+production env was pulled and production was never contacted.
+
+**Separate staging Firebase project.** The owner created `idcr-admin-staging` for staging and
+previews; production keeps `idcr-admin`. The owner is re-pointing Vercel's `NEXT_PUBLIC_FIREBASE_*`
+/ `FIREBASE_*` variables per target. Consequences:
+
+- The QA account is created only in `idcr-admin-staging`. Production refuses it by **project
+  isolation**: the account does not exist in `idcr-admin`, and production verifies ID tokens for
+  `idcr-admin` only. The invite gate stands behind that. AC2's proof changes accordingly.
+- `qa-account` gains a required `--firebase-project <id>`. The run refuses (`project-mismatch`)
+  unless it equals the loaded env's `FIREBASE_PROJECT_ID`. No project id is hardcoded in code.
+- W1 (the Firebase user) now targets `idcr-admin-staging`, after the re-point. Nothing was ever
+  created in `idcr-admin`.
+
+**Staging admin DB was never bootstrapped.** The first `provision` run (before the project change)
+refused `no-admin-role` before any Firebase or qa-env write: `ministry-admin-staging` held 0
+roles, 0 users and 0 invites. The only side effect was the app's own `ensureRbacIndexes()`, which
+left an empty `roles` collection with its indexes. Seeding the three system roles is a write
+outside the approved list and awaits an owner decision (recommended: the shipped `seed:admin` with
+the QA address, then `provision`).

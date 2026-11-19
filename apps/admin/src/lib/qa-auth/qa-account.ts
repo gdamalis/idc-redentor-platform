@@ -9,7 +9,8 @@
  *  - creates or updates the Firebase user with `emailVerified: true` (the
  *    invite gate refuses unverified email), in whatever Firebase project the
  *    environment names — the project id is read from the env, never
- *    hardcoded, so a separate staging Firebase project needs no code change;
+ *    hardcoded, and must equal the operator's `--firebase-project` (staging
+ *    and previews have their own Firebase project, isolated from production);
  *  - generates the password in-process and writes it straight into the
  *    git-ignored qa-env.json (mode 600) — it never reaches argv, the
  *    environment, stdout or a log;
@@ -36,47 +37,83 @@ export interface QaAccountCredentials {
 }
 
 export type QaAccountArgs =
-  | { verb: "provision"; email: string; qaEnvPath: string }
-  | { verb: "rotate"; qaEnvPath: string };
+  | {
+      verb: "provision";
+      email: string;
+      qaEnvPath: string;
+      expectedFirebaseProject: string;
+    }
+  | { verb: "rotate"; qaEnvPath: string; expectedFirebaseProject: string };
 
-export type ParseQaAccountArgsResult = { ok: true; args: QaAccountArgs } | { ok: false; message: string };
+export type ParseQaAccountArgsResult =
+  | { ok: true; args: QaAccountArgs }
+  | { ok: false; message: string };
 
 export const QA_ACCOUNT_USAGE = `Usage (from apps/admin, with the STAGING env loaded):
-  node --env-file=<staging.env> --import tsx scripts/qa-account.ts provision --email <address> --qa-env <path>
-  node --env-file=<staging.env> --import tsx scripts/qa-account.ts rotate --qa-env <path>
+  node --env-file=<staging.env> --import tsx scripts/qa-account.ts provision --email <address> \\
+    --firebase-project <staging project id> --qa-env <path>
+  node --env-file=<staging.env> --import tsx scripts/qa-account.ts rotate \\
+    --firebase-project <staging project id> --qa-env <path>
+
+--firebase-project names the Firebase project the operator means to write to;
+the run refuses unless it equals the loaded env's FIREBASE_PROJECT_ID.
 
 Env: MONGODB_URI (path must be ${QA_ACCOUNT_DB_NAME}), FIREBASE_PROJECT_ID,
      FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, NEXT_PUBLIC_FIREBASE_API_KEY
 Exit: 0 success - 1 operation failure - 2 usage/guard refusal`;
 
-export function parseQaAccountArgs(argv: readonly string[]): ParseQaAccountArgsResult {
+export function parseQaAccountArgs(
+  argv: readonly string[],
+): ParseQaAccountArgsResult {
   const [verb, ...rest] = argv;
   if (verb !== "provision" && verb !== "rotate") {
-    return { ok: false, message: `Unknown verb "${verb ?? ""}"; use provision or rotate.` };
+    return {
+      ok: false,
+      message: `Unknown verb "${verb ?? ""}"; use provision or rotate.`,
+    };
   }
 
   const values: Record<string, string> = {};
   for (let index = 0; index < rest.length; index += 2) {
     const flag = rest[index] ?? "";
     const value = rest[index + 1];
-    if (flag !== "--email" && flag !== "--qa-env") return { ok: false, message: `Unknown argument: ${flag}` };
-    if (value === undefined || value.startsWith("--")) return { ok: false, message: `${flag} requires a value.` };
+    if (
+      flag !== "--email" &&
+      flag !== "--qa-env" &&
+      flag !== "--firebase-project"
+    )
+      return { ok: false, message: `Unknown argument: ${flag}` };
+    if (value === undefined || value.startsWith("--"))
+      return { ok: false, message: `${flag} requires a value.` };
     values[flag] = value;
   }
 
   const qaEnvPath = values["--qa-env"];
   if (!qaEnvPath) return { ok: false, message: "--qa-env <path> is required." };
+  const expectedFirebaseProject = values["--firebase-project"]?.trim() ?? "";
+  if (expectedFirebaseProject === "")
+    return { ok: false, message: "--firebase-project <id> is required." };
 
   if (verb === "rotate") {
-    if (values["--email"] !== undefined) return { ok: false, message: "rotate takes no --email; it reads qa-env.json." };
-    return { ok: true, args: { verb, qaEnvPath } };
+    if (values["--email"] !== undefined)
+      return {
+        ok: false,
+        message: "rotate takes no --email; it reads qa-env.json.",
+      };
+    return { ok: true, args: { verb, qaEnvPath, expectedFirebaseProject } };
   }
 
   const email = normalizeEmail(values["--email"]);
   if (!z.string().email().safeParse(email).success) {
-    return { ok: false, message: "--email <address> is required and must be an email address." };
+    return {
+      ok: false,
+      message: "--email <address> is required and must be an email address.",
+    };
   }
-  return { ok: true, args: { verb, email, qaEnvPath } };
+  return {
+    ok: true,
+    args: { verb, email, qaEnvPath, expectedFirebaseProject },
+  };
 }
 
 /** 32 random bytes, base64url: 43 URL-safe characters. */
@@ -85,18 +122,31 @@ export function generateQaPassword(): string {
 }
 
 const asRecord = (value: unknown): Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 
 /** Sets `adminQa.users.admin`, preserving every other key in the file. */
-export function mergeQaEnv(current: unknown, credentials: QaAccountCredentials): Record<string, unknown> {
+export function mergeQaEnv(
+  current: unknown,
+  credentials: QaAccountCredentials,
+): Record<string, unknown> {
   const root = asRecord(current);
   const adminQa = asRecord(root.adminQa);
   const users = asRecord(adminQa.users);
-  return { ...root, adminQa: { ...adminQa, users: { ...users, [QA_ENV_ROLE_KEY]: { ...credentials } } } };
+  return {
+    ...root,
+    adminQa: {
+      ...adminQa,
+      users: { ...users, [QA_ENV_ROLE_KEY]: { ...credentials } },
+    },
+  };
 }
 
 function storedCredentials(current: unknown): Partial<QaAccountCredentials> {
-  const entry = asRecord(asRecord(asRecord(asRecord(current).adminQa).users)[QA_ENV_ROLE_KEY]);
+  const entry = asRecord(
+    asRecord(asRecord(asRecord(current).adminQa).users)[QA_ENV_ROLE_KEY],
+  );
   return {
     email: typeof entry.email === "string" ? entry.email : undefined,
   };
@@ -112,7 +162,10 @@ export async function readQaEnvFile(path: string): Promise<unknown> {
 }
 
 /** Atomic (temp file + rename), mode 600 before any secret is written. */
-export async function writeQaEnvFile(path: string, value: unknown): Promise<void> {
+export async function writeQaEnvFile(
+  path: string,
+  value: unknown,
+): Promise<void> {
   const temp = `${path}.${process.pid}.tmp`;
   await writeFile(temp, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
   await chmod(temp, 0o600);
@@ -122,8 +175,15 @@ export async function writeQaEnvFile(path: string, value: unknown): Promise<void
 
 export interface QaAccountFirebase {
   getUserByEmail: (email: string) => Promise<{ uid: string } | null>;
-  createUser: (input: { email: string; password: string; emailVerified: true }) => Promise<{ uid: string }>;
-  updateUser: (uid: string, input: { password: string; emailVerified?: true }) => Promise<unknown>;
+  createUser: (input: {
+    email: string;
+    password: string;
+    emailVerified: true;
+  }) => Promise<{ uid: string }>;
+  updateUser: (
+    uid: string,
+    input: { password: string; emailVerified?: true },
+  ) => Promise<unknown>;
   revokeRefreshTokens: (uid: string) => Promise<unknown>;
 }
 
@@ -148,6 +208,7 @@ export interface QaAccountDeps {
 export type QaAccountFailure =
   | "db-guard"
   | "missing-env"
+  | "project-mismatch"
   | "no-admin-role"
   | "user-exists"
   | "not-provisioned"
@@ -173,14 +234,23 @@ export type QaAccountResult =
     }
   | { ok: false; reason: QaAccountFailure; message: string };
 
-type Preflight = { ok: true; firebaseProjectId: string; firebaseApiKey: string } | Extract<QaAccountResult, { ok: false }>;
+type Preflight =
+  | { ok: true; firebaseProjectId: string; firebaseApiKey: string }
+  | Extract<QaAccountResult, { ok: false }>;
 
-function preflight(deps: QaAccountDeps): Preflight {
+function preflight(
+  deps: QaAccountDeps,
+  expectedFirebaseProject: string,
+): Preflight {
   let name: string;
   try {
     name = deps.databaseName();
   } catch (error) {
-    return { ok: false, reason: "db-guard", message: error instanceof Error ? error.message : String(error) };
+    return {
+      ok: false,
+      reason: "db-guard",
+      message: error instanceof Error ? error.message : String(error),
+    };
   }
   if (name !== QA_ACCOUNT_DB_NAME) {
     return {
@@ -196,19 +266,37 @@ function preflight(deps: QaAccountDeps): Preflight {
     return {
       ok: false,
       reason: "missing-env",
-      message: "FIREBASE_PROJECT_ID and NEXT_PUBLIC_FIREBASE_API_KEY must both be set.",
+      message:
+        "FIREBASE_PROJECT_ID and NEXT_PUBLIC_FIREBASE_API_KEY must both be set.",
+    };
+  }
+  // No project id is hardcoded anywhere: the operator names the project they
+  // intend, and a mismatch with the loaded env (a production env file, or a
+  // staging env not yet re-pointed) refuses before any write.
+  if (firebaseProjectId !== expectedFirebaseProject.trim()) {
+    return {
+      ok: false,
+      reason: "project-mismatch",
+      message: `FIREBASE_PROJECT_ID is "${firebaseProjectId}", not the expected "${expectedFirebaseProject}".`,
     };
   }
   return { ok: true, firebaseProjectId, firebaseApiKey };
 }
 
-export async function provisionQaAccount(args: { email: string }, deps: QaAccountDeps): Promise<QaAccountResult> {
-  const checked = preflight(deps);
+export async function provisionQaAccount(
+  args: { email: string; expectedFirebaseProject: string },
+  deps: QaAccountDeps,
+): Promise<QaAccountResult> {
+  const checked = preflight(deps, args.expectedFirebaseProject);
   if (!checked.ok) return checked;
 
   const adminRoleId = await deps.adminRoleId();
   if (!adminRoleId) {
-    return { ok: false, reason: "no-admin-role", message: "The admin system role does not exist in this database." };
+    return {
+      ok: false,
+      reason: "no-admin-role",
+      message: "The admin system role does not exist in this database.",
+    };
   }
 
   // An invite cannot elevate an existing AdminUser (resolveOrProvision returns
@@ -217,27 +305,47 @@ export async function provisionQaAccount(args: { email: string }, deps: QaAccoun
     return {
       ok: false,
       reason: "user-exists",
-      message: "An AdminUser already holds this address; use rotate to change its password.",
+      message:
+        "An AdminUser already holds this address; use rotate to change its password.",
     };
   }
 
   const password = deps.generatePassword();
   const existing = await deps.firebase.getUserByEmail(args.email);
   if (existing) {
-    await deps.firebase.updateUser(existing.uid, { password, emailVerified: true });
+    await deps.firebase.updateUser(existing.uid, {
+      password,
+      emailVerified: true,
+    });
   } else {
-    await deps.firebase.createUser({ email: args.email, password, emailVerified: true });
+    await deps.firebase.createUser({
+      email: args.email,
+      password,
+      emailVerified: true,
+    });
   }
 
   // Credentials are stored BEFORE the invite: if the invite write fails, the
   // password is not lost and a re-run (createInvite is an upsert) finishes.
   await deps.writeQaEnv(
-    mergeQaEnv(await deps.readQaEnv(), { email: args.email, password, firebaseApiKey: checked.firebaseApiKey }),
+    mergeQaEnv(await deps.readQaEnv(), {
+      email: args.email,
+      password,
+      firebaseApiKey: checked.firebaseApiKey,
+    }),
   );
 
-  const invite = await deps.createAdminInvite({ email: args.email, roleIds: [adminRoleId], locale: "es-AR" });
+  const invite = await deps.createAdminInvite({
+    email: args.email,
+    roleIds: [adminRoleId],
+    locale: "es-AR",
+  });
   if (!invite.ok) {
-    return { ok: false, reason: "invite-failed", message: "The invite write failed; re-run provision." };
+    return {
+      ok: false,
+      reason: "invite-failed",
+      message: "The invite write failed; re-run provision.",
+    };
   }
 
   return {
@@ -250,24 +358,41 @@ export async function provisionQaAccount(args: { email: string }, deps: QaAccoun
   };
 }
 
-export async function rotateQaPassword(deps: QaAccountDeps): Promise<QaAccountResult> {
-  const checked = preflight(deps);
+export async function rotateQaPassword(
+  args: { expectedFirebaseProject: string },
+  deps: QaAccountDeps,
+): Promise<QaAccountResult> {
+  const checked = preflight(deps, args.expectedFirebaseProject);
   if (!checked.ok) return checked;
 
   const current = await deps.readQaEnv();
   const { email } = storedCredentials(current);
   if (!email) {
-    return { ok: false, reason: "not-provisioned", message: "qa-env.json holds no adminQa.users.admin account." };
+    return {
+      ok: false,
+      reason: "not-provisioned",
+      message: "qa-env.json holds no adminQa.users.admin account.",
+    };
   }
 
   const user = await deps.firebase.getUserByEmail(email);
   if (!user) {
-    return { ok: false, reason: "not-provisioned", message: "No Firebase user exists for the stored account." };
+    return {
+      ok: false,
+      reason: "not-provisioned",
+      message: "No Firebase user exists for the stored account.",
+    };
   }
 
   const password = deps.generatePassword();
   await deps.firebase.updateUser(user.uid, { password });
-  await deps.writeQaEnv(mergeQaEnv(current, { email, password, firebaseApiKey: checked.firebaseApiKey }));
+  await deps.writeQaEnv(
+    mergeQaEnv(current, {
+      email,
+      password,
+      firebaseApiKey: checked.firebaseApiKey,
+    }),
+  );
   // Kill every session minted with the old password.
   await deps.firebase.revokeRefreshTokens(user.uid);
 

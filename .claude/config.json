@@ -247,7 +247,7 @@
           "credentialsFrom": "adminQa.users",
           "provisioningAllowed": false,
           "signupsOpen": false,
-          "_note": "ICR-222. Sign in as the standing QA Admin (qa.auth.commands.signIn) with the credentials at qa-env.json -> adminQa.users.admin. The account exists ONLY in ministry-admin-staging; previewAdmin reaches that database, production does not. Never create, invite or sign up any other identity."
+          "_note": "ICR-222. Sign in as the standing QA Admin (qa.auth.commands.signIn) with the credentials at qa-env.json -> adminQa.users.admin. The account exists ONLY in the staging/preview Firebase project (idcr-admin-staging) and in ministry-admin-staging; production (Firebase idcr-admin, DB ministry-admin) has neither, so it refuses by project isolation. previewAdmin reaches that database, production does not. Never create, invite or sign up any other identity."
         }
       },
       "staging": {
@@ -303,7 +303,7 @@
           "credentialsFrom": "adminQa.users",
           "provisioningAllowed": false,
           "signupsOpen": false,
-          "_note": "ICR-222. Sign in as the standing QA Admin (qa.auth.commands.signIn) with the credentials at qa-env.json -> adminQa.users.admin. The account exists ONLY in ministry-admin-staging; stagingAdmin reaches that database, production does not. Never create, invite or sign up any other identity."
+          "_note": "ICR-222. Sign in as the standing QA Admin (qa.auth.commands.signIn) with the credentials at qa-env.json -> adminQa.users.admin. The account exists ONLY in the staging/preview Firebase project (idcr-admin-staging) and in ministry-admin-staging; production (Firebase idcr-admin, DB ministry-admin) has neither, so it refuses by project isolation. stagingAdmin reaches that database, production does not. Never create, invite or sign up any other identity."
         }
       }
     },

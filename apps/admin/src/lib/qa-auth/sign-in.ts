@@ -27,7 +27,8 @@ export const QA_AUTH_ROLES: readonly string[] = ["admin"];
 
 export const SESSION_COOKIE_NAME = "__session";
 
-const FIREBASE_SIGN_IN_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword";
+const FIREBASE_SIGN_IN_URL =
+  "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword";
 
 /** Fallback when the cookie carries no Max-Age: the app's 5-day session. */
 const DEFAULT_SESSION_SECONDS = 432000;
@@ -73,7 +74,10 @@ interface Credentials {
   firebaseApiKey: string;
 }
 
-const fail = (exitCode: Exclude<ExitCode, 0>, ...diagnostics: string[]): SignInOutcome => ({
+const fail = (
+  exitCode: Exclude<ExitCode, 0>,
+  ...diagnostics: string[]
+): SignInOutcome => ({
   exitCode,
   envelope: { contract: QA_AUTH_CONTRACT, ok: false, diagnostics },
 });
@@ -85,7 +89,9 @@ function isPresent(value: unknown): value is string {
   return trimmed !== "" && !/^<.*>$/.test(trimmed);
 }
 
-type ParseResult = { ok: true; credentials: Credentials } | { ok: false; diagnostic: string };
+type ParseResult =
+  | { ok: true; credentials: Credentials }
+  | { ok: false; diagnostic: string };
 
 export function parseSignInStdin(stdin: string): ParseResult {
   let parsed: unknown;
@@ -98,19 +104,30 @@ export function parseSignInStdin(stdin: string): ParseResult {
     return { ok: false, diagnostic: "stdin is not one JSON object" };
   }
 
-  const { contract, credentials } = parsed as { contract?: unknown; credentials?: unknown };
+  const { contract, credentials } = parsed as {
+    contract?: unknown;
+    credentials?: unknown;
+  };
   if (contract !== QA_AUTH_CONTRACT) {
-    return { ok: false, diagnostic: `stdin contract is not ${QA_AUTH_CONTRACT}` };
+    return {
+      ok: false,
+      diagnostic: `stdin contract is not ${QA_AUTH_CONTRACT}`,
+    };
   }
   if (typeof credentials !== "object" || credentials === null) {
     return { ok: false, diagnostic: "stdin has no credentials object" };
   }
 
   const record = credentials as Record<string, unknown>;
-  const missing = CREDENTIAL_FIELDS.filter((field) => !isPresent(record[field]));
+  const missing = CREDENTIAL_FIELDS.filter(
+    (field) => !isPresent(record[field]),
+  );
   if (missing.length > 0) {
     // Field NAMES only — never a value, not even a placeholder.
-    return { ok: false, diagnostic: `missing credentials: ${missing.join(", ")}` };
+    return {
+      ok: false,
+      diagnostic: `missing credentials: ${missing.join(", ")}`,
+    };
   }
 
   return {
@@ -123,15 +140,23 @@ export function parseSignInStdin(stdin: string): ParseResult {
   };
 }
 
-function readSessionCookie(headers: Headers): { value: string; maxAgeSeconds: number } | null {
-  const lines = typeof headers.getSetCookie === "function" ? headers.getSetCookie() : [];
+function readSessionCookie(
+  headers: Headers,
+): { value: string; maxAgeSeconds: number } | null {
+  const lines =
+    typeof headers.getSetCookie === "function" ? headers.getSetCookie() : [];
   const fallback = lines.length === 0 ? (headers.get("set-cookie") ?? "") : "";
   const all = lines.length > 0 ? lines : fallback ? [fallback] : [];
 
   for (const line of all) {
     const [pair, ...attributes] = line.split(";");
     const separator = pair?.indexOf("=") ?? -1;
-    if (!pair || separator < 0 || pair.slice(0, separator).trim() !== SESSION_COOKIE_NAME) continue;
+    if (
+      !pair ||
+      separator < 0 ||
+      pair.slice(0, separator).trim() !== SESSION_COOKIE_NAME
+    )
+      continue;
 
     const value = pair.slice(separator + 1).trim();
     if (value === "") continue;
@@ -139,7 +164,10 @@ function readSessionCookie(headers: Headers): { value: string; maxAgeSeconds: nu
     const maxAge = attributes
       .map((attribute) => attribute.trim().match(/^max-age=(\d+)$/i)?.[1])
       .find((match) => match !== undefined);
-    return { value, maxAgeSeconds: maxAge ? Number(maxAge) : DEFAULT_SESSION_SECONDS };
+    return {
+      value,
+      maxAgeSeconds: maxAge ? Number(maxAge) : DEFAULT_SESSION_SECONDS,
+    };
   }
   return null;
 }
@@ -147,7 +175,9 @@ function readSessionCookie(headers: Headers): { value: string; maxAgeSeconds: nu
 async function readJson(response: Response): Promise<Record<string, unknown>> {
   try {
     const body: unknown = await response.json();
-    return typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+    return typeof body === "object" && body !== null
+      ? (body as Record<string, unknown>)
+      : {};
   } catch {
     return {};
   }
@@ -158,7 +188,10 @@ function opaqueHandle(uid: string): string {
   return `qa-admin-${createHash("sha256").update(uid).digest("hex").slice(0, 16)}`;
 }
 
-export async function runSignIn(input: SignInInput, deps: SignInDeps): Promise<SignInOutcome> {
+export async function runSignIn(
+  input: SignInInput,
+  deps: SignInDeps,
+): Promise<SignInOutcome> {
   const { env } = input;
 
   if (env.YOKE_QA_AUTH_CONTRACT !== QA_AUTH_CONTRACT) {
@@ -167,7 +200,10 @@ export async function runSignIn(input: SignInInput, deps: SignInDeps): Promise<S
 
   const role = env.YOKE_QA_AUTH_ROLE;
   if (role !== undefined && role !== "" && !QA_AUTH_ROLES.includes(role)) {
-    return fail(3, `role "${role}" is not offered; available: ${QA_AUTH_ROLES.join(", ")}`);
+    return fail(
+      3,
+      `role "${role}" is not offered; available: ${QA_AUTH_ROLES.join(", ")}`,
+    );
   }
 
   const host = checkQaHost(env.YOKE_QA_AUTH_BASE_URL, env.YOKE_QA_AUTH_ENV);
@@ -185,7 +221,10 @@ export async function runSignIn(input: SignInInput, deps: SignInDeps): Promise<S
       `${FIREBASE_SIGN_IN_URL}?key=${encodeURIComponent(credentials.firebaseApiKey)}`,
       {
         method: "POST",
-        headers: { "content-type": "application/json", referer: `${host.origin}/` },
+        headers: {
+          "content-type": "application/json",
+          referer: `${host.origin}/`,
+        },
         body: JSON.stringify({
           email: credentials.email,
           password: credentials.password,
@@ -196,38 +235,70 @@ export async function runSignIn(input: SignInInput, deps: SignInDeps): Promise<S
     const firebaseBody = await readJson(firebaseResponse);
     const idToken = firebaseBody.idToken;
     const uid = firebaseBody.localId;
-    if (!firebaseResponse.ok || typeof idToken !== "string" || typeof uid !== "string") {
+    if (
+      !firebaseResponse.ok ||
+      typeof idToken !== "string" ||
+      typeof uid !== "string"
+    ) {
       const error = firebaseBody.error as { message?: unknown } | undefined;
-      const code = typeof error?.message === "string" ? error.message.split(" ")[0] : "unknown-error";
-      return fail(1, `firebase sign-in refused: HTTP ${firebaseResponse.status} ${code}`);
+      const code =
+        typeof error?.message === "string"
+          ? error.message.split(" ")[0]
+          : "unknown-error";
+      return fail(
+        1,
+        `firebase sign-in refused: HTTP ${firebaseResponse.status} ${code}`,
+      );
     }
 
     // 2. The app's own session exchange — the invite gate runs here unchanged.
-    const sessionResponse = await deps.fetch(`${host.origin}/api/auth/session`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ idToken }),
-      redirect: "manual",
-    });
+    const sessionResponse = await deps.fetch(
+      `${host.origin}/api/auth/session`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ idToken }),
+        redirect: "manual",
+      },
+    );
     if (sessionResponse.status !== 200) {
       const body = await readJson(sessionResponse);
-      const reason = typeof body.reason === "string" ? body.reason : "no-reason";
-      return fail(1, `session exchange refused: HTTP ${sessionResponse.status} ${reason}`);
+      const reason =
+        typeof body.reason === "string" ? body.reason : "no-reason";
+      return fail(
+        1,
+        `session exchange refused: HTTP ${sessionResponse.status} ${reason}`,
+      );
     }
 
     const cookie = readSessionCookie(sessionResponse.headers);
-    if (!cookie) return fail(1, `session exchange returned 200 without a ${SESSION_COOKIE_NAME} cookie`);
+    if (!cookie)
+      return fail(
+        1,
+        `session exchange returned 200 without a ${SESSION_COOKIE_NAME} cookie`,
+      );
 
-    const expiresAt = new Date(deps.now().getTime() + cookie.maxAgeSeconds * 1000).toISOString();
+    const expiresAt = new Date(
+      deps.now().getTime() + cookie.maxAgeSeconds * 1000,
+    ).toISOString();
     return {
       exitCode: 0,
       envelope: {
         contract: QA_AUTH_CONTRACT,
         ok: true,
-        identity: { handle: opaqueHandle(uid), roles: ["admin"], entitlements: [] },
+        identity: {
+          handle: opaqueHandle(uid),
+          roles: ["admin"],
+          entitlements: [],
+        },
         session: {
           cookies: [
-            { name: SESSION_COOKIE_NAME, value: cookie.value, domain: new URL(host.origin).hostname, path: "/" },
+            {
+              name: SESSION_COOKIE_NAME,
+              value: cookie.value,
+              domain: new URL(host.origin).hostname,
+              path: "/",
+            },
           ],
           bearer: null,
           expiresAt,

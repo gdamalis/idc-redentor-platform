@@ -35,39 +35,74 @@ export const PRODUCTION_HOST_DENY: readonly string[] = [
  */
 const ENV_HOST_RULES: Readonly<Record<string, (host: string) => boolean>> = {
   stagingAdmin: (host) => host === "staging.ministerio.idcredentor.org",
-  previewAdmin: (host) => /^idc-redentor-admin-[a-z0-9]+-divine-lab\.vercel\.app$/.test(host),
+  previewAdmin: (host) =>
+    /^idc-redentor-admin-[a-z0-9]+-divine-lab\.vercel\.app$/.test(host),
 };
 
-export type QaHostRefusal = "bad-url" | "not-https" | "production-host" | "unknown-env" | "host-not-allowed";
+export type QaHostRefusal =
+  | "bad-url"
+  | "not-https"
+  | "production-host"
+  | "unknown-env"
+  | "host-not-allowed";
 
-export type QaHostResult = { ok: true; origin: string } | { ok: false; reason: QaHostRefusal; message: string };
+export type QaHostResult =
+  | { ok: true; origin: string }
+  | { ok: false; reason: QaHostRefusal; message: string };
 
-export function checkQaHost(baseUrl: string | undefined, envName: string | undefined): QaHostResult {
+export function checkQaHost(
+  baseUrl: string | undefined,
+  envName: string | undefined,
+): QaHostResult {
   let url: URL;
   try {
     url = new URL(baseUrl ?? "");
   } catch {
-    return { ok: false, reason: "bad-url", message: "The base URL is missing or not a URL." };
+    return {
+      ok: false,
+      reason: "bad-url",
+      message: "The base URL is missing or not a URL.",
+    };
   }
 
   if (url.protocol !== "https:") {
-    return { ok: false, reason: "not-https", message: "The base URL must use https." };
+    return {
+      ok: false,
+      reason: "not-https",
+      message: "The base URL must use https.",
+    };
   }
   if (url.port !== "" || url.username !== "" || url.password !== "") {
-    return { ok: false, reason: "bad-url", message: "The base URL must not carry a port or credentials." };
+    return {
+      ok: false,
+      reason: "bad-url",
+      message: "The base URL must not carry a port or credentials.",
+    };
   }
 
   const host = url.hostname;
   if (PRODUCTION_HOST_DENY.includes(host)) {
-    return { ok: false, reason: "production-host", message: `Refusing a production host: ${host}.` };
+    return {
+      ok: false,
+      reason: "production-host",
+      message: `Refusing a production host: ${host}.`,
+    };
   }
 
   const rule = envName ? ENV_HOST_RULES[envName] : undefined;
   if (!rule) {
-    return { ok: false, reason: "unknown-env", message: `No QA sign-in is allowed for env "${envName ?? ""}".` };
+    return {
+      ok: false,
+      reason: "unknown-env",
+      message: `No QA sign-in is allowed for env "${envName ?? ""}".`,
+    };
   }
   if (!rule(host)) {
-    return { ok: false, reason: "host-not-allowed", message: `Host ${host} is not allowed for env ${envName}.` };
+    return {
+      ok: false,
+      reason: "host-not-allowed",
+      message: `Host ${host} is not allowed for env ${envName}.`,
+    };
   }
 
   return { ok: true, origin: url.origin };

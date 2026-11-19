@@ -12,28 +12,37 @@ Design record: `tasks/specs/ICR-222-qa-admin-sign-in.md`.
 | Kind        | Firebase **email/password** user, `emailVerified: true`                                                                                                                   |
 | Address     | a plus-address on the owner's Gmail. **Recorded only in the git-ignored `qa-env.json`** — never in a committed file, PR, ticket or report. Docs call it "the QA account". |
 | Role        | `admin` system role, **in `ministry-admin-staging` only**                                                                                                                 |
-| Production  | **No invite and no `AdminUser`** in production `ministry-admin`, so production refuses it with `403 no-invite`                                                            |
+| Firebase    | project **`idcr-admin-staging`** only (staging and previews); production's project `idcr-admin` has no such user                                                          |
+| Production  | refused by project isolation, and production `ministry-admin` holds no invite and no `AdminUser` for it                                                                   |
 | Credentials | `qa-env.json` → `adminQa.users.admin` = `{ email, password, firebaseApiKey }` (mode 600)                                                                                  |
 
-### Why one Firebase project matters
+### Two Firebase projects: why production refuses the account
 
-As of 2026-11-19, the admin app uses **one Firebase project for every environment** (Development,
-Preview, staging and Production share one `NEXT_PUBLIC_FIREBASE_PROJECT_ID` /
-`FIREBASE_PROJECT_ID` value on Vercel; only the service-account key is split). So the QA
-account's Firebase credential is valid against production's Firebase project too.
+Staging and previews use their **own Firebase project, `idcr-admin-staging`**; production uses
+**`idcr-admin`**. On Vercel (`idc-redentor-admin`), the `NEXT_PUBLIC_FIREBASE_*` and `FIREBASE_*`
+variables are set per target: Preview + staging point at `idcr-admin-staging`, Production at
+`idcr-admin`.
 
-What keeps it out of production is the **invite gate** (`docs/architecture/admin-auth.md`): a
-Firebase credential grants nothing until it matches an invite or an `AdminUser` in the app's own
-database, and production's database holds neither for this address. Two more layers sit in front:
+The QA account exists **only in `idcr-admin-staging`**. Production's refusal therefore holds by
+**project isolation**: production's login page signs in against `idcr-admin`, where the account
+does not exist, and production's server verifies ID tokens for `idcr-admin`, so a token minted by
+the staging project is rejected (`401 invalid-token`) even if one were replayed there. Behind that:
 
-1. the harness's host gates (`qa.env.<env>.baseUrlHostAllow`, `productionHostDeny`,
+1. **the invite gate** (`docs/architecture/admin-auth.md`) — production's `ministry-admin`
+   database holds no invite and no `AdminUser` for the address;
+2. the harness's host gates (`qa.env.<env>.baseUrlHostAllow`, `productionHostDeny`,
    `requirePreviewEnvironment`);
-2. the sign-in command's own exact host allowlist (below), which refuses every production host
+3. the sign-in command's own exact host allowlist (below), which refuses every production host
    before any network call.
 
-The provisioning script reads the Firebase project from its environment, never from code, so if
-staging later gets its own Firebase project, re-pointing the account is a re-run of `provision`
-against the new env — no code change.
+No project id is hardcoded in code: the sign-in command uses the web API key stored with the
+credentials, and the provisioning script reads the project from its environment and refuses unless
+it equals the `--firebase-project` the operator names. Pointing a staging env file at the
+production project, by mistake, therefore refuses before any write.
+
+> History: until 2026-11-19 every environment shared `idcr-admin` (ICR-222 explore found one
+> Vercel variable targeting all four environments). The separate staging project was created
+> during ICR-222 so the QA account never exists in production's project.
 
 ### Admin previews share the staging databases
 
@@ -112,8 +121,11 @@ operation failure, `2` usage or guard refusal.
 
 ```bash
 node --env-file=/tmp/qa-staging.env --import tsx scripts/qa-account.ts provision \
-  --email <the QA address> --qa-env <repo root>/qa-env.json
+  --email <the QA address> --firebase-project idcr-admin-staging --qa-env <repo root>/qa-env.json
 ```
+
+`--firebase-project` is your statement of the project you mean to write to; the run refuses
+(`project-mismatch`, exit 2) unless it equals the env's `FIREBASE_PROJECT_ID`.
 
 Creates (or updates) the Firebase user with a verified email and a freshly generated 43-character
 password, writes `adminQa.users.admin` into `qa-env.json` (mode 600, other keys preserved), and
@@ -129,7 +141,7 @@ The invite expires after 7 days; if the first sign-in comes later, re-run `provi
 
 ```bash
 node --env-file=/tmp/qa-staging.env --import tsx scripts/qa-account.ts rotate \
-  --qa-env <repo root>/qa-env.json
+  --firebase-project idcr-admin-staging --qa-env <repo root>/qa-env.json
 ```
 
 Generates a new password, sets it on the Firebase user, writes it into `qa-env.json`, and revokes
@@ -141,7 +153,7 @@ file to the other workstation (never through git).
 
 1. In the staging admin panel (`/users`), as a human Admin, disable or delete the QA account's
    user. (QA itself is forbidden from touching users.)
-2. Delete the Firebase user in the Firebase console (project from the staging env).
+2. Delete the Firebase user in the Firebase console (project `idcr-admin-staging`).
 3. Remove `adminQa` from `qa-env.json`, and remove `qa.auth` and the two `qa.env.*.auth` blocks
    from `.claude/config.json`.
 
