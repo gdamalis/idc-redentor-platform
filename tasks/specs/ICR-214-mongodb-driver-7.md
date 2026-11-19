@@ -8,21 +8,22 @@ env-secrets not touched: no connection string or env change; no values printed.
 
 ## 1. Dependencies check
 
-| Fact                                                                                                                             | Evidence (read 2026-11-19)                                                                                                                                    | OK                                |
-| -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| Latest 7.x on npm is **7.9.0** (`latest` dist-tag)                                                                               | `npm view mongodb dist-tags`                                                                                                                                  | yes                               |
-| Driver 7.6–7.9 vs server: 9.0 ✓, 8.0 ✓, 7.0 ✓, 6.0 ✓, 5.0 ✓, 4.4 ✓, 4.2 blank (untested). ✓ = "All features are supported."      | https://www.mongodb.com/docs/drivers/compatibility/ (markdown copy `compatibility.md`), Node.js table row `\| 7.6 to 7.9 \| ✓ \| ✓ \| ✓ \| ✓ \| ✓ \| ✓ \| \|` | yes                               |
-| **Staging** cluster server version **8.0.37** (maxWireVersion 25, replica set). Production is a separate cluster — not yet read. | `buildInfo` read-only command via the gitignored non-prod `apps/web/.env.pool-check` (database `website-staging`). See gap below.                             | staging yes (8.0 ✓); prod pending |
-| Driver 7.x requires Node ≥ 20.19.0; Node 24/22/20 ✓                                                                              | compatibility page, Node.js runtime table. Repo `.nvmrc` 22.14.0, CI `node-version: 22.x`                                                                     | yes                               |
-| Driver 7.x pairs with `bson ^7.0.0`; 7.9.0's own `package.json` pins `bson ^7.3.2`, engines `node >=20.19.0`                     | compatibility page component table; `mongodb-7.9.0.tgz`                                                                                                       | yes                               |
-| No other workspace package depends on `mongodb` (lockfile holds only `mongodb@6.21.0`, importers `apps/web` + `apps/admin`)      | `pnpm-lock.yaml`                                                                                                                                              | yes                               |
+| Fact                                                                                                                                                                        | Evidence (read 2026-11-19)                                                                                                                                    | OK                        |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| Latest 7.x on npm is **7.9.0** (`latest` dist-tag)                                                                                                                          | `npm view mongodb dist-tags`                                                                                                                                  | yes                       |
+| Driver 7.6–7.9 vs server: 9.0 ✓, 8.0 ✓, 7.0 ✓, 6.0 ✓, 5.0 ✓, 4.4 ✓, 4.2 blank (untested). ✓ = "All features are supported."                                                 | https://www.mongodb.com/docs/drivers/compatibility/ (markdown copy `compatibility.md`), Node.js table row `\| 7.6 to 7.9 \| ✓ \| ✓ \| ✓ \| ✓ \| ✓ \| ✓ \| \|` | yes                       |
+| **Staging** cluster server version **8.0.37** (maxWireVersion 25, replica set). Production is a separate cluster, not measured (owner accepted the same free-tier version). | `buildInfo` read-only command via the gitignored non-prod `apps/web/.env.pool-check` (database `website-staging`). See gap below.                             | yes (8.0 ✓); prod assumed |
+| Driver 7.x requires Node ≥ 20.19.0; Node 24/22/20 ✓                                                                                                                         | compatibility page, Node.js runtime table. Repo `.nvmrc` 22.14.0, CI `node-version: 22.x`                                                                     | yes                       |
+| Driver 7.x pairs with `bson ^7.0.0`; 7.9.0's own `package.json` pins `bson ^7.3.2`, engines `node >=20.19.0`                                                                | compatibility page component table; `mongodb-7.9.0.tgz`                                                                                                       | yes                       |
+| No other workspace package depends on `mongodb` (lockfile holds only `mongodb@6.21.0`, importers `apps/web` + `apps/admin`)                                                 | `pnpm-lock.yaml`                                                                                                                                              | yes                       |
 
 **AC2 gap — "read from Atlas":** the Atlas MCP is refused for both Atlas orgs ("MCP access is
 disabled for every MongoDB Atlas organization this user belongs to"; an Org Owner must enable AI
 client access). There is no `atlas` CLI on steelhaven. The version above came from the server
-itself (`buildInfo`), and only for the staging cluster. **Owner decision (2026-11-19):** the owner
-enables Atlas MCP access and the orchestrator reads BOTH clusters via the Atlas API and records AC2
-on the ticket. No further `buildInfo` reads from this run; the PR marks AC2 "pending".
+itself (`buildInfo`), and only for the staging cluster. **Owner decision (2026-11-19, final):** accept
+the server's own `buildInfo` answer (8.0.37, staging cluster) for AC2. The production cluster is not
+measured separately and is assumed to run the same free-tier version (owner accepted). No further
+`buildInfo` reads.
 
 ## 2. Requirements
 
@@ -138,4 +139,4 @@ https://github.com/mongodb/js-bson/releases/tag/v7.0.0
 
 ## 11. Open questions
 
-1. ~~AC2 source~~ — resolved: the orchestrator reads staging and production via the Atlas API.
+1. ~~AC2 source~~ — resolved: owner accepted `buildInfo` 8.0.37 (option a).
