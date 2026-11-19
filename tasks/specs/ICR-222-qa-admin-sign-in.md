@@ -3,24 +3,26 @@
 Status: **approved 2026-11-19**, amended the same day (see § 13). Commit type `chore`, QA depth
 `standard`, sensitive areas: **auth**, **env-secrets**, **QA config**.
 
-> § 0–12 record the design as approved. **§ 13 supersedes them where they disagree** — above all,
-> the single shared Firebase project described in § 0 is being replaced by a separate staging one.
+> **Firebase topology (target state).** Staging, admin previews and local development use the
+> Firebase project **`idcr-admin-staging`**; production uses **`idcr-admin`**. The QA account exists
+> only in `idcr-admin-staging`, so production refuses it by **project isolation** (AC2), with the
+> invite gate as a second layer. § 13 records how the design reached this state.
 
 ## 0. Facts established in explore
 
-| Question                                     | Answer                                                                                                                                                                                                                                                                                                                                        | How it was established                                                                                                                                              |
-| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Firebase project per environment             | **One project, `idcr-admin`, for Development, Preview, staging AND Production.** `NEXT_PUBLIC_FIREBASE_PROJECT_ID` and `FIREBASE_PROJECT_ID` are each a single Vercel variable targeting all four environments. Only the service-account variables (`FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`) are split Production vs Preview+staging. | `vercel env ls --project idc-redentor-admin` (names and targets only); public project id read from the pulled preview/staging env by a script that prints no secret |
-| Consequence                                  | The QA Firebase account exists for production too. Production refuses it only because production's admin DB has no invite and no `AdminUser` for it. AC2 must prove that absence.                                                                                                                                                             | —                                                                                                                                                                   |
-| Admin DB on preview and staging              | `MONGODB_URI` is one variable for **Preview + staging** → path DB **`ministry-admin-staging`**; `WEBSITE_MONGODB_URI` → **`website-staging`**. Production has its own `MONGODB_URI`.                                                                                                                                                          | `vercel env pull` to a 0600 scratch file, DB name parsed from the URI path, file shredded                                                                           |
-| `qa.env.previewAdmin.dbNameAllow` vs reality | **MISMATCH (finding).** Config allows `^(website\|ministry-admin)-(test\|qa\|e2e)$`; admin previews actually run on `ministry-admin-staging` / `website-staging`, the same data as `stagingAdmin`. Any QA DB read on `previewAdmin` is refused today, and a "QA " role created on a preview lands in the staging DB. See Open Question 1.     | as above                                                                                                                                                            |
-| Admin preview host shape                     | `idc-redentor-admin-<hash>-divine-lab.vercel.app` (GitHub deployment environment `Preview – idc-redentor-admin`); staging deployment environment is `staging – idc-redentor-admin`. No Vercel deployment protection on previews (anonymous GET → 307 to `/login`).                                                                            | GitHub Deployments API + anonymous `curl`                                                                                                                           |
-| Gated-route behaviour (anonymous)            | `GET /es-AR` and `GET /es-AR/roles` → **307** to `/es-AR/login?callbackUrl=…` on both preview and staging.                                                                                                                                                                                                                                    | anonymous `curl -o /dev/null -w`                                                                                                                                    |
-| Sign-in endpoint                             | `POST /api/auth/session { idToken }` — no Origin/CSRF check; 200 + `Set-Cookie: __session` (httpOnly, 5 days); 401 `invalid-token`/`stale-token` (auth_time > 5 min); 403 `no-invite`/`disabled`/`email-unverified`; 409 `provisioning-conflict`. `DELETE` signs out and **revokes every refresh token of the uid**.                          | `apps/admin/src/app/api/auth/session/route.ts`, `docs/architecture/admin-auth.md`                                                                                   |
-| Invite gate                                  | First sign-in with `email_verified: true` atomically claims a pending, unexpired `Invite` for the normalized email and creates the `AdminUser` with the invite's `roleIds`.                                                                                                                                                                   | `src/lib/auth/provision.ts`                                                                                                                                         |
-| Existing invite tooling                      | `seed:admin` writes a pending invite through `createInvite()`, but refuses `admin-exists` on staging (already administrable) unless `--force`, which is documented as lockout-only; its DB guard (`getAdminDb()`) also accepts production `ministry-admin`. **Not reused as-is.**                                                             | `src/lib/rbac/seed-admin.ts`, `docs/architecture/admin-bootstrap.md`                                                                                                |
-| System roles                                 | `admin`, `leader`, `member` (`isSystem: true`).                                                                                                                                                                                                                                                                                               | `src/service/role.service.ts`                                                                                                                                       |
-| Identity probe candidate                     | `GET /es-AR/roles` (`requirePermission("roles:read")`): 200 for a provisioned Admin; 307 otherwise. No JSON "who am I" endpoint exists, and adding one would change admin auth code (out of scope).                                                                                                                                           | route source + anonymous probe                                                                                                                                      |
+| Question                                     | Answer                                                                                                                                                                                                                                                                                                                                                                                                              | How it was established                                                                    |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Firebase project per environment             | **Target:** staging, admin previews and local dev → **`idcr-admin-staging`**; production → **`idcr-admin`**. On Vercel (`idc-redentor-admin`) the `NEXT_PUBLIC_FIREBASE_*` and `FIREBASE_*` variables are set per target (owner re-pointing Preview + staging; § 13).                                                                                                                                               | owner decision 2026-11-19; `vercel env ls` (names and targets only)                       |
+| Consequence                                  | Production refuses the QA account by **project isolation**: the account is never created in `idcr-admin`, and production verifies ID tokens for `idcr-admin` only. Second layer: production's `ministry-admin` holds no invite and no `AdminUser` for it.                                                                                                                                                           | —                                                                                         |
+| Admin DB on preview and staging              | `MONGODB_URI` is one variable for **Preview + staging** → path DB **`ministry-admin-staging`**; `WEBSITE_MONGODB_URI` → **`website-staging`**. Production has its own `MONGODB_URI`.                                                                                                                                                                                                                                | `vercel env pull` to a 0600 scratch file, DB name parsed from the URI path, file shredded |
+| `qa.env.previewAdmin.dbNameAllow` vs reality | **MISMATCH (finding).** Config allows `^(website\|ministry-admin)-(test\|qa\|e2e)$`; admin previews actually run on `ministry-admin-staging` / `website-staging`, the same data as `stagingAdmin`. Any QA DB read on `previewAdmin` is refused today, and a "QA " role created on a preview lands in the staging DB. See Open Question 1.                                                                           | as above                                                                                  |
+| Admin preview host shape                     | `idc-redentor-admin-<hash>-divine-lab.vercel.app` (GitHub deployment environment `Preview – idc-redentor-admin`); staging deployment environment is `staging – idc-redentor-admin`. No Vercel deployment protection on previews (anonymous GET → 307 to `/login`).                                                                                                                                                  | GitHub Deployments API + anonymous `curl`                                                 |
+| Gated-route behaviour (anonymous)            | `GET /es-AR` and `GET /es-AR/roles` → **307** to `/es-AR/login?callbackUrl=…` on both preview and staging.                                                                                                                                                                                                                                                                                                          | anonymous `curl -o /dev/null -w`                                                          |
+| Sign-in endpoint                             | `POST /api/auth/session { idToken }` — no Origin/CSRF check; 200 + `Set-Cookie: __session` (httpOnly, 5 days); 401 `invalid-token`/`stale-token` (auth_time > 5 min); 403 `no-invite`/`disabled`/`email-unverified`; 409 `provisioning-conflict`. `DELETE` signs out and **revokes every refresh token of the uid**.                                                                                                | `apps/admin/src/app/api/auth/session/route.ts`, `docs/architecture/admin-auth.md`         |
+| Invite gate                                  | First sign-in with `email_verified: true` atomically claims a pending, unexpired `Invite` for the normalized email and creates the `AdminUser` with the invite's `roleIds`.                                                                                                                                                                                                                                         | `src/lib/auth/provision.ts`                                                               |
+| Existing invite tooling                      | `seed:admin` seeds the system roles and writes a pending Admin invite through `createInvite()`; its DB guard (`getAdminDb()`) also accepts production `ministry-admin`. It is the right tool for the one-time **human** bootstrap of `ministry-admin-staging` (which turned out to be empty, § 13), not for the QA account: `qa-account` adds the exact staging-only guard, the Firebase user and the qa-env write. | `src/lib/rbac/seed-admin.ts`, `docs/architecture/admin-bootstrap.md`                      |
+| System roles                                 | `admin`, `leader`, `member` (`isSystem: true`).                                                                                                                                                                                                                                                                                                                                                                     | `src/service/role.service.ts`                                                             |
+| Identity probe candidate                     | `GET /es-AR/roles` (`requirePermission("roles:read")`): 200 for a provisioned Admin; 307 otherwise. No JSON "who am I" endpoint exists, and adding one would change admin auth code (out of scope).                                                                                                                                                                                                                 | route source + anonymous probe                                                            |
 
 ## 1. Dependencies Check
 
@@ -28,9 +30,9 @@ Status: **approved 2026-11-19**, amended the same day (see § 13). Commit type `
 - `apps/admin` deps already present: `firebase-admin`, `mongodb`, `zod`, `tsx` (devDep), `vitest`.
 - Vercel CLI access to `idc-redentor-admin` (team `divine-lab`) for pulling the **staging** env at
   provisioning time — verified working.
-- Firebase Email/Password provider enabled on `idcr-admin` (the login form offers it; confirmed live
-  at provisioning step via a refused sign-in for a non-existent address, which must answer
-  `EMAIL_NOT_FOUND`/`INVALID_LOGIN_CREDENTIALS`, not `OPERATION_NOT_ALLOWED`).
+- Firebase Email/Password provider enabled on `idcr-admin-staging` — to be confirmed after the
+  Vercel re-point, via a refused sign-in for a non-existent address, which must answer
+  `EMAIL_NOT_FOUND`/`INVALID_LOGIN_CREDENTIALS`, not `OPERATION_NOT_ALLOWED`.
 
 ## 2. Requirements
 
@@ -106,8 +108,8 @@ signupsOpen:false }`.
   validator.
 
 R4. **Docs**: new `docs/architecture/admin-qa-account.md` (what the account is, where its
-credentials live — the qa-env.json key path, never values —, the shared-Firebase-project
-consequence, the sign-in command contract, rotation runbook, decommission runbook, the
+credentials live — the qa-env.json key path, never values —, why production refuses the
+account by project isolation, the sign-in command contract, rotation runbook, decommission runbook, the
 concurrent-run caveat). Link from `admin-auth.md` § QA verifiability boundary (update that table:
 preview no longer blocks email/password sign-in) and from `CLAUDE.md` docs list.
 
@@ -116,7 +118,7 @@ Firebase/staging Mongo). Neither appears in committed files, PR, ticket or repor
 
 ## 3. Data Model Changes
 
-None to schemas. Runtime data only: one Firebase Auth user (project `idcr-admin`), one `Invite`
+None to schemas. Runtime data only: one Firebase Auth user (project `idcr-admin-staging`), one `Invite`
 (→ `accepted`) and one `AdminUser` in `ministry-admin-staging`. Local gitignored file gains:
 
 ```ts
@@ -211,16 +213,16 @@ None.
 4. Docs — `docs(ICR-222): document the admin QA account and password rotation`.
 5. **External writes (only after spec approval):** Firebase user + staging invite via `provision`;
    live sign-in on preview and staging; first sign-in provisions the `AdminUser`.
-6. AC2 proof (per Open Question 2), then draft PR.
+6. AC2 by project isolation (the account exists only in `idcr-admin-staging`; no production contact), then draft PR.
 
 ## 11. External writes and rollback
 
-| #   | Write                                                               | Where                                                  | Rollback                                                     |
-| --- | ------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------ |
-| W1  | Create Firebase Auth user (email/password, `emailVerified:true`)    | Firebase project `idcr-admin` (shared with production) | `auth.deleteUser(uid)`                                       |
-| W2  | Insert one pending `Invite` (Admin role, es-AR)                     | `ministry-admin-staging.invites`                       | delete that invite `_id`                                     |
-| W3  | (by the app, at first sign-in) invite → `accepted`, new `AdminUser` | `ministry-admin-staging`                               | delete `AdminUser` + invite; or disable the user in `/users` |
-| W4  | Add `adminQa.users.admin`                                           | local gitignored `qa-env.json` (0600)                  | remove the key                                               |
+| #   | Write                                                               | Where                                                            | Rollback                                                     |
+| --- | ------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------ |
+| W1  | Create Firebase Auth user (email/password, `emailVerified:true`)    | Firebase project `idcr-admin-staging` (isolated from production) | `auth.deleteUser(uid)`                                       |
+| W2  | Insert one pending `Invite` (Admin role, es-AR)                     | `ministry-admin-staging.invites`                                 | delete that invite `_id`                                     |
+| W3  | (by the app, at first sign-in) invite → `accepted`, new `AdminUser` | `ministry-admin-staging`                                         | delete `AdminUser` + invite; or disable the user in `/users` |
+| W4  | Add `adminQa.users.admin`                                           | local gitignored `qa-env.json` (0600)                            | remove the key                                               |
 
 No production DB write. No email sent. No other user, role or invite touched.
 
@@ -230,22 +232,19 @@ No production DB write. No email sent. No other user, role or invite touched.
    `^(website|ministry-admin)-(staging|test|qa|e2e)$` in this PR, with a note that admin previews
    share staging data — it matches reality and lets QA read the audit entry the Done-when needs.
    (b) Leave it, record the finding, file a follow-up.
-2. **AC2 proof (production refuses the account).** (a) _Recommended:_ a read-only count script
-   against production `ministry-admin` (exact-name guard, `countDocuments` on `users` and
-   `invites` by the QA email, prints only the two counts), using the Production env pulled to a
-   0600 file and shredded. (b) The owner runs the same count. (c) Argue by construction only (the
-   provisioning script can write only to `ministry-admin-staging`) — weakest.
+2. **AC2 proof — resolved.** Production refuses the QA account by Firebase project isolation
+   (§ 0); no production database or environment is read.
 3. Identity probe via page status (`/es-AR/roles` 200 vs 307) instead of adding a JSON
    `GET /api/auth/session` — _recommended_ (the ticket puts admin auth code out of scope).
 
 ## 13. Amendments after approval (2026-11-19)
 
 **Owner decisions.** Q1: widen `previewAdmin.dbNameAllow` to include `-staging` (done). Q3: page
-status probes (done). Q2 (AC2 proof): put on hold, then superseded by the item below. No
-production env was pulled and production was never contacted.
+status probes (done). Q2 (AC2 proof): superseded by project isolation (below); the production-count proof is dropped. No
+production env was pulled and no production database was read.
 
 **Separate staging Firebase project.** The owner created `idcr-admin-staging` for staging and
-previews; production keeps `idcr-admin`. The owner is re-pointing Vercel's `NEXT_PUBLIC_FIREBASE_*`
+previews and local dev; production keeps `idcr-admin`. The owner is re-pointing Vercel's `NEXT_PUBLIC_FIREBASE_*`
 / `FIREBASE_*` variables per target. Consequences:
 
 - The QA account is created only in `idcr-admin-staging`. Production refuses it by **project
@@ -256,9 +255,21 @@ previews; production keeps `idcr-admin`. The owner is re-pointing Vercel's `NEXT
 - W1 (the Firebase user) now targets `idcr-admin-staging`, after the re-point. Nothing was ever
   created in `idcr-admin`.
 
+**Correction — the provider check hit production's project.** Before the re-point, the Vercel
+Preview/staging env still named `idcr-admin`, so the explore-time Email/Password check (a sign-in
+for a non-existent address, answered `INVALID_LOGIN_CREDENTIALS`) ran against production's
+Firebase Auth, not staging's. Harmless — no account was created or changed — but it does not
+prove anything about `idcr-admin-staging`; that check is repeated after the re-point.
+
 **Staging admin DB was never bootstrapped.** The first `provision` run (before the project change)
 refused `no-admin-role` before any Firebase or qa-env write: `ministry-admin-staging` held 0
 roles, 0 users and 0 invites. The only side effect was the app's own `ensureRbacIndexes()`, which
-left an empty `roles` collection with its indexes. Seeding the three system roles is a write
-outside the approved list and awaits an owner decision (recommended: the shipped `seed:admin` with
-the QA address, then `provision`).
+left an empty `roles` collection with its indexes.
+
+**Bootstrap order (orchestrator decision).** After the re-point and a staging redeploy:
+
+1. `seed:admin` against `ministry-admin-staging` with the **owner's** address (never committed or
+   logged) — seeds the three system roles and the owner's Admin invite;
+2. the owner signs in with Google on staging and becomes the first human Admin;
+3. `qa-account provision --firebase-project idcr-admin-staging` for the QA account, then the live
+   sign-in on staging and on a preview built after the re-point, and sign-out.

@@ -1,7 +1,11 @@
 # ICR-222 — implementation plan
 
 Spec: `tasks/specs/ICR-222-qa-admin-sign-in.md` (approved 2026-11-19; Q1 = widen previewAdmin
-`dbNameAllow`, Q3 = page-status probes, Q2/AC2 on hold — no production contact).
+`dbNameAllow`, Q3 = page-status probes, AC2 = Firebase project isolation — staging, previews and
+local dev on `idcr-admin-staging`, production on `idcr-admin`; no production contact).
+
+Bootstrap order (orchestrator decision): owner's `seed:admin` on `ministry-admin-staging` → owner
+signs in with Google → `qa-account provision --firebase-project idcr-admin-staging` → live sign-in.
 
 Owner addition: `qa-account` reads the Firebase project from its env (`FIREBASE_PROJECT_ID`), never
 a hardcoded id, so it can be re-pointed at a separate staging project later.

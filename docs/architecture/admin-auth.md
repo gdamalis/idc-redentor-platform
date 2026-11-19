@@ -342,8 +342,9 @@ Every auth outcome in this flow is a return value:
 ## QA verifiability boundary
 
 This ticket ships with **QA depth: heavy**, but Firebase live sign-in cannot be exercised safely
-pre-merge (it would mint real Google/Firebase credentials against the shared project from an
-ephemeral preview). The boundary, by environment:
+pre-merge (it would mint real Google/Firebase credentials from an ephemeral preview). The boundary,
+by environment, as ICR-127 shipped it (ICR-222 changes it — see below; staging, previews and local
+dev now use the Firebase project `idcr-admin-staging`, production `idcr-admin`):
 
 | Environment                                                | What's exercised                                                                                                                                                                                                                             | What's `BLOCKED` (not `FAIL`)                                                                       |
 | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |

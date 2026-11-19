@@ -18,10 +18,15 @@ Design record: `tasks/specs/ICR-222-qa-admin-sign-in.md`.
 
 ### Two Firebase projects: why production refuses the account
 
-Staging and previews use their **own Firebase project, `idcr-admin-staging`**; production uses
-**`idcr-admin`**. On Vercel (`idc-redentor-admin`), the `NEXT_PUBLIC_FIREBASE_*` and `FIREBASE_*`
-variables are set per target: Preview + staging point at `idcr-admin-staging`, Production at
-`idcr-admin`.
+Staging, admin previews and local development use their **own Firebase project,
+`idcr-admin-staging`**; production uses **`idcr-admin`**. On Vercel (`idc-redentor-admin`), the
+`NEXT_PUBLIC_FIREBASE_*` and `FIREBASE_*` variables are set per target: Development, Preview and
+staging point at `idcr-admin-staging`, Production at `idcr-admin`. A local `apps/admin/.env.local`
+points at `idcr-admin-staging` too.
+
+`NEXT_PUBLIC_FIREBASE_*` values are inlined at build time, so a change to them reaches a
+deployment only when it is rebuilt: redeploy staging, and rely on fresh previews, after any
+change.
 
 The QA account exists **only in `idcr-admin-staging`**. Production's refusal therefore holds by
 **project isolation**: production's login page signs in against `idcr-admin`, where the account
@@ -39,10 +44,6 @@ No project id is hardcoded in code: the sign-in command uses the web API key sto
 credentials, and the provisioning script reads the project from its environment and refuses unless
 it equals the `--firebase-project` the operator names. Pointing a staging env file at the
 production project, by mistake, therefore refuses before any write.
-
-> History: until 2026-11-19 every environment shared `idcr-admin` (ICR-222 explore found one
-> Vercel variable targeting all four environments). The separate staging project was created
-> during ICR-222 so the QA account never exists in production's project.
 
 ### Admin previews share the staging databases
 
