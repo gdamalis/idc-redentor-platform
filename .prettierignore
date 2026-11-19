@@ -1,1 +1,3 @@
 src/**/__generated
+# pnpm owns this file's format; lint-staged must not reformat it (ICR-214)
+pnpm-lock.yaml
