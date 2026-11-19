@@ -133,10 +133,10 @@ the cluster, including `apps/admin`. Each serverless instance holds its own pool
 exhaust the cluster. With the cap, one instance holds at most 10 pool connections, so the budget
 supports many more instances.
 
-**Driver facts** (`mongodb` 6.21.0). Defaults: `maxPoolSize` 100 per server, `minPoolSize` 0,
+**Driver facts** (`mongodb` 7.9.0 since ICR-214; same defaults as 6.21.0). Defaults: `maxPoolSize` 100 per server, `minPoolSize` 0,
 `maxIdleTimeMS` 0 (idle connections never close), and an unbounded wait queue. Each server also uses up
 to 2 monitoring sockets outside the pool, so budget about 12 connections per instance, not 10. The
-current (v7.x) docs describe these defaults; the v6 API reference lists none. Sources:
+current (v7.x) docs describe these defaults. Sources:
 
 - https://www.mongodb.com/docs/drivers/node/current/connect/connection-options/connection-pools/
 - https://www.mongodb.com/docs/atlas/manage-connections-aws-lambda/

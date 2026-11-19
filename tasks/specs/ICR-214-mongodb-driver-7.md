@@ -8,14 +8,14 @@ env-secrets not touched: no connection string or env change; no values printed.
 
 ## 1. Dependencies check
 
-| Fact | Evidence (read 2026-11-19) | OK |
-|---|---|---|
-| Latest 7.x on npm is **7.9.0** (`latest` dist-tag) | `npm view mongodb dist-tags` | yes |
-| Driver 7.6–7.9 vs server: 9.0 ✓, 8.0 ✓, 7.0 ✓, 6.0 ✓, 5.0 ✓, 4.4 ✓, 4.2 blank (untested). ✓ = "All features are supported." | https://www.mongodb.com/docs/drivers/compatibility/ (markdown copy `compatibility.md`), Node.js table row `\| 7.6 to 7.9 \| ✓ \| ✓ \| ✓ \| ✓ \| ✓ \| ✓ \| \|` | yes |
-| **Staging** cluster server version **8.0.37** (maxWireVersion 25, replica set). Production is a separate cluster — not yet read. | `buildInfo` read-only command via the gitignored non-prod `apps/web/.env.pool-check` (database `website-staging`). See gap below. | staging yes (8.0 ✓); prod pending |
-| Driver 7.x requires Node ≥ 20.19.0; Node 24/22/20 ✓ | compatibility page, Node.js runtime table. Repo `.nvmrc` 22.14.0, CI `node-version: 22.x` | yes |
-| Driver 7.x pairs with `bson ^7.0.0`; 7.9.0's own `package.json` pins `bson ^7.3.2`, engines `node >=20.19.0` | compatibility page component table; `mongodb-7.9.0.tgz` | yes |
-| No other workspace package depends on `mongodb` (lockfile holds only `mongodb@6.21.0`, importers `apps/web` + `apps/admin`) | `pnpm-lock.yaml` | yes |
+| Fact                                                                                                                             | Evidence (read 2026-11-19)                                                                                                                                    | OK                                |
+| -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| Latest 7.x on npm is **7.9.0** (`latest` dist-tag)                                                                               | `npm view mongodb dist-tags`                                                                                                                                  | yes                               |
+| Driver 7.6–7.9 vs server: 9.0 ✓, 8.0 ✓, 7.0 ✓, 6.0 ✓, 5.0 ✓, 4.4 ✓, 4.2 blank (untested). ✓ = "All features are supported."      | https://www.mongodb.com/docs/drivers/compatibility/ (markdown copy `compatibility.md`), Node.js table row `\| 7.6 to 7.9 \| ✓ \| ✓ \| ✓ \| ✓ \| ✓ \| ✓ \| \|` | yes                               |
+| **Staging** cluster server version **8.0.37** (maxWireVersion 25, replica set). Production is a separate cluster — not yet read. | `buildInfo` read-only command via the gitignored non-prod `apps/web/.env.pool-check` (database `website-staging`). See gap below.                             | staging yes (8.0 ✓); prod pending |
+| Driver 7.x requires Node ≥ 20.19.0; Node 24/22/20 ✓                                                                              | compatibility page, Node.js runtime table. Repo `.nvmrc` 22.14.0, CI `node-version: 22.x`                                                                     | yes                               |
+| Driver 7.x pairs with `bson ^7.0.0`; 7.9.0's own `package.json` pins `bson ^7.3.2`, engines `node >=20.19.0`                     | compatibility page component table; `mongodb-7.9.0.tgz`                                                                                                       | yes                               |
+| No other workspace package depends on `mongodb` (lockfile holds only `mongodb@6.21.0`, importers `apps/web` + `apps/admin`)      | `pnpm-lock.yaml`                                                                                                                                              | yes                               |
 
 **AC2 gap — "read from Atlas":** the Atlas MCP is refused for both Atlas orgs ("MCP access is
 disabled for every MongoDB Atlas organization this user belongs to"; an Org Owner must enable AI
@@ -40,8 +40,8 @@ on the ticket. No further `buildInfo` reads from this run; the PR marks AC2 "pen
    - admin: same pair for `assertAdminDbName` / `assertWebsiteDbName` with the real driver
      (`getAdminDb()` / `getContentDb()` through stubbed env).
    - admin: `ObjectId` round-trip and JSON shape our code depends on: `new ObjectId(hex).toHexString()
-     === hex`, `JSON.stringify({ id })` → the 24-hex string, `ObjectId.isValid` on a bad string is false.
-   Written and run green on 6.21.0 first (characterisation), then must stay green on 7.9.0.
+=== hex`, `JSON.stringify({ id })` → the 24-hex string, `ObjectId.isValid` on a bad string is false.
+     Written and run green on 6.21.0 first (characterisation), then must stay green on 7.9.0.
 4. Refresh driver source references in comments and docs from 6.21.0 to 7.9.0 lines
    (`connection_string.js:339-346` authSource inheritance, `:366-368` `test` fallback;
    `mongodb.d.ts:2385-2390` parallel ops / un-sessioned ops, `:2396` manual abort does not throw).
@@ -56,32 +56,32 @@ Sources: https://www.mongodb.com/docs/drivers/node/current/reference/upgrade/ ·
 https://github.com/mongodb/node-mongodb-native/releases/tag/v7.0.0 · bson
 https://github.com/mongodb/js-bson/releases/tag/v7.0.0
 
-| # | Breaking change | Our code | Outcome |
-|---|---|---|---|
-| 1 | Node ≥ 20.19.0; TS target ES2023 | Node 22.14 local, 22.x CI/Vercel | OK |
-| 2 | `bson` / `mongodb-connection-string-url` → 7.0 | no direct `bson` import; types via `mongodb` | OK (lockfile) |
-| 3–5 | Optional peers `mongodb-client-encryption`, `kerberos`, `@mongodb-js/zstd` ≥ 7 | none installed | N/A |
-| 6 | Peer ranges: `@aws-sdk/credential-providers`, `gcp-metadata`, `socks` | none installed | N/A |
-| 7–9 | MONGODB-AWS: SDK required, provider precedence, no creds in URI | SCRAM via Atlas users | N/A |
-| 10 | `watch()` passes `$changeStream` options through | no `watch()` | N/A |
-| 11 | No default `batchSize` 1000 on `getMore` | no explicit batchSize; result sets are small (likes, roles, users) | OK (no behaviour dependency) |
-| 12 | `stream({ transform })` removed | no `.stream()` | N/A |
-| 13 | `MONGODB-CR` removed | not used | N/A |
-| 14–16 | CSFLE/QE error classes and path typing | no client-side encryption | N/A |
-| 17 | aggregate `writeConcern` + `explain` throws server-side | not used | N/A |
-| 18 | Label `PoolRequstedRetry` → `PoolRequestedRetry` | not referenced | N/A |
-| 19 | `drop()` of a missing namespace returns `false` | no `drop()` | N/A |
-| 20 | `CommandOptions.noResponse` removed | not used | N/A |
-| 21 | Public `ClientMetadata` option properties removed | not used | N/A |
-| 22 | `beta` namespace removed | not used | N/A |
-| 23 | Removed types/options: `useNewUrlParser`, `useUnifiedTopology`, `autoIndexId`, generic `FindOptions<T>`, `FindOneOptions.batchSize/limit/noCursorTimeout`, `CommandOperationOptions.retryWrites`, `ClientSession.transaction`, `Transaction`, `CancellationToken`, GridFS `contentType/aliases`, `CloseOptions`, `ResumeOptions`, … | grep: none used | N/A — `pnpm type-check` confirms |
-| bson-5 | `ObjectId` constructor no longer accepts a number | all `new ObjectId(x)` take hex strings (`role.service.ts`, `user.service.ts`) | OK |
-| bson-1..4,6 | Node/BigInt/`globalThis.crypto`/RN/Binary subtype 2 | not used | N/A |
+| #           | Breaking change                                                                                                                                                                                                                                                                                                                     | Our code                                                                      | Outcome                          |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------- |
+| 1           | Node ≥ 20.19.0; TS target ES2023                                                                                                                                                                                                                                                                                                    | Node 22.14 local, 22.x CI/Vercel                                              | OK                               |
+| 2           | `bson` / `mongodb-connection-string-url` → 7.0                                                                                                                                                                                                                                                                                      | no direct `bson` import; types via `mongodb`                                  | OK (lockfile)                    |
+| 3–5         | Optional peers `mongodb-client-encryption`, `kerberos`, `@mongodb-js/zstd` ≥ 7                                                                                                                                                                                                                                                      | none installed                                                                | N/A                              |
+| 6           | Peer ranges: `@aws-sdk/credential-providers`, `gcp-metadata`, `socks`                                                                                                                                                                                                                                                               | none installed                                                                | N/A                              |
+| 7–9         | MONGODB-AWS: SDK required, provider precedence, no creds in URI                                                                                                                                                                                                                                                                     | SCRAM via Atlas users                                                         | N/A                              |
+| 10          | `watch()` passes `$changeStream` options through                                                                                                                                                                                                                                                                                    | no `watch()`                                                                  | N/A                              |
+| 11          | No default `batchSize` 1000 on `getMore`                                                                                                                                                                                                                                                                                            | no explicit batchSize; result sets are small (likes, roles, users)            | OK (no behaviour dependency)     |
+| 12          | `stream({ transform })` removed                                                                                                                                                                                                                                                                                                     | no `.stream()`                                                                | N/A                              |
+| 13          | `MONGODB-CR` removed                                                                                                                                                                                                                                                                                                                | not used                                                                      | N/A                              |
+| 14–16       | CSFLE/QE error classes and path typing                                                                                                                                                                                                                                                                                              | no client-side encryption                                                     | N/A                              |
+| 17          | aggregate `writeConcern` + `explain` throws server-side                                                                                                                                                                                                                                                                             | not used                                                                      | N/A                              |
+| 18          | Label `PoolRequstedRetry` → `PoolRequestedRetry`                                                                                                                                                                                                                                                                                    | not referenced                                                                | N/A                              |
+| 19          | `drop()` of a missing namespace returns `false`                                                                                                                                                                                                                                                                                     | no `drop()`                                                                   | N/A                              |
+| 20          | `CommandOptions.noResponse` removed                                                                                                                                                                                                                                                                                                 | not used                                                                      | N/A                              |
+| 21          | Public `ClientMetadata` option properties removed                                                                                                                                                                                                                                                                                   | not used                                                                      | N/A                              |
+| 22          | `beta` namespace removed                                                                                                                                                                                                                                                                                                            | not used                                                                      | N/A                              |
+| 23          | Removed types/options: `useNewUrlParser`, `useUnifiedTopology`, `autoIndexId`, generic `FindOptions<T>`, `FindOneOptions.batchSize/limit/noCursorTimeout`, `CommandOperationOptions.retryWrites`, `ClientSession.transaction`, `Transaction`, `CancellationToken`, GridFS `contentType/aliases`, `CloseOptions`, `ResumeOptions`, … | grep: none used                                                               | N/A — `pnpm type-check` confirms |
+| bson-5      | `ObjectId` constructor no longer accepts a number                                                                                                                                                                                                                                                                                   | all `new ObjectId(x)` take hex strings (`role.service.ts`, `user.service.ts`) | OK                               |
+| bson-1..4,6 | Node/BigInt/`globalThis.crypto`/RN/Binary subtype 2                                                                                                                                                                                                                                                                                 | not used                                                                      | N/A                              |
 
 ## 6. Edge cases (ticket 1–6)
 
 1. **Default database.** Verified in 7.9.0 `lib/connection_string.js:366-368`: no path → `dbName =
-   'test'` (unchanged). Web's `/^website(-…)?$/` and admin's two allowlists still reject `test`.
+'test'` (unchanged). Web's `/^website(-…)?$/` and admin's two allowlists still reject `test`.
    Pinned by the new real-driver tests (req 3).
 2. **Sessions across clients.** 7.9.0 `lib/operations/execute_operation.js:63` still throws
    `MongoInvalidArgumentError('ClientSession must be from the same MongoClient')`. Admin's
@@ -101,17 +101,17 @@ https://github.com/mongodb/js-bson/releases/tag/v7.0.0
 
 ## 7. New / modified files
 
-| File | Change |
-|---|---|
-| `apps/web/package.json`, `apps/admin/package.json` | `mongodb` → `^7.9.0` |
-| `pnpm-lock.yaml` | regenerated |
-| `apps/web/src/service/database.driver-contract.test.ts` | **new** — real-driver DB-name contract |
-| `apps/admin/src/service/database.driver-contract.test.ts` | **new** — real-driver DB-name + ObjectId contract |
-| `apps/admin/src/service/database.service.ts` | comment line refs → 7.9.0 |
-| `apps/admin/src/service/database.service.test.ts` | comment line ref only |
-| `apps/admin/src/app/[locale]/(app)/users/actions.ts`, `…/roles/actions.ts` | comment line refs only |
+| File                                                                           | Change                                                               |
+| ------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| `apps/web/package.json`, `apps/admin/package.json`                             | `mongodb` → `^7.9.0`                                                 |
+| `pnpm-lock.yaml`                                                               | regenerated                                                          |
+| `apps/web/src/service/database.driver-contract.test.ts`                        | **new** — real-driver DB-name contract                               |
+| `apps/admin/src/service/database.driver-contract.test.ts`                      | **new** — real-driver DB-name + ObjectId contract                    |
+| `apps/admin/src/service/database.service.ts`                                   | comment line refs → 7.9.0                                            |
+| `apps/admin/src/service/database.service.test.ts`                              | comment line ref only                                                |
+| `apps/admin/src/app/[locale]/(app)/users/actions.ts`, `…/roles/actions.ts`     | comment line refs only                                               |
 | `docs/architecture/admin-database.md`, `likes-and-mongodb.md`, `admin-rbac.md` | "driver facts" → 7.9.0 refs; note the pool measurement was on 6.21.0 |
-| `.changeset/icr-214-mongodb-driver-7.md` | patch bump `@idcr/web` + `@idcr/admin` |
+| `.changeset/icr-214-mongodb-driver-7-web.md`, `…-admin.md`                     | patch bump, one file per app                                         |
 
 ## 8. i18n — none.
 

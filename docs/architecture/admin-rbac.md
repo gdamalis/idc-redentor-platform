@@ -229,7 +229,7 @@ not either" test goes red, then revert) rather than trusted on inspection alone.
 transaction is opened in this app (the `MongoClient` stays private to the module, same reason
 `getAdminClient` isn't exported). It wraps `session.startSession()` /
 `session.withTransaction(fn)` / `session.endSession()`. Three driver behaviors (verified against
-`mongodb` 6.21.0's own `.d.ts`) shape every caller:
+`mongodb` 7.9.0's own `.d.ts`, lines 2385–2396; unchanged since 6.21.0) shape every caller:
 
 1. **Every operation inside `fn` must receive `{ session }` explicitly.** An un-sessioned read or
    write silently runs OUTSIDE the transaction — it doesn't error, it just doesn't join. This is the

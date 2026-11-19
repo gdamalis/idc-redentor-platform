@@ -93,15 +93,19 @@ getContentDb() -> websiteClient.db() -> assert /^website(-staging|-test|-qa|-e2e
 | Prod credential misconfigured to a QA-suffixed name (e.g. `ministry-admin-test`) | **assertion PASSES** (accepted tradeoff — see Amendment below); only the Atlas grant still denies it |
 | Connection failure                                                               | `connect()` logs and returns `undefined`                                                             |
 
-### Driver facts (verified against installed `mongodb@6.21.0`)
+### Driver facts (verified against installed `mongodb@7.9.0`, ICR-214; unchanged since 6.21.0)
 
-- `connection_string.js:302–310` — the driver copies the path database into
+- `connection_string.js:339–346` — the driver copies the path database into
   `credentials.source` **only** when a path database is present _and_ `authSource` is
   absent. Because both URIs set `authSource=admin` explicitly, the path is **never**
   used as the auth source; auth targets `admin`, where Atlas users live.
-- `connection_string.js:323–326` — `dbName` defaults to `test` when the URI has no
+- `connection_string.js:366–368` — `dbName` defaults to `test` when the URI has no
   path database. This is precisely why a missing path fails closed: `test` matches
   neither allowlist.
+- Both facts are pinned against the **real** driver (no mock, no network) by
+  `apps/admin/src/service/database.driver-contract.test.ts` and its web twin
+  `apps/web/src/service/database.driver-contract.test.ts`, so a driver upgrade that changes
+  the `test` fallback fails CI instead of silently passing the mocked unit tests.
 
 ## Operational notes
 

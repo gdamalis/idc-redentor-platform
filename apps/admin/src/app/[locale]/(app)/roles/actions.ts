@@ -122,7 +122,7 @@ export async function updateRoleAction(
     // runs OUTSIDE the transaction and the invariant check below would read
     // stale data (Global Constraints, transaction rules). Sequential, not
     // Promise.all: parallelizing reads on one ClientSession inside a
-    // transaction is undefined behavior (mongodb.d.ts:2465-2466).
+    // transaction is undefined behavior (mongodb 7.9.0 mongodb.d.ts:2385-2387).
     const roles = await listRoles(session);
     const users = await listUsers(session);
 
@@ -169,7 +169,7 @@ export async function updateRoleAction(
       ),
     };
     if (!retainsAdministrability(postState)) {
-      // Manual abort does NOT throw (mongodb.d.ts:2475) — this is the
+      // Manual abort does NOT throw (mongodb 7.9.0 mongodb.d.ts:2396) — this is the
       // sanctioned functional-first refusal path.
       await session.abortTransaction();
       return { ok: false, reason: "last-admin" };

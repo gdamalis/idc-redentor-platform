@@ -26,6 +26,6 @@ Spec: `tasks/specs/ICR-214-mongodb-driver-7.md` (approved 2026-11-19). Worktree
 - [ ] Comment line refs → 7.9.0 in `apps/admin/src/service/database.service.ts`,
       `database.service.test.ts`, `users/actions.ts`, `roles/actions.ts`.
 - [ ] Docs: `admin-database.md`, `likes-and-mongodb.md`, `admin-rbac.md`, `admin-bootstrap.md`.
-- [ ] `.changeset/icr-214-mongodb-driver-7.md` (patch, both apps).
+- [x] `.changeset/icr-214-mongodb-driver-7-web.md` + `-admin.md` (patch, one per app).
 - [ ] Re-run verify stack.
 - Commit: `docs(ICR-214): point driver facts at mongodb 7.9.0`

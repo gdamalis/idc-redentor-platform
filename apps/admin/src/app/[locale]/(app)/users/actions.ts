@@ -230,7 +230,7 @@ export async function updateUserRolesAction(
     await touchAdministrabilityGuard(session);
 
     // Sequential, not Promise.all — parallelizing reads on one ClientSession
-    // inside a transaction is undefined behavior (mongodb.d.ts:2465-2466).
+    // inside a transaction is undefined behavior (mongodb 7.9.0 mongodb.d.ts:2385-2387).
     const roles = await listRoles(session);
     const users = await listUsers(session);
 
