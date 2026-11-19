@@ -142,6 +142,21 @@ async function main(): Promise<never> {
   }
 
   const { args } = parsed;
+
+  // `vercel env pull` writes a Sensitive variable as a placeholder ("[sensitive]"),
+  // not its value — and the service-account pair is Sensitive. Refuse up front
+  // with the reason, instead of failing later as app/invalid-credential.
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL ?? "";
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY ?? "";
+  if (!clientEmail.includes("@") || !privateKey.includes("PRIVATE KEY")) {
+    const message =
+      "FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY are missing or placeholders (Vercel pulls " +
+      "Sensitive variables as placeholders). Load the staging service account from a second, " +
+      "local env file: node --env-file=<staging.env> --env-file=<service-account.env> …";
+    narrate(message);
+    return emit({ ok: false, reason: "missing-env", message }, 2);
+  }
+
   const deps = buildDeps(args.qaEnvPath);
   try {
     const result =

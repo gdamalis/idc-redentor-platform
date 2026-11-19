@@ -115,6 +115,15 @@ cd apps/admin
 shred -u /tmp/qa-staging.env
 ```
 
+**The service account does not come from that pull.** `FIREBASE_CLIENT_EMAIL` and
+`FIREBASE_PRIVATE_KEY` are Sensitive variables on Vercel, and `vercel env pull` writes a Sensitive
+variable as a placeholder, not its value. Keep the staging project's service-account pair in a
+separate private env file outside the repo (mode 600) and pass it as a **second** `--env-file`,
+which overrides the placeholders: `node --env-file=/tmp/qa-staging.env
+--env-file=<service-account.env> --import tsx scripts/qa-account.ts …`. The script refuses
+(`missing-env`, exit 2) while either value is still a placeholder. The commands below show only
+the first `--env-file` for brevity.
+
 The script prints one JSON line with no address, uid, password or key; exit `0` ok, `1`
 operation failure, `2` usage or guard refusal.
 
