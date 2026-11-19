@@ -351,6 +351,12 @@ ephemeral preview). The boundary, by environment:
 | **Staging** (post-merge, `ministry-admin-staging`)         | The **live email/password happy path**: a seeded pending `Invite` + a real Firebase test user sign in, a cookie is minted, `AdminUser` is created, the invite flips to `accepted`; sign-out revokes; a non-invited account gets `no-invite`. | — (this is the environment where the real flow is proven end to end)                                |
 | **Manual only**                                            | Google OAuth sign-in (popup + redirect fallback) — not automatable against a real Google account from CI/QA tooling.                                                                                                                         | —                                                                                                   |
 
+**Since ICR-222** automated QA signs in on admin previews and admin staging as a standing
+email/password test account, through the same `POST /api/auth/session` exchange (no auth code
+changed). That replaces the "Preview: real sign-in BLOCKED" row above for email/password sign-in;
+Google sign-in stays manual. Account, sign-in command, probes and rotation:
+`docs/architecture/admin-qa-account.md`.
+
 `.claude/config.json`'s `qa.env.{preview,staging}.productionHostDeny` hard-denies both this app's
 production hosts (`idc-redentor-admin.vercel.app`, `ministerio.idcredentor.org`) in every QA
 environment — see the next section — so no QA run, pre- or post-merge, can ever accidentally target
@@ -370,6 +376,8 @@ admin app's, in every QA environment, regardless of which project's PR is being 
 - `docs/architecture/admin-rbac.md` — **ICR-128**, the sibling doc: what happens once a session is
   authenticated — the permission registry, `requirePermission()`, the last-admin invariant, and why
   `roleIds` (resolved here, in Mongo, never the token) is what that ticket's enforcement is built on.
+- `docs/architecture/admin-qa-account.md` — **ICR-222**, the standing QA account automated QA
+  signs in with on admin previews and staging, and how to rotate or remove it.
 - `docs/architecture/admin-database.md` — the two-connection Mongo model (`getAdminDb()` /
   `getContentDb()`) `user.service.ts`/`invite.service.ts` read and write through.
 - `docs/architecture/i18n.md` — the next-intl setup `preferredLocale` plugs into.
