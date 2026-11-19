@@ -84,7 +84,7 @@ https://github.com/mongodb/js-bson/releases/tag/v7.0.0
 1. **Default database.** Verified in 7.9.0 `lib/connection_string.js:366-368`: no path → `dbName =
 'test'` (unchanged). Web's `/^website(-…)?$/` and admin's two allowlists still reject `test`.
    Pinned by the new real-driver tests (req 3).
-2. **Sessions across clients.** 7.9.0 `lib/operations/execute_operation.js:63` still throws
+2. **Sessions across clients.** 7.9.0 `lib/operations/execute_operation.js:64` still throws
    `MongoInvalidArgumentError('ClientSession must be from the same MongoClient')`. Admin's
    `withAdminTransaction` starts its session on the admin client only. Unchanged.
 3. **Transaction retries / abort-to-refuse.** 7.9.0 `ClientSession.withTransaction` still retries on
