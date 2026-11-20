@@ -1,5 +1,12 @@
 # @idcr/admin
 
+## 0.4.1
+
+### Patch Changes
+
+- 460102f: Upgrade the MongoDB Node driver from 6.21 to 7.9 (ICR-214). No behaviour change: the connection
+  options, pool cap and database-name rules are unchanged.
+
 ## 0.4.0
 
 ### Minor Changes
