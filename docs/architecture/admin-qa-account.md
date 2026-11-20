@@ -110,7 +110,11 @@ replaces the password at once.
 
 **Probes.** The app has no JSON "who am I" endpoint, so both probes are page status checks and
 **must be fetched without following redirects**: session `GET /es-AR` (200 signed in, 307 to
-`/login` anonymous); identity `GET /es-AR/roles` (200 for a provisioned Admin, 307 otherwise).
+`/login` anonymous); identity `GET /es-AR/roles` (200 for an active, provisioned `AdminUser`; 307
+to `/no-access` or `/login` when unprovisioned, disabled or unauthenticated). Note that
+`roles/page.tsx` renders `<PermissionDenied />` with HTTP 200 when `roles:read` is missing, so
+this status-only probe proves provisioning rather than role permissions; browser QA walking
+`/es-AR/roles` observes permission denial directly.
 
 **Sign-out revokes every session of the account.** `DELETE /api/auth/session` calls
 `revokeRefreshTokens(uid)`, and the `(app)` layout checks revocation on every request. Two QA runs

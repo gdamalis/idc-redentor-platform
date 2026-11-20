@@ -401,6 +401,7 @@ describe("provisionQaAccount", () => {
     );
 
     expect(result).toMatchObject({ ok: false, reason: "invite-failed" });
+    if (!result.ok) expect(result.message).toContain("--reuse");
     expect(written).toHaveLength(1);
   });
 

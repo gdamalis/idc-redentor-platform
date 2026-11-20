@@ -369,7 +369,7 @@ export async function provisionQaAccount(
     return {
       ok: false,
       reason: "invite-failed",
-      message: "The invite write failed; re-run provision.",
+      message: "The invite write failed; re-run provision with --reuse.",
     };
   }
 

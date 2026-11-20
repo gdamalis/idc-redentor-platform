@@ -337,7 +337,7 @@
           "notProvisionedWhen": {
             "status": 307
           },
-          "_note": "200 only for a provisioned AdminUser holding roles:read (the Admin role). An unprovisioned or role-less session is redirected (307) to /no-access or the dashboard."
+          "_note": "200 for an active, provisioned AdminUser in Mongo; 307 to /no-access (unprovisioned or disabled) or /login (unauthenticated). Caveat: roles/page.tsx renders <PermissionDenied /> with HTTP 200 when roles:read is missing, and qaAuthProbeMatcher has no HTML/DOM matcher (adding a JSON auth endpoint is out of scope for ICR-222). So this status probe proves the AdminUser is provisioned and active, not its permissions; browser QA walking /es-AR/roles catches a PermissionDenied state directly."
         }
       },
       "cleanup": {
