@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const { MongoClientMock } = vi.hoisted(() => {
   /**
    * Mirrors the driver: `client.db()` resolves the URI's PATH database, and
-   * falls back to "test" when the URI carries no path (connection_string.js
-   * :323-326). Deriving the name from the URI — rather than from a shared
+   * falls back to "test" when the URI carries no path (mongodb 7.9.0 connection_string.js
+   * :366-368). Deriving the name from the URI — rather than from a shared
    * stub — is what makes the cross-wiring and independence cases real: each
    * client can only report the database its OWN connection string names.
    */

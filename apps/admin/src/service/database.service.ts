@@ -16,7 +16,7 @@ const MONGODB_OPTIONS = {
  * PATH — there is deliberately no DB-name env var (`ADMIN_DB_NAME` stays
  * cancelled) — so `client.db()` is called bare and the URI alone decides the
  * target. Both URIs set `authSource=admin` explicitly, so the path database is
- * never used as the auth source (mongodb@6.21.0 connection_string.js:302-310).
+ * never used as the auth source (mongodb@7.9.0 connection_string.js:339-346).
  *
  * See docs/architecture/admin-database.md for the two-layer safety argument.
  */
@@ -89,7 +89,7 @@ const WEBSITE_DB_NAME_PATTERN = /^website(-staging|-test|-qa|-e2e)?$/;
  * databases (`test`/`admin`/`local`/`config`) and the other tier's databases
  * are rejected for free by matching neither pattern. `test` matters
  * specifically because it is the driver's silent fallback when a URI carries
- * no path database (connection_string.js:323-326), which is why a missing
+ * no path database (mongodb@7.9.0 connection_string.js:366-368), which is why a missing
  * path fails closed.
  *
  * The optional suffix accepts `-staging`, `-test`, `-qa`, and `-e2e` (in
@@ -208,7 +208,7 @@ export async function connect(): Promise<MongoClient | undefined> {
  *
  * CALLERS MUST pass the `session` into EVERY operation inside `fn` — an
  * un-sessioned operation silently runs OUTSIDE the transaction
- * (mongodb 6.21.0 `mongodb.d.ts:2468`). `fn` may also be RETRIED by the driver,
+ * (mongodb 7.9.0 `mongodb.d.ts:2389-2390`). `fn` may also be RETRIED by the driver,
  * so it must be idempotent and must not mutate outer state.
  */
 export async function withAdminTransaction<T>(
