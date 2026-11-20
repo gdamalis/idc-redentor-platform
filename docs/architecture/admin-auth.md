@@ -342,14 +342,21 @@ Every auth outcome in this flow is a return value:
 ## QA verifiability boundary
 
 This ticket ships with **QA depth: heavy**, but Firebase live sign-in cannot be exercised safely
-pre-merge (it would mint real Google/Firebase credentials against the shared project from an
-ephemeral preview). The boundary, by environment:
+pre-merge (it would mint real Google/Firebase credentials from an ephemeral preview). The boundary,
+by environment, as ICR-127 shipped it (ICR-222 changes it — see below; staging, previews and local
+dev now use the Firebase project `idcr-admin-staging`, production `idcr-admin`):
 
 | Environment                                                | What's exercised                                                                                                                                                                                                                             | What's `BLOCKED` (not `FAIL`)                                                                       |
 | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | **Preview** (`idc-redentor-admin`'s per-PR Vercel preview) | UI render of `/login`, `/reset-password`, `/no-access` in both locales; **proxy redirect** (unauthenticated `(app)` request → `/login?callbackUrl=…`); `POST /api/auth/session` with a missing/garbage body → `400`/`401`, no cookie set.    | Any real Firebase sign-in (Google or email/password) — env-limited, per the ICR-44/ICR-136 pattern. |
 | **Staging** (post-merge, `ministry-admin-staging`)         | The **live email/password happy path**: a seeded pending `Invite` + a real Firebase test user sign in, a cookie is minted, `AdminUser` is created, the invite flips to `accepted`; sign-out revokes; a non-invited account gets `no-invite`. | — (this is the environment where the real flow is proven end to end)                                |
 | **Manual only**                                            | Google OAuth sign-in (popup + redirect fallback) — not automatable against a real Google account from CI/QA tooling.                                                                                                                         | —                                                                                                   |
+
+**Since ICR-222** automated QA signs in on admin previews and admin staging as a standing
+email/password test account, through the same `POST /api/auth/session` exchange (no auth code
+changed). That replaces the "Preview: real sign-in BLOCKED" row above for email/password sign-in;
+Google sign-in stays manual. Account, sign-in command, probes and rotation:
+`docs/architecture/admin-qa-account.md`.
 
 `.claude/config.json`'s `qa.env.{preview,staging}.productionHostDeny` hard-denies both this app's
 production hosts (`idc-redentor-admin.vercel.app`, `ministerio.idcredentor.org`) in every QA
@@ -370,6 +377,8 @@ admin app's, in every QA environment, regardless of which project's PR is being 
 - `docs/architecture/admin-rbac.md` — **ICR-128**, the sibling doc: what happens once a session is
   authenticated — the permission registry, `requirePermission()`, the last-admin invariant, and why
   `roleIds` (resolved here, in Mongo, never the token) is what that ticket's enforcement is built on.
+- `docs/architecture/admin-qa-account.md` — **ICR-222**, the standing QA account automated QA
+  signs in with on admin previews and staging, and how to rotate or remove it.
 - `docs/architecture/admin-database.md` — the two-connection Mongo model (`getAdminDb()` /
   `getContentDb()`) `user.service.ts`/`invite.service.ts` read and write through.
 - `docs/architecture/i18n.md` — the next-intl setup `preferredLocale` plugs into.

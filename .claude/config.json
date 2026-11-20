@@ -237,11 +237,18 @@
         "requirePreviewEnvironmentNote": "Same three-gate rule as qa.env.preview, and for the same reason: the admin app's PRODUCTION deployment also carries a *.vercel.app alias (idc-redentor-admin.vercel.app) that the host regex alone would accept. Before ANY browser/API action, confirm the resolved deployment is a PREVIEW — target !== 'production', or the GitHub deployment environment is 'Preview – idc-redentor-admin'. Reject a Production deployment even when its host ends in .vercel.app. NOTE the host allowlist cannot tell the two apps apart (both projects deploy to *.vercel.app); app separation comes from qa.apps[].deployEnvironment, not from this regex.",
         "baseUrlHostAllowNote": "Default-deny allowlist for the admin preview host, identical in shape to qa.env.preview's. It is deliberately NOT app-discriminating — see requirePreviewEnvironmentNote. productionHostDeny covers BOTH Vercel projects' production hosts and custom domains, so a misresolution lands on the denylist rather than on production.",
         "liveIntegrationPolicy": "no-POST",
-        "liveIntegrationNote": "As on stagingAdmin: no-POST means no THIRD-PARTY or irreversible side effects — it does NOT forbid the sign-in POST (/api/auth/session), which is the precondition for any admin QA at all, since every route mounting AppShell is behind the auth gate. Sign-in is idempotent and sends no mail. FORBIDDEN: sending a real invite email, any write to congregant PII, any role/permission mutation, disabling or deleting a user.",
+        "liveIntegrationNote": "Admin previews run against the SHARED staging databases (see dbNameAllowNote): a \"QA \" role created on a preview is created in ministry-admin-staging and is visible on stagingAdmin too. no-POST here means NO THIRD-PARTY or IRREVERSIBLE side effects outside the narrow QA scope below — it does not forbid signing in. SANCTIONED: sign-in (the qa.auth signIn verb, which POSTs /api/auth/session) and sign-out (DELETE /api/auth/session); read-side admin QA (walk the nav, open pages, change locale/theme); and creating, editing and deleting ROLES WHOSE NAME STARTS WITH \"QA \" (capital Q, capital A, then a space), including changing such a role's permissions, which writes the matching RBAC audit entry (ICR-222 owner decision, 2026-11-19). FORBIDDEN on previewAdmin: any change to the admin, leader or member system roles or to any role whose name does not start with \"QA \"; assigning any role to a user; any user change (invite, disable, delete) — including the QA account itself; any invite (POST the /users invite flow sends a real email); any write to congregant PII; any real email.",
         "mongoMcp": "mongodb-localhost",
-        "dbNameAllow": "^(website|ministry-admin)-(test|qa|e2e)$",
-        "dbNameAllowNote": "Preview-tier allowlist — the same one qa.env.preview uses, and deliberately NOT the staging tier: 'ministry-admin-staging' is allowed on stagingAdmin only, never on a preview. Both prefixes appear because apps/admin holds one connection string per database (ICR-166): MONGODB_URI -> ministry-admin*, WEBSITE_MONGODB_URI -> website*. Denied by construction (no -(env) suffix): the PROD DBs, the literal 'test', and reserved 'admin'/'local'/'config'.",
-        "batchStatus": "inReview"
+        "dbNameAllow": "^(website|ministry-admin)-(staging|test|qa|e2e)$",
+        "dbNameAllowNote": "Admin previews do NOT have their own databases: verified 2026-11-19 (ICR-222) from the idc-redentor-admin Vercel env, where MONGODB_URI and WEBSITE_MONGODB_URI are each ONE variable targeting Preview + staging, resolving to ministry-admin-staging and website-staging. So the preview tier allows -staging too, exactly like stagingAdmin; the earlier preview-only (test|qa|e2e) list refused every DB read QA could make on an admin preview. Both prefixes appear because apps/admin holds one connection string per database (ICR-166): MONGODB_URI -> ministry-admin*, WEBSITE_MONGODB_URI -> website*. Denied by construction (no -(env) suffix): the PROD DBs, the literal 'test', and reserved 'admin'/'local'/'config'.",
+        "batchStatus": "inReview",
+        "auth": {
+          "identityStrategy": "standing",
+          "credentialsFrom": "adminQa.users",
+          "provisioningAllowed": false,
+          "signupsOpen": false,
+          "_note": "ICR-222. Sign in as the standing QA Admin (qa.auth.commands.signIn) with the credentials at qa-env.json -> adminQa.users.admin. The account exists ONLY in the staging/preview Firebase project (idcr-admin-staging) and in ministry-admin-staging; production (Firebase idcr-admin, DB ministry-admin) has neither, so it refuses by project isolation. previewAdmin reaches that database, production does not. Never create, invite or sign up any other identity."
+        }
       },
       "staging": {
         "target": "staging",
@@ -285,12 +292,59 @@
         "requirePreviewEnvironment": false,
         "requirePreviewEnvironmentNote": "Admin staging is a fixed branch-deployment host, not a per-PR Vercel preview, so the preview-only 'target !== production' gate does not apply. It is NOT a production alias: ministerio.idcredentor.org (production, deployment target='production') and staging.ministerio.idcredentor.org are DIFFERENT deployments — proven by the ICR-126 discriminator (production predates /manifest.webmanifest and 307s it; staging serves it 200). They share a Vercel DNS CNAME only because both domains belong to the same Vercel project (idc-redentor-admin); that is normal and says nothing about which deployment each serves. Production remains hard-denied by productionHostDeny regardless.",
         "liveIntegrationPolicy": "no-POST",
-        "liveIntegrationNote": "no-POST here means NO THIRD-PARTY / IRREVERSIBLE side effects — it does NOT forbid the sign-in POST. Signing in (POST /api/auth/session) is the PRECONDITION for any admin QA at all: every route that mounts AppShell is behind the auth gate, so a QA run that cannot sign in can only ever see /login, /reset-password and /no-access. Sign-in is idempotent and sends no mail, so it is permitted. FORBIDDEN on this env: anything that sends a real invite email (POST the /users invite flow), any write to congregant PII, any role/permission mutation, and disabling or deleting a user. Read-side admin QA — sign in, walk the nav, open pages, change locale/theme, sign out — is the sanctioned scope.",
+        "liveIntegrationNote": "no-POST here means NO THIRD-PARTY or IRREVERSIBLE side effects outside the narrow QA scope below — it does not forbid signing in. SANCTIONED: sign-in (the qa.auth signIn verb, which POSTs /api/auth/session) and sign-out (DELETE /api/auth/session); read-side admin QA (walk the nav, open pages, change locale/theme); and creating, editing and deleting ROLES WHOSE NAME STARTS WITH \"QA \" (capital Q, capital A, then a space), including changing such a role's permissions, which writes the matching RBAC audit entry (ICR-222 owner decision, 2026-11-19). FORBIDDEN on stagingAdmin: any change to the admin, leader or member system roles or to any role whose name does not start with \"QA \"; assigning any role to a user; any user change (invite, disable, delete) — including the QA account itself; any invite (POST the /users invite flow sends a real email); any write to congregant PII; any real email.",
         "mongoMcp": "mongodb-localhost",
         "dbNameAllow": "^(website|ministry-admin)-(staging|test|qa|e2e)$",
         "dbNameAllowNote": "Same default-deny allowlist as the website's staging env, and deliberately BOTH prefixes: apps/admin holds one connection string per database (ICR-166) — MONGODB_URI -> ministry-admin*, WEBSITE_MONGODB_URI -> website* — so the admin app legitimately reaches both. Denied by construction (no -(env) suffix): the PROD DBs (bare 'website', bare 'ministry-admin'), the literal 'test' (the driver's silent no-DB-in-URI fallback), and reserved 'admin'/'local'/'config'. QA resolves each DB name from its OWN URI via client.db().databaseName, never from an env var.",
         "baseUrlHostAllowNote": "Default-deny allowlist for the admin staging QA host. Two gates, both required: (1) host matches ^staging\\.ministerio\\.idcredentor\\.org$; (2) host is NOT in productionHostDeny — which covers BOTH Vercel projects' production hosts and custom domains, so a typo that drops the 'staging.' prefix lands on the denylist rather than on production.",
-        "batchStatus": "inTesting"
+        "batchStatus": "inTesting",
+        "auth": {
+          "identityStrategy": "standing",
+          "credentialsFrom": "adminQa.users",
+          "provisioningAllowed": false,
+          "signupsOpen": false,
+          "_note": "ICR-222. Sign in as the standing QA Admin (qa.auth.commands.signIn) with the credentials at qa-env.json -> adminQa.users.admin. The account exists ONLY in the staging/preview Firebase project (idcr-admin-staging) and in ministry-admin-staging; production (Firebase idcr-admin, DB ministry-admin) has neither, so it refuses by project isolation. stagingAdmin reaches that database, production does not. Never create, invite or sign up any other identity."
+        }
+      }
+    },
+    "auth": {
+      "_note": "ICR-222. The admin app's QA sign-in (canon rule 11, yoke:warden rung 3). ONE verb, signIn: the QA identity is a STANDING account (a Firebase email/password user holding the Admin role in ministry-admin-staging only), so there is nothing to provision or destroy. Credentials live only in the git-ignored qa-env.json at qa.env.<env>.auth.credentialsFrom. The website (apps/web) has no sign-in and declares no auth. Account, rotation and decommission runbook: docs/architecture/admin-qa-account.md.",
+      "contract": "yoke/qa-auth@1",
+      "commands": {
+        "signIn": "sh -c 'cd apps/admin && exec node --import tsx scripts/qa-auth.ts sign-in'",
+        "signInNote": "Runs from the repo root. MUST stay `node --import tsx` from apps/admin, never `pnpm run`/`pnpm exec`: pnpm rewrites every non-zero exit to 1 and would erase the contract's 2 (refused) and 3 (declined). The command re-checks the host itself (exact allowlist per env, production denied) before any network call, then signs in to Firebase and exchanges the ID token at POST /api/auth/session — the app's own invite gate runs unchanged."
+      },
+      "roles": ["admin"],
+      "session": {
+        "cookieName": "__session"
+      },
+      "probes": {
+        "_note": "There is no JSON 'who am I' endpoint in apps/admin, and adding one would change admin auth code (out of scope for ICR-222), so both probes are PAGE STATUS checks. Fetch them WITHOUT following redirects (curl without -L, fetch redirect:'manual'): the anonymous answer is a 307 to /<locale>/login, which a redirect-following client would turn into a 200 for the login page and so read as 'signed in'.",
+        "session": {
+          "path": "/es-AR",
+          "authenticatedWhen": {
+            "status": 200
+          },
+          "anonymousWhen": {
+            "status": 307
+          }
+        },
+        "identity": {
+          "path": "/es-AR/roles",
+          "readyWhen": {
+            "status": 200
+          },
+          "notProvisionedWhen": {
+            "status": 307
+          },
+          "_note": "200 for an active, provisioned AdminUser in Mongo; 307 to /no-access (unprovisioned or disabled) or /login (unauthenticated). Caveat: roles/page.tsx renders <PermissionDenied /> with HTTP 200 when roles:read is missing, and qaAuthProbeMatcher has no HTML/DOM matcher (adding a JSON auth endpoint is out of scope for ICR-222). So this status probe proves the AdminUser is provisioned and active, not its permissions; browser QA walking /es-AR/roles catches a PermissionDenied state directly."
+        }
+      },
+      "cleanup": {
+        "required": false,
+        "when": "after-run",
+        "onFailure": "warn",
+        "_note": "A standing account creates no identity to destroy. A run's cleanup is SIGN-OUT (DELETE /api/auth/session, or the Topbar sign-out button), which revokes EVERY refresh token of the account — so two QA runs on this shared account must never overlap: the second one's session dies when the first signs out."
       }
     },
     "transitions": {
