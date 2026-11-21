@@ -4,7 +4,7 @@ import createNextIntlPlugin from "next-intl/plugin";
 const withNextIntl = createNextIntlPlugin();
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@idcr/ui"],
+  transpilePackages: ["@idcr/content", "@idcr/ui"],
 };
 
 export default withNextIntl(nextConfig);
