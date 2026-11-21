@@ -3,14 +3,12 @@
 > **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
 
 > **Purpose:** How to use the Claude Code agent harness on this repo — the agents and slash commands, the
-> human-gated Linear automation (Backlog → Todo → In Progress → In Review → **In Testing** → **Ready for
-> Release** → Done, with **Done set only by the `/yoke:release` close step**), the branch/PR/merge conventions,
-> the always-on type-aware QA on both the Vercel preview and **staging**, the detached **post-PR review + CI
-> loop**, the user-triggered `/yoke:merge`, and owner-approved batched production releases (`/yoke:release`,
-> see [`deployments.md`](./deployments.md)).
+> human-gated Linear automation (Backlog → Todo → In Progress → In Review → **In Testing** → Done, with
+> **Done human-only**), the branch/PR/merge conventions, the always-on type-aware QA on both the Vercel
+> preview and **staging**, the detached **post-PR review + CI loop**, and the user-triggered `/yoke:merge`.
 > **Harness brain:** `.claude/config.json` (canon-schema, validated by the `yoke:canon` skill) is the single
 > source of truth — every command and agent reads it first. This doc narrates it; on any disagreement the JSON wins.
-> **Last reviewed:** 2026-11-21 (batched production releases, ICR-224)
+> **Last reviewed:** 2026-11-15 (Jira → Linear move, ICR-212)
 
 ## What it is
 
@@ -19,8 +17,7 @@ issue all the way to a merged-and-staging-verified change. The harness is **huma
 (1) a _conditional_ brainstorm/spec gate during `/yoke:work`, and (2) the **merge approval** — a human triggers
 `/yoke:merge`. Agents do the mechanical work (research, implement, verify, QA, open PRs, address review
 comments, run the squash-merge when asked, run staging QA, transition issues forward) but **no agent ever
-_autonomously_ merges or deploys production, and only the `/yoke:release` close step — after the owner approved
-the deploy with the release's approval phrase — ever moves an issue to Done.** The harness itself — the slash commands, the
+_autonomously_ merges, and no agent ever moves an issue to Done.** The harness itself — the slash commands, the
 nine dev subagents, and the session/graph hooks — ships as the **yoke plugin** (Claude Code marketplace
 `DivineLab/divinelab-plugins`, enabled in `.claude/settings.json`). This repo carries only the **project facts**
 in `.claude/config.json` (canon-schema, validated by the plugin's `yoke:canon` skill) plus the local
@@ -39,14 +36,13 @@ in `.claude/config.json` (canon-schema, validated by the plugin's `yoke:canon` s
 
 ## Commands
 
-| Command                                         | Backed by                                                                                                  | Does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Issue transitions                                                                                  |
-| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| **`/yoke:pm`**                                  | `yoke:product-manager`                                                                                     | Intake a raw idea → Todo issue; refine a thin issue to ready; groom the Backlog + Todo statuses. Enforces `docs/product/scope-and-boundaries.md`. **Never implements.**                                                                                                                                                                                                                                                                                                                                          | Creates/updates issues up to **Todo**; never past it                                               |
-| **`/yoke:work [ICR-N]`**                        | yoke:explorer → yoke:implementer → yoke:verifier → yoke:qa-runner → yoke:acceptance-judge → yoke:pr-author | Pick up a ready issue, refine-gate it, create a worktree + branch, (conditionally) brainstorm + spec, implement ↔ verify, open a draft PR, run always-on type-aware pre-merge QA on the preview, mark ready, then run the detached post-PR review + CI loop. Hands off to `/yoke:merge` on an explicit in-session "merge".                                                                                                                                                                                       | **Todo → In Progress** (step 3), **In Progress → In Review** (step 14, via yoke:pr-author)         |
-| **`/yoke:merge ICR-N`**                         | `/yoke:work` hand-off or standalone                                                                        | **User-triggered ONLY.** Squash-merge the PR (refuse on red/pending CI), delete the worktree + branch, transition the issue → In Testing, then run post-merge **staging** QA against the env serving the app that changed (`staging` for `apps/web`, `stagingAdmin` for `apps/admin`). **Never merges autonomously; never moves to Done.**                                                                                                                                                                       | **In Review → In Testing** (after a verified squash-merge)                                         |
-| **`/yoke:qa [ICR-N] [--preview]`**              | `yoke:qa-acceptance` (tester) → `yoke:acceptance-judge` (verdict)                                          | Acceptance QA against the **staging** deployment by default; `--preview` re-targets the PR's Vercel preview. Posts the QA evidence as one Linear comment with inline screenshots. **Phase 1: report-only.**                                                                                                                                                                                                                                                                                                      | May move Todo/In Progress → In Review on the **preview** path only; **never Done**                 |
-| **`/yoke:release [status\|open\|cut\|deploy]`** | the yoke tracker script's `release-*` verbs + `scripts/deploy-prod.sh`                                     | Batched production releases on the Linear pipeline `idc-redentor-platform`. `status` (read-only) shows what would ship; `cut` attaches every ticket merged since the last release, builds the runbook ticket and runs the gate in warn mode; `deploy` re-checks everything, **stops for the owner's approval phrase**, deploys **both apps** from one commit, smoke-checks both hosts, runs the post-deploy actions, then hands the close to the owner's own terminal. See [`deployments.md`](./deployments.md). | **Ready for Release → Done** (close step only, after the approved deploy and the verified runbook) |
-| **`/yoke:verify`**                              | yoke:verifier (+ yoke:security-reviewer)                                                                   | Run `pnpm type-check && pnpm lint && pnpm test && pnpm build` and security checks. Local-only.                                                                                                                                                                                                                                                                                                                                                                                                                   | none                                                                                               |
+| Command                                 | Backed by                                                                                                                                | Does                                                                                                                                                                                                                                                                                                                                       | Issue transitions                                                                                |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| **`/yoke:pm`**                     | `yoke:product-manager`                                                                                                              | Intake a raw idea → Todo issue; refine a thin issue to ready; groom the Backlog + Todo statuses. Enforces `docs/product/scope-and-boundaries.md`. **Never implements.**                                                                                                                                                                  | Creates/updates issues up to **Todo**; never past it                                            |
+| **`/yoke:work [ICR-N]`**           | yoke:explorer → yoke:implementer → yoke:verifier → yoke:qa-runner → yoke:acceptance-judge → yoke:pr-author | Pick up a ready issue, refine-gate it, create a worktree + branch, (conditionally) brainstorm + spec, implement ↔ verify, open a draft PR, run always-on type-aware pre-merge QA on the preview, mark ready, then run the detached post-PR review + CI loop. Hands off to `/yoke:merge` on an explicit in-session "merge".            | **Todo → In Progress** (step 3), **In Progress → In Review** (step 14, via yoke:pr-author) |
+| **`/yoke:merge ICR-N`**            | `/yoke:work` hand-off or standalone                                                                                                 | **User-triggered ONLY.** Squash-merge the PR (refuse on red/pending CI), delete the worktree + branch, transition the issue → In Testing, then run post-merge **staging** QA against the env serving the app that changed (`staging` for `apps/web`, `stagingAdmin` for `apps/admin`). **Never merges autonomously; never moves to Done.** | **In Review → In Testing** (after a verified squash-merge)                                       |
+| **`/yoke:qa [ICR-N] [--preview]`** | `yoke:qa-acceptance` (tester) → `yoke:acceptance-judge` (verdict)                                                              | Acceptance QA against the **staging** deployment by default; `--preview` re-targets the PR's Vercel preview. Posts the QA evidence as one Linear comment with inline screenshots. **Phase 1: report-only.**                                                                                                                                            | May move Todo/In Progress → In Review on the **preview** path only; **never Done**        |
+| **`/yoke:verify`**                 | yoke:verifier (+ yoke:security-reviewer)                                                                                       | Run `pnpm type-check && pnpm lint && pnpm test && pnpm build` and security checks. Local-only.                                                                                                                                                                                                                                             | none                                                                                             |
 
 ## The agents
 
@@ -121,44 +117,37 @@ Branches, commits, and PR titles use the same `ICR-N` string.
 ### Workflow statuses
 
 ```
-Backlog → Todo → In Progress → In Review → In Testing → Ready for Release → Done     (+ Canceled, Duplicate)
- (PM)     (PM)    (#1 work)    (#2 work)   (#3 merge)   (human, after          (#4 /release close,
-                                                         staging QA passes)     after approved deploy)
+Backlog → Todo → In Progress → In Review → In Testing → Done        (+ Canceled, Duplicate)
+ (PM)     (PM)    (#1 work)    (#2 work)   (#3 merge)   (HUMAN, after prod deploy)
 ```
 
 Moves name a **status key** from `config.tracker.statuses` (`inProgress`, `inReview`, `inTesting`, …); the
 script maps it to the Linear status. If a status is missing or renamed in Linear, `doctor` and the script
 report the drift rather than guessing.
 
-| Status            | Set by                                                                                                                                                                                                           |     Automated?      |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-----------------: |
-| Backlog           | PM / human (backlog grooming)                                                                                                                                                                                    |         no          |
-| Todo              | PM / human (ready to pick up)                                                                                                                                                                                    |         no          |
-| In Progress       | `/yoke:work` step 3 (after the worktree exists)                                                                                                                                                                  |         yes         |
-| In Review         | `/yoke:work` step 14 via pr-author (at PR-ready)                                                                                                                                                                 |         yes         |
-| In Testing        | `/yoke:merge` (after a verified squash-merge)                                                                                                                                                                    |         yes         |
-| Ready for Release | human, once post-merge staging QA passes (the queue a release is cut from)                                                                                                                                       |         no          |
-| **Done**          | **the `/yoke:release` close step ONLY** — after the owner approved the deploy with the approval phrase, both apps are live, and every runbook action is verified; the owner runs the close in their own terminal | yes, but only there |
-| Canceled          | human only                                                                                                                                                                                                       |         no          |
-| Duplicate         | Linear, when an issue is marked a duplicate                                                                                                                                                                      |         no          |
+| Status      | Set by                                                            |       Automated?       |
+| ----------- | ----------------------------------------------------------------- | :--------------------: |
+| Backlog     | PM / human (backlog grooming)                                     |           no           |
+| Todo        | PM / human (ready to pick up)                                     |           no           |
+| In Progress | `/yoke:work` step 3 (after the worktree exists)                   |          yes           |
+| In Review   | `/yoke:work` step 14 via pr-author (at PR-ready)                  |          yes           |
+| In Testing  | `/yoke:merge` (after a verified squash-merge)                     |          yes           |
+| **Done**    | **HUMAN ONLY** — after the human's manual prod deploy from Vercel | **never by any agent** |
+| Canceled    | human only                                                        |           no           |
+| Duplicate   | Linear, when an issue is marked a duplicate                       |           no           |
 
-There are exactly **four** automated transitions across the harness (`config.tracker.automatedTransitions`):
+There are exactly **three** automated transitions across the harness (`config.tracker.automatedTransitions`):
 
 1. **Todo → In Progress** — owned by `/yoke:work` (step 3, right after the worktree exists).
 2. **In Progress → In Review** — owned by `/yoke:work` via `yoke:pr-author` (step 14, at PR-ready, paired with the
    PR-link comment).
 3. **In Review → In Testing** — owned by **`/yoke:merge`**, **only after a verified squash-merge**.
-4. **Ready for Release → Done** — owned by the **`/yoke:release` close step**, only after the owner approved the
-   production deploy with the release's approval phrase, both apps are live and smoke-verified, every post-deploy
-   runbook action is verified, and the Linear release is completed. The owner types the release's version into
-   the close in their own terminal; no agent answers that prompt.
 
 `/yoke:work` owns exactly the first two and **never** performs transition #3 itself — even the in-session "merge"
-hand-off (see below) delegates transition #3 to `/yoke:merge`. **In Testing → Ready for Release is a human move**
-for now (after staging QA passes). `config.tracker.forbiddenTransitions` blocks `→ done` for everything except the
-release close step, and the script's `transition` verb can never set a finished status. Nothing infers "staging
-passed ⇒ safe for Done": Done means the release that shipped the ticket is deployed, verified and completed. The
-full release flow is in [`deployments.md`](./deployments.md).
+hand-off (see below) delegates transition #3 to `/yoke:merge`. **No agent or command ever moves an issue to Done.**
+`config.tracker.forbiddenTransitions` blocks `→ done`, and the script's own floor blocks every finished status.
+Done means: the human deployed to production from Vercel and then moved the issue to Done themselves. Nothing
+infers "staging passed ⇒ safe for Done."
 
 ### Issue type → commit type
 
@@ -284,9 +273,8 @@ stays `false`). It is invoked standalone or via the `/yoke:work` step-14.6 hand-
    — see `contentful-data-layer.md` § Live Preview). Then **tester (`yoke:qa-acceptance`) → `yoke:acceptance-judge`** → post the result to
    the Linear issue (`postedBy: "/yoke:merge"`, `envName:` the env resolved above). A `no-POST` happy-path AC the tester correctly
    skipped is **BLOCKED/deferred**, not FAIL.
-7. **Stop.** Report the merge + cleanup + the staging verdict. Next step: once staging QA passes, move the issue
-   to **Ready for Release**; `/yoke:release` cuts it into a release and ships it. `/yoke:merge` **never** deploys
-   production and **never** moves an issue to Done.
+7. **Stop.** Report the merge + cleanup + the staging verdict, and remind the user that **Done is human-only**
+   — deploy prod from Vercel, then move In Testing → Done. `/yoke:merge` **never** moves an issue to Done.
 
 ## QA loop (Phase 1: report-only)
 
@@ -444,9 +432,8 @@ Grep/Read on an empty/stale/absent graph and notes it. Full guide: [`graphify.md
 
 ## Golden rules
 
-1. **Never move an issue to Done, and never deploy production** — both happen only inside `/yoke:release`,
-   behind the owner's approval phrase. Never push `production-hold`, and never run `scripts/deploy-prod.sh`
-   outside a release (`--preview` to test the script is fine).
+1. **Never move an issue to Done** — that's the human gate. **Never deploy production** either: never run
+   `scripts/deploy-prod.sh` without `--preview`, and never push `production-hold` (see [`deployments.md`](./deployments.md)).
 2. **No autonomous merge** — `autoMerge` stays `false`. Agents never merge on their own; the human triggers
    `/yoke:merge`, which executes the squash-merge.
 3. **Never run QA against production — in any env** — prod custom domains AND prod `*.vercel.app` aliases are

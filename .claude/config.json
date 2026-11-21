@@ -20,7 +20,6 @@
       "inProgress": "In Progress",
       "inReview": "In Review",
       "inTesting": "In Testing",
-      "readyForRelease": "Ready for Release",
       "done": "Done",
       "canceled": "Canceled",
       "duplicate": "Duplicate"
@@ -62,30 +61,23 @@
         "setBy": "/merge (In Review -> In Testing, after squash-merge succeeds)"
       },
       {
-        "key": "readyForRelease",
-        "name": "Ready for Release",
-        "order": 6,
-        "automated": false,
-        "setBy": "Human, once post-merge staging QA passes (until /merge can move it on a passing QA). This is the queue a release is cut from: a ticket here is tested on staging and waits only for the production deploy."
-      },
-      {
         "key": "done",
         "name": "Done",
-        "order": 7,
-        "automated": true,
-        "setBy": "the /release close step ONLY — after the owner approved the production deploy with the release's approval phrase, both apps are live and smoke-verified, every post-deploy runbook item on the Release ticket is executed and verified, and the Linear release is completed. No other command, agent or QA path may set it."
+        "order": 6,
+        "automated": false,
+        "setBy": "HUMAN ONLY — set when the human deploys to prod and closes the issue. NEVER set by any agent or command."
       },
       {
         "key": "canceled",
         "name": "Canceled",
-        "order": 8,
+        "order": 7,
         "automated": false,
         "setBy": "human only"
       },
       {
         "key": "duplicate",
         "name": "Duplicate",
-        "order": 9,
+        "order": 8,
         "automated": false,
         "setBy": "Linear, when an issue is marked a duplicate"
       }
@@ -108,19 +100,12 @@
         "to": "inTesting",
         "ownedBy": "/merge",
         "gate": "after squash-merge succeeds"
-      },
-      {
-        "from": "readyForRelease",
-        "to": "done",
-        "ownedBy": "/release close step",
-        "gate": "the owner approved the production deploy with the release's approval phrase, both apps are live and smoke-verified, every post-deploy runbook item on the Release ticket is executed and verified, and the Linear release is completed"
       }
     ],
     "forbiddenTransitions": [
       {
         "to": "done",
-        "reason": "Forbidden to every command and agent EXCEPT the /release close step, and there only from readyForRelease, while completing the Linear release at the deployed commit, after the owner approved the deploy with the release's approval phrase and every post-deploy runbook item is verified. /work, /merge, /qa and every agent may never set it.",
-        "exceptionNote": "The human gate did not disappear, it moved earlier: approving the production deploy is the decision, and closing the tickets that deploy shipped is bookkeeping. The owner runs the real close in their own terminal. qa.humanGate.neverMoveTo still bans Done for QA unconditionally."
+        "reason": "Human-only. /work and all agents MUST NOT move any issue to Done. Done == merged, deployed, and closed by a human."
       }
     ],
     "issueTypeToCommitType": {
@@ -415,35 +400,6 @@
       "security": "security-reviewer",
       "acceptance": "acceptance-judge"
     }
-  },
-  "release": {
-    "_note": "Production releases are batched and versioned (canon rule 13; ICR-224). A release is EVERY TICKET MERGED SINCE THE LAST RELEASE (the commit range decides the contents, not the board column), collected into one Linear release in the pipeline below, shipped by one owner-approved run of the deploy script, and documented by one Release issue carrying the runbook. ONE release ships BOTH apps (idc-redentor-web and idc-redentor-admin) from the same commit: one version, one runbook, one approval, even when only one app changed. Ready for Release is a per-ticket readiness signal: the deploy refuses while any ticket in the release is not in it, and it cannot hold a ticket back, because the deploy uploads HEAD and the ticket is already on main. See docs/architecture/deployments.md.",
-    "_versioningNote": "This is NOT Changesets. .github/workflows/release.yml versions @idcr/web and @idcr/admin on each push to main that carries a changeset, and that deploys nothing but staging. These releases name a PRODUCTION deploy and are one-to-many over those package versions. The promoted commit is recorded on the Linear release (its commit), which the next release resolves its baseline from.",
-    "pipeline": {
-      "id": "PIPELINE_ID",
-      "name": "idc-redentor-platform"
-    },
-    "_pipelineNote": "The Linear release pipeline idc-redentor-platform (scheduled, production, rollover off, team ICR), created by the owner in Linear on 2026-11-21. Its first release has no baseline: it is cut with --since 8377d89, the website's production commit at the time (2026-07-16; admin was on 64a2ba2, 2026-07-29, which is later, so nothing unshipped is missed).",
-    "versionNamePattern": "{project}/{YYYY}.{M}.{N}",
-    "_versionNamePatternNote": "Yields idc-redentor-platform/2026.11.1. Month not zero-padded. The increment counts releases in the month they SHIP: when a release rolls over a month boundary, /release reports monthDrift and a person renames it in Linear (links are by id, so nothing re-attaches).",
-    "versionPattern": "{YYYY}.{M}.{N}",
-    "readyStatus": "readyForRelease",
-    "ticketIssueType": "Release",
-    "deployCommand": "bash scripts/deploy-prod.sh",
-    "_deployCommandNote": "Deploys idc-redentor-web then idc-redentor-admin with vercel deploy --prod --scope divine-lab, each from a git archive of HEAD (never the checkout, which holds .env files, worktrees and other ignored files the CLI would upload). Prints one 'web: <url>' and one 'admin: <url>' line; record both on the runbook. Stops on the first failure and lists what already deployed. Tested with --preview, which makes the same upload as a preview.",
-    "rollbackCommand": "vercel rollback <deployment-url> --scope divine-lab",
-    "_rollbackCommandNote": "Run once PER APP, each pinned to that app's previous production deployment (the runbook records both). Rolling back one app leaves the other on the new release.",
-    "prodUrl": "https://www.idcredentor.org",
-    "_prodUrlNote": "The website. The admin app's production host is https://ministerio.idcredentor.org; every runbook's Smoke verification section checks both.",
-    "requireHumanApproval": true,
-    "requireCleanTree": true,
-    "_requireCleanTreeNote": "Kept even though the script deploys from a git archive of HEAD: HEAD must still equal origin/main, so what ships is what was reviewed and merged. The script refuses a dirty tree on its own too.",
-    "requireCiGreen": true,
-    "closeIssuesOnRelease": "after-runbook",
-    "deferredActionMarker": "Prod actions deferred from",
-    "_deferredActionMarkerNote": "The exact title prefix /merge §3.1 uses. /release cut folds those tickets into the Release ticket's runbook. Contentful cutovers belong here: promoting a content-model change to production is a production action no merge performs.",
-    "forbiddenBranches": ["production-hold"],
-    "_forbiddenBranchesNote": "production-hold is the sentinel branch both Vercel projects' Production Branch setting points at (verified 2026-11-21 for idc-redentor-web and idc-redentor-admin). A push there is a real production build, deployed straight to www.idcredentor.org and ministerio.idcredentor.org, that bypasses every gate in /release. Never push, never delete, never merge into it."
   },
   "reviewLoop": {
     "_note": "Drives the detached post-PR loop in /work after the PR is marked ready: watch code-review comments (incl. the Codex bot, which posts a few minutes after PR-ready) AND CI checks, address them, then notify the user. Driver is ScheduleWakeup (dynamic-paced, stateful, worktree-bound). If ScheduleWakeup is unavailable at runtime, /work skips the loop and falls back to a one-shot check + notify.",

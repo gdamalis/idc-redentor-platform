@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Deploy both apps (website + ministry admin) to production from ONE commit.
 #
-# This is config.release.deployCommand: yoke's release command runs it only after the owner
-# approves the release with its approval phrase. Never run it by hand outside a release.
+# This is the production release's deploy command (config.release.deployCommand once the release
+# block is declared). It runs only inside an owner-approved release. Never run it by hand otherwise.
 # See docs/architecture/deployments.md.
 #
 # Why it deploys from `git archive HEAD` and not from the checkout: the Vercel CLI uploads the
