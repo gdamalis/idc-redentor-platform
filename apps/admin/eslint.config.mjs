@@ -3,7 +3,7 @@ import { eslintBase } from "@idcr/config/eslint.base.mjs";
 const eslintConfig = [
   ...eslintBase,
   {
-    ignores: [".next/**", "node_modules/**"],
+    ignores: [".next/**", "node_modules/**", "playwright-report/**", "test-results/**"],
   },
   {
     files: ["src/**/*.{ts,tsx}"],

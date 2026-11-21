@@ -54,7 +54,30 @@ export, no default export:
 - `./tokens.css` → the brand `@theme`/`:root`/`.dark` block moved verbatim out of
   `apps/web/src/app/globals.css` (§7).
 
-`apps/web` depends on both via `"@idcr/ui": "workspace:*"` and `"@idcr/config": "workspace:*"`.
+`apps/web` and `apps/admin` consume `@idcr/config`, `@idcr/ui`, and `@idcr/content` via `"workspace:*"`.
+
+**`packages/content`** (`@idcr/content`) — raw TS content model, Zod 4 schemas, registries, and
+shared TipTap 3 extension list (added in ICR-194), two subpath exports:
+
+```json
+"exports": {
+  ".": "./src/index.ts",
+  "./tiptap": "./src/tiptap/index.ts"
+}
+```
+
+- `.` → `ContentDoc` envelope, `Localized<T>`, collection-name constants, lenient `draft` / strict
+  `publishable` / `.partial()` `update` Zod schemas (with zero `.default()` calls), constrained
+  rich-text profiles and Zod document validator, derived status (`deriveStatus`/`canonicalEqual`),
+  natural keys (`slugify`/`isValidSlug`/`bibleVerseKey`), fixed-entry/page/block/reference-path
+  registries, and `extractReferences`. Depends only on `zod` (peerDependency `^4.6.0`) — no React,
+  no `mongodb`/`bson`, and no TipTap on the main entry so `apps/web` never bundles ProseMirror for
+  validation.
+- `./tiptap` → `createRichTextExtensions(profile)`, href-only `CustomLink`, `EmbeddedMedia`, and
+  `TIPTAP_EDITOR_DEFAULTS`. Consumed by the admin editors (`apps/admin`).
+
+Both `apps/web/next.config.ts` and `apps/admin/next.config.ts` include `"@idcr/content"` in
+`transpilePackages`. Plain `.mjs` scripts (`.claude/scripts/predica/`) do **not** import it.
 
 ## 2. Why `@idcr/ui` ships raw source, not a build
 
