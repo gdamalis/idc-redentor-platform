@@ -294,17 +294,24 @@ export const topicPublishableSchema = z
         message: "English (en-US) body is required for protected topics",
       });
     }
-    if (
-      value.shortDescription !== undefined &&
-      !isEmptyValue(value.shortDescription["es-AR"]) &&
-      isEmptyValue(value.shortDescription["en-US"])
-    ) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["shortDescription", "en-US"],
-        message:
-          "English (en-US) short description is required for protected topics",
-      });
+    if (value.shortDescription !== undefined) {
+      const hasEs = !isEmptyValue(value.shortDescription["es-AR"]);
+      const hasEn = !isEmptyValue(value.shortDescription["en-US"]);
+      if (hasEs && !hasEn) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["shortDescription", "en-US"],
+          message:
+            "English (en-US) short description is required for protected topics",
+        });
+      } else if (!hasEs && hasEn) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["shortDescription", "es-AR"],
+          message:
+            "Spanish (es-AR) short description is required for protected topics",
+        });
+      }
     }
   });
 

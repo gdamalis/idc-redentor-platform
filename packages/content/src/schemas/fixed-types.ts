@@ -180,16 +180,22 @@ export const beliefCollectionPublishableSchema = z
     items: z.array(beliefItemPublishableSchema).min(1).max(100),
   })
   .superRefine((value, ctx) => {
-    if (
-      value.description !== undefined &&
-      !isEmptyValue(value.description["es-AR"]) &&
-      isEmptyValue(value.description["en-US"])
-    ) {
+    if (value.description === undefined) return;
+    const hasEs = !isEmptyValue(value.description["es-AR"]);
+    const hasEn = !isEmptyValue(value.description["en-US"]);
+    if (hasEs && !hasEn) {
       ctx.addIssue({
         code: "custom",
         path: ["description", "en-US"],
         message:
           "English (en-US) description is required for protected belief collections",
+      });
+    } else if (!hasEs && hasEn) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["description", "es-AR"],
+        message:
+          "Spanish (es-AR) description is required for protected belief collections",
       });
     }
   });

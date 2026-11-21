@@ -570,16 +570,22 @@ describe("CONTENT_SCHEMAS — draft vs publishable, defaults, and {} tripwire", 
       CONTENT_SCHEMAS.topic.publishable.safeParse(protectedBlankDesc).success,
     ).toBe(true);
 
-    // Protected topic with non-empty Spanish shortDescription but missing English fails publish
+    // Protected topic with non-empty Spanish OR non-empty English shortDescription alone fails publish
     expect(
       CONTENT_SCHEMAS.topic.publishable.safeParse({
         ...protectedBlankDesc,
         shortDescription: { "es-AR": "Resumen", "en-US": "" },
       }).success,
     ).toBe(false);
+    expect(
+      CONTENT_SCHEMAS.topic.publishable.safeParse({
+        ...protectedBlankDesc,
+        shortDescription: { "es-AR": "", "en-US": "Summary" },
+      }).success,
+    ).toBe(false);
 
     // Protected belief collection with optional description empty in both locales passes publish,
-    // while Spanish-only non-empty description fails publish
+    // while Spanish-only OR English-only non-empty description fails publish
     expect(
       CONTENT_SCHEMAS.beliefCollection.publishable.safeParse({
         ...FIXTURES.beliefCollection.validPublishable,
@@ -590,6 +596,12 @@ describe("CONTENT_SCHEMAS — draft vs publishable, defaults, and {} tripwire", 
       CONTENT_SCHEMAS.beliefCollection.publishable.safeParse({
         ...FIXTURES.beliefCollection.validPublishable,
         description: { "es-AR": doc("Creemos") },
+      }).success,
+    ).toBe(false);
+    expect(
+      CONTENT_SCHEMAS.beliefCollection.publishable.safeParse({
+        ...FIXTURES.beliefCollection.validPublishable,
+        description: { "es-AR": emptyDoc, "en-US": doc("We believe") },
       }).success,
     ).toBe(false);
 
