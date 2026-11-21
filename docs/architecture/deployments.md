@@ -8,9 +8,9 @@
 Merging to `main` never reaches production. It deploys **staging** only. Production changes in
 **batched, versioned releases** that the owner decides to cut, and **one release ships both apps**:
 
-| App | Vercel project | Production host | Staging host |
-|---|---|---|---|
-| Website (`apps/web`) | `idc-redentor-web` | `www.idcredentor.org` | `staging.idcredentor.org` |
+| App                                 | Vercel project       | Production host              | Staging host                         |
+| ----------------------------------- | -------------------- | ---------------------------- | ------------------------------------ |
+| Website (`apps/web`)                | `idc-redentor-web`   | `www.idcredentor.org`        | `staging.idcredentor.org`            |
 | Ministry Admin Panel (`apps/admin`) | `idc-redentor-admin` | `ministerio.idcredentor.org` | `staging.ministerio.idcredentor.org` |
 
 ```
@@ -23,7 +23,7 @@ Merging to `main` never reaches production. It deploys **staging** only. Product
 
 ## Why it works this way
 
-- **Production is held.** Both Vercel projects have their *Production Branch* set to the sentinel
+- **Production is held.** Both Vercel projects have their _Production Branch_ set to the sentinel
   branch `production-hold` (verified 2026-11-21), so a push to `main` builds a preview — which the
   `staging` custom environment (branch `main`) serves on the staging hosts — and never production. A
   push to `production-hold` **would** be a real production build that skips every gate, which is why
@@ -54,7 +54,7 @@ The deployed commit is recorded on the Linear release, and the next release meas
 
 1. refuses a dirty tree;
 2. exports **`git archive HEAD`** to a temporary directory and deploys from there — the Vercel CLI
-   uploads the *directory it is pointed at*, not a commit, and the checkout also holds `.env.local`
+   uploads the _directory it is pointed at_, not a commit, and the checkout also holds `.env.local`
    files, `.claude/worktrees/*`, `graphify-out/` and `tasks/`. The archive is exactly the commit;
 3. runs `vercel deploy --prod --project <name> --scope divine-lab` for the website, then the admin
    app. Each project's Root Directory (`apps/web`, `apps/admin`) is applied by Vercel to the uploaded
