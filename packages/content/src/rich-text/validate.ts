@@ -43,7 +43,12 @@ function allowedChildren(parent: string): readonly string[] | null {
 }
 
 /** Child count must be >= 1 for these containers. */
-const NON_EMPTY = new Set(["blockquote", "bulletList", "orderedList", "listItem"]);
+const NON_EMPTY = new Set([
+  "blockquote",
+  "bulletList",
+  "orderedList",
+  "listItem",
+]);
 
 interface Frame {
   node: unknown;
@@ -57,7 +62,10 @@ interface Frame {
  * Validates a TipTap JSON document against a profile. Iterative (explicit stack), bounded by
  * `LIMITS.maxNodes` and `LIMITS.maxNodeDepth`, no regexes: safe on hostile input.
  */
-export function validateRichText(doc: unknown, profile: RichTextProfile): RichTextIssue[] {
+export function validateRichText(
+  doc: unknown,
+  profile: RichTextProfile,
+): RichTextIssue[] {
   const spec = RICH_TEXT_PROFILES[profile];
   const allowedNodes = new Set<string>(spec.nodes);
   const allowedMarks = new Set<string>(spec.marks);
@@ -71,7 +79,9 @@ export function validateRichText(doc: unknown, profile: RichTextProfile): RichTe
   }
 
   let count = 0;
-  const stack: Frame[] = [{ node: doc, path: [], depth: 1, parent: null, index: 0 }];
+  const stack: Frame[] = [
+    { node: doc, path: [], depth: 1, parent: null, index: 0 },
+  ];
   while (stack.length > 0 && issues.length < MAX_ISSUES) {
     const { node, path, depth, parent, index } = stack.pop() as Frame;
     count += 1;
@@ -94,7 +104,10 @@ export function validateRichText(doc: unknown, profile: RichTextProfile): RichTe
     }
     if (parent !== null) {
       const children = allowedChildren(parent);
-      if (!children?.includes(type) || (parent === "listItem" && index === 0 && type !== "paragraph")) {
+      if (
+        !children?.includes(type) ||
+        (parent === "listItem" && index === 0 && type !== "paragraph")
+      ) {
         add(path, `Node "${type}" is not allowed inside "${parent}"`);
         continue;
       }
@@ -109,8 +122,12 @@ export function validateRichText(doc: unknown, profile: RichTextProfile): RichTe
         (key === "text" && type === "text") ||
         (key === "marks" && type === "text") ||
         (key === "content" && type !== "text" && type !== "embeddedMedia") ||
-        (key === "attrs" && (type === "heading" || type === "orderedList" || type === "embeddedMedia"));
-      if (!ok) add([...path, key], `Unexpected "${key.slice(0, 40)}" on "${type}"`);
+        (key === "attrs" &&
+          (type === "heading" ||
+            type === "orderedList" ||
+            type === "embeddedMedia"));
+      if (!ok)
+        add([...path, key], `Unexpected "${key.slice(0, 40)}" on "${type}"`);
     }
 
     // ── per-type checks ──
@@ -118,14 +135,20 @@ export function validateRichText(doc: unknown, profile: RichTextProfile): RichTe
       if (typeof node.text !== "string" || node.text.length === 0) {
         add([...path, "text"], "Text node must have text");
       } else if (node.text.length > LIMITS.maxTextNodeLength) {
-        add([...path, "text"], `Text is longer than ${LIMITS.maxTextNodeLength} characters`);
+        add(
+          [...path, "text"],
+          `Text is longer than ${LIMITS.maxTextNodeLength} characters`,
+        );
       }
-      if (node.marks !== undefined) validateMarks(node.marks, [...path, "marks"], allowedMarks, add);
+      if (node.marks !== undefined)
+        validateMarks(node.marks, [...path, "marks"], allowedMarks, add);
       continue;
     }
     if (type === "heading") {
       const level = isObject(node.attrs) ? node.attrs.level : undefined;
-      const extra = isObject(node.attrs) ? Object.keys(node.attrs).filter((k) => k !== "level") : [];
+      const extra = isObject(node.attrs)
+        ? Object.keys(node.attrs).filter((k) => k !== "level")
+        : [];
       if (!HEADING_LEVELS.includes(level as never) || extra.length > 0) {
         add([...path, "attrs"], "Heading level must be 2 or 3");
       }
@@ -136,8 +159,15 @@ export function validateRichText(doc: unknown, profile: RichTextProfile): RichTe
     if (type === "embeddedMedia") {
       const attrs = node.attrs;
       const mediaId = isObject(attrs) ? attrs.mediaId : undefined;
-      const extra = isObject(attrs) ? Object.keys(attrs).filter((k) => k !== "mediaId") : [];
-      if (typeof mediaId !== "string" || mediaId.length === 0 || mediaId.length > MEDIA_ID_MAX || extra.length > 0) {
+      const extra = isObject(attrs)
+        ? Object.keys(attrs).filter((k) => k !== "mediaId")
+        : [];
+      if (
+        typeof mediaId !== "string" ||
+        mediaId.length === 0 ||
+        mediaId.length > MEDIA_ID_MAX ||
+        extra.length > 0
+      ) {
         add([...path, "attrs"], "Embedded file needs a media id");
       }
       continue;
@@ -145,7 +175,8 @@ export function validateRichText(doc: unknown, profile: RichTextProfile): RichTe
 
     const content = node.content;
     if (content === undefined) {
-      if (NON_EMPTY.has(type) || type === "doc") add([...path, "content"], `"${type}" needs content`);
+      if (NON_EMPTY.has(type) || type === "doc")
+        add([...path, "content"], `"${type}" needs content`);
       continue;
     }
     if (!Array.isArray(content)) {
@@ -157,11 +188,20 @@ export function validateRichText(doc: unknown, profile: RichTextProfile): RichTe
       continue;
     }
     if (content.length > LIMITS.maxNodes) {
-      add([...path, "content"], `Document has more than ${LIMITS.maxNodes} nodes`);
+      add(
+        [...path, "content"],
+        `Document has more than ${LIMITS.maxNodes} nodes`,
+      );
       continue;
     }
     for (let i = content.length - 1; i >= 0; i -= 1) {
-      stack.push({ node: content[i], path: [...path, "content", i], depth: depth + 1, parent: type, index: i });
+      stack.push({
+        node: content[i],
+        path: [...path, "content", i],
+        depth: depth + 1,
+        parent: type,
+        index: i,
+      });
     }
   }
   return issues;
@@ -185,21 +225,32 @@ function validateMarks(
       return;
     }
     if (!allowedMarks.has(mark.type)) {
-      add(markPath, `Mark "${mark.type.slice(0, 40)}" is not allowed in this field`);
+      add(
+        markPath,
+        `Mark "${mark.type.slice(0, 40)}" is not allowed in this field`,
+      );
       return;
     }
     if (seen.has(mark.type)) add(markPath, `Mark "${mark.type}" is repeated`);
     seen.add(mark.type);
     for (const key of Object.keys(mark)) {
       if (key !== "type" && !(key === "attrs" && mark.type === "link")) {
-        add([...markPath, key], `Unexpected "${key.slice(0, 40)}" on mark "${mark.type}"`);
+        add(
+          [...markPath, key],
+          `Unexpected "${key.slice(0, 40)}" on mark "${mark.type}"`,
+        );
       }
     }
     if (mark.type === "link") {
       const attrs = mark.attrs;
-      const extra = isObject(attrs) ? Object.keys(attrs).filter((k) => k !== "href") : [];
+      const extra = isObject(attrs)
+        ? Object.keys(attrs).filter((k) => k !== "href")
+        : [];
       if (!isObject(attrs) || !isAllowedHref(attrs.href) || extra.length > 0) {
-        add([...markPath, "attrs"], "Link address must start with https://, http://, mailto: or /");
+        add(
+          [...markPath, "attrs"],
+          "Link address must start with https://, http://, mailto: or /",
+        );
       }
     }
   });
@@ -216,8 +267,12 @@ function validateOrderedListAttrs(
   }
   for (const [key, value] of Object.entries(attrs)) {
     const ok =
-      (key === "start" && Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 10_000) ||
-      (key === "type" && (value === null || ORDERED_LIST_TYPES.includes(value as never)));
+      (key === "start" &&
+        Number.isInteger(value) &&
+        (value as number) >= 1 &&
+        (value as number) <= 10_000) ||
+      (key === "type" &&
+        (value === null || ORDERED_LIST_TYPES.includes(value as never)));
     if (!ok) add([...path, key], "Invalid list attributes");
   }
 }

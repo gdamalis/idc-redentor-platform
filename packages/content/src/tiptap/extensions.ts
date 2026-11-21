@@ -28,7 +28,9 @@ export const TIPTAP_EDITOR_DEFAULTS = {
  * `horizontalRule`, `listKeymap`, `trailingNode`, `undoRedo`. Every disallowed node/mark is
  * explicitly disabled, and `link` is replaced with `CustomLink` when the profile allows links.
  */
-export function createRichTextExtensions(profile: RichTextProfile): AnyExtension[] {
+export function createRichTextExtensions(
+  profile: RichTextProfile,
+): AnyExtension[] {
   const spec = RICH_TEXT_PROFILES[profile];
   const nodes = new Set<string>(spec.nodes);
   const marks = new Set<string>(spec.marks);

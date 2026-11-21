@@ -8,7 +8,11 @@ import {
   type RichTextDoc,
   type RichTextProfile,
 } from "../rich-text/spec";
-import { createRichTextExtensions, CustomLink, TIPTAP_EDITOR_DEFAULTS } from "./index";
+import {
+  createRichTextExtensions,
+  CustomLink,
+  TIPTAP_EDITOR_DEFAULTS,
+} from "./index";
 
 const VALID_SAMPLES: Record<RichTextProfile, RichTextDoc> = {
   inline: {
@@ -43,9 +47,22 @@ const VALID_SAMPLES: Record<RichTextProfile, RichTextDoc> = {
   article: {
     type: "doc",
     content: [
-      { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Título" }] },
-      { type: "heading", attrs: { level: 3 }, content: [{ type: "text", text: "Subtítulo" }] },
-      { type: "blockquote", content: [{ type: "paragraph", content: [{ type: "text", text: "Cita" }] }] },
+      {
+        type: "heading",
+        attrs: { level: 2 },
+        content: [{ type: "text", text: "Título" }],
+      },
+      {
+        type: "heading",
+        attrs: { level: 3 },
+        content: [{ type: "text", text: "Subtítulo" }],
+      },
+      {
+        type: "blockquote",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "Cita" }] },
+        ],
+      },
       {
         type: "bulletList",
         content: [
@@ -59,7 +76,12 @@ const VALID_SAMPLES: Record<RichTextProfile, RichTextDoc> = {
                 content: [
                   {
                     type: "listItem",
-                    content: [{ type: "paragraph", content: [{ type: "text", text: "Uno A" }] }],
+                    content: [
+                      {
+                        type: "paragraph",
+                        content: [{ type: "text", text: "Uno A" }],
+                      },
+                    ],
                   },
                 ],
               },
@@ -73,7 +95,9 @@ const VALID_SAMPLES: Record<RichTextProfile, RichTextDoc> = {
           {
             type: "text",
             text: "Correo",
-            marks: [{ type: "link", attrs: { href: "mailto:hola@example.org" } }],
+            marks: [
+              { type: "link", attrs: { href: "mailto:hola@example.org" } },
+            ],
           },
         ],
       },
@@ -82,7 +106,11 @@ const VALID_SAMPLES: Record<RichTextProfile, RichTextDoc> = {
   sermon: {
     type: "doc",
     content: [
-      { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Prédica" }] },
+      {
+        type: "heading",
+        attrs: { level: 2 },
+        content: [{ type: "text", text: "Prédica" }],
+      },
       { type: "paragraph", content: [{ type: "text", text: "Introducción" }] },
       { type: "embeddedMedia", attrs: { mediaId: "media-audio-1" } },
     ],
@@ -100,7 +128,14 @@ describe("createRichTextExtensions (TipTap v3 <-> Zod spec parity)", () => {
       expect(Object.keys(schema.marks).sort()).toEqual([...spec.marks].sort());
 
       // Disallowed StarterKit v3 nodes/marks are absent from every profile
-      for (const bannedNode of ["hardBreak", "horizontalRule", "codeBlock", "image", "table", "postLink"]) {
+      for (const bannedNode of [
+        "hardBreak",
+        "horizontalRule",
+        "codeBlock",
+        "image",
+        "table",
+        "postLink",
+      ]) {
         expect(schema.nodes[bannedNode]).toBeUndefined();
       }
       for (const bannedMark of ["underline", "strike", "code", "postLink"]) {
@@ -121,7 +156,9 @@ describe("createRichTextExtensions (TipTap v3 <-> Zod spec parity)", () => {
 
       // Round-tripped JSON from ProseMirror still passes the Zod schema
       const roundTripped = pmDoc.toJSON();
-      expect(RICH_TEXT_SCHEMAS[profile].safeParse(roundTripped).success).toBe(true);
+      expect(RICH_TEXT_SCHEMAS[profile].safeParse(roundTripped).success).toBe(
+        true,
+      );
     },
   );
 

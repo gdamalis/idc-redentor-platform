@@ -18,7 +18,9 @@ export const EmbeddedMedia = Node.create({
         default: null,
         parseHTML: (element) => element.getAttribute("data-media-id"),
         renderHTML: (attributes) =>
-          attributes.mediaId ? { "data-media-id": String(attributes.mediaId) } : {},
+          attributes.mediaId
+            ? { "data-media-id": String(attributes.mediaId) }
+            : {},
       },
     };
   },

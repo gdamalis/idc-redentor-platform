@@ -15,8 +15,15 @@ export function isAllowedHref(href: unknown): href is string {
     // ASCII control chars, space, DEL, and the backslash browsers treat as "/".
     if (code <= 0x20 || code === 0x7f || code === 0x5c) return false;
     // Unicode whitespace / invisible separators.
-    if (code === 0xa0 || code === 0x1680 || (code >= 0x2000 && code <= 0x200f)) return false;
-    if (code === 0x2028 || code === 0x2029 || code === 0x202f || code === 0x205f) return false;
+    if (code === 0xa0 || code === 0x1680 || (code >= 0x2000 && code <= 0x200f))
+      return false;
+    if (
+      code === 0x2028 ||
+      code === 0x2029 ||
+      code === 0x202f ||
+      code === 0x205f
+    )
+      return false;
     if (code === 0x3000 || code === 0xfeff) return false;
   }
   if (href[0] === "/") return href.length === 1 || href[1] !== "/";
