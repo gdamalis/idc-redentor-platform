@@ -51,12 +51,15 @@ for entry in "${PROJECTS[@]}"; do
   # repository root, so the whole monorepo (with the shared packages/) is uploaded for each app.
   # --meta records the commit on the deployment, since an archive carries no git metadata.
   # shellcheck disable=SC2086
-  if ! url="$(vercel deploy $target_flag --yes \
+  # Without a terminal the CLI prints a JSON document on stdout; with one, the bare URL.
+  if ! out="$(vercel deploy $target_flag --yes \
       --cwd "$stage" \
       --project "$project" \
       --scope "$SCOPE" \
       --meta "githubCommitSha=$sha" \
-      --meta "githubCommitRef=$branch")"; then
+      --meta "githubCommitRef=$branch")" \
+    || ! url="$(jq -er '.deployment.url' <<<"$out" 2>/dev/null || grep -Eo 'https://[^[:space:]]+' <<<"$out" | tail -1)" \
+    || [[ -z "$url" ]]; then
     echo "FAILED: $app ($project) did not deploy." >&2
     if [[ ${#deployed[@]} -gt 0 ]]; then
       echo "Already deployed in this run (roll back with the release's rollbackCommand if needed):" >&2
