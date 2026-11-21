@@ -8,7 +8,7 @@ The **public website** (`apps/web`) is a **content-managed informational site**,
 
 > **Admin exception:** the separate internal **Ministry Admin Panel** (`apps/admin`) _is_ an authenticated app — Firebase Auth + RBAC + congregant data — and is deliberately **in scope**. The no-auth boundary above governs `apps/web` only. See `tasks/specs/admin-platform-brief.md` and `docs/product/scope-and-boundaries.md` § "Two products in this repo".
 
-**Versioning**: independent per-app via Changesets — `@idcr/web` (`apps/web/package.json`) + `@idcr/admin` (`apps/admin/package.json`); root frozen. See `docs/architecture/versioning.md`. | **Node**: 22.14.0 (`.nvmrc`) | **Package Manager**: pnpm | **Host**: Vercel (production + per-PR preview deploys)
+**Versioning**: independent per-app via Changesets — `@idcr/web` (`apps/web/package.json`) + `@idcr/admin` (`apps/admin/package.json`); root frozen. See `docs/architecture/versioning.md`. | **Node**: 22.14.0 (`.nvmrc`) | **Package Manager**: pnpm | **Host**: Vercel (per-PR previews; `main` → staging; production only through batched releases — `docs/architecture/deployments.md`)
 
 > **Monorepo layout (since the admin-platform migration):** this repo is a **pnpm + Turborepo workspace**. The public website now lives entirely under **`apps/web/`** — every app path in this doc (`src/`, `lib/`, `public/`, `config/`, `next.config.ts`, `tsconfig.json`, …) is **under `apps/web/`** unless stated otherwise. The repo root holds the workspace files (`pnpm-workspace.yaml`, `turbo.json`, root `package.json` with Turbo-proxy scripts + the released version + `pnpm.overrides`), the `.claude/` harness, `docs/`, and `tasks/`. Workspace members also include two shared packages `apps/web` consumes — **`packages/config`** (`@idcr/config`: base tsconfig/eslint/postcss/prettier) and **`packages/ui`** (`@idcr/ui`: `cn()`, `LOGO` path constants, `tokens.css`) — see `docs/architecture/monorepo-packages.md`. Run commands at root (they proxy through Turbo across the workspace) or scope to the site with `pnpm --filter @idcr/web <task>`. Vercel builds the site with **Root Directory = `apps/web`**. The future admin app will be `apps/admin/`.
 
@@ -217,17 +217,19 @@ The dev harness ships as the **yoke plugin** (Claude Code marketplace `DivineLab
 - `/yoke:work ICR-N` — the orchestrator: mandatory worktree + branch → explore → (conditional design gate) → plan → implement (TDD) ↔ verify → draft PR → preview QA → mark ready → detached post-PR review + CI loop. Owns exactly **two** status moves: Todo→In Progress and In Progress→In Review.
 - `/yoke:qa ICR-N` — acceptance QA (staging by default; `--preview` targets the PR's Vercel preview). Report-only; posts the QA evidence as a Linear comment.
 - `/yoke:verify` — `pnpm type-check` + `pnpm lint` + `pnpm test` (+ `pnpm build`) plus security checks.
-- `/yoke:merge ICR-N` — **human-triggered** squash-merge → In Review→In Testing → post-merge **staging** QA. Never deploys prod, never sets Done.
+- `/yoke:merge ICR-N` — **human-triggered** squash-merge → In Review→In Testing → post-merge **staging** QA. Never deploys prod, never sets Done. Once staging QA passes, move the issue to **Ready for Release**.
+- `/yoke:release [status|open|cut|deploy]` — batched production releases on the Linear pipeline `idc-redentor-platform`. `cut` gathers every ticket merged since the last release into one Linear release + a runbook ticket; `deploy` stops for the owner's **approval phrase**, then ships **both apps** from one commit (`scripts/deploy-prod.sh`), smoke-checks both hosts and runs the runbook; the owner runs the close (→ Done) in their own terminal. See `docs/architecture/deployments.md`.
 
 ### Artifacts per ticket
 
 - **Spec:** `tasks/specs/ICR-N-<slug>.md` — requirements and design.
 - **Plan:** `tasks/specs/ICR-N-<slug>.plan.md` — file paths, checkpoints, dependencies (plus the per-run `.state.json` for `/yoke:work` resume).
 
-### The two human gates
+### The human gates
 
 1. A conditional **design gate** inside `/yoke:work` (brainstorm + spec for non-trivial or sensitive work — the six sensitive areas `email-services`, `form-pii-spam`, `likes-mongo`, `env-secrets`, `csp-headers`, `i18n-messages` always gate).
-2. The **merge** trigger — you say "merge"; `/yoke:merge` runs. Afterward **you** deploy prod and move the issue to **Done** (Done is human-only; no agent ever sets it).
+2. The **merge** trigger — you say "merge"; `/yoke:merge` runs. After staging QA passes, **you** move the issue to **Ready for Release**.
+3. The **release** — you decide when to cut (`/yoke:release cut`), and `/yoke:release deploy` touches production only after you reply with the release's **approval phrase**. Done is set only by the release close step, which you run in your own terminal. No agent deploys production, pushes `production-hold`, or sets Done any other way.
 
 ### Contentful model-change gate (domain)
 
@@ -242,7 +244,7 @@ The implementer writes to the `staging` work env only — **never** the `master`
 
 `/predica` and its `predica-*` agents are the local sermon pipeline (recording → transcript → bilingual `sermon.json` → branded PDFs → a Contentful **draft** → a WhatsApp text), with two human gates (transcript correction; promote/publish). It is draft-only + send-only and is **not** part of the yoke plugin. See `tasks/specs/sermon-pipeline.md` and the `docs/predica-*` docs.
 
-A human always merges the PR and closes the issue (transitions it to **Done**). Scratchpads live in `tasks/{todo.md,lessons.md}` (gitignored); specs in `tasks/specs/`.
+A human always triggers the merge, and issues reach **Done** only through an approved release. Scratchpads live in `tasks/{todo.md,lessons.md}` (gitignored); specs in `tasks/specs/`.
 
 ## Documentation
 
@@ -267,6 +269,7 @@ A human always merges the PR and closes the issue (transitions it to **Done**). 
   - `seo-and-metadata.md` — `lib/metadata.ts`, the Contentful `Seo` type, OG/Twitter cards, JSON-LD, locale alternates.
   - `observability-sentry.md` — `@sentry/nextjs` across server/edge/client, the `options.ts` single source of truth, the `/monitoring` tunnel vs. CSP/proxy-matcher traps, and the locked PII posture.
   - `agent-harness.md` — how to use the agents and commands; the human-gated tracker automation.
+  - `deployments.md` — batched production releases: `production-hold` and why `main` reaches staging only, one release shipping both apps from one commit, the `git archive` deploy script, per-app rollback, deferred production actions on the runbook, the first-release baseline.
   - `predica-bibleverse-reuse.md` — how `/predica` dedups scripture: the derived, version-scoped `bibleVerse` `internalName` (`"Joel 2:13 (NVI)"`) + the `--upsert-by-internal-name` CMA flag; cross-sermon reuse + sermon re-run safety.
   - `predica-rerun-idempotency.md` — re-running `/predica` safely: pre-flight transcript reuse by audio hash, **Gate 0** existing-sermon detection, regenerate by **update-in-place** (`--id`) instead of duplicating, and the guarded `delete-contentful.mjs` cleanup of superseded assets + orphaned legacy verses.
   - `predica-voice-profiles.md` — the per-preacher voice-coach learning loop: `predica-voice-coach` (step 2.5) learns the preacher's style from the **corrected transcript only** and maintains a local-only (gitignored), human-curatable two-zone profile (`tasks/predicas/_voices/<preacher-slug>.md`: Zone A human-curated + Zone B append-only log) that the writer reads to compound voice quality. Idempotent, non-blocking, style-only.
