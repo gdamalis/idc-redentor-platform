@@ -12,6 +12,10 @@
     "lint": "eslint .",
     "test": "vitest run"
   },
+  "lint-staged": {
+    "*.ts": "eslint --fix",
+    "*.{json,md}": "prettier --write"
+  },
   "peerDependencies": {
     "zod": "^4.6.0"
   },
