@@ -13,7 +13,12 @@ describe("COLLECTIONS", () => {
 });
 
 describe("deriveStatus / canonicalEqual", () => {
-  const base = {
+  const base: {
+    title: { "es-AR": string };
+    date: Date;
+    tags: string[];
+    subtitle?: string;
+  } = {
     title: { "es-AR": "Hola" },
     date: new Date("2026-01-01T00:00:00Z"),
     tags: ["a", "b"],

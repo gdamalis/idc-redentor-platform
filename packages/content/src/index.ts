@@ -3,4 +3,8 @@ export * from "./model/collections";
 export * from "./model/envelope";
 export * from "./model/localized";
 export * from "./natural-keys";
+export * from "./rich-text/href";
+export * from "./rich-text/schema";
+export * from "./rich-text/spec";
+export * from "./rich-text/validate";
 export * from "./status";
