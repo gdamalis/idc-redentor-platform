@@ -1,0 +1,31 @@
+{
+  "name": "@idcr/content",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tiptap": "./src/tiptap/index.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "zod": "^4.6.0"
+  },
+  "dependencies": {
+    "@tiptap/core": "~3.34.0",
+    "@tiptap/extension-link": "~3.34.0",
+    "@tiptap/pm": "~3.34.0",
+    "@tiptap/starter-kit": "~3.34.0"
+  },
+  "devDependencies": {
+    "@idcr/config": "workspace:*",
+    "eslint": "^9.39.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.9",
+    "zod": "^4.6.7"
+  }
+}
