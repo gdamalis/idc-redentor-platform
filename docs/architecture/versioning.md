@@ -116,6 +116,10 @@ but `@v2` is unreleased — the latest stable is `v1.9.0` with camelCase inputs.
 - **Legacy `v1.x` tags** (the single-version era) remain as history.
 - **GitHub Releases lapse** — the workflow has no publish/release-create step. Per-app `CHANGELOG.md`
   is the release-notes surface.
+- **Package versions are not production releases.** A merge to `main` (and the version bump it
+  carries) deploys **staging** only. Production changes in batched releases on the Linear pipeline
+  `idc-redentor-platform` (`idc-redentor-platform/YYYY.M.N`), each shipping both apps from one commit
+  and usually spanning several package versions. See [`deployments.md`](./deployments.md).
 
 ## First-bump baselines
 

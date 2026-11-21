@@ -16,10 +16,7 @@ on:
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "turbo.json"
-      # This file is deliberately NOT self-referenced yet. The job cannot pass today
-      # (ICR-210), so self-triggering would only guarantee a red check on any edit to
-      # this workflow, for zero signal. Add ".github/workflows/trace-guard.yml" back to
-      # this list as part of the ICR-210 fix, once the job can actually go green.
+      - ".github/workflows/trace-guard.yml"
 
 permissions:
   contents: read
@@ -44,25 +41,25 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # KNOWN BROKEN — see ICR-210. These dummy Contentful values used to be fine: the
-      # build logged auth failures but still completed, and file tracing does not depend
-      # on data fetching. ICR-123 then made getAllBlogPostSlugs throw rather than report an
-      # empty post list, and /sitemap.xml is still prerendered at build — so the build now
-      # exits 1 during static generation, BEFORE Next.js collects build traces, and
-      # verify:trace never gets a manifest to check.
+      # The build needs a real read-only Contentful DELIVERY token (ICR-210). ICR-123 made
+      # getAllBlogPostSlugs fail closed (throw instead of reporting an empty post list), and
+      # /sitemap.xml is prerendered at build, so an invalid token exits the build during static
+      # generation, BEFORE Next.js collects build traces, and verify:trace has nothing to check.
+      # That throw is deliberate production behaviour; do not weaken it or add a CI-only bypass.
       #
-      # Consequence: this job fails on every PR that touches apps/web/**. The path filter
-      # above stops it blocking unrelated PRs; it does NOT fix this. The fix is to give the
-      # build a real read-only Contentful DELIVERY token (see ICR-210) — note the far more
-      # privileged CONTENTFUL_MANAGEMENT_ACCESS_TOKEN is already a repo secret, used by
-      # contentful-drift.yml, so the "no real credentials in Actions" rule this comment
-      # used to assert is already not the case.
+      # CONTENTFUL_ACCESS_TOKEN must be a read-only Delivery (CDA) token. This is less
+      # privileged than CONTENTFUL_MANAGEMENT_ACCESS_TOKEN, which contentful-drift.yml already
+      # uses. CONTENTFUL_PREVIEW_ACCESS_TOKEN is only read for draft-mode requests, which do
+      # not happen at build time, so it stays a dummy here.
+      #
+      # Secrets are not exposed to Dependabot-triggered runs, so this job fails on Dependabot
+      # PRs that touch the paths above.
       - name: Build
         run: pnpm --filter @idcr/web build
         env:
           NEXT_PUBLIC_BASE_URL: https://example.com
-          CONTENTFUL_SPACE_ID: dummyspace
-          CONTENTFUL_ACCESS_TOKEN: dummytoken
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+          CONTENTFUL_ACCESS_TOKEN: ${{ secrets.CONTENTFUL_ACCESS_TOKEN }}
           CONTENTFUL_PREVIEW_ACCESS_TOKEN: dummypreview
 
       - name: Verify the PDF cron function traces browsers.json

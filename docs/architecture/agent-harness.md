@@ -432,7 +432,8 @@ Grep/Read on an empty/stale/absent graph and notes it. Full guide: [`graphify.md
 
 ## Golden rules
 
-1. **Never move an issue to Done** — that's the human gate, after their manual prod deploy.
+1. **Never move an issue to Done** — that's the human gate. **Never deploy production** either: never run
+   `scripts/deploy-prod.sh` without `--preview`, and never push `production-hold` (see [`deployments.md`](./deployments.md)).
 2. **No autonomous merge** — `autoMerge` stays `false`. Agents never merge on their own; the human triggers
    `/yoke:merge`, which executes the squash-merge.
 3. **Never run QA against production — in any env** — prod custom domains AND prod `*.vercel.app` aliases are
