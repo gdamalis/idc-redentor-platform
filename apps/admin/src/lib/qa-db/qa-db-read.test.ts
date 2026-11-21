@@ -1,5 +1,7 @@
 // @vitest-environment node
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { DB_NAME_ALLOW, COLLECTION_ALLOW } from "./policy";
 import { runQaDbRead } from "./run";
@@ -136,6 +138,7 @@ describe("connection string path", () => {
     "mongo\x64b://u:p@h.invalid/ministry-admin-test",
     "mongo\x64b://u:p@h.invalid/test",
     "mongo\x64b://u:p@h.invalid/ministry-admin",
+    "mongodb:///ministry-admin-staging",
     "not-a-uri",
   ])("refuses a mismatched or invalid path (%s)", async (uri) => {
     const { outcome, connect } = await read(
@@ -324,20 +327,72 @@ describe("read-only", () => {
     ).toMatchObject({ limit: 50, maxTimeMS: 5000 });
   });
 
-  it("refuses unknown or repeated flags", async () => {
-    expect(
-      (await read([...base("ministry-admin-staging"), "--uri", "x"])).outcome
-        .exitCode,
-    ).toBe(2);
-    expect(
-      (
-        await read([
-          ...base("ministry-admin-staging"),
-          "--db",
-          "ministry-admin-test",
-        ])
-      ).outcome.exitCode,
-    ).toBe(2);
+  it("refuses unknown, repeated, or verb-mismatched flags and invalid limits", async () => {
+    const cases = [
+      [...base("ministry-admin-staging"), "--uri", "x"],
+      [...base("ministry-admin-staging"), "--db", "ministry-admin-test"],
+      [...base("ministry-admin-staging"), "--pipeline", '[{"$match":{}}]'],
+      [
+        "count",
+        "--db",
+        "ministry-admin-staging",
+        "--collection",
+        "rbacAudit",
+        "--pipeline",
+        '[{"$match":{}}]',
+      ],
+      [
+        "aggregate",
+        "--db",
+        "ministry-admin-staging",
+        "--collection",
+        "rbacAudit",
+        "--filter",
+        "{}",
+      ],
+      [...base("ministry-admin-staging"), "--limit", "0"],
+      [...base("ministry-admin-staging"), "--limit", "-5"],
+      [...base("ministry-admin-staging"), "--limit", "abc"],
+    ];
+    for (const argv of cases) {
+      const { outcome, connect } = await read(argv);
+      expect(outcome.exitCode).toBe(2);
+      expect(connect).not.toHaveBeenCalled();
+    }
+  });
+
+  it("refuses projection expression aliases and $group PII field references", async () => {
+    const projBypass = await read([
+      ...base("ministry-admin-staging"),
+      "--project",
+      '{"leaked":"$firstName"}',
+    ]);
+    expect(projBypass.outcome.exitCode).toBe(2);
+    expect(projBypass.connect).not.toHaveBeenCalled();
+
+    const aggCases = [
+      [{ $project: { leaked: "$email" } }],
+      [{ $group: { _id: "$firstName", n: { $sum: 1 } } }],
+      [{ $group: { _id: "$action", emails: { $push: "$actorEmail" } } }],
+      [{ $group: { _id: "$name", n: { $sum: 1 } } }],
+      [{ $limit: 0 }],
+      [{ $limit: -1 }],
+      [{ $skip: -1 }],
+      [{ $count: "$bad" }],
+    ];
+    for (const pipeline of aggCases) {
+      const { outcome, connect } = await read([
+        "aggregate",
+        "--db",
+        "ministry-admin-staging",
+        "--collection",
+        "users",
+        "--pipeline",
+        JSON.stringify(pipeline),
+      ]);
+      expect(outcome.exitCode).toBe(2);
+      expect(connect).not.toHaveBeenCalled();
+    }
   });
 });
 
@@ -376,22 +431,54 @@ describe("scrubbing", () => {
     );
   });
 
-  it("masks `name` on identity collections and after $lookup, keeps it on role data", () => {
+  it("masks `name` on identity/contact collections and after $lookup, keeps QA/system role names and content labels", () => {
     const person = scrubDocuments([{ name: "Maria Perez" }], {
       collection: "users",
       hasLookup: false,
     });
     expect(JSON.stringify(person.docs)).not.toContain("Maria");
+    const contact = scrubDocuments([{ name: "Maria Perez" }], {
+      collection: "contact",
+      hasLookup: false,
+    });
+    expect(JSON.stringify(contact.docs)).not.toContain("Maria");
     const looked = scrubDocuments([{ name: "Maria Perez" }], {
       collection: "roles",
       hasLookup: true,
     });
     expect(JSON.stringify(looked.docs)).not.toContain("Maria");
-    const role = scrubDocuments([{ name: "admin" }], {
-      collection: "roles",
+    const role = scrubDocuments(
+      [{ name: "admin" }, { name: "QA Editor" }, { name: "Maria Perez" }],
+      { collection: "roles", hasLookup: false },
+    );
+    const roleJson = JSON.stringify(role.docs);
+    expect(roleJson).toContain("admin");
+    expect(roleJson).toContain("QA Editor");
+    expect(roleJson).not.toContain("Maria");
+    const topic = scrubDocuments([{ name: "Evangelio" }], {
+      collection: "topics",
       hasLookup: false,
     });
-    expect(JSON.stringify(role.docs)).toContain("admin");
+    expect(JSON.stringify(topic.docs)).toContain("Evangelio");
+  });
+
+  it("masks snake_case, accented Spanish, and IP fields", () => {
+    const { docs } = scrubDocuments(
+      [
+        {
+          first_name: "Ana",
+          last_name: "Gomez",
+          teléfono: "+5411111111",
+          dirección: "Av 123",
+          clientIp: "203.0.113.5",
+          action: "role.create",
+        },
+      ],
+      { collection: "rbacAudit", hasLookup: false },
+    );
+    const json = JSON.stringify(docs);
+    expect(json).not.toMatch(/Ana|Gomez|5411|Av 123|203\.0\.113/);
+    expect(json).toContain("role.create");
   });
 
   it("masks sensitive-looking keys and drops prototype keys", () => {
@@ -475,5 +562,47 @@ describe(".claude/config.json", () => {
     expect([...(config.qaDb.collections as string[])].sort()).toEqual(
       [...COLLECTION_ALLOW].sort(),
     );
+  });
+});
+
+describe("CLI subprocess contract", () => {
+  it("exits 2 on a production DB name with single-line JSON on stdout and never leaks the env URI", () => {
+    const adminDir = fileURLToPath(new URL("../../..", import.meta.url));
+    const secretMarker = "SUPER_SECRET_MARKER_98765";
+    const res = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        "tsx",
+        "scripts/qa-db-read.ts",
+        "read",
+        "--db",
+        "ministry-admin",
+        "--collection",
+        "rbacAudit",
+      ],
+      {
+        cwd: adminDir,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          YOKE_QA_DB_ENV: "previewAdmin",
+          MONGODB_URI: `mongo\x64b://u:${secretMarker}@db.invalid/ministry-admin`,
+        },
+      },
+    );
+    expect(res.status).toBe(2);
+    const lines = res.stdout.trim().split("\n");
+    expect(lines).toHaveLength(1);
+    const parsed = JSON.parse(lines[0] ?? "") as {
+      contract: string;
+      ok: boolean;
+      diagnostics: string[];
+    };
+    expect(parsed.contract).toBe("yoke/qa-db-read@1");
+    expect(parsed.ok).toBe(false);
+    expect(parsed.diagnostics.length).toBeGreaterThan(0);
+    expect(res.stderr.trim().length).toBeGreaterThan(0);
+    expect(res.stdout + res.stderr).not.toContain(secretMarker);
   });
 });

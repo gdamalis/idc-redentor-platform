@@ -86,8 +86,9 @@ export function uriVariableFor(
 
 /** The database path of a connection string, without ever parsing credentials into output. */
 export function uriDbPath(uri: string): string | null | undefined {
-  const match = /^mongodb(?:\+srv)?:\/\/([^/?]*)(?:\/([^?]*))?/.exec(uri);
-  if (!match) return undefined; // not a mongodb URI
+  const match =
+    /^mongodb(?:\+srv)?:\/\/([^/?\s]+)(?:\/([^?\s]*))?(?:\?[^\s]*)?$/.exec(uri);
+  if (!match) return undefined; // not a valid mongodb URI
   const path = match[2] ?? "";
   if (path === "") return null; // no database path
   try {

@@ -9,7 +9,7 @@ read-only command. It replaces the `mongoMcp: "mongodb-localhost"` entry that us
 ```bash
 YOKE_QA_DB_ENV=previewAdmin \
 sh -c 'cd apps/admin && exec node --import tsx scripts/qa-db-read.ts read \
-  --db ministry-admin-staging --collection rbacAudit --filter "{\"action\":\"role.change\"}" --limit 5'
+  --db ministry-admin-staging --collection rbacAudit --filter "{\"action\":\"role.create\"}" --limit 5'
 ```
 
 Verbs: `read` (find), `count`, `aggregate` (`--pipeline <json array>`). Flags: `--db`, `--collection`,
@@ -55,9 +55,11 @@ Queries get `maxTimeMS` 5000 and a 50-document cap.
 
 Connection strings are read from the environment only (never argv) and never printed. Output is scrubbed:
 fields named like email, password, token, secret, uid, ip, phone/teléfono, address/dirección, first/last/full/display
-name, nombre/apellido, birth/dob and notes are replaced by `"[masked]"`; `name` is masked on identity data and
-after any `$lookup`, except values starting with `"QA "` (test identities); every string, including keys,
-has emails, `mongodb://` URIs, JWTs and bearer tokens masked. Filters may still match masked fields, so
+name, nombre/apellido, birth/dob and notes are replaced by `"[masked]"`; `name` is masked on identity/contact data and
+after any `$lookup`, except values starting with `"QA "` (test identities) and system role names (`admin`/`leader`/`member`)
+on `roles`/`rbacAudit`; every string, including keys,
+has emails, `mongodb://` URIs, JWTs and bearer tokens masked. Projections accept only `0`/`1`/`true`/`false` and `$group`
+rejects references to masked fields so queries cannot rename PII out of the denylist. Filters may still match masked fields, so
 an agent can select the `"QA "` entry. Accepted residual risk: repeated regex filters could probe a masked value
 one character at a time; never filter on real congregant data, and never paste output that contains
 unmasked personal data into a ticket.

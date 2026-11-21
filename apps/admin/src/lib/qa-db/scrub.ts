@@ -9,12 +9,14 @@
 export const MASK = "[masked]";
 
 const PII_KEY =
-  /(e-?mail|password|passwd|token|secret|api-?key|cookie|phone|telefono|tel$|address|direccion|first-?name|last-?name|full-?name|display-?name|nombre|apellido|birth|dob$|^notes?$|uid$|^ip|ip-?address)/i;
+  /(e[-_]?mail|password|passwd|token|secret|api[-_]?key|cookie|phone|tel[eé]fono|tel$|address|direcci[oó]n|first[-_]?name|last[-_]?name|full[-_]?name|display[-_]?name|nombre|apellido|birth|dob$|^notes?$|uid$|^(?:client|remote|source|user)?ip(?:$|[-_]?address)|[-_]ip$)/i;
 
-/** `name` is masked on identity data and after any $lookup, except test identities ("QA "). */
+export function isPiiKey(key: string): boolean {
+  return PII_KEY.test(key);
+}
+
+/** Non-person content collections where `name` is an entry label, not a person's name. */
 export const NAME_SAFE_COLLECTIONS: ReadonlySet<string> = new Set([
-  "roles",
-  "rbacAudit",
   "topics",
   "event_banners",
   "sections",
@@ -29,7 +31,18 @@ export const NAME_SAFE_COLLECTIONS: ReadonlySet<string> = new Set([
   "sermons",
   "broadcast_log",
   "likes",
-  "contact",
+]);
+
+/** Role collections keep system role names and "QA " role names, masking anything else. */
+const ROLE_NAME_COLLECTIONS: ReadonlySet<string> = new Set([
+  "roles",
+  "rbacAudit",
+]);
+
+const SYSTEM_ROLE_NAMES: ReadonlySet<string> = new Set([
+  "admin",
+  "leader",
+  "member",
 ]);
 
 const PATTERNS: readonly RegExp[] = [
@@ -78,8 +91,10 @@ export function scrubDocuments(
   context: ScrubContext,
 ): ScrubResult {
   const masked = new Set<string>();
-  const nameMasked =
-    context.hasLookup || !NAME_SAFE_COLLECTIONS.has(context.collection);
+  const nameSafe =
+    !context.hasLookup && NAME_SAFE_COLLECTIONS.has(context.collection);
+  const roleNameSafe =
+    !context.hasLookup && ROLE_NAME_COLLECTIONS.has(context.collection);
 
   const walk = (raw: unknown, depth: number): unknown => {
     const value = normalise(raw);
@@ -93,8 +108,14 @@ export function scrubDocuments(
       const safeKey = scrubString(key);
       const isQaName =
         key === "name" && typeof child === "string" && child.startsWith("QA ");
+      const isSystemRoleName =
+        key === "name" &&
+        roleNameSafe &&
+        typeof child === "string" &&
+        SYSTEM_ROLE_NAMES.has(child.toLowerCase());
       const hide =
-        PII_KEY.test(key) || (key === "name" && nameMasked && !isQaName);
+        PII_KEY.test(key) ||
+        (key === "name" && !nameSafe && !isQaName && !isSystemRoleName);
       if (hide) {
         masked.add(safeKey);
         out[safeKey] = MASK;

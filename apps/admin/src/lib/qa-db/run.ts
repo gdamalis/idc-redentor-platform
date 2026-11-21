@@ -7,9 +7,9 @@
  * validation → connect. Nothing reaches `connect` unless every guard passed.
  */
 import {
-  clampLimit,
   MAX_TIME_MS,
   parseJsonFlag,
+  parseLimit,
   validateFilter,
   validatePipeline,
   validateProjection,
@@ -70,16 +70,20 @@ export interface QaDbOutcome {
   envelope: QaDbEnvelope;
 }
 
-const FLAGS: ReadonlySet<string> = new Set([
-  "--db",
-  "--collection",
-  "--filter",
-  "--project",
-  "--sort",
-  "--limit",
-  "--pipeline",
-]);
-const VERBS: ReadonlySet<string> = new Set(["read", "count", "aggregate"]);
+type QaDbVerb = "read" | "count" | "aggregate";
+
+const FLAGS_BY_VERB: Readonly<Record<QaDbVerb, ReadonlySet<string>>> = {
+  read: new Set([
+    "--db",
+    "--collection",
+    "--filter",
+    "--project",
+    "--sort",
+    "--limit",
+  ]),
+  count: new Set(["--db", "--collection", "--filter"]),
+  aggregate: new Set(["--db", "--collection", "--pipeline", "--limit"]),
+};
 
 const refused = (reason: string): QaDbOutcome => ({
   exitCode: 2,
@@ -90,12 +94,15 @@ const refused = (reason: string): QaDbOutcome => ({
   },
 });
 
-function parseFlags(args: readonly string[]): Map<string, string> | string {
+function parseFlags(
+  args: readonly string[],
+  allowedFlags: ReadonlySet<string>,
+): Map<string, string> | string {
   const flags = new Map<string, string>();
   for (let i = 0; i < args.length; i += 2) {
     const flag = args[i] as string;
     const value = args[i + 1];
-    if (!FLAGS.has(flag) || value === undefined || flags.has(flag))
+    if (!allowedFlags.has(flag) || value === undefined || flags.has(flag))
       return "unknown, repeated or incomplete flag";
     flags.set(flag, value);
   }
@@ -107,13 +114,14 @@ export async function runQaDbRead(
   deps: QaDbDeps,
 ): Promise<QaDbOutcome> {
   const [verb, ...rest] = input.argv;
-  if (typeof verb !== "string" || !VERBS.has(verb))
+  if (typeof verb !== "string" || !Object.hasOwn(FLAGS_BY_VERB, verb))
     return refused("verb must be read, count or aggregate");
+  const verbKey = verb as QaDbVerb;
 
   const env = resolveEnv(input.env.YOKE_QA_DB_ENV);
   if (!env.ok) return refused(env.reason);
 
-  const flags = parseFlags(rest);
+  const flags = parseFlags(rest, FLAGS_BY_VERB[verbKey]);
   if (typeof flags === "string") return refused(flags);
 
   const db = checkDbName(env.value, flags.get("--db"));
@@ -143,11 +151,13 @@ export async function runQaDbRead(
   const sort = validateSort(unwrap(sortRaw));
   if (!sort.ok) return refused(sort.reason);
   let pipeline: ReturnType<typeof validatePipeline> | undefined;
-  if (verb === "aggregate") {
+  if (verbKey === "aggregate") {
     pipeline = validatePipeline(unwrap(pipelineRaw));
     if (!pipeline.ok) return refused(pipeline.reason);
   }
-  const limit = clampLimit(flags.get("--limit"));
+  const limitResult = parseLimit(flags.get("--limit"));
+  if (!limitResult.ok) return refused(limitResult.reason);
+  const limit = limitResult.value;
 
   let handle: ReadOnlyDb | undefined;
   try {
