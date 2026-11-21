@@ -188,4 +188,212 @@ describe("createRichTextExtensions (TipTap v3 <-> Zod spec parity)", () => {
     expect(isAllowedUri("data:text/html,hi", ctx)).toBe(false);
     expect(isAllowedUri("tel:+54911", ctx)).toBe(false);
   });
+
+  it("enforces exact ProseMirror <-> Zod nesting parity on blockquote and listItem (negative parity)", () => {
+    const sermonSchema = getSchema(createRichTextExtensions("sermon"));
+    expect(sermonSchema.nodes.blockquote.spec.content).toBe("paragraph+");
+    expect(sermonSchema.nodes.listItem.spec.content).toBe(
+      "paragraph (paragraph | bulletList | orderedList)*",
+    );
+
+    const invalidDocs: Array<[string, Record<string, unknown>]> = [
+      [
+        "blockquote > heading(2)",
+        {
+          type: "doc",
+          content: [
+            {
+              type: "blockquote",
+              content: [
+                {
+                  type: "heading",
+                  attrs: { level: 2 },
+                  content: [{ type: "text", text: "No" }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      [
+        "blockquote > bulletList",
+        {
+          type: "doc",
+          content: [
+            {
+              type: "blockquote",
+              content: [
+                {
+                  type: "bulletList",
+                  content: [
+                    {
+                      type: "listItem",
+                      content: [
+                        {
+                          type: "paragraph",
+                          content: [{ type: "text", text: "No" }],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      [
+        "blockquote > embeddedMedia",
+        {
+          type: "doc",
+          content: [
+            {
+              type: "blockquote",
+              content: [
+                { type: "embeddedMedia", attrs: { mediaId: "media-1" } },
+              ],
+            },
+          ],
+        },
+      ],
+      [
+        "listItem > [paragraph, blockquote]",
+        {
+          type: "doc",
+          content: [
+            {
+              type: "bulletList",
+              content: [
+                {
+                  type: "listItem",
+                  content: [
+                    {
+                      type: "paragraph",
+                      content: [{ type: "text", text: "Item" }],
+                    },
+                    {
+                      type: "blockquote",
+                      content: [
+                        {
+                          type: "paragraph",
+                          content: [{ type: "text", text: "Quote" }],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      [
+        "listItem > [paragraph, heading(2)]",
+        {
+          type: "doc",
+          content: [
+            {
+              type: "bulletList",
+              content: [
+                {
+                  type: "listItem",
+                  content: [
+                    {
+                      type: "paragraph",
+                      content: [{ type: "text", text: "Item" }],
+                    },
+                    {
+                      type: "heading",
+                      attrs: { level: 2 },
+                      content: [{ type: "text", text: "H2" }],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      [
+        "listItem > [paragraph, embeddedMedia]",
+        {
+          type: "doc",
+          content: [
+            {
+              type: "bulletList",
+              content: [
+                {
+                  type: "listItem",
+                  content: [
+                    {
+                      type: "paragraph",
+                      content: [{ type: "text", text: "Item" }],
+                    },
+                    { type: "embeddedMedia", attrs: { mediaId: "media-1" } },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      [
+        "listItem > [bulletList] without leading paragraph",
+        {
+          type: "doc",
+          content: [
+            {
+              type: "bulletList",
+              content: [
+                {
+                  type: "listItem",
+                  content: [
+                    {
+                      type: "bulletList",
+                      content: [
+                        {
+                          type: "listItem",
+                          content: [
+                            {
+                              type: "paragraph",
+                              content: [{ type: "text", text: "Nested" }],
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    ];
+
+    for (const [, invalid] of invalidDocs) {
+      expect(RICH_TEXT_SCHEMAS.sermon.safeParse(invalid).success).toBe(false);
+      expect(() => PMNode.fromJSON(sermonSchema, invalid).check()).toThrow();
+    }
+  });
+
+  it("EmbeddedMedia.parseHTML rejects missing, blank, or overlong data-media-id", () => {
+    const sermonSchema = getSchema(createRichTextExtensions("sermon"));
+    const rule = sermonSchema.nodes.embeddedMedia.spec.parseDOM?.[0];
+    expect(rule?.getAttrs).toBeTypeOf("function");
+
+    const fakeEl = (mediaId: string | null) =>
+      ({
+        getAttribute: (name: string) =>
+          name === "data-media-id" ? mediaId : null,
+      }) as unknown as HTMLElement;
+
+    expect(rule?.getAttrs?.(fakeEl(null))).toBe(false);
+    expect(rule?.getAttrs?.(fakeEl(""))).toBe(false);
+    expect(rule?.getAttrs?.(fakeEl("   "))).toBe(false);
+    expect(rule?.getAttrs?.(fakeEl("a".repeat(129)))).toBe(false);
+    expect(rule?.getAttrs?.(fakeEl("  media-audio-1  "))).toEqual({
+      mediaId: "media-audio-1",
+    });
+  });
 });

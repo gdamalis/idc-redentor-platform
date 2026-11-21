@@ -312,19 +312,20 @@ describe("RICH_TEXT_SCHEMAS", () => {
     };
     expect(RICH_TEXT_SCHEMAS.article.safeParse(badQuote).success).toBe(false);
 
-    // embeddedMedia with missing or empty mediaId
-    expect(
-      RICH_TEXT_SCHEMAS.sermon.safeParse({
-        type: "doc",
-        content: [{ type: "embeddedMedia", attrs: { mediaId: "" } }],
-      }).success,
-    ).toBe(false);
-    expect(
-      RICH_TEXT_SCHEMAS.sermon.safeParse({
-        type: "doc",
-        content: [{ type: "embeddedMedia" }],
-      }).success,
-    ).toBe(false);
+    // embeddedMedia with missing, empty, blank, or untrimmed mediaId
+    for (const badMedia of [
+      { type: "embeddedMedia" },
+      { type: "embeddedMedia", attrs: { mediaId: "" } },
+      { type: "embeddedMedia", attrs: { mediaId: "   " } },
+      { type: "embeddedMedia", attrs: { mediaId: " media-1 " } },
+    ]) {
+      expect(
+        RICH_TEXT_SCHEMAS.sermon.safeParse({
+          type: "doc",
+          content: [badMedia],
+        }).success,
+      ).toBe(false);
+    }
   });
 
   it("enforces MAX_NODE_DEPTH while allowing two-deep and three-deep nested lists", () => {

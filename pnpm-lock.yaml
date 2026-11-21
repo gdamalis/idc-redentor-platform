@@ -359,9 +359,15 @@ importers:
       '@tiptap/core':
         specifier: ~3.34.0
         version: 3.34.0(@tiptap/pm@3.34.0)
+      '@tiptap/extension-blockquote':
+        specifier: ~3.34.0
+        version: 3.34.0(@tiptap/core@3.34.0(@tiptap/pm@3.34.0))(@tiptap/pm@3.34.0)
       '@tiptap/extension-link':
         specifier: ~3.34.0
         version: 3.34.0(@tiptap/core@3.34.0(@tiptap/pm@3.34.0))(@tiptap/pm@3.34.0)
+      '@tiptap/extension-list-item':
+        specifier: ~3.34.0
+        version: 3.34.0(@tiptap/extension-list@3.34.0(@tiptap/core@3.34.0(@tiptap/pm@3.34.0))(@tiptap/pm@3.34.0))
       '@tiptap/pm':
         specifier: ~3.34.0
         version: 3.34.0

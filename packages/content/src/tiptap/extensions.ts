@@ -1,4 +1,6 @@
 import type { AnyExtension } from "@tiptap/core";
+import Blockquote from "@tiptap/extension-blockquote";
+import ListItem from "@tiptap/extension-list-item";
 import StarterKit from "@tiptap/starter-kit";
 import {
   HEADING_LEVELS,
@@ -9,6 +11,22 @@ import {
 } from "../rich-text/spec";
 import { EmbeddedMedia } from "./embedded-media";
 import { CustomLink } from "./link";
+
+/**
+ * Constrained Blockquote matching `validateRichText`: paragraphs only (no nested lists,
+ * headings, blockquotes, or embedded media).
+ */
+export const ConstrainedBlockquote = Blockquote.extend({
+  content: "paragraph+",
+});
+
+/**
+ * Constrained ListItem matching `validateRichText`: leading paragraph followed by optional
+ * paragraphs or nested bullet/ordered lists (no headings, blockquotes, or embedded media).
+ */
+export const ConstrainedListItem = ListItem.extend({
+  content: "paragraph (paragraph | bulletList | orderedList)*",
+});
 
 /**
  * Editor options the shared extension list is built for (applied by the React editor in ICR-197).
@@ -22,11 +40,12 @@ export const TIPTAP_EDITOR_DEFAULTS = {
 /**
  * Builds the shared TipTap v3 extension list for a rich-text profile from `RICH_TEXT_PROFILES`,
  * so the editor (ICR-197), server-side Zod validator, and renderer (ICR-202) always agree on
- * the exact node and mark set.
+ * the exact node, content-expression, and mark set.
  *
  * StarterKit v3 bundles `link`, `underline`, `strike`, `code`, `codeBlock`, `hardBreak`,
  * `horizontalRule`, `listKeymap`, `trailingNode`, `undoRedo`. Every disallowed node/mark is
- * explicitly disabled, and `link` is replaced with `CustomLink` when the profile allows links.
+ * explicitly disabled; `blockquote`, `listItem`, and `link` are replaced with constrained
+ * extensions when enabled by the profile.
  */
 export function createRichTextExtensions(
   profile: RichTextProfile,
@@ -49,12 +68,12 @@ export function createRichTextExtensions(
       bold: marks.has(RICH_TEXT_MARK.bold) ? {} : false,
       italic: marks.has(RICH_TEXT_MARK.italic) ? {} : false,
 
-      // Profile-dependent block nodes
+      // Profile-dependent block nodes (blockquote & listItem replaced below with constrained content specs)
       heading: hasHeading ? { levels: [...HEADING_LEVELS] } : false,
-      blockquote: hasBlockquote ? {} : false,
+      blockquote: false,
       bulletList: hasBulletList ? {} : false,
       orderedList: hasOrderedList ? {} : false,
-      listItem: hasListItem ? {} : false,
+      listItem: false,
       listKeymap: hasAnyList ? {} : false,
 
       // Always disabled in v1 (explicitly rejected by schema)
@@ -68,6 +87,12 @@ export function createRichTextExtensions(
     }),
   ];
 
+  if (hasBlockquote) {
+    extensions.push(ConstrainedBlockquote);
+  }
+  if (hasListItem) {
+    extensions.push(ConstrainedListItem);
+  }
   if (marks.has(RICH_TEXT_MARK.link)) {
     extensions.push(CustomLink);
   }

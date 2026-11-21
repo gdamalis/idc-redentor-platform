@@ -96,7 +96,7 @@ export const footerDraftSchema = z.strictObject({
 export const footerPublishableSchema = z.strictObject({
   kind: z.literal(GLOBAL_KIND.footer),
   machineName: machineNameSchema,
-  logo: idSchema.optional(),
+  logo: idSchema,
   shortDescription: localizedSchema(longTextSchema, { requireEs: true }),
   socialLinks: z.array(socialLinkSchema).max(20).optional(),
 });
@@ -196,11 +196,13 @@ export const contactFormPublishableSchema = z.strictObject({
   kind: z.literal(GLOBAL_KIND.contactForm),
   machineName: machineNameSchema,
   title: localizedSchema(shortTextSchema, { requireEs: true }),
-  description: localizedSchema(longTextSchema).optional(),
+  description: localizedSchema(longTextSchema, { requireEs: true }),
   ctaText: localizedSchema(shortTextSchema, { requireEs: true }),
   image: idSchema.optional(),
   bibleVerseId: idSchema,
-  agreementNote: localizedSchema(RICH_TEXT_SCHEMAS.inlineLink).optional(),
+  agreementNote: localizedSchema(RICH_TEXT_SCHEMAS.inlineLink, {
+    requireEs: true,
+  }),
   fields: z.array(contactFormFieldPublishableSchema).min(1).max(50),
 });
 

@@ -6,7 +6,13 @@ import { SITE_PAGE_SLUGS } from "../registries/pages";
 import { LOCALES } from "../model/localized";
 
 /** Non-empty trimmed/bounded id string at the package boundary (no BSON ObjectId). */
-export const idSchema = z.string().min(1).max(128);
+export const idSchema = z
+  .string()
+  .min(1)
+  .max(128)
+  .refine((value) => value.trim().length > 0 && value === value.trim(), {
+    message: "ID must be non-blank with no leading or trailing whitespace",
+  });
 
 /** Natural key for fixed entries (`our-mission`, `seo-home`, …). */
 export const machineNameSchema = z

@@ -59,8 +59,8 @@ export const postPublishableSchema = z.strictObject({
   content: localizedSchema(RICH_TEXT_SCHEMAS.article, { requireEs: true }),
   authorId: idSchema,
   publishedDate: isoDateStringSchema,
-  seoTitle: localizedSchema(longTextSchema).optional(),
-  seoDescription: localizedSchema(longTextSchema).optional(),
+  seoTitle: localizedSchema(longTextSchema, { requireEs: true }),
+  seoDescription: localizedSchema(longTextSchema, { requireEs: true }),
   keywords: localizedSchema(stringListSchema).optional(),
   relatedPostIds: idListSchema.optional(),
 });
@@ -96,18 +96,7 @@ export interface SermonFields {
   contentHash?: string;
 }
 
-const localizedMediaIdSchema = z
-  .strictObject({
-    "es-AR": idSchema,
-    "en-US": z.union([z.literal(""), idSchema]).optional(),
-  })
-  .transform((value) => {
-    if (!value["en-US"]) {
-      const out: Localized<string> = { "es-AR": value["es-AR"] };
-      return out;
-    }
-    return value as Localized<string>;
-  });
+const localizedMediaIdSchema = localizedSchema(idSchema, { requireEs: true });
 
 export const sermonDraftSchema = z.strictObject({
   slug: slugSchema.optional(),
@@ -141,8 +130,8 @@ export const sermonPublishableSchema = z.strictObject({
   excerpt: localizedSchema(longTextSchema, { requireEs: true }),
   sermonDate: isoDateStringSchema,
   durationSeconds: nonNegativeNumberSchema.optional(),
-  content: localizedSchema(RICH_TEXT_SCHEMAS.sermon).optional(),
-  featuredImageId: idSchema.optional(),
+  content: localizedSchema(RICH_TEXT_SCHEMAS.sermon, { requireEs: true }),
+  featuredImageId: idSchema,
   audioMediaId: idSchema.optional(),
   audioLanguages: audioLanguagesSchema.optional(),
   pdfSummaryMediaId: localizedMediaIdSchema.optional(),
@@ -150,8 +139,8 @@ export const sermonPublishableSchema = z.strictObject({
   additionalPreacherIds: idListSchema.optional(),
   interpreterId: idSchema.optional(),
   scriptureRefIds: idListSchema.optional(),
-  seoTitle: localizedSchema(longTextSchema).optional(),
-  seoDescription: localizedSchema(longTextSchema).optional(),
+  seoTitle: localizedSchema(longTextSchema, { requireEs: true }),
+  seoDescription: localizedSchema(longTextSchema, { requireEs: true }),
   keywords: localizedSchema(stringListSchema).optional(),
   relatedSermonIds: idListSchema.optional(),
   contentHash: shortTextSchema.optional(),
@@ -262,18 +251,7 @@ export interface TopicFields {
   protected?: boolean;
 }
 
-const localizedSlugSchema = z
-  .strictObject({
-    "es-AR": slugSchema,
-    "en-US": z.union([z.literal(""), slugSchema]).optional(),
-  })
-  .transform((value) => {
-    if (!value["en-US"]) {
-      const out: Localized<string> = { "es-AR": value["es-AR"] };
-      return out;
-    }
-    return value as Localized<string>;
-  });
+const localizedSlugSchema = localizedSchema(slugSchema, { requireEs: true });
 
 export const topicDraftSchema = z.strictObject({
   name: localizedSchema(shortTextSchema, { requireEs: true }),
@@ -318,6 +296,7 @@ export const topicPublishableSchema = z
     }
     if (
       value.shortDescription !== undefined &&
+      !isEmptyValue(value.shortDescription["es-AR"]) &&
       isEmptyValue(value.shortDescription["en-US"])
     ) {
       ctx.addIssue({

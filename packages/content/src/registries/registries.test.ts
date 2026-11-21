@@ -285,4 +285,19 @@ describe("extractReferences — one test per reference kind across draft/publish
       { collection: COLLECTIONS.bibleVerses, id: "v-contact-pub" },
     ]);
   });
+
+  it("ignores whitespace-only media and content IDs in extractReferences (F4)", () => {
+    const refs = extractReferences("post", {
+      draft: {
+        title: { "es-AR": "P" },
+        featuredImageId: "   ",
+        authorId: "  ",
+        relatedPostIds: ["", "   ", "p-valid"],
+      },
+    });
+    expect(refs.mediaIds).toEqual([]);
+    expect(refs.contentRefs).toEqual([
+      { collection: COLLECTIONS.posts, id: "p-valid" },
+    ]);
+  });
 });

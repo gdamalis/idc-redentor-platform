@@ -529,4 +529,187 @@ describe("CONTENT_SCHEMAS — draft vs publishable, defaults, and {} tripwire", 
     };
     expect(CONTENT_SCHEMAS.post.draft.safeParse(xssPost).success).toBe(false);
   });
+
+  it("normalises empty en-US arrays and whitespace slugs/media ids without masking invalid values (F2)", () => {
+    // Sermon with untouched English mainPoints: [] normalizes to absent at publish
+    const parsedSermon = CONTENT_SCHEMAS.sermon.publishable.parse({
+      ...FIXTURES.sermon.validPublishable,
+      mainPoints: { "es-AR": ["Confianza"], "en-US": [] },
+      pdfSummaryMediaId: { "es-AR": "media-pdf-es", "en-US": "   " },
+    });
+    expect("en-US" in parsedSermon.mainPoints).toBe(false);
+    expect(
+      parsedSermon.pdfSummaryMediaId &&
+        "en-US" in parsedSermon.pdfSummaryMediaId,
+    ).toBe(false);
+
+    // Non-empty English array containing blank item is still rejected
+    expect(
+      CONTENT_SCHEMAS.sermon.publishable.safeParse({
+        ...FIXTURES.sermon.validPublishable,
+        mainPoints: { "es-AR": ["Confianza"], "en-US": [""] },
+      }).success,
+    ).toBe(false);
+
+    // Topic with whitespace-only en-US slug normalizes to absent
+    const parsedTopic = CONTENT_SCHEMAS.topic.publishable.parse({
+      ...FIXTURES.topic.validPublishable,
+      slug: { "es-AR": "privacidad", "en-US": "   " },
+    });
+    expect("en-US" in parsedTopic.slug).toBe(false);
+
+    // Protected topic with optional shortDescription blank in both locales passes publish
+    const protectedBlankDesc = {
+      name: { "es-AR": "Política de privacidad", "en-US": "Privacy policy" },
+      shortDescription: { "es-AR": "", "en-US": "" },
+      body: { "es-AR": doc("Texto legal"), "en-US": doc("Legal text") },
+      slug: { "es-AR": "privacidad", "en-US": "privacy" },
+      protected: true,
+    };
+    expect(
+      CONTENT_SCHEMAS.topic.publishable.safeParse(protectedBlankDesc).success,
+    ).toBe(true);
+
+    // Protected topic with non-empty Spanish shortDescription but missing English fails publish
+    expect(
+      CONTENT_SCHEMAS.topic.publishable.safeParse({
+        ...protectedBlankDesc,
+        shortDescription: { "es-AR": "Resumen", "en-US": "" },
+      }).success,
+    ).toBe(false);
+
+    // Protected belief collection with optional description empty in both locales passes publish,
+    // while Spanish-only non-empty description fails publish
+    expect(
+      CONTENT_SCHEMAS.beliefCollection.publishable.safeParse({
+        ...FIXTURES.beliefCollection.validPublishable,
+        description: { "es-AR": emptyDoc, "en-US": emptyDoc },
+      }).success,
+    ).toBe(true);
+    expect(
+      CONTENT_SCHEMAS.beliefCollection.publishable.safeParse({
+        ...FIXTURES.beliefCollection.validPublishable,
+        description: { "es-AR": doc("Creemos") },
+      }).success,
+    ).toBe(false);
+
+    // Invalid en-US rich-text doc is NOT silently dropped by empty normalization
+    expect(
+      CONTENT_SCHEMAS.post.draft.safeParse({
+        title: { "es-AR": "Post" },
+        content: {
+          "es-AR": doc("Ok"),
+          "en-US": { type: "doc", content: [{ type: "hardBreak" }] },
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("enforces layout-specific section and site-required publishable fields (F3)", () => {
+    // textBlock does NOT require headline, DOES require body
+    expect(
+      CONTENT_SCHEMAS.section.publishable.safeParse({
+        machineName: "info-community",
+        layout: "textBlock",
+        body: { "es-AR": doc("Texto de comunidad") },
+      }).success,
+    ).toBe(true);
+    expect(
+      CONTENT_SCHEMAS.section.publishable.safeParse({
+        machineName: "info-community",
+        layout: "textBlock",
+        headline: { "es-AR": "Solo título" },
+      }).success,
+    ).toBe(false);
+
+    // hero requires headline, body, ctaText, targetPage, image
+    expect(
+      CONTENT_SCHEMAS.section.publishable.safeParse({
+        machineName: "our-mission",
+        layout: "hero",
+        headline: { "es-AR": "Misión" },
+      }).success,
+    ).toBe(false);
+
+    // cta requires headline + ctaText
+    expect(
+      CONTENT_SCHEMAS.section.publishable.safeParse({
+        machineName: "connect-with-us",
+        layout: "cta",
+        headline: { "es-AR": "Conectate" },
+        ctaText: { "es-AR": "Ir" },
+      }).success,
+    ).toBe(true);
+    expect(
+      CONTENT_SCHEMAS.section.publishable.safeParse({
+        machineName: "connect-with-us",
+        layout: "cta",
+        headline: { "es-AR": "Conectate" },
+      }).success,
+    ).toBe(false);
+
+    // footer requires logo
+    expect(
+      CONTENT_SCHEMAS.footer.publishable.safeParse({
+        kind: "footer",
+        machineName: "footer",
+        shortDescription: { "es-AR": "Iglesia" },
+      }).success,
+    ).toBe(false);
+
+    const omit = (obj: Record<string, unknown>, ...keys: string[]) =>
+      Object.fromEntries(
+        Object.entries(obj).filter(([k]) => !keys.includes(k)),
+      );
+
+    // contactForm requires description es and agreementNote es
+    expect(
+      CONTENT_SCHEMAS.contactForm.publishable.safeParse(
+        omit(
+          FIXTURES.contactForm.validPublishable,
+          "description",
+          "agreementNote",
+        ),
+      ).success,
+    ).toBe(false);
+
+    // post requires seoTitle and seoDescription
+    expect(
+      CONTENT_SCHEMAS.post.publishable.safeParse(
+        omit(FIXTURES.post.validPublishable, "seoTitle"),
+      ).success,
+    ).toBe(false);
+
+    // sermon requires content es, featuredImageId, seoTitle es, seoDescription es
+    expect(
+      CONTENT_SCHEMAS.sermon.publishable.safeParse(
+        omit(FIXTURES.sermon.validPublishable, "content"),
+      ).success,
+    ).toBe(false);
+    expect(
+      CONTENT_SCHEMAS.sermon.publishable.safeParse(
+        omit(FIXTURES.sermon.validPublishable, "featuredImageId"),
+      ).success,
+    ).toBe(false);
+    expect(
+      CONTENT_SCHEMAS.sermon.publishable.safeParse(
+        omit(FIXTURES.sermon.validPublishable, "seoDescription"),
+      ).success,
+    ).toBe(false);
+  });
+
+  it("rejects whitespace-only and untrimmed IDs (F4)", () => {
+    expect(
+      CONTENT_SCHEMAS.author.draft.safeParse({
+        name: "Ana",
+        avatarMediaId: "   ",
+      }).success,
+    ).toBe(false);
+    expect(
+      CONTENT_SCHEMAS.author.draft.safeParse({
+        name: "Ana",
+        avatarMediaId: " media-1 ",
+      }).success,
+    ).toBe(false);
+  });
 });

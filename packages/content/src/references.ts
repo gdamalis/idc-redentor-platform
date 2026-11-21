@@ -25,7 +25,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function addId(set: Set<string>, value: unknown): void {
-  if (typeof value === "string" && value.length > 0) set.add(value);
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.length > 0) set.add(trimmed);
+  }
 }
 
 function addContentRef(
@@ -33,8 +36,11 @@ function addContentRef(
   collection: CollectionName,
   value: unknown,
 ): void {
-  if (typeof value === "string" && value.length > 0) {
-    map.set(`${collection}:${value}`, { collection, id: value });
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.length > 0) {
+      map.set(`${collection}:${trimmed}`, { collection, id: trimmed });
+    }
   }
 }
 

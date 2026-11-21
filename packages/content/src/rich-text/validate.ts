@@ -166,9 +166,14 @@ export function validateRichText(
         typeof mediaId !== "string" ||
         mediaId.length === 0 ||
         mediaId.length > MEDIA_ID_MAX ||
+        mediaId.trim().length === 0 ||
+        mediaId !== mediaId.trim() ||
         extra.length > 0
       ) {
-        add([...path, "attrs"], "Embedded file needs a media id");
+        add(
+          [...path, "attrs"],
+          "Embedded file needs a valid non-blank media id",
+        );
       }
       continue;
     }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Localized } from "../model/localized";
+import { isEmptyValue, type Localized } from "../model/localized";
 import { RICH_TEXT_SCHEMAS } from "../rich-text/schema";
 import type { RichTextDoc } from "../rich-text/spec";
 import type { SitePageSlug } from "../registries/pages";
@@ -48,18 +48,81 @@ export const sectionDraftSchema = z.strictObject({
   images: idListSchema.optional(),
 });
 
-export const sectionPublishableSchema = z.strictObject({
-  machineName: machineNameSchema,
-  layout: sectionLayoutSchema,
-  headline: localizedSchema(shortTextSchema, { requireEs: true }),
-  subHeadline: localizedSchema(shortTextSchema).optional(),
-  body: localizedSchema(RICH_TEXT_SCHEMAS.inline).optional(),
-  ctaText: localizedSchema(shortTextSchema).optional(),
-  targetPage: sitePageSlugSchema.optional(),
-  urlParameters: shortTextSchema.optional(),
-  image: idSchema.optional(),
-  images: idListSchema.optional(),
-});
+export const sectionPublishableSchema = z
+  .strictObject({
+    machineName: machineNameSchema,
+    layout: sectionLayoutSchema,
+    headline: localizedSchema(shortTextSchema).optional(),
+    subHeadline: localizedSchema(shortTextSchema).optional(),
+    body: localizedSchema(RICH_TEXT_SCHEMAS.inline).optional(),
+    ctaText: localizedSchema(shortTextSchema).optional(),
+    targetPage: sitePageSlugSchema.optional(),
+    urlParameters: shortTextSchema.optional(),
+    image: idSchema.optional(),
+    images: idListSchema.optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.layout === "hero") {
+      if (isEmptyValue(value.headline?.["es-AR"])) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["headline", "es-AR"],
+          message: "Hero section requires a Spanish headline",
+        });
+      }
+      if (isEmptyValue(value.body?.["es-AR"])) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["body", "es-AR"],
+          message: "Hero section requires Spanish body copy",
+        });
+      }
+      if (isEmptyValue(value.ctaText?.["es-AR"])) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["ctaText", "es-AR"],
+          message: "Hero section requires Spanish CTA text",
+        });
+      }
+      if (!value.targetPage) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["targetPage"],
+          message: "Hero section requires a target page",
+        });
+      }
+      if (!value.image) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["image"],
+          message: "Hero section requires an image",
+        });
+      }
+    } else if (value.layout === "cta") {
+      if (isEmptyValue(value.headline?.["es-AR"])) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["headline", "es-AR"],
+          message: "CTA section requires a Spanish headline",
+        });
+      }
+      if (isEmptyValue(value.ctaText?.["es-AR"])) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["ctaText", "es-AR"],
+          message: "CTA section requires Spanish CTA text",
+        });
+      }
+    } else if (value.layout === "textBlock") {
+      if (isEmptyValue(value.body?.["es-AR"])) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["body", "es-AR"],
+          message: "Text block section requires Spanish body copy",
+        });
+      }
+    }
+  });
 
 export const sectionUpdateSchema = sectionDraftSchema.partial();
 
@@ -106,15 +169,30 @@ export const beliefCollectionDraftSchema = z.strictObject({
   items: z.array(beliefItemDraftSchema).max(100).optional(),
 });
 
-export const beliefCollectionPublishableSchema = z.strictObject({
-  machineName: machineNameSchema,
-  title: localizedSchema(shortTextSchema, { requireEs: true, requireEn: true }),
-  description: localizedSchema(RICH_TEXT_SCHEMAS.inline, {
-    requireEs: true,
-    requireEn: true,
-  }).optional(),
-  items: z.array(beliefItemPublishableSchema).min(1).max(100),
-});
+export const beliefCollectionPublishableSchema = z
+  .strictObject({
+    machineName: machineNameSchema,
+    title: localizedSchema(shortTextSchema, {
+      requireEs: true,
+      requireEn: true,
+    }),
+    description: localizedSchema(RICH_TEXT_SCHEMAS.inline).optional(),
+    items: z.array(beliefItemPublishableSchema).min(1).max(100),
+  })
+  .superRefine((value, ctx) => {
+    if (
+      value.description !== undefined &&
+      !isEmptyValue(value.description["es-AR"]) &&
+      isEmptyValue(value.description["en-US"])
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["description", "en-US"],
+        message:
+          "English (en-US) description is required for protected belief collections",
+      });
+    }
+  });
 
 export const beliefCollectionUpdateSchema =
   beliefCollectionDraftSchema.partial();
