@@ -207,3 +207,9 @@ file to the other workstation (never through git).
 | `apps/admin/scripts/qa-account.ts`                                           | process shell of `provision` / `rotate`                              |
 | `apps/admin/src/lib/qa-auth/qa-account.ts`                                   | DB guard, password generation, qa-env merge, provision/rotate        |
 | `.claude/config.json` → `qa.auth`, `qa.env.{previewAdmin,stagingAdmin}.auth` | the harness declaration                                              |
+
+## Reading saved records
+
+QA reads staging records (for example the `rbacAudit` entry of a `"QA "` role change) with the read-only
+command in [qa-db-read.md](./qa-db-read.md), which lists the allowed databases and how personal data is
+masked. The runbook scripts above remain for provisioning only.

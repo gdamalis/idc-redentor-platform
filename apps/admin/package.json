@@ -10,6 +10,7 @@
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "e2e": "playwright test",
     "seed:admin": "tsx scripts/seed-admin.ts"
   },
   "lint-staged": {
@@ -39,6 +40,7 @@
   },
   "devDependencies": {
     "@idcr/config": "workspace:*",
+    "@playwright/test": "^1.61.0",
     "@tailwindcss/postcss": "^4.1.16",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
