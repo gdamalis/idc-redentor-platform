@@ -66,6 +66,7 @@ See `docs/architecture/architecture.md` and the domain docs in `docs/` for detai
 - **Vitest** (`vitest.config.ts`, jsdom): unit smoke tests on pure utilities and getter shape-mappers. `pnpm test` for a single run.
 - **Playwright** (`playwright.config.ts`): four projects configured, **no specs in Phase 1**; `qa-runner` authors them per-ticket.
 - QA targets: pre-merge, the PR's **Vercel preview deployment** (`*.vercel.app`); post-merge, **staging** (`staging.idcredentor.org`). **Never** production.
+- **QA database reads (ICR-223):** use `YOKE_QA_DB_ENV=<env> sh -c 'cd apps/admin && exec node --import tsx scripts/qa-db-read.ts <read|count|aggregate> --db <name> --collection <c>'` with the target env pulled from `--project idc-redentor-admin` and shredded after — never use locally registered write-capable Mongo MCP servers. See `docs/architecture/qa-db-read.md`.
 - No Storybook.
 
 ## Environment
@@ -122,12 +123,16 @@ VERCEL_ENV              # injected by Vercel; drives draft mode
 - **`ICR-N`** is the Linear issue key — `N` is the issue number, not a Trello idShort. Link: `https://linear.app/divinelab/issue/ICR-N`. The old Jira epics became Linear projects, so their keys (ICR-1…14, 96…98, 118…122, 142, 171, 193) have no issue.
 - Branches: `<type>/ICR-N-<slug>` · PR titles: `<type>(ICR-N): description`.
 - Workflow statuses: **Backlog** → **Todo** → **In Progress** → **In Review** → **In Testing** → **Done**. `/yoke:work` moves Todo → In Progress → In Review; `/yoke:merge` moves In Review → In Testing (after a user-triggered squash-merge). **No agent ever moves an issue to Done** (or Canceled / Duplicate) — a human does that after deploying to production. Status keys map to Linear status names in `.claude/config.json` → `tracker.statuses`.
+- **Production deploys** (`docs/architecture/deployments.md`): merging to `main` deploys staging only. Production changes in batched releases, cut whenever the owner decides and separate from ticket status, each shipping **both** apps from one commit. These rules hold in **every** agent tool, including ones where yoke's commands and guard do not run (Antigravity / `agy` today):
+  - Never deploy production, and never run `scripts/deploy-prod.sh` without `--preview`. Only the owner-approved release does that.
+  - Never push to, delete or merge into the `production-hold` branch: a push there is a real production build that skips every gate.
+  - Never write to Linear through a connector. Tracker writes go through the yoke tracker script only.
 
 ## Git & Release
 
 - **Conventional Commits**; header ≤ 100 chars; commitlint enforced via husky.
 - **PR titles** follow `<type>(ICR-N): description` and are validated in CI by `amannn/action-semantic-pull-request`.
-- **Releases use [Changesets](https://github.com/changesets/changesets)** (independent per-app): the bump comes from a `.changeset/*.md` file, not the commit type. Mapping — `feat` → minor; `fix`, `perf` → patch; `docs`, `chore`, `refactor`, `test`, `ci` → no release. On push to `main`, `.github/workflows/release.yml` versions + tags + pushes atomically if changesets are present. See `docs/architecture/versioning.md`.
+- **Releases use [Changesets](https://github.com/changesets/changesets)** (independent per-app): the bump comes from a `.changeset/*.md` file, not the commit type. Mapping — `feat` → minor; `fix`, `perf` → patch; `docs`, `chore`, `refactor`, `test`, `ci` → no release. On push to `main`, `.github/workflows/release.yml` versions + tags + pushes atomically if changesets are present. See `docs/architecture/versioning.md`. These package versions are **not** production releases: a production release is a separate, batched deploy of both apps that usually spans several package versions — see `docs/architecture/deployments.md`.
 - See `docs/architecture/contributing.md` for the branch/commit/PR + worktree flow.
 
 ## Cursor Cloud specific instructions

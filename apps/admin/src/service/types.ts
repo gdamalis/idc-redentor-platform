@@ -86,7 +86,7 @@ export const inviteSchema = z.object({
   createdAt: z.date(),
   acceptedAt: z.date().optional(),
   invitedByUserId: z.string().optional(),
-}) satisfies z.ZodType<Invite, z.ZodTypeDef, unknown>;
+}) satisfies z.ZodType<Invite, unknown>;
 
 export type SystemRoleKey = "admin" | "leader" | "member";
 
