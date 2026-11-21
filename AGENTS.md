@@ -66,6 +66,7 @@ See `docs/architecture/architecture.md` and the domain docs in `docs/` for detai
 - **Vitest** (`vitest.config.ts`, jsdom): unit smoke tests on pure utilities and getter shape-mappers. `pnpm test` for a single run.
 - **Playwright** (`playwright.config.ts`): four projects configured, **no specs in Phase 1**; `qa-runner` authors them per-ticket.
 - QA targets: pre-merge, the PR's **Vercel preview deployment** (`*.vercel.app`); post-merge, **staging** (`staging.idcredentor.org`). **Never** production.
+- **QA database reads (ICR-223):** use `YOKE_QA_DB_ENV=<env> sh -c 'cd apps/admin && exec node --import tsx scripts/qa-db-read.ts <read|count|aggregate> --db <name> --collection <c>'` with the target env pulled from `--project idc-redentor-admin` and shredded after — never use locally registered write-capable Mongo MCP servers. See `docs/architecture/qa-db-read.md`.
 - No Storybook.
 
 ## Environment
