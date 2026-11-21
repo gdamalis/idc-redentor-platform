@@ -18,7 +18,8 @@ from `apps/admin`, never `pnpm run`/`pnpm exec` (pnpm rewrites exit codes).
 
 Exit codes: **0** ok · **2** refused (policy or arguments; nothing was queried) · **1** unexpected
 failure (a fixed message; driver text is never printed). stdout is exactly one JSON object with
-`observedVia: "DB"`; diagnostics go to stderr. Record `observedVia: "DB"` in the QA report.
+`observedVia: "DB"`; diagnostics go to stderr. In harness QA reports (`perAC[].observedVia`, per
+`witness/SKILL.md`), record lowercase `"db"`.
 
 **Do not use a locally registered Mongo MCP server** (for example `mongodb-idcr-*` with
 `MDB_MCP_READ_ONLY=false`): they can write and do not mask personal data.
@@ -36,10 +37,12 @@ set -a; . /tmp/qa-db.env; set +a      # never echo it
 shred -u /tmp/qa-db.env
 ```
 
-Admin previews share the staging databases (see `admin-qa-account.md`). For `website-*` databases use
-the `idc-redentor-web` project: the command reads `WEBSITE_MONGODB_URI` for `website-*` and `MONGODB_URI`
-for `ministry-admin-*`, with no fallback. Admin URIs may have an empty database path, so `--db` is mandatory;
-a URI path, when present, must equal `--db`. The command never falls back to `test`.
+Admin previews share the staging databases (see `admin-qa-account.md`). Pull from **`--project idc-redentor-admin`**
+for **both** `ministry-admin-*` (`MONGODB_URI`) and `website-*` (`WEBSITE_MONGODB_URI`): `idc-redentor-admin`
+defines both variables, whereas `idc-redentor-web` only defines `MONGODB_URI` (no `WEBSITE_MONGODB_URI`).
+The command selects `WEBSITE_MONGODB_URI` for `website-*` and `MONGODB_URI` for `ministry-admin-*`, with no fallback.
+Admin URIs may have an empty database path, so `--db` is mandatory; a URI path, when present, must equal `--db`.
+The command never falls back to `test`.
 
 ## Which databases
 
@@ -55,9 +58,9 @@ Queries get `maxTimeMS` 5000 and a 50-document cap.
 
 Connection strings are read from the environment only (never argv) and never printed. Output is scrubbed:
 fields named like email, password, token, secret, uid, ip, phone/teléfono, address/dirección, first/last/full/display
-name, nombre/apellido, birth/dob and notes are replaced by `"[masked]"`; `name` is masked on identity/contact data and
-after any `$lookup`, except values starting with `"QA "` (test identities) and system role names (`admin`/`leader`/`member`)
-on `roles`/`rbacAudit`; every string, including keys,
+name, nombre/apellido, birth/dob, notes, and message/mensaje are replaced by `"[masked]"`; `name` is masked everywhere
+except values starting with `"QA "` (test identities) and system role names (`admin`/`leader`/`member`)
+on `roles`/`rbacAudit` (without `$lookup`); every string, including keys,
 has emails, `mongodb://` URIs, JWTs and bearer tokens masked. Projections accept only `0`/`1`/`true`/`false` and `$group`
 rejects references to masked fields so queries cannot rename PII out of the denylist. Filters may still match masked fields, so
 an agent can select the `"QA "` entry. Accepted residual risk: repeated regex filters could probe a masked value

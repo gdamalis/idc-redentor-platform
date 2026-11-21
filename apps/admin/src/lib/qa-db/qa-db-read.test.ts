@@ -375,6 +375,7 @@ describe("read-only", () => {
       [{ $group: { _id: "$firstName", n: { $sum: 1 } } }],
       [{ $group: { _id: "$action", emails: { $push: "$actorEmail" } } }],
       [{ $group: { _id: "$name", n: { $sum: 1 } } }],
+      [{ $group: { _id: "$message", n: { $sum: 1 } } }],
       [{ $limit: 0 }],
       [{ $limit: -1 }],
       [{ $skip: -1 }],
@@ -401,6 +402,24 @@ describe("scrubbing", () => {
     const text = `a@b.example mongo\x64b://u:p@h.invalid/x mongo\x64b+srv://u:p@c.invalid eyJabcdef.abcdefg.abcdefg Bearer abcdefgh12345`;
     const out = scrubString(text);
     expect(out).not.toMatch(/@|mongodb|eyJ|Bearer abc/);
+  });
+
+  it("scrubs long non-email runs in linear time without quadratic backtracking", () => {
+    const small = `${"a".repeat(5_000)}! contact: user-at-domain and tail@example.com`;
+    const large = `${"a".repeat(50_000)}! contact: user-at-domain and tail@example.com`;
+    const t0 = performance.now();
+    const outSmall = scrubString(small);
+    const smallMs = performance.now() - t0;
+    const t1 = performance.now();
+    const outLarge = scrubString(large);
+    const largeMs = performance.now() - t1;
+
+    expect(outSmall).not.toContain("tail@example.com");
+    expect(outLarge).not.toContain("tail@example.com");
+    expect(outLarge).toContain("[masked]");
+    // Size ratio is 10x; quadratic would be ~100x (~1300ms). Assert loose ceiling + sub-quadratic ratio.
+    expect(largeMs).toBeLessThan(200);
+    expect(largeMs / Math.max(smallMs, 0.5)).toBeLessThan(35);
   });
 
   it("masks denylisted keys recursively and in arrays; keeps QA names and role keys", () => {
@@ -431,21 +450,35 @@ describe("scrubbing", () => {
     );
   });
 
-  it("masks `name` on identity/contact collections and after $lookup, keeps QA/system role names and content labels", () => {
-    const person = scrubDocuments([{ name: "Maria Perez" }], {
-      collection: "users",
-      hasLookup: false,
-    });
-    expect(JSON.stringify(person.docs)).not.toContain("Maria");
-    const contact = scrubDocuments([{ name: "Maria Perez" }], {
-      collection: "contact",
-      hasLookup: false,
-    });
-    expect(JSON.stringify(contact.docs)).not.toContain("Maria");
-    const looked = scrubDocuments([{ name: "Maria Perez" }], {
-      collection: "roles",
-      hasLookup: true,
-    });
+  it("masks `name` everywhere except QA prefixes and system role names on roles/rbacAudit without $lookup", () => {
+    for (const collection of [
+      "users",
+      "contact",
+      "content_audit",
+      "media",
+      "topics",
+    ]) {
+      const res = scrubDocuments(
+        [
+          { name: "Maria Perez" },
+          { name: "QA Item" },
+          { actor: { name: "Ana Lopez" } },
+        ],
+        { collection, hasLookup: false },
+      );
+      const json = JSON.stringify(res.docs);
+      expect(json).not.toContain("Maria");
+      expect(json).not.toContain("Ana");
+      expect(json).toContain("QA Item");
+    }
+    const looked = scrubDocuments(
+      [{ name: "admin" }, { name: "Maria Perez" }],
+      {
+        collection: "roles",
+        hasLookup: true,
+      },
+    );
+    expect(JSON.stringify(looked.docs)).not.toContain("admin");
     expect(JSON.stringify(looked.docs)).not.toContain("Maria");
     const role = scrubDocuments(
       [{ name: "admin" }, { name: "QA Editor" }, { name: "Maria Perez" }],
@@ -455,14 +488,9 @@ describe("scrubbing", () => {
     expect(roleJson).toContain("admin");
     expect(roleJson).toContain("QA Editor");
     expect(roleJson).not.toContain("Maria");
-    const topic = scrubDocuments([{ name: "Evangelio" }], {
-      collection: "topics",
-      hasLookup: false,
-    });
-    expect(JSON.stringify(topic.docs)).toContain("Evangelio");
   });
 
-  it("masks snake_case, accented Spanish, and IP fields", () => {
+  it("masks snake_case, accented Spanish, message/mensaje, and IP fields", () => {
     const { docs } = scrubDocuments(
       [
         {
@@ -470,14 +498,18 @@ describe("scrubbing", () => {
           last_name: "Gomez",
           teléfono: "+5411111111",
           dirección: "Av 123",
+          message: "Please call my home number 555-1234",
+          mensaje: "Mi direccion es Calle Falsa 123",
           clientIp: "203.0.113.5",
           action: "role.create",
         },
       ],
-      { collection: "rbacAudit", hasLookup: false },
+      { collection: "contact", hasLookup: false },
     );
     const json = JSON.stringify(docs);
-    expect(json).not.toMatch(/Ana|Gomez|5411|Av 123|203\.0\.113/);
+    expect(json).not.toMatch(
+      /Ana|Gomez|5411|Av 123|555-1234|Calle Falsa|203\.0\.113/,
+    );
     expect(json).toContain("role.create");
   });
 

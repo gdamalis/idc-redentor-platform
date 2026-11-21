@@ -13,9 +13,15 @@ export async function connectReadOnly(
     appName: "idcr-qa-db-read",
     readPreference: "secondaryPreferred",
     serverSelectionTimeoutMS: 8000,
+    maxPoolSize: 2,
     retryWrites: false,
   });
-  await client.connect();
+  try {
+    await client.connect();
+  } catch (error) {
+    await client.close().catch(() => undefined);
+    throw error;
+  }
   // eslint-disable-next-line no-restricted-syntax -- dbName passed the exact QA allowlist in policy.ts before connect
   const db = client.db(dbName);
   return {

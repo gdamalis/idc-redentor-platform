@@ -9,29 +9,11 @@
 export const MASK = "[masked]";
 
 const PII_KEY =
-  /(e[-_]?mail|password|passwd|token|secret|api[-_]?key|cookie|phone|tel[eé]fono|tel$|address|direcci[oó]n|first[-_]?name|last[-_]?name|full[-_]?name|display[-_]?name|nombre|apellido|birth|dob$|^notes?$|uid$|^(?:client|remote|source|user)?ip(?:$|[-_]?address)|[-_]ip$)/i;
+  /(e[-_]?mail|password|passwd|token|secret|api[-_]?key|cookie|phone|tel[eé]fono|tel$|address|direcci[oó]n|first[-_]?name|last[-_]?name|full[-_]?name|display[-_]?name|nombre|apellido|birth|dob$|^notes?$|^messages?$|^mensajes?$|uid$|^(?:client|remote|source|user)?ip(?:$|[-_]?address)|[-_]ip$)/i;
 
 export function isPiiKey(key: string): boolean {
   return PII_KEY.test(key);
 }
-
-/** Non-person content collections where `name` is an entry label, not a person's name. */
-export const NAME_SAFE_COLLECTIONS: ReadonlySet<string> = new Set([
-  "topics",
-  "event_banners",
-  "sections",
-  "belief_collections",
-  "seo_entries",
-  "globals",
-  "media",
-  "content_audit",
-  "pdf_jobs",
-  "bible_verses",
-  "posts",
-  "sermons",
-  "broadcast_log",
-  "likes",
-]);
 
 /** Role collections keep system role names and "QA " role names, masking anything else. */
 const ROLE_NAME_COLLECTIONS: ReadonlySet<string> = new Set([
@@ -47,8 +29,8 @@ const SYSTEM_ROLE_NAMES: ReadonlySet<string> = new Set([
 
 const PATTERNS: readonly RegExp[] = [
   /mongodb(?:\+srv)?:\/\/[^\s"'<>]+/gi,
-  /eyJ[\w-]{5,}\.[\w-]{5,}\.[\w-]{5,}/g,
-  /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g,
+  /\beyJ[\w-]{5,}\.[\w-]{5,}\.[\w-]{5,}/g,
+  /(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g,
   /\b(?:Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}/gi,
 ];
 
@@ -91,8 +73,6 @@ export function scrubDocuments(
   context: ScrubContext,
 ): ScrubResult {
   const masked = new Set<string>();
-  const nameSafe =
-    !context.hasLookup && NAME_SAFE_COLLECTIONS.has(context.collection);
   const roleNameSafe =
     !context.hasLookup && ROLE_NAME_COLLECTIONS.has(context.collection);
 
@@ -114,8 +94,7 @@ export function scrubDocuments(
         typeof child === "string" &&
         SYSTEM_ROLE_NAMES.has(child.toLowerCase());
       const hide =
-        PII_KEY.test(key) ||
-        (key === "name" && !nameSafe && !isQaName && !isSystemRoleName);
+        PII_KEY.test(key) || (key === "name" && !isQaName && !isSystemRoleName);
       if (hide) {
         masked.add(safeKey);
         out[safeKey] = MASK;
