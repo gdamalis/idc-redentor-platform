@@ -193,4 +193,46 @@ describe("Allowlisted renderer security & fail-closed boundary (AC6)", () => {
     expect(html).not.toContain("<img");
     expect(html).toContain("&lt;img");
   });
+
+  it("rejects repeated marks and overlong mark arrays without stack overflow or link overwrite (C1)", () => {
+    const docWithDuplicateMarks = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Safe" },
+            {
+              type: "text",
+              text: "StackBomb",
+              marks: Array.from({ length: 15_000 }, () => ({ type: "bold" })),
+            },
+            {
+              type: "text",
+              text: "DuplicateBold",
+              marks: [{ type: "bold" }, { type: "bold" }],
+            },
+            {
+              type: "text",
+              text: "DuplicateLink",
+              marks: [
+                { type: "link", attrs: { href: "https://a.example.org" } },
+                { type: "link", attrs: { href: "https://b.example.org" } },
+              ],
+            },
+          ],
+        },
+      ],
+    } as unknown as RichTextDoc;
+
+    const html = renderToNormalizedHtml(
+      renderRichText({ doc: docWithDuplicateMarks, media: {} }, articlePreset),
+    );
+    expect(html).toContain("Safe");
+    expect(html).not.toContain("StackBomb");
+    expect(html).not.toContain("DuplicateBold");
+    expect(html).not.toContain("DuplicateLink");
+    expect(html).not.toContain("a.example.org");
+    expect(html).not.toContain("b.example.org");
+  });
 });

@@ -141,11 +141,9 @@ function mergeAdjacentTextNodes(nodes: RichTextTextNode[]): RichTextTextNode[] {
   const merged: RichTextTextNode[] = [];
   for (const node of nodes) {
     const prev = merged[merged.length - 1];
-    if (
-      prev &&
-      marksEqual(prev.marks, node.marks) &&
-      prev.text.length + node.text.length <= LIMITS.maxTextNodeLength
-    ) {
+    // Merge unconditionally so ProseMirror cannot later merge two <=50k runs into >50k
+    // on load; the post-conversion `validateRichText` gate rejects any merged run > maxTextNodeLength.
+    if (prev && marksEqual(prev.marks, node.marks)) {
       prev.text += node.text;
     } else {
       merged.push({ ...node });

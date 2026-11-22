@@ -49,9 +49,11 @@ describe("Dormancy check (AC8)", () => {
     expect(filesToScan.length).toBeGreaterThan(20);
 
     const forbiddenImportPatterns = [
-      /from\s+["'][^"']*content\/rich-text(?:\/[^"']*)?["']/,
+      /(?:from|import)\s+["'][^"']*content\/rich-text(?:\/[^"']*)?["']/,
       /import\s*\(\s*["'][^"']*content\/rich-text(?:\/[^"']*)?["']\s*\)/,
-      /from\s+["'][^"']*tiptapRegenContent["']/,
+      /(?:from|import)\s+["']\.\.?\/rich-text(?:\/[^"']*)?["']/,
+      /import\s*\(\s*["']\.\.?\/rich-text(?:\/[^"']*)?["']\s*\)/,
+      /(?:from|import)\s+["'][^"']*tiptapRegenContent["']/,
       /import\s*\(\s*["'][^"']*tiptapRegenContent["']\s*\)/,
     ];
 

@@ -108,13 +108,17 @@ function renderInlineChildren(
     }
 
     const rawMarks = child.marks;
-    if (rawMarks !== undefined && !Array.isArray(rawMarks)) {
+    if (
+      rawMarks !== undefined &&
+      (!Array.isArray(rawMarks) || rawMarks.length > ctx.allowedMarks.size)
+    ) {
       flushLink();
       continue;
     }
 
     let linkHref: string | undefined;
     let hasDisallowedMark = false;
+    const seenMarks = new Set<string>();
     const nonLinkMarks: Array<"bold" | "italic"> = [];
 
     if (Array.isArray(rawMarks)) {
@@ -124,10 +128,11 @@ function renderInlineChildren(
           break;
         }
         const markType = rawMark.type;
-        if (!ctx.allowedMarks.has(markType)) {
+        if (!ctx.allowedMarks.has(markType) || seenMarks.has(markType)) {
           hasDisallowedMark = true;
           break;
         }
+        seenMarks.add(markType);
         if (markType === RICH_TEXT_MARK.link) {
           const href = isRecord(rawMark.attrs) ? rawMark.attrs.href : undefined;
           if (!isAllowedHref(href) || !ctx.preset.renderLink) {

@@ -450,5 +450,22 @@ describe("convertContentfulRichText", () => {
     if (!deepRes.ok) {
       expect(deepRes.issues.some((i) => i.code === "depth-exceeded")).toBe(true);
     }
+
+    // Two adjacent identical-mark text nodes whose merged length exceeds LIMITS.maxTextNodeLength
+    // must fail conversion instead of emitting split nodes ProseMirror would later merge (C2).
+    const halfPlus = Math.floor(LIMITS.maxTextNodeLength / 2) + 100;
+    const overMerged = convertContentfulRichText(
+      cfDoc(
+        cfParagraph(
+          cfText("a".repeat(halfPlus), [{ type: "bold" }]),
+          cfText("b".repeat(halfPlus), [{ type: "bold" }]),
+        ),
+      ),
+      { profile: "article" },
+    );
+    expect(overMerged.ok).toBe(false);
+    if (!overMerged.ok) {
+      expect(overMerged.issues.length).toBeGreaterThan(0);
+    }
   });
 });
