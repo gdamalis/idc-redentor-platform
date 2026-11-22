@@ -189,7 +189,9 @@ export function MediaUploadPanel({
         kind === "image" ? readImageDimensions(file) : Promise.resolve(undefined),
         kind === "audio" ? readAudioDuration(file) : Promise.resolve(undefined),
       ]);
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted || abortControllerRef.current !== controller) {
+        return;
+      }
 
       const prepared = await prepareMediaUploadAction({
         filename: file.name,
@@ -197,7 +199,9 @@ export function MediaUploadPanel({
         size: file.size,
         sha256,
       });
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted || abortControllerRef.current !== controller) {
+        return;
+      }
 
       if (!prepared.ok) {
         const msg =
@@ -239,6 +243,7 @@ export function MediaUploadPanel({
         }),
         abortSignal: controller.signal,
         onUploadProgress: (progress) => {
+          if (abortControllerRef.current !== controller) return;
           setStage((prev) =>
             prev.phase === "uploading"
               ? { ...prev, percentage: Math.round(progress.percentage) }
@@ -246,6 +251,10 @@ export function MediaUploadPanel({
           );
         },
       });
+
+      if (controller.signal.aborted || abortControllerRef.current !== controller) {
+        return;
+      }
 
       abortControllerRef.current = null;
       const previewUrl =
@@ -271,6 +280,9 @@ export function MediaUploadPanel({
         ...(previewUrl && { previewUrl }),
       });
     } catch (err) {
+      if (abortControllerRef.current !== controller) {
+        return;
+      }
       abortControllerRef.current = null;
       if (
         err instanceof Error &&
@@ -362,6 +374,7 @@ export function MediaUploadPanel({
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
+    if (isBusyUploading) return;
     const file = e.dataTransfer.files?.[0];
     if (file) {
       void startFileUpload(file);

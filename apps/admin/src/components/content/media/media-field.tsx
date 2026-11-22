@@ -259,6 +259,14 @@ export function MediaListField({
   const [pickerOpen, setPickerOpen] = React.useState(false);
 
   const requestedIdsRef = React.useRef<Set<string>>(new Set());
+  const isMountedRef = React.useRef(true);
+
+  React.useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   React.useEffect(() => {
     const missing = values.filter(
@@ -266,18 +274,18 @@ export function MediaListField({
     );
     if (missing.length === 0) return;
     for (const id of missing) requestedIdsRef.current.add(id);
-    let cancelled = false;
     void getMediaByIdsAction(missing).then((res) => {
-      if (cancelled || !res.ok) return;
+      if (!isMountedRef.current) return;
+      if (!res.ok) {
+        for (const id of missing) requestedIdsRef.current.delete(id);
+        return;
+      }
       setDocsById((prev) => {
         const next = { ...prev };
         for (const item of res.items) next[item._id] = item;
         return next;
       });
     });
-    return () => {
-      cancelled = true;
-    };
   }, [values, docsById]);
 
   const isLocked = disabled || readOnly;

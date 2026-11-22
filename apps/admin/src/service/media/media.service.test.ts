@@ -886,6 +886,33 @@ describe("media.service — AC5 delete guard per reference kind & post-commit de
     },
   );
 
+  it("Codex P1: refuses delete even when mediaId has surrounding whitespace", async () => {
+    const h = createHarness();
+    const media = makeStoredMedia();
+    const mediaId = media._id.toHexString();
+    h.getStore(COLLECTIONS.media).push(media as unknown as RawDoc);
+    const draft: PostFields = {
+      title: { "es-AR": "Post con espacio" },
+      slug: "post-con-espacio",
+      featuredImageId: mediaId,
+    };
+    h.getStore(COLLECTIONS.posts).push({
+      _id: new ObjectId(),
+      draft,
+      revision: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      updatedBy: ADMIN.userId,
+      _refs: extractReferences("post", { draft }),
+    } as unknown as RawDoc);
+
+    const res = await deleteMedia(ADMIN, `  ${mediaId}  `, h.deps);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.reason).toBe("in-use");
+    expect(h.getStore(COLLECTIONS.media)).toHaveLength(1);
+    expect(h.deps.delBlob).not.toHaveBeenCalled();
+  });
+
   it("deletes unused media in tx and calls delBlob strictly ONCE after commit even if tx retries", async () => {
     const h = createHarness({ retryTxOnce: true });
     const media = makeStoredMedia();

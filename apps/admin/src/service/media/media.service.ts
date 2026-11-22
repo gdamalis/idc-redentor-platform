@@ -1216,6 +1216,7 @@ export async function deleteMedia(
 
   const objectId = parseStrictObjectId(mediaId);
   if (!objectId) return { ok: false, reason: "not-found" };
+  const canonicalMediaId = objectId.toHexString();
 
   await deps.ensureMediaIndexes();
   const actor = getCallerActor(caller);
@@ -1236,7 +1237,11 @@ export async function deleteMedia(
       return { ok: false, reason: "not-found" };
     }
 
-    const usedBy = await queryMediaUsagesTransactional(mediaId, session, deps);
+    const usedBy = await queryMediaUsagesTransactional(
+      canonicalMediaId,
+      session,
+      deps,
+    );
     if (usedBy.length > 0) {
       await session.abortTransaction();
       return { ok: false, reason: "in-use", usedBy };
@@ -1255,7 +1260,7 @@ export async function deleteMedia(
         actorKind: actor.kind,
         action: "media.delete",
         collection: COLLECTIONS.media,
-        docId: mediaId,
+        docId: canonicalMediaId,
         naturalKey: existing.pathname,
         changedFields: ["_deleted"],
         revision: 0,
@@ -1265,7 +1270,7 @@ export async function deleteMedia(
 
     return {
       ok: true,
-      docId: mediaId,
+      docId: canonicalMediaId,
       blobUrl: existing.url,
       pathname: existing.pathname,
     };
