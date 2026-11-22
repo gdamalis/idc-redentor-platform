@@ -103,6 +103,11 @@ export interface RunPageParityOptions {
   /** Optional Playwright screenshot comparison on key routes (default `false`). */
   readonly screenshotRoutes?: readonly string[];
   readonly screenshotDiffThreshold?: number;
+  /** Optional PNG capture override for unit tests (defaults to headless Playwright Chromium). */
+  readonly screenshotCapture?: (
+    url: string,
+    headers?: Readonly<Record<string, string>>,
+  ) => Promise<Buffer>;
 }
 
 function findFirstHtmlDiff(a: string, b: string): HtmlDiffSnippet | undefined {
@@ -304,8 +309,43 @@ async function runPlaywrightScreenshots(
   threshold: number,
   headersA?: Readonly<Record<string, string>>,
   headersB?: Readonly<Record<string, string>>,
+  screenshotCapture?: (
+    url: string,
+    headers?: Readonly<Record<string, string>>,
+  ) => Promise<Buffer>,
 ): Promise<ScreenshotParityResult[]> {
   if (routes.length === 0) return [];
+
+  if (screenshotCapture) {
+    const results: ScreenshotParityResult[] = [];
+    for (const route of routes) {
+      try {
+        const [bufA, bufB] = await Promise.all([
+          screenshotCapture(`${baseUrlA}${route}`, headersA),
+          screenshotCapture(`${baseUrlB}${route}`, headersB),
+        ]);
+        const { byteEqual, diffRatio } = comparePngPixels(bufA, bufB);
+        results.push({
+          route,
+          ok: diffRatio <= threshold,
+          byteEqual,
+          diffRatio,
+          ...(diffRatio > threshold && {
+            reason: `Screenshot pixel diff ratio ${(diffRatio * 100).toFixed(2)}% exceeded threshold ${(threshold * 100).toFixed(2)}%`,
+          }),
+        });
+      } catch (err) {
+        results.push({
+          route,
+          ok: false,
+          byteEqual: false,
+          diffRatio: 1,
+          reason: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+    return results;
+  }
 
   const { chromium } = await import("@playwright/test");
   const browser = await chromium.launch({ headless: true });
@@ -475,6 +515,7 @@ export async function runPageParity(
     options.screenshotDiffThreshold ?? 0.005,
     options.headersA,
     options.headersB,
+    options.screenshotCapture,
   );
 
   const passedRoutes = routes.filter((r) => r.ok).length;

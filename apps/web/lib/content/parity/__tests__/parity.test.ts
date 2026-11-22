@@ -1,6 +1,9 @@
 // @vitest-environment node
+import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
+import { deflateSync } from "node:zlib";
+import { chromium } from "@playwright/test";
 import { describe, expect, it } from "vitest";
 import type { RichTextView } from "@idcr/content";
 import {
@@ -556,55 +559,215 @@ describe("runPageParity against local HTTP server (AC8)", () => {
     }
   });
 
-  it("computes true decoded-pixel diffRatio on Playwright screenshots: stable self-compare + planted visual diff (C4)", async () => {
-    let plantVisualDiff = false;
-    const server = http.createServer((req, res) => {
-      const isVariantB = req.headers["x-variant"] === "B";
-      const bg = plantVisualDiff && isVariantB ? "#dc2626" : "#ffffff";
-      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(
-        `<!doctype html><html><body style="margin:0;background:${bg};height:400px"><main style="padding:32px;font-family:sans-serif"><h1>Iglesia Demo</h1></main></body></html>`,
-      );
+  it("decodes PNG scanline filters and computes exact pixel diffRatio deterministically (C4)", async () => {
+    const crc32 = (buf: Uint8Array): number => {
+      let crc = 0xffffffff;
+      for (const byte of buf) {
+        crc ^= byte;
+        for (let i = 0; i < 8; i += 1) {
+          crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+        }
+      }
+      return (crc ^ 0xffffffff) >>> 0;
+    };
+
+    const chunk = (type: string, data: Uint8Array): Buffer => {
+      const len = Buffer.alloc(4);
+      len.writeUInt32BE(data.length, 0);
+      const typeBuf = Buffer.from(type, "ascii");
+      const crcInput = Buffer.concat([typeBuf, data]);
+      const crcBuf = Buffer.alloc(4);
+      crcBuf.writeUInt32BE(crc32(crcInput), 0);
+      return Buffer.concat([len, typeBuf, data, crcBuf]);
+    };
+
+    const encodeRgbaPng = (
+      width: number,
+      height: number,
+      rgba: Uint8Array,
+      filterType: 0 | 1 | 2 = 0,
+    ): Buffer => {
+      const stride = width * 4;
+      const raw = Buffer.alloc(height * (1 + stride));
+      for (let y = 0; y < height; y += 1) {
+        const outOffset = y * (1 + stride);
+        raw[outOffset] = filterType;
+        for (let i = 0; i < stride; i += 1) {
+          const cur = rgba[y * stride + i] ?? 0;
+          if (filterType === 0) {
+            raw[outOffset + 1 + i] = cur;
+          } else if (filterType === 1) {
+            const left = i >= 4 ? (rgba[y * stride + i - 4] ?? 0) : 0;
+            raw[outOffset + 1 + i] = (cur - left) & 0xff;
+          } else {
+            const up = y > 0 ? (rgba[(y - 1) * stride + i] ?? 0) : 0;
+            raw[outOffset + 1 + i] = (cur - up) & 0xff;
+          }
+        }
+      }
+      const ihdr = Buffer.alloc(13);
+      ihdr.writeUInt32BE(width, 0);
+      ihdr.writeUInt32BE(height, 4);
+      ihdr[8] = 8; // bitDepth
+      ihdr[9] = 6; // RGBA
+      return Buffer.concat([
+        Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+        chunk("IHDR", ihdr),
+        chunk("IDAT", deflateSync(raw)),
+        chunk("IEND", Buffer.alloc(0)),
+      ]);
+    };
+
+    const solid = (r: number, g: number, b: number, width = 4, height = 4): Uint8Array => {
+      const out = new Uint8Array(width * height * 4);
+      for (let p = 0; p < width * height; p += 1) {
+        out[p * 4] = r;
+        out[p * 4 + 1] = g;
+        out[p * 4 + 2] = b;
+        out[p * 4 + 3] = 255;
+      }
+      return out;
+    };
+
+    const whitePixels = solid(255, 255, 255);
+    const whiteNone = encodeRgbaPng(4, 4, whitePixels, 0);
+    const whiteSub = encodeRgbaPng(4, 4, whitePixels, 1);
+    const whiteUp = encodeRgbaPng(4, 4, whitePixels, 2);
+
+    // Byte-identical
+    expect(comparePngPixels(whiteNone, whiteNone)).toEqual({
+      byteEqual: true,
+      diffRatio: 0,
+    });
+    // Different PNG compression/scanline filters, identical pixels -> 0% pixel diff!
+    expect(whiteNone.equals(whiteSub)).toBe(false);
+    expect(comparePngPixels(whiteNone, whiteSub)).toEqual({
+      byteEqual: false,
+      diffRatio: 0,
+    });
+    expect(comparePngPixels(whiteNone, whiteUp)).toEqual({
+      byteEqual: false,
+      diffRatio: 0,
     });
 
-    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-    const { port } = server.address() as AddressInfo;
-    const baseUrl = `http://127.0.0.1:${port}`;
-
-    try {
-      // Self-comparison with Playwright screenshots -> 0% pixel diff
-      const selfShot = await runPageParity({
-        baseUrlA: baseUrl,
-        baseUrlB: baseUrl,
-        routes: ["/es-AR"],
-        screenshotRoutes: ["/es-AR"],
-      });
-      expect(selfShot.ok).toBe(true);
-      expect(selfShot.screenshots).toHaveLength(1);
-      expect(selfShot.screenshots[0]?.ok).toBe(true);
-      expect(selfShot.screenshots[0]?.diffRatio).toBe(0);
-
-      // Planted full-page visual difference -> high decoded pixel diffRatio caught cleanly
-      plantVisualDiff = true;
-      const diffShot = await runPageParity({
-        baseUrlA: baseUrl,
-        baseUrlB: baseUrl,
-        headersA: { "x-variant": "A" },
-        headersB: { "x-variant": "B" },
-        routes: ["/es-AR"],
-        screenshotRoutes: ["/es-AR"],
-        screenshotDiffThreshold: 0.005,
-      });
-      expect(diffShot.ok).toBe(false);
-      expect(diffShot.screenshots[0]?.ok).toBe(false);
-      expect(diffShot.screenshots[0]?.diffRatio).toBeGreaterThan(0.5);
-
-      // Invalid PNG buffers fail closed to diffRatio = 1
-      expect(
-        comparePngPixels(Buffer.from("not-a-png-a"), Buffer.from("not-a-png-b")),
-      ).toEqual({ byteEqual: false, diffRatio: 1 });
-    } finally {
-      await new Promise<void>((resolve) => server.close(() => resolve()));
+    // Exact 25% pixel diff (4 of 16 pixels changed)
+    const quarterRed = new Uint8Array(whitePixels);
+    for (let p = 0; p < 4; p += 1) {
+      quarterRed[p * 4] = 220;
+      quarterRed[p * 4 + 1] = 38;
+      quarterRed[p * 4 + 2] = 38;
     }
-  }, 30_000);
+    const quarterRedPng = encodeRgbaPng(4, 4, quarterRed, 1);
+    expect(comparePngPixels(whiteNone, quarterRedPng)).toEqual({
+      byteEqual: false,
+      diffRatio: 0.25,
+    });
+
+    // Dimension mismatch counts every pixel outside the overlap as differing (12 of 16 = 0.75)
+    const smallPng = encodeRgbaPng(2, 2, solid(255, 255, 255, 2, 2), 0);
+    expect(comparePngPixels(whiteNone, smallPng)).toEqual({
+      byteEqual: false,
+      diffRatio: 0.75,
+    });
+    // Invalid PNGs fail closed to diffRatio = 1
+    expect(
+      comparePngPixels(Buffer.from("not-a-png-a"), Buffer.from("not-a-png-b")),
+    ).toEqual({ byteEqual: false, diffRatio: 1 });
+
+    // Exercise runPageParity screenshot pipeline end-to-end without requiring a CI browser binary
+    const fetchOk: typeof fetch = async () =>
+      new Response("<html><body><main>OK</main></body></html>", { status: 200 });
+
+    const passReport = await runPageParity({
+      baseUrlA: "http://127.0.0.1:4101",
+      baseUrlB: "http://127.0.0.1:4102",
+      routes: ["/es-AR"],
+      screenshotRoutes: ["/es-AR"],
+      fetchImpl: fetchOk,
+      screenshotCapture: async (url) =>
+        url.includes("4101") ? whiteNone : whiteSub,
+    });
+    expect(passReport.ok).toBe(true);
+    expect(passReport.screenshots[0]).toMatchObject({
+      ok: true,
+      byteEqual: false,
+      diffRatio: 0,
+    });
+
+    const failReport = await runPageParity({
+      baseUrlA: "http://127.0.0.1:4101",
+      baseUrlB: "http://127.0.0.1:4102",
+      routes: ["/es-AR"],
+      screenshotRoutes: ["/es-AR"],
+      screenshotDiffThreshold: 0.005,
+      fetchImpl: fetchOk,
+      screenshotCapture: async (url) =>
+        url.includes("4101") ? whiteNone : quarterRedPng,
+    });
+    expect(failReport.ok).toBe(false);
+    expect(failReport.screenshots[0]).toMatchObject({
+      ok: false,
+      diffRatio: 0.25,
+    });
+    expect(formatPageParityReportMarkdown(failReport)).toContain("25.00%");
+  });
+
+  const hasPlaywrightChromium = (() => {
+    try {
+      return fs.existsSync(chromium.executablePath());
+    } catch {
+      return false;
+    }
+  })();
+
+  it.skipIf(!hasPlaywrightChromium)(
+    "computes true decoded-pixel diffRatio on live Playwright Chromium screenshots (C4)",
+    async () => {
+      let plantVisualDiff = false;
+      const server = http.createServer((req, res) => {
+        const isVariantB = req.headers["x-variant"] === "B";
+        const bg = plantVisualDiff && isVariantB ? "#dc2626" : "#ffffff";
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        res.end(
+          `<!doctype html><html><body style="margin:0;background:${bg};height:400px"><main style="padding:32px;font-family:sans-serif"><h1>Iglesia Demo</h1></main></body></html>`,
+        );
+      });
+
+      await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+      const { port } = server.address() as AddressInfo;
+      const baseUrl = `http://127.0.0.1:${port}`;
+
+      try {
+        // Self-comparison with Playwright screenshots -> 0% pixel diff
+        const selfShot = await runPageParity({
+          baseUrlA: baseUrl,
+          baseUrlB: baseUrl,
+          routes: ["/es-AR"],
+          screenshotRoutes: ["/es-AR"],
+        });
+        expect(selfShot.ok).toBe(true);
+        expect(selfShot.screenshots).toHaveLength(1);
+        expect(selfShot.screenshots[0]?.ok).toBe(true);
+        expect(selfShot.screenshots[0]?.diffRatio).toBe(0);
+
+        // Planted full-page visual difference -> high decoded pixel diffRatio caught cleanly
+        plantVisualDiff = true;
+        const diffShot = await runPageParity({
+          baseUrlA: baseUrl,
+          baseUrlB: baseUrl,
+          headersA: { "x-variant": "A" },
+          headersB: { "x-variant": "B" },
+          routes: ["/es-AR"],
+          screenshotRoutes: ["/es-AR"],
+          screenshotDiffThreshold: 0.005,
+        });
+        expect(diffShot.ok).toBe(false);
+        expect(diffShot.screenshots[0]?.ok).toBe(false);
+        expect(diffShot.screenshots[0]?.diffRatio).toBeGreaterThan(0.5);
+      } finally {
+        await new Promise<void>((resolve) => server.close(() => resolve()));
+      }
+    },
+    30_000,
+  );
 });
