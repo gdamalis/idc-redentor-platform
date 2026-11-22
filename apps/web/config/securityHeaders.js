@@ -3,10 +3,10 @@ const SCRIPT_SRC =
 const CONNECT_SRC =
   "connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://va.vercel-scripts.com https://vitals.vercel-insights.com";
 const IMG_SRC =
-  "img-src 'self' data: https://www.google-analytics.com https://*.google-analytics.com https://*.googletagmanager.com https://images.ctfassets.net https://images.eu.ctfassets.net https://images.unsplash.com";
-// media-src allows the sermon <audio> element to stream from Contentful's asset CDN
+  "img-src 'self' data: https://www.google-analytics.com https://*.google-analytics.com https://*.googletagmanager.com https://images.ctfassets.net https://images.eu.ctfassets.net https://images.unsplash.com https://*.public.blob.vercel-storage.com";
+// media-src allows the sermon <audio> element to stream from Contentful's asset CDN and Vercel Blob public stores
 const MEDIA_SRC =
-  "media-src 'self' https://assets.ctfassets.net https://assets.eu.ctfassets.net https://downloads.ctfassets.net";
+  "media-src 'self' https://assets.ctfassets.net https://assets.eu.ctfassets.net https://downloads.ctfassets.net https://*.public.blob.vercel-storage.com";
 const CONTENTFUL_APP_ORIGINS =
   "https://app.contentful.com https://app.eu.contentful.com";
 
