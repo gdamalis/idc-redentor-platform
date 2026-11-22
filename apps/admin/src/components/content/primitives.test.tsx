@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { loadMessages } from "@src/i18n/load-messages";
+import { ActionMenu } from "@src/components/ui/action-menu";
 import { Field } from "@src/components/ui/field";
 import { Notice } from "@src/components/ui/notice";
 import { ConfirmDialog } from "@src/components/ui/confirm-dialog";
@@ -214,5 +215,30 @@ describe("Shared UI & content primitives (Checkpoint 2)", () => {
 
     await user.click(screen.getByRole("button", { name: "Descartar" }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens ActionMenu item callback cleanly after closing dropdown without locking body pointer-events", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    render(
+      <ActionMenu
+        triggerLabel="Más acciones"
+        items={[
+          {
+            id: "discard",
+            label: "Descartar cambios",
+            variant: "destructive",
+            onSelect,
+          },
+        ]}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Más acciones" }));
+    await user.click(screen.getByRole("menuitem", { name: "Descartar cambios" }));
+    await waitFor(() => {
+      expect(onSelect).toHaveBeenCalledTimes(1);
+    });
+    expect(document.body.style.pointerEvents).not.toBe("none");
   });
 });

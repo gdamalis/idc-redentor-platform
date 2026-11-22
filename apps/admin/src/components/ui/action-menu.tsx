@@ -30,6 +30,8 @@ export function ActionMenu({
   items,
   align = "end",
 }: ActionMenuProps) {
+  const didSelectItemRef = React.useRef(false);
+
   if (items.length === 0) return null;
 
   return (
@@ -49,6 +51,14 @@ export function ActionMenu({
         <DropdownMenuPrimitive.Content
           align={align}
           sideOffset={4}
+          onCloseAutoFocus={(event) => {
+            if (didSelectItemRef.current) {
+              // Prevent focus return to the trigger button from racing with a
+              // Dialog opened by the selected action (Radix focusOutside bug).
+              event.preventDefault();
+              didSelectItemRef.current = false;
+            }
+          }}
           className="z-50 min-w-52 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
         >
           {items.map((item) => (
@@ -56,7 +66,12 @@ export function ActionMenu({
               key={item.id}
               disabled={item.disabled}
               onSelect={() => {
-                if (!item.disabled) item.onSelect();
+                if (!item.disabled) {
+                  didSelectItemRef.current = true;
+                  window.setTimeout(() => {
+                    item.onSelect();
+                  }, 0);
+                }
               }}
               className={cn(
                 "relative flex cursor-pointer select-none flex-col rounded-sm px-2.5 py-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
