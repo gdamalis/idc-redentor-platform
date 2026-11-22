@@ -124,5 +124,10 @@
     "like": "Like",
     "unlike": "Unlike",
     "tags": "Tags"
+  },
+  "preview": {
+    "banner": "Preview mode. You are viewing unpublished content; visitors cannot see it.",
+    "exit": "Exit preview",
+    "staging": "Test environment: always shows drafts."
   }
 }
