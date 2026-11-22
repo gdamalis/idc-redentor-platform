@@ -449,13 +449,12 @@ export function EntryEditor<TFields extends object>({
             );
             setLastSavedAt(formatShortTime(new Date(), panelLocale));
             if (wasNew) {
-              skipLeaveGuardRef.current = true;
-              router.replace(
-                getEntryEditorHref(collection, prepared.savedDoc._id),
+              // Update URL without unmounting EntryEditor so ErrorSummary stays visible
+              window.history.replaceState(
+                null,
+                "",
+                `/${panelLocale}${getEntryEditorHref(collection, prepared.savedDoc._id)}`,
               );
-              window.setTimeout(() => {
-                skipLeaveGuardRef.current = false;
-              }, 0);
             }
           }
           handleFailure(prepared, { kind: "prepare-publish" });
@@ -469,11 +468,12 @@ export function EntryEditor<TFields extends object>({
         setLastSavedAt(formatShortTime(new Date(), panelLocale));
         onAfterSave?.(prepared.doc);
         if (wasNew) {
-          skipLeaveGuardRef.current = true;
-          router.replace(getEntryEditorHref(collection, prepared.doc._id));
-          window.setTimeout(() => {
-            skipLeaveGuardRef.current = false;
-          }, 0);
+          // Update URL without unmounting EntryEditor so PublishDialog stays open
+          window.history.replaceState(
+            null,
+            "",
+            `/${panelLocale}${getEntryEditorHref(collection, prepared.doc._id)}`,
+          );
         }
 
         setPublishDialogCtx({
@@ -502,7 +502,6 @@ export function EntryEditor<TFields extends object>({
       lossyConfirmed,
       onAfterSave,
       panelLocale,
-      router,
     ],
   );
 

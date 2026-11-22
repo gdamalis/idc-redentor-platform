@@ -389,9 +389,10 @@ describe("EntryEditor frame (Checkpoint 4)", () => {
     });
   });
 
-  it("replaces /new URL on direct preparePublish and respects isPublishEmailsEnabled={false} fallback (C3)", async () => {
+  it("replaces /new URL without unmounting on direct preparePublish and respects isPublishEmailsEnabled={false} fallback (C3)", async () => {
     const user = userEvent.setup();
     const newId = "65f1234567890abcdef77777";
+    const replaceStateSpy = vi.spyOn(window.history, "replaceState");
     const preparePublish = vi.fn().mockResolvedValue({
       ok: true,
       doc: { ...baseDoc, _id: newId, revision: 1 },
@@ -426,7 +427,13 @@ describe("EntryEditor frame (Checkpoint 4)", () => {
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeDefined();
     });
-    expect(mockRouterReplace).toHaveBeenCalledWith(`/content/posts/${newId}`);
+    expect(replaceStateSpy).toHaveBeenCalledWith(
+      null,
+      "",
+      `/es-AR/content/posts/${newId}`,
+    );
+    expect(mockRouterReplace).not.toHaveBeenCalled();
     expect(screen.queryByTestId("email-box-slot")).toBeNull();
+    replaceStateSpy.mockRestore();
   });
 });
