@@ -156,14 +156,25 @@ function setLocalizedStringList(
   };
 }
 
+/**
+ * Strips `Object.create(null)` prototypes emitted by ProseMirror `editor.getJSON()`
+ * on `heading.attrs`, `link.attrs`, `orderedList.attrs`, and `embeddedMedia.attrs`
+ * so React 19 / Next.js 16 Server Action Flight serializes them as plain objects
+ * instead of `"$T"` temporary references (board #271).
+ */
+function toPlainRichTextDoc(doc: RichTextDoc): RichTextDoc {
+  return JSON.parse(JSON.stringify(doc)) as RichTextDoc;
+}
+
 function setLocalizedRichText(
   current: Localized<RichTextDoc> | undefined,
   locale: Locale,
   nextDoc: RichTextDoc,
 ): Localized<RichTextDoc> {
+  const plain = toPlainRichTextDoc(nextDoc);
   if (locale === "es-AR") {
     return {
-      "es-AR": nextDoc,
+      "es-AR": plain,
       ...(current?.["en-US"] !== undefined && { "en-US": current["en-US"] }),
     };
   }
@@ -172,7 +183,7 @@ function setLocalizedRichText(
       type: "doc",
       content: [{ type: "paragraph" }],
     },
-    "en-US": nextDoc,
+    "en-US": plain,
   };
 }
 
@@ -686,7 +697,7 @@ export function SermonEditor({
                             setLocalizedRichText(
                               values.content,
                               "en-US",
-                              structuredClone(contentEs),
+                              toPlainRichTextDoc(contentEs),
                             ),
                           )
                       : undefined

@@ -307,6 +307,10 @@ describe("SermonEditor & sermon components", () => {
       content: MULTI_PREACHER_SERMON_DOC,
     });
     expect(editor.getJSON()).toEqual(MULTI_PREACHER_SERMON_DOC);
+    // Verify JSON round-trip strips null-prototype attrs emitted by ProseMirror
+    const plain = JSON.parse(JSON.stringify(editor.getJSON())) as RichTextDoc;
+    const firstNode = plain.content?.[0] as { attrs?: Record<string, unknown> };
+    expect(Object.getPrototypeOf(firstNode.attrs)).toBe(Object.prototype);
     editor.destroy();
   });
 
