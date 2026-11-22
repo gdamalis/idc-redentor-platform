@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "seed:admin": "tsx scripts/seed-admin.ts"
+    "seed:admin": "tsx scripts/seed-admin.ts",
+    "grant:content-permissions": "tsx scripts/grant-content-permissions.ts"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": "eslint --fix",
