@@ -44,6 +44,9 @@ export function SermonAuthorField({
   const tContent = useTranslations("content");
   const tCommon = useTranslations("common");
 
+  const [knownById, setKnownById] = React.useState<
+    Readonly<Record<string, ContentPickerOption>>
+  >(() => (initialOption ? { [initialOption.id]: initialOption } : {}));
   const [selectedOption, setSelectedOption] =
     React.useState<ContentPickerOption | null>(initialOption);
   const [open, setOpen] = React.useState(false);
@@ -55,8 +58,26 @@ export function SermonAuthorField({
   );
 
   React.useEffect(() => {
-    if (!value) setSelectedOption(null);
-  }, [value]);
+    if (initialOption) {
+      setKnownById((prev) =>
+        prev[initialOption.id] === initialOption
+          ? prev
+          : { ...prev, [initialOption.id]: initialOption },
+      );
+    }
+  }, [initialOption]);
+
+  React.useEffect(() => {
+    if (!value) {
+      setSelectedOption(null);
+      return;
+    }
+    setSelectedOption((prev) => {
+      if (prev?.id === value) return prev;
+      if (initialOption?.id === value) return initialOption;
+      return knownById[value] ?? null;
+    });
+  }, [initialOption, knownById, value]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -156,6 +177,7 @@ export function SermonAuthorField({
         onConfirm={(ids) => {
           const picked = items.find((item) => item.id === ids[0]);
           if (picked) {
+            setKnownById((prev) => ({ ...prev, [picked.id]: picked }));
             setSelectedOption(picked);
             onChange(picked.id);
           }

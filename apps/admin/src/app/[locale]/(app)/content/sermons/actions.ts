@@ -31,12 +31,15 @@ import {
   hasRenderableSermonBody,
   normalizeSermonAudioLanguages,
 } from "@src/service/content/sermons/sermon-hash.service";
+import { normalizeLocalizedStringArray } from "@src/service/content/sermons/sermon-helpers";
 import {
   deriveSermonPdfUiState,
   getContentPdfJob,
   markSermonPdfDirty,
+  syncContentPdfJobOnDiscard,
   type SermonPdfUiState,
 } from "@src/service/content/sermons/pdf-jobs.service";
+import { checkSermonSlugConflict } from "@src/service/content/sermons/sermon-slug.service";
 import type {
   ContentActionResult,
   PreparePublishResult,
@@ -104,7 +107,9 @@ function serializeMedia(doc: MediaDoc): SerializedMediaDoc {
   };
 }
 
-/** Strips system-owned PDF fields so an editor save can NEVER revert worker PDFs (AC4). */
+/** Strips system-owned PDF fields so an editor save can NEVER revert worker PDFs (AC4),
+ *  and strips whitespace-only items from `mainPoints`/`keywords` so blank English rows
+ *  never suppress Spanish fallback (`ICR-200` C3). */
 function stripSystemOwnedSermonPatch(
   patch: Partial<SermonFields>,
 ): Partial<SermonFields> {
@@ -113,6 +118,13 @@ function stripSystemOwnedSermonPatch(
     if (key === "pdfSummaryMediaId" || key === "contentHash") continue;
     if (key === "audioLanguages" && value !== undefined) {
       out[key] = normalizeSermonAudioLanguages(value as readonly string[]);
+    } else if (
+      (key === "mainPoints" || key === "keywords") &&
+      value !== undefined
+    ) {
+      out[key] = normalizeLocalizedStringArray(
+        value as SermonFields["mainPoints"],
+      );
     } else {
       out[key] = value;
     }
@@ -209,6 +221,7 @@ export async function createSermonAction(input: {
   ContentActionResult<{
     readonly doc: SerializedContentDoc<SermonFields>;
     readonly status: ContentStatus;
+    readonly pdfStatus: SerializedSermonPdfStatus;
   }>
 > {
   const authz = await requireActionPermission("content:write");
@@ -223,6 +236,10 @@ export async function createSermonAction(input: {
       cleanDraft.audioLanguages,
     );
   }
+
+  const slugConflict = await checkSermonSlugConflict(cleanDraft.slug);
+  if (slugConflict) return slugConflict;
+
   const { contentHash } = await computeSermonHashForSnapshot(caller, cleanDraft);
 
   const result = await sermonService.create(caller, {
@@ -235,17 +252,20 @@ export async function createSermonAction(input: {
     await markSermonPdfDirty(result.doc._id, contentHash);
   }
 
+  const pdfStatus = await buildSermonPdfStatus(caller, result.doc);
   revalidatePath(CONTENT_LAYOUT_ROUTE, "layout");
   return {
     ok: true,
     doc: serializeDoc(result.doc, authz.user.displayName ?? authz.user.email),
     status: result.status,
+    pdfStatus,
   };
 }
 
 /**
  * `EntryEditor.actionOverrides.saveDraft` for `sermons`:
  * - Strips system-owned `pdfSummaryMediaId` / `contentHash` from client patch (AC4).
+ * - Enforces cross-snapshot slug uniqueness (`C1`).
  * - Computes authoritative `prevHash` vs `nextHash`; persists `contentHash` on
  *   draft and creates/updates **exactly one** pending `content_pdf_jobs` entry
  *   iff `prevHash !== nextHash` (AC3).
@@ -262,6 +282,7 @@ export async function saveSermonDraftAction(input: {
     readonly status: ContentStatus;
     readonly changedFields: string[];
     readonly noOp: boolean;
+    readonly pdfStatus: SerializedSermonPdfStatus;
   }>
 > {
   const authz = await requireActionPermission("content:write");
@@ -274,6 +295,17 @@ export async function saveSermonDraftAction(input: {
 
   const loaded = await sermonService.getById(caller, input.docId);
   if (!loaded.ok) return serializeFailure(loaded);
+
+  if (
+    sanitizedPatch.slug !== undefined &&
+    sanitizedPatch.slug !== loaded.doc.draft.slug
+  ) {
+    const slugConflict = await checkSermonSlugConflict(
+      sanitizedPatch.slug,
+      input.docId,
+    );
+    if (slugConflict) return slugConflict;
+  }
 
   const prevHash =
     loaded.doc.draft.contentHash ??
@@ -306,14 +338,24 @@ export async function saveSermonDraftAction(input: {
     revalidatePath(CONTENT_LAYOUT_ROUTE, "layout");
   }
 
+  const pdfStatus = await buildSermonPdfStatus(caller, result.doc);
   return {
     ok: true,
     doc: serializeDoc(result.doc, result.updatedByLabel),
     status: result.status,
     changedFields: result.changedFields,
     noOp: result.noOp,
+    pdfStatus,
   };
 }
+
+export type PrepareSermonPublishResult =
+  | (Extract<PreparePublishResult<SermonFields>, { ok: true }> & {
+      readonly pdfStatus: SerializedSermonPdfStatus;
+    })
+  | (Extract<PreparePublishResult<SermonFields>, { ok: false }> & {
+      readonly savedPdfStatus?: SerializedSermonPdfStatus;
+    });
 
 /**
  * `EntryEditor.actionOverrides.preparePublish` for `sermons`:
@@ -328,7 +370,7 @@ export async function prepareSermonPublishAction(input: {
   readonly draftPatch?: Partial<SermonFields>;
   readonly expectedRevision?: number;
   readonly overwrite?: boolean;
-}): Promise<PreparePublishResult<SermonFields>> {
+}): Promise<PrepareSermonPublishResult> {
   const authz = await requireActionPermission("content:publish");
   if (!authz.ok) {
     return {
@@ -352,6 +394,9 @@ export async function prepareSermonPublishAction(input: {
       };
     }
     const cleanDraft = stripSystemOwnedSermonPatch(input.newDraft) as SermonFields;
+    const slugConflict = await checkSermonSlugConflict(cleanDraft.slug);
+    if (slugConflict) return slugConflict;
+
     const { contentHash } = await computeSermonHashForSnapshot(caller, cleanDraft);
     const created = await sermonService.create(caller, {
       ...cleanDraft,
@@ -373,10 +418,16 @@ export async function prepareSermonPublishAction(input: {
     const loaded = await sermonService.getById(caller, input.docId);
     if (!loaded.ok) return serializeFailure(loaded);
 
+    const mergedDraft = mergePatchOntoDraft(loaded.doc.draft, sanitizedPatch);
+    const slugConflict = await checkSermonSlugConflict(
+      mergedDraft.slug,
+      input.docId,
+    );
+    if (slugConflict) return slugConflict;
+
     const prevHash =
       loaded.doc.draft.contentHash ??
       (await computeSermonHashForSnapshot(caller, loaded.doc.draft)).contentHash;
-    const mergedDraft = mergePatchOntoDraft(loaded.doc.draft, sanitizedPatch);
     const { contentHash: nextHash } = await computeSermonHashForSnapshot(
       caller,
       mergedDraft,
@@ -422,10 +473,18 @@ export async function prepareSermonPublishAction(input: {
         currentRevision: loaded.doc.revision,
       };
     }
+    const slugConflict = await checkSermonSlugConflict(
+      loaded.doc.draft.slug,
+      input.docId,
+    );
+    if (slugConflict) return slugConflict;
+
     doc = loaded.doc;
     status = loaded.status;
     updatedByLabel = loaded.updatedByLabel;
   }
+
+  const pdfStatus = await buildSermonPdfStatus(caller, doc);
 
   const strict = CONTENT_SCHEMAS.sermon.publishable.safeParse(doc.draft);
   if (!strict.success) {
@@ -435,6 +494,7 @@ export async function prepareSermonPublishAction(input: {
       fieldErrors: formatZodFieldErrors(strict.error),
       savedDoc: serializeDoc(doc, updatedByLabel),
       savedStatus: status,
+      savedPdfStatus: pdfStatus,
     };
   }
 
@@ -477,13 +537,15 @@ export async function prepareSermonPublishAction(input: {
     isFirstPublish: doc.firstPublishedAt === undefined,
     isPublishEmailsEnabled: isPublishEmailsEnabled(),
     willCascade,
+    pdfStatus,
   };
 }
 
 /**
  * `EntryEditor.actionOverrides.confirmPublish` for `sermons`:
- * publishes the sermon and removes any old published PDF media items that are
- * no longer referenced by either `draft` or `published` (AC6).
+ * enforces cross-snapshot slug uniqueness (`C1`), publishes the sermon, and
+ * removes any old published PDF media items no longer referenced by either
+ * `draft` or `published` (AC6).
  */
 export async function confirmSermonPublishAction(input: {
   readonly collection: ContentCollectionName;
@@ -499,6 +561,7 @@ export async function confirmSermonPublishAction(input: {
     readonly revalidated: boolean;
     readonly revalidateReason?: RevalidateFailureReason;
     readonly notified: boolean;
+    readonly pdfStatus: SerializedSermonPdfStatus;
   }>
 > {
   const authz = await requireActionPermission("content:publish");
@@ -512,6 +575,13 @@ export async function confirmSermonPublishAction(input: {
 
   const caller = callerFromAuthorized(authz);
   const before = await sermonService.getById(caller, input.docId);
+  if (before.ok) {
+    const slugConflict = await checkSermonSlugConflict(
+      before.doc.draft.slug,
+      input.docId,
+    );
+    if (slugConflict) return slugConflict;
+  }
   const beforePublishedPdfIds = before.ok
     ? collectSermonPdfMediaIds(before.doc.published?.pdfSummaryMediaId)
     : [];
@@ -526,6 +596,7 @@ export async function confirmSermonPublishAction(input: {
   if (!result.ok) return serializeFailure(result);
 
   await cleanupUnreferencedPdfMediaIds(beforePublishedPdfIds, result.doc);
+  const pdfStatus = await buildSermonPdfStatus(caller, result.doc);
 
   revalidatePath(CONTENT_LAYOUT_ROUTE, "layout");
   return {
@@ -537,13 +608,15 @@ export async function confirmSermonPublishAction(input: {
       revalidateReason: result.revalidateReason,
     }),
     notified: result.notified,
+    pdfStatus,
   };
 }
 
 /**
  * `EntryEditor.actionOverrides.discardChanges` for `sermons`:
- * discards draft changes back to `published` and removes any draft-only PDFs
- * that are no longer referenced by either snapshot (AC6).
+ * discards draft changes back to `published`, removes any draft-only PDFs no
+ * longer referenced by either snapshot (AC6), and re-syncs `content_pdf_jobs`
+ * to the reverted snapshot (`C2`).
  */
 export async function discardSermonChangesAction(input: {
   readonly collection: ContentCollectionName;
@@ -555,6 +628,7 @@ export async function discardSermonChangesAction(input: {
     readonly doc: SerializedContentDoc<SermonFields>;
     readonly status: ContentStatus;
     readonly noOp: boolean;
+    readonly pdfStatus: SerializedSermonPdfStatus;
   }>
 > {
   const authz = await requireActionPermission("content:write");
@@ -577,14 +651,27 @@ export async function discardSermonChangesAction(input: {
 
   if (!result.noOp) {
     await cleanupUnreferencedPdfMediaIds(beforeDraftPdfIds, result.doc);
+    const revertedHash =
+      result.doc.draft.contentHash ??
+      (await computeSermonHashForSnapshot(caller, result.doc.draft)).contentHash;
+    const hasRevertedPdf = Boolean(
+      result.doc.draft.pdfSummaryMediaId?.["es-AR"],
+    );
+    await syncContentPdfJobOnDiscard(
+      input.docId,
+      revertedHash,
+      hasRevertedPdf,
+    );
     revalidatePath(CONTENT_LAYOUT_ROUTE, "layout");
   }
 
+  const pdfStatus = await buildSermonPdfStatus(caller, result.doc);
   return {
     ok: true,
     doc: serializeDoc(result.doc, result.updatedByLabel),
     status: result.status,
     noOp: result.noOp,
+    pdfStatus,
   };
 }
 

@@ -16,6 +16,7 @@ import {
   releaseStaleContentPdfClaim,
   resetContentPdfJobIndexesCacheForTest,
   selectRenderableContentPdfJobs,
+  syncContentPdfJobOnDiscard,
   type ContentPdfJob,
   type ContentPdfJobsDeps,
 } from "./pdf-jobs.service";
@@ -335,5 +336,52 @@ describe("pdf-jobs.service", () => {
     await legacyCollection.deleteOne({ entryId: "ctfEntry123" });
     expect(contentJobs.size).toBe(2);
     expect(await selectRenderableContentPdfJobs(now, deps)).toHaveLength(2);
+  });
+
+  it("syncContentPdfJobOnDiscard clears stale pending state before render AND resets lastRenderedHash after render so re-editing to H2 regenerates (C2)", async () => {
+    const { db } = createInMemoryWebsiteDb();
+    const t0 = new Date("2026-11-22T12:00:00Z");
+    const deps: ContentPdfJobsDeps = { getContentDb: () => db, now: () => t0 };
+
+    // 1) Published sermon rendered at H1
+    await markSermonPdfDirty("s1", "H1", {}, deps);
+    const c1 = await claimContentPdfJob("s1", t0, deps);
+    await completeContentPdfJob("s1", "H1", c1!.forceGeneration, 1, t0, deps);
+
+    // 2) Draft edited to H2 -> pending, then discarded BEFORE worker renders
+    await markSermonPdfDirty("s1", "H2", {}, deps);
+    expect(
+      deriveSermonPdfUiState({
+        job: await getContentPdfJob("s1", deps),
+        hasPdfForLocale: true,
+      }),
+    ).toBe("pending");
+
+    await syncContentPdfJobOnDiscard("s1", "H1", true, deps);
+    const afterPreRenderDiscard = await getContentPdfJob("s1", deps);
+    expect(afterPreRenderDiscard?.contentHash).toBe("H1");
+    expect(afterPreRenderDiscard?.lastRenderedHash).toBe("H1");
+    expect(
+      deriveSermonPdfUiState({
+        job: afterPreRenderDiscard,
+        hasPdfForLocale: true,
+      }),
+    ).toBe("ok");
+    expect(await selectRenderableContentPdfJobs(t0, deps)).toEqual([]);
+
+    // 3) Draft edited to H2 -> worker renders PDF_v2 -> then user discards back to H1
+    await markSermonPdfDirty("s1", "H2", {}, deps);
+    const c2 = await claimContentPdfJob("s1", t0, deps);
+    await completeContentPdfJob("s1", "H2", c2!.forceGeneration, 2, t0, deps);
+
+    await syncContentPdfJobOnDiscard("s1", "H1", true, deps);
+    const afterPostRenderDiscard = await getContentPdfJob("s1", deps);
+    expect(afterPostRenderDiscard?.lastRenderedHash).toBe("H1");
+
+    // 4) Later user re-edits draft back to H2 -> H2 !== H1 so it MUST queue a fresh render!
+    await markSermonPdfDirty("s1", "H2", {}, deps);
+    const reQueued = await selectRenderableContentPdfJobs(t0, deps);
+    expect(reQueued).toHaveLength(1);
+    expect(reQueued[0]?.contentHash).toBe("H2");
   });
 });

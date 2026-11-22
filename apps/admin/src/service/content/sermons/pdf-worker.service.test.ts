@@ -118,6 +118,13 @@ describe("pdf-worker.service", () => {
     });
 
     expect(deps.createServerMedia).toHaveBeenCalledTimes(2);
+    expect(deps.createServerMedia).toHaveBeenCalledWith(
+      PDF_WORKER_CALLER,
+      expect.objectContaining({
+        contentType: "application/pdf",
+        dedupeBySha256: false,
+      }),
+    );
     expect(deps.updateSermonPdfMedia).toHaveBeenCalledWith(PDF_WORKER_CALLER, {
       docId: "65f000000000000000000001",
       pdfSummaryMediaId: { "es-AR": "new-media-1", "en-US": "new-media-2" },

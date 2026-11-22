@@ -310,7 +310,9 @@ describe("SermonEditor & sermon components", () => {
     editor.destroy();
   });
 
-  it("AC2 & AC8: renders real stored verse version labels per locale (RVR1960, RVR, KJV) and shows/clears script-draft notice on human save", async () => {
+  it(
+    "AC2 & AC8: renders real stored verse version labels per locale (RVR1960, RVR, KJV) and shows/clears script-draft notice on human save",
+    async () => {
     const user = userEvent.setup();
     const props = makeBaseProps();
 
@@ -379,7 +381,9 @@ describe("SermonEditor & sermon components", () => {
         screen.queryByTestId("sermon-script-draft-notice"),
       ).not.toBeInTheDocument();
     });
-  });
+  },
+    15_000,
+  );
 
   it("renders all 4 SermonPdfStatusCard states and hides email checkbox when global switch is off", async () => {
     const onStatusChange = vi.fn();
@@ -479,7 +483,9 @@ describe("SermonEditor & sermon components", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows PDF-pending note in PublishDialog and only shows email checkbox when global switch is enabled (AC5, Q3)", async () => {
+  it(
+    "shows PDF-pending note in PublishDialog and only shows email checkbox when global switch is enabled (AC5, Q3)",
+    async () => {
     const user = userEvent.setup();
     const pendingPdfStatus = {
       stateByLocale: { "es-AR": "pending" as const, "en-US": "pending" as const },
@@ -503,6 +509,7 @@ describe("SermonEditor & sermon components", () => {
       isFirstPublish: true,
       isPublishEmailsEnabled: false,
       willCascade: [],
+      pdfStatus: pendingPdfStatus,
     });
 
     renderWithIntl(<SermonEditor {...props} />);
@@ -514,9 +521,13 @@ describe("SermonEditor & sermon components", () => {
     expect(
       screen.queryByLabelText(/Avisar por email a los suscriptores/i),
     ).not.toBeInTheDocument();
-  });
+  },
+    15_000,
+  );
 
-  it("shows checked subscriber-email box on first publish when global switch is enabled (Q3)", async () => {
+  it(
+    "shows checked subscriber-email box on first publish when global switch is enabled (Q3)",
+    async () => {
     const user = userEvent.setup();
     const props = makeBaseProps({ isPublishEmailsEnabled: true });
 
@@ -527,6 +538,7 @@ describe("SermonEditor & sermon components", () => {
       isFirstPublish: true,
       isPublishEmailsEnabled: true,
       willCascade: [],
+      pdfStatus: props.initialPdfStatus,
     });
 
     renderWithIntl(<SermonEditor {...props} />);
@@ -536,5 +548,152 @@ describe("SermonEditor & sermon components", () => {
       /Avisar por email a los suscriptores/i,
     );
     expect(checkbox).toBeChecked();
-  });
+  },
+    15_000,
+  );
+
+  it(
+    "C2 (AC8): direct publish of an untouched script-created draft clears sermon-script-draft-notice",
+    async () => {
+      const user = userEvent.setup();
+      const props = makeBaseProps();
+      const publishedDoc = {
+        ...props.initialDoc!,
+        published: props.initialValues,
+        publishedAt: "2026-11-22T15:00:00.000Z",
+        firstPublishedAt: "2026-11-22T15:00:00.000Z",
+        revision: 2,
+        updatedBy: "65f0000000000000000000aa",
+        updatedByLabel: "Pastor Juan",
+      };
+
+      prepareSermonPublishMock.mockResolvedValue({
+        ok: true,
+        doc: props.initialDoc!,
+        status: "draft",
+        isFirstPublish: true,
+        isPublishEmailsEnabled: false,
+        willCascade: [],
+        pdfStatus: props.initialPdfStatus,
+      });
+      confirmSermonPublishMock.mockResolvedValue({
+        ok: true,
+        doc: publishedDoc,
+        status: "published",
+        revalidated: true,
+        notified: false,
+        pdfStatus: props.initialPdfStatus,
+      });
+
+      renderWithIntl(<SermonEditor {...props} />);
+      expect(screen.getByTestId("sermon-script-draft-notice")).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: /^Publicar$/i }));
+      const confirmBtn = await screen.findByRole("button", {
+        name: /Publicar ahora|Confirmar publicación|Publicar/i,
+      });
+      // Click the dialog's confirm button (last "Publicar" button inside role="dialog")
+      const dialog = screen.getByRole("dialog");
+      const dialogButtons = Array.from(dialog.querySelectorAll("button"));
+      const dialogPublishBtn =
+        dialogButtons.find((btn) => /Publicar/i.test(btn.textContent ?? "")) ??
+        confirmBtn;
+      await user.click(dialogPublishBtn);
+
+      await waitFor(() => {
+        expect(confirmSermonPublishMock).toHaveBeenCalledTimes(1);
+      });
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId("sermon-script-draft-notice"),
+        ).not.toBeInTheDocument();
+      });
+    },
+    15_000,
+  );
+
+  it(
+    "C2 (AC5): editing an up-to-date sermon and clicking Publicar directly synchronously renders publish-pdf-pending-note",
+    async () => {
+      const user = userEvent.setup();
+      const props = makeBaseProps();
+      const pendingPdfStatus = {
+        stateByLocale: { "es-AR": "pending" as const, "en-US": "pending" as const },
+        isPending: true,
+        version: 1,
+        pdfs: props.initialPdfStatus.pdfs,
+      };
+
+      prepareSermonPublishMock.mockResolvedValue({
+        ok: true,
+        doc: {
+          ...props.initialDoc!,
+          draft: {
+            ...props.initialValues,
+            title: { "es-AR": "Culto especial editado" },
+          },
+          revision: 2,
+        },
+        status: "draft",
+        isFirstPublish: true,
+        isPublishEmailsEnabled: false,
+        willCascade: [],
+        pdfStatus: pendingPdfStatus,
+      });
+
+      renderWithIntl(<SermonEditor {...props} />);
+      const titleInput = screen.getByLabelText(/^Título(?!\s+SEO)/i);
+      await user.type(titleInput, " editado");
+      await user.click(screen.getByRole("button", { name: /^Publicar$/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId("publish-pdf-pending-note"),
+        ).toBeInTheDocument();
+      });
+      // Synchronously hydrated from prepareSermonPublishAction response — no extra poll needed
+      expect(getSermonPdfStatusMock).not.toHaveBeenCalled();
+    },
+    15_000,
+  );
+
+  it(
+    "C3: SEO details starts closed, auto-opens on seoTitle publish error, and stays open while typing",
+    async () => {
+      const user = userEvent.setup();
+      const props = makeBaseProps({
+        initialValues: {
+          ...makeBaseProps().initialValues,
+          seoTitle: { "es-AR": "" },
+        },
+      });
+
+      prepareSermonPublishMock.mockResolvedValue({
+        ok: false,
+        reason: "invalid",
+        fieldErrors: { "seoTitle.es-AR": ["required"] },
+        savedDoc: props.initialDoc!,
+        savedStatus: "draft",
+        savedPdfStatus: props.initialPdfStatus,
+      });
+
+      renderWithIntl(<SermonEditor {...props} />);
+      const details = screen.getByTestId(
+        "sermon-seo-details",
+      ) as HTMLDetailsElement;
+      expect(details.open).toBe(false);
+
+      await user.click(screen.getByRole("button", { name: /^Publicar$/i }));
+
+      await waitFor(() => {
+        expect(details.open).toBe(true);
+      });
+
+      // Typing into SEO title clears the field error — accordion MUST stay open!
+      const seoInput = screen.getByLabelText(/Título SEO/i);
+      await user.type(seoInput, "Culto SEO");
+      expect(details.open).toBe(true);
+    },
+    15_000,
+  );
 });

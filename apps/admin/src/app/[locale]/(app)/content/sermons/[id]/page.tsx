@@ -72,15 +72,23 @@ export default async function EditSermonPage({
   if (!loaded.ok) notFound();
 
   const draft = loaded.doc.draft;
-  const refs = extractReferences("sermon", { draft, published: undefined });
+  const published = loaded.doc.published;
+  const refs = extractReferences("sermon", { draft, published });
 
   const authorIds = new Set<string>();
-  if (draft.preacherId) authorIds.add(draft.preacherId);
-  for (const pid of draft.additionalPreacherIds ?? []) authorIds.add(pid);
-  if (draft.interpreterId) authorIds.add(draft.interpreterId);
+  for (const snap of published ? [draft, published] : [draft]) {
+    if (snap.preacherId) authorIds.add(snap.preacherId);
+    for (const pid of snap.additionalPreacherIds ?? []) authorIds.add(pid);
+    if (snap.interpreterId) authorIds.add(snap.interpreterId);
+  }
 
-  const verseIds = draft.scriptureRefIds ?? [];
-  const relatedIds = draft.relatedSermonIds ?? [];
+  const verseIdSet = new Set<string>(draft.scriptureRefIds ?? []);
+  for (const vid of published?.scriptureRefIds ?? []) verseIdSet.add(vid);
+  const verseIds = [...verseIdSet];
+
+  const relatedIdSet = new Set<string>(draft.relatedSermonIds ?? []);
+  for (const rid of published?.relatedSermonIds ?? []) relatedIdSet.add(rid);
+  const relatedIds = [...relatedIdSet];
 
   const [mediaRes, authorEntries, verseEntries, relatedEntries, pdfJob] =
     await Promise.all([

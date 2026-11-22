@@ -338,3 +338,48 @@ export async function dropContentPdfJob(
   const col = await getJobsCollection(deps);
   await col.deleteOne({ sermonId });
 }
+
+/**
+ * Re-synchronizes `content_pdf_jobs` after a sermon's draft changes are
+ * discarded back to `published` (`ICR-200` C2):
+ * - When the reverted draft already points at a valid Spanish PDF (`hasRevertedPdf`),
+ *   align `contentHash`, `lastRenderedHash`, and `lastRenderedGeneration` to the
+ *   reverted hash so the UI immediately reads `"ok"` and any later re-edit back
+ *   to the discarded hash sees a real hash delta and regenerates.
+ * - When no PDF exists on the reverted copy, align `contentHash` to `revertedHash`
+ *   so the next render reflects the reverted text.
+ */
+export async function syncContentPdfJobOnDiscard(
+  sermonId: string,
+  revertedHash: string,
+  hasRevertedPdf: boolean,
+  deps: ContentPdfJobsDeps = defaultDeps,
+): Promise<void> {
+  const col = await getJobsCollection(deps);
+  const existing = await col.findOne({ sermonId });
+  if (!existing) return;
+
+  if (hasRevertedPdf) {
+    await col.updateOne(
+      { sermonId },
+      {
+        $set: {
+          contentHash: revertedHash,
+          lastRenderedHash: revertedHash,
+          lastRenderedGeneration: existing.forceGeneration ?? 0,
+        },
+        $unset: { lastError: "", lastFailedAt: "" },
+      },
+    );
+  } else {
+    await col.updateOne(
+      { sermonId },
+      {
+        $set: {
+          contentHash: revertedHash,
+        },
+        $unset: { lastError: "", lastFailedAt: "" },
+      },
+    );
+  }
+}

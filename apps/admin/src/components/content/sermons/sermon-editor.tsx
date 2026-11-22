@@ -15,7 +15,10 @@ import {
   isNeedsReviewDraft,
 } from "@src/lib/content/status-helpers";
 import { formatDuration } from "@src/lib/media/policy";
-import { normalizeSermonAudioLanguages } from "@src/service/content/sermons/sermon-helpers";
+import {
+  normalizeLocalizedStringArray,
+  normalizeSermonAudioLanguages,
+} from "@src/service/content/sermons/sermon-helpers";
 import type {
   BibleVersePickerItem,
   ContentPickerOption,
@@ -64,14 +67,42 @@ const EXCLUDE_FROM_PATCH: readonly (keyof SermonFields)[] = [
   "contentHash",
 ];
 
-const SERMON_ACTION_OVERRIDES: Partial<EntryEditorActionHandlers<SermonFields>> =
-  {
-    create: createSermonAction,
-    saveDraft: saveSermonDraftAction,
-    preparePublish: prepareSermonPublishAction,
-    confirmPublish: confirmSermonPublishAction,
-    discardChanges: discardSermonChangesAction,
-  };
+/**
+ * Stateful SEO accordion (`ICR-200` C3): starts collapsed, auto-opens when any
+ * SEO publish validation error appears so `ErrorSummary` links can scroll to
+ * and focus hidden inputs, and stays open as the user types to clear the error.
+ */
+function SermonSeoDetails({
+  summary,
+  hasError,
+  children,
+}: {
+  readonly summary: string;
+  readonly hasError: boolean;
+  readonly children: React.ReactNode;
+}) {
+  const [isOpen, setIsOpen] = React.useState(hasError);
+
+  React.useEffect(() => {
+    if (hasError) {
+      setIsOpen(true);
+    }
+  }, [hasError]);
+
+  return (
+    <details
+      open={isOpen}
+      onToggle={(e) => setIsOpen(e.currentTarget.open)}
+      data-testid="sermon-seo-details"
+      className="rounded-md border border-border bg-muted/10 px-4 py-3"
+    >
+      <summary className="cursor-pointer text-sm font-medium text-foreground select-none">
+        {summary}
+      </summary>
+      <div className="mt-4 space-y-4">{children}</div>
+    </details>
+  );
+}
 
 export interface SermonEditorProps {
   readonly docId?: string;
@@ -169,12 +200,12 @@ function countSermonMissingEn(values: SermonFields): number {
   return countMissingEnglishFields([
     values.title,
     values.thesis,
-    values.mainPoints,
+    normalizeLocalizedStringArray(values.mainPoints),
     values.excerpt,
     values.content,
     values.seoTitle,
     values.seoDescription,
-    values.keywords,
+    normalizeLocalizedStringArray(values.keywords),
   ]);
 }
 
@@ -217,21 +248,87 @@ export function SermonEditor({
     );
   }, []);
 
-  const handleAfterSave = React.useCallback(
-    (savedDoc: SerializedContentDoc<SermonFields>) => {
-      setCurrentDoc(savedDoc);
-      // Refresh PDF status immediately after save so hash changes flip to "Actualizando el PDF…"
-      void getSermonPdfStatusAction({ docId: savedDoc._id }).then((res) => {
-        if (res.ok) {
-          setPdfStatus(res.pdfStatus);
-        }
-      });
+  const syncPdfStatus = React.useCallback(
+    async (
+      docId: string,
+      inlineStatus?: SerializedSermonPdfStatus,
+    ): Promise<void> => {
+      if (inlineStatus) {
+        setPdfStatus(inlineStatus);
+        return;
+      }
+      const statusRes = await getSermonPdfStatusAction({ docId });
+      if (statusRes.ok) {
+        setPdfStatus(statusRes.pdfStatus);
+      }
     },
     [],
   );
 
+  /**
+   * Wraps all 5 `EntryEditor` lifecycle actions (`ICR-200` C2) so `currentDoc`
+   * and `pdfStatus` update synchronously BEFORE `EntryEditor` renders
+   * `PublishDialog` (`AC5`), clears `sermon-script-draft-notice` on direct
+   * publish (`AC8`), and refreshes PDF status on discard.
+   */
+  const actionOverrides = React.useMemo<
+    Partial<EntryEditorActionHandlers<SermonFields>>
+  >(
+    () => ({
+      create: async (input) => {
+        const res = await createSermonAction(input);
+        if (res.ok) {
+          setCurrentDoc(res.doc);
+          await syncPdfStatus(res.doc._id, res.pdfStatus);
+        }
+        return res;
+      },
+      saveDraft: async (input) => {
+        const res = await saveSermonDraftAction(input);
+        if (res.ok) {
+          setCurrentDoc(res.doc);
+          await syncPdfStatus(res.doc._id, res.pdfStatus);
+        }
+        return res;
+      },
+      preparePublish: async (input) => {
+        const res = await prepareSermonPublishAction(input);
+        if (res.ok) {
+          setCurrentDoc(res.doc);
+          await syncPdfStatus(res.doc._id, res.pdfStatus);
+        } else if (
+          res.reason === "invalid" &&
+          "savedDoc" in res &&
+          res.savedDoc
+        ) {
+          setCurrentDoc(res.savedDoc);
+          await syncPdfStatus(res.savedDoc._id, res.savedPdfStatus);
+        }
+        return res;
+      },
+      confirmPublish: async (input) => {
+        const res = await confirmSermonPublishAction(input);
+        if (res.ok) {
+          setCurrentDoc(res.doc);
+          await syncPdfStatus(res.doc._id, res.pdfStatus);
+        }
+        return res;
+      },
+      discardChanges: async (input) => {
+        const res = await discardSermonChangesAction(input);
+        if (res.ok) {
+          setCurrentDoc(res.doc);
+          await syncPdfStatus(res.doc._id, res.pdfStatus);
+        }
+        return res;
+      },
+    }),
+    [syncPdfStatus],
+  );
+
   const customFieldErrorMap = React.useCallback(
-    (path: string): string | undefined => {
+    (path: string, rawMessages: readonly string[]): string | undefined => {
+      if (rawMessages.includes("duplicate-key")) return undefined;
       const top = path.split(".")[0] ?? path;
       const key = `errors.${top}`;
       return t.has(key as never) ? t(key as never) : undefined;
@@ -263,9 +360,8 @@ export function SermonEditor({
       isPublishEmailsEnabled={isPublishEmailsEnabled}
       liveUrl={liveUrl}
       excludeFromPatch={EXCLUDE_FROM_PATCH}
-      actionOverrides={SERMON_ACTION_OVERRIDES}
+      actionOverrides={actionOverrides}
       countMissingEn={countSermonMissingEn}
-      onAfterSave={handleAfterSave}
       customFieldErrorMap={customFieldErrorMap}
       topNotices={
         isScriptDraft ? (
@@ -480,7 +576,9 @@ export function SermonEditor({
                       ? mainPointsEs.map((p, i) => `${i + 1}. ${p}`).join("\n")
                       : undefined
                   }
-                  isEnglishEmpty={isEmptyValue(mainPointsList)}
+                  isEnglishEmpty={mainPointsList.every(
+                    (p) => p.trim().length === 0,
+                  )}
                   readOnly={readOnly}
                   onCopyFromSpanish={() =>
                     form.setField(
@@ -605,12 +703,21 @@ export function SermonEditor({
                 onStatusChange={setPdfStatus}
               />
 
-              {/* Buscadores (SEO) — collapsed group */}
-              <details className="rounded-md border border-border bg-muted/10 px-4 py-3">
-                <summary className="cursor-pointer text-sm font-medium text-foreground select-none">
-                  {t("fields.seoGroup")}
-                </summary>
-                <div className="mt-4 space-y-4">
+              {/* Buscadores (SEO) — collapsed group; auto-opens on publish errors without closing on keystroke (C3) */}
+              <SermonSeoDetails
+                summary={t("fields.seoGroup")}
+                hasError={Boolean(
+                  getError("seoTitle.es-AR") ??
+                    getError("seoTitle.en-US") ??
+                    getError("seoTitle") ??
+                    getError("seoDescription.es-AR") ??
+                    getError("seoDescription.en-US") ??
+                    getError("seoDescription") ??
+                    getError("keywords.es-AR") ??
+                    getError("keywords.en-US") ??
+                    getError("keywords"),
+                )}
+              >
                   <Field
                     label={t("fields.seoTitle")}
                     htmlFor={`sermon-seo-title-${activeLocale}`}
@@ -766,7 +873,9 @@ export function SermonEditor({
                       spanishOriginal={
                         keywordsEs.length > 0 ? keywordsEs.join(", ") : undefined
                       }
-                      isEnglishEmpty={isEmptyValue(keywordsList)}
+                      isEnglishEmpty={keywordsList.every(
+                        (k) => k.trim().length === 0,
+                      )}
                       readOnly={readOnly}
                       onCopyFromSpanish={() =>
                         form.setField(
@@ -778,8 +887,7 @@ export function SermonEditor({
                       }
                     />
                   </Field>
-                </div>
-              </details>
+              </SermonSeoDetails>
             </div>
           </SermonEmbeddedMediaContext.Provider>
         );

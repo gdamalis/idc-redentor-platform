@@ -51,3 +51,24 @@ export function hasRenderableSermonBody(
 ): boolean {
   return !isEmptyValue(snapshot.content?.["es-AR"]);
 }
+
+/**
+ * Strips whitespace-only items from localized string arrays (`mainPoints`,
+ * `keywords`) and omits `en-US` when empty so blank English entries never
+ * suppress Spanish fallback on the public site (`ICR-200` C3).
+ */
+export function normalizeLocalizedStringArray(
+  value: Localized<string[]> | undefined,
+): Localized<string[]> | undefined {
+  if (!value) return undefined;
+  const es = (value["es-AR"] ?? [])
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+  const en = (value["en-US"] ?? [])
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+  return {
+    "es-AR": es,
+    ...(en.length > 0 && { "en-US": en }),
+  };
+}

@@ -176,4 +176,41 @@ describe("sermon-hash.service", () => {
     expect(getAuthorById).toHaveBeenCalledTimes(2);
     expect(getVerseById).toHaveBeenCalledTimes(1);
   });
+
+  it("pins Spanish-only hash contract (en-US omitted when hasEnglishPdfContent is false) so adding English triggers regeneration (C3)", () => {
+    const resolved = {
+      authorsById: new Map([["a1", AUTHOR_1]]),
+      versesById: new Map([["v1", VERSE_1]]),
+    };
+    const spanishOnly: SermonFields = {
+      slug: "solo-es",
+      title: { "es-AR": "Solo español" },
+      sermonDate: "2026-07-05",
+      preacherId: "a1",
+      scriptureRefIds: ["v1"],
+      content: {
+        "es-AR": {
+          type: "doc",
+          content: [
+            { type: "paragraph", content: [{ type: "text", text: "Mensaje" }] },
+          ],
+        },
+      },
+    };
+    const withEnglishTitle: SermonFields = {
+      ...spanishOnly,
+      title: { "es-AR": "Solo español", "en-US": "Spanish Only" },
+    };
+
+    expect(hasEnglishPdfContent(spanishOnly)).toBe(false);
+    expect(hasEnglishPdfContent(withEnglishTitle)).toBe(true);
+
+    const hSpanishOnly = computeSermonHashFromResolved(spanishOnly, resolved);
+    const hWithEnglish = computeSermonHashFromResolved(
+      withEnglishTitle,
+      resolved,
+    );
+    expect(hSpanishOnly).toMatch(/^[0-9a-f]{64}$/);
+    expect(hWithEnglish).not.toBe(hSpanishOnly);
+  });
 });
