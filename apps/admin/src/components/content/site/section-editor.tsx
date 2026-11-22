@@ -28,6 +28,7 @@ import {
   EMPTY_RICH_TEXT_DOC,
   extractRichTextPlainText,
   normalizeSectionDraft,
+  toPlainRichTextDoc,
 } from "@src/lib/content/site/normalize";
 import { getSectionLayoutFieldConfig } from "@src/lib/content/site/section-layout";
 import { FixedIdentityMeta } from "./fixed-identity-meta";
@@ -76,11 +77,12 @@ function updateLocalizedRichText(
   locale: Locale,
   nextDoc: RichTextDoc,
 ): Localized<RichTextDoc> {
+  const plain = toPlainRichTextDoc(nextDoc);
   return {
     "es-AR":
-      locale === "es-AR" ? nextDoc : (current?.["es-AR"] ?? EMPTY_RICH_TEXT_DOC),
+      locale === "es-AR" ? plain : (current?.["es-AR"] ?? EMPTY_RICH_TEXT_DOC),
     ...(locale === "en-US"
-      ? { "en-US": nextDoc }
+      ? { "en-US": plain }
       : current?.["en-US"] !== undefined
         ? { "en-US": current["en-US"] }
         : {}),

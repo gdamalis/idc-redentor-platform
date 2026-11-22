@@ -36,6 +36,7 @@ import {
   EMPTY_RICH_TEXT_DOC,
   extractRichTextPlainText,
   normalizeBeliefCollectionDraft,
+  toPlainRichTextDoc,
 } from "@src/lib/content/site/normalize";
 import { FixedIdentityMeta } from "./fixed-identity-meta";
 import { createNormalizedSiteActions } from "./normalized-actions";
@@ -83,11 +84,12 @@ function updateLocalizedRichText(
   locale: Locale,
   nextDoc: RichTextDoc,
 ): Localized<RichTextDoc> {
+  const plain = toPlainRichTextDoc(nextDoc);
   return {
     "es-AR":
-      locale === "es-AR" ? nextDoc : (current?.["es-AR"] ?? EMPTY_RICH_TEXT_DOC),
+      locale === "es-AR" ? plain : (current?.["es-AR"] ?? EMPTY_RICH_TEXT_DOC),
     ...(locale === "en-US"
-      ? { "en-US": nextDoc }
+      ? { "en-US": plain }
       : current?.["en-US"] !== undefined
         ? { "en-US": current["en-US"] }
         : {}),

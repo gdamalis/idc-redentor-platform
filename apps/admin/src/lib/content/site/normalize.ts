@@ -77,15 +77,30 @@ export function normalizeLocalizedText(
 }
 
 /**
- * Normalizes a `Localized<RichTextDoc>` so an empty `en-US` document is omitted.
+ * Converts a TipTap/ProseMirror `RichTextDoc` into plain `Object.prototype`
+ * objects so React 19 / Next.js 16 Server Action Flight never serializes
+ * null-prototype ProseMirror `attrs` (`Object.create(null)`) as `"$T"`.
+ */
+export function toPlainRichTextDoc(doc: RichTextDoc): RichTextDoc {
+  return JSON.parse(JSON.stringify(doc)) as RichTextDoc;
+}
+
+/**
+ * Normalizes a `Localized<RichTextDoc>` so an empty `en-US` document is omitted
+ * and all ProseMirror node/mark `attrs` use `Object.prototype`.
  */
 export function normalizeLocalizedRichText(
   value: Localized<RichTextDoc> | undefined,
 ): Localized<RichTextDoc> | undefined {
   if (!value) return undefined;
+  const plainEs = toPlainRichTextDoc(value["es-AR"] ?? EMPTY_RICH_TEXT_DOC);
+  const plainEn =
+    value["en-US"] !== undefined
+      ? toPlainRichTextDoc(value["en-US"])
+      : undefined;
   const normalized = normalizeLocalized({
-    "es-AR": value["es-AR"] ?? EMPTY_RICH_TEXT_DOC,
-    ...(value["en-US"] !== undefined ? { "en-US": value["en-US"] } : {}),
+    "es-AR": plainEs,
+    ...(plainEn !== undefined ? { "en-US": plainEn } : {}),
   });
   if (
     isEmptyValue(normalized["es-AR"]) &&

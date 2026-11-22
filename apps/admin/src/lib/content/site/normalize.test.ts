@@ -23,6 +23,7 @@ import {
   normalizeSeoEntryDraft,
   normalizeSingleEmailFormDraft,
   normalizeUrlParameters,
+  toPlainRichTextDoc,
 } from "./normalize";
 
 const sampleDoc = (text: string): RichTextDoc => ({
@@ -59,6 +60,32 @@ describe("site content normalization helpers", () => {
         "en-US": EMPTY_RICH_TEXT_DOC,
       }),
     ).toEqual({ "es-AR": sampleDoc("Bienvenidos") });
+
+    // Null-prototype ProseMirror mark attrs become plain Object.prototype objects (Flight serialization)
+    const nullProtoAttrs = Object.assign(Object.create(null) as Record<string, unknown>, {
+      href: "https://example.org/privacidad",
+    });
+    const nullProtoDoc = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: "Política",
+              marks: [{ type: "link", attrs: nullProtoAttrs }],
+            },
+          ],
+        },
+      ],
+    } as unknown as RichTextDoc;
+    const plain = toPlainRichTextDoc(nullProtoDoc);
+    const linkAttrs = (
+      plain.content?.[0] as { content?: { marks?: { attrs?: unknown }[] }[] }
+    )?.content?.[0]?.marks?.[0]?.attrs;
+    expect(Object.getPrototypeOf(linkAttrs)).toBe(Object.prototype);
+    expect(linkAttrs).toEqual({ href: "https://example.org/privacidad" });
 
     expect(
       normalizeLocalizedStringList({
