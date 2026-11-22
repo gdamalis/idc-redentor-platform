@@ -3,7 +3,7 @@
 import * as React from "react";
 import { ArrowLeft, ExternalLink, Eye, Lock } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import type { ContentStatus, Locale } from "@idcr/content";
+import { LOCALES, type ContentStatus, type Locale } from "@idcr/content";
 import { Link, useRouter } from "@src/i18n/routing";
 import type { ContentReferenceUsage } from "@src/lib/content/errors";
 import { computeEditorActionState } from "@src/lib/content/action-state";
@@ -134,7 +134,7 @@ export function EntryEditor<TFields extends object>({
   const [lossyConfirmPending, setLossyConfirmPending] = React.useState<
     (() => void) | null
   >(null);
-  const [lossyConfirmed, setLossyConfirmed] = React.useState(false);
+  const lossyConfirmedRef = React.useRef(false);
 
   const errorSummaryRef = React.useRef<HTMLDivElement>(null);
   const skipLeaveGuardRef = React.useRef(false);
@@ -314,16 +314,22 @@ export function EntryEditor<TFields extends object>({
   const runSaveDraft = React.useCallback(
     async (
       overwrite = false,
+      skipLossyCheck = false,
     ): Promise<SerializedContentDoc<TFields> | null> => {
-      if (form.hasDirtyLossyFields && !lossyConfirmed) {
+      if (
+        form.hasDirtyLossyFields &&
+        !skipLossyCheck &&
+        !lossyConfirmedRef.current
+      ) {
         setLossyConfirmPending(() => () => {
-          setLossyConfirmed(true);
-          void runSaveDraft(overwrite);
+          lossyConfirmedRef.current = true;
+          void runSaveDraft(overwrite, true);
         });
         return null;
       }
 
       form.flushRecovery();
+      const submittedValues = form.values;
       setIsSaving(true);
       setStatusFeedback(null);
 
@@ -340,7 +346,11 @@ export function EntryEditor<TFields extends object>({
           setDocId(created.doc._id);
           setDocMeta(created.doc);
           setStatus(created.status);
-          form.commitSaved(created.doc.draft, created.doc.revision);
+          form.commitSaved(
+            created.doc.draft,
+            created.doc.revision,
+            submittedValues,
+          );
           setLastSavedAt(formatShortTime(new Date(), panelLocale));
           onAfterSave?.(created.doc);
           // Replace URL to canonical persisted id without triggering leave guard
@@ -368,7 +378,7 @@ export function EntryEditor<TFields extends object>({
         }
         setDocMeta(saved.doc);
         setStatus(saved.status);
-        form.commitSaved(saved.doc.draft, saved.doc.revision);
+        form.commitSaved(saved.doc.draft, saved.doc.revision, submittedValues);
         setLastSavedAt(formatShortTime(new Date(), panelLocale));
         onAfterSave?.(saved.doc);
         return saved.doc;
@@ -382,7 +392,6 @@ export function EntryEditor<TFields extends object>({
       docId,
       form,
       handleFailure,
-      lossyConfirmed,
       onAfterSave,
       panelLocale,
       router,
@@ -404,16 +413,21 @@ export function EntryEditor<TFields extends object>({
   }, [actionState.save.disabled, runSaveDraft]);
 
   const runPreparePublish = React.useCallback(
-    async (overwrite = false) => {
-      if (form.hasDirtyLossyFields && !lossyConfirmed) {
+    async (overwrite = false, skipLossyCheck = false) => {
+      if (
+        form.hasDirtyLossyFields &&
+        !skipLossyCheck &&
+        !lossyConfirmedRef.current
+      ) {
         setLossyConfirmPending(() => () => {
-          setLossyConfirmed(true);
-          void runPreparePublish(overwrite);
+          lossyConfirmedRef.current = true;
+          void runPreparePublish(overwrite, true);
         });
-        return;
+        return null;
       }
 
       form.flushRecovery();
+      const submittedValues = form.values;
       setIsPublishing(true);
       setStatusFeedback(null);
 
@@ -446,6 +460,7 @@ export function EntryEditor<TFields extends object>({
             form.commitSaved(
               prepared.savedDoc.draft,
               prepared.savedDoc.revision,
+              submittedValues,
             );
             setLastSavedAt(formatShortTime(new Date(), panelLocale));
             if (wasNew) {
@@ -464,7 +479,11 @@ export function EntryEditor<TFields extends object>({
         setDocId(prepared.doc._id);
         setDocMeta(prepared.doc);
         setStatus(prepared.status);
-        form.commitSaved(prepared.doc.draft, prepared.doc.revision);
+        form.commitSaved(
+          prepared.doc.draft,
+          prepared.doc.revision,
+          submittedValues,
+        );
         setLastSavedAt(formatShortTime(new Date(), panelLocale));
         onAfterSave?.(prepared.doc);
         if (wasNew) {
@@ -499,7 +518,6 @@ export function EntryEditor<TFields extends object>({
       handleFailure,
       initialPublishEmailsEnabled,
       isTrialMode,
-      lossyConfirmed,
       onAfterSave,
       panelLocale,
     ],
@@ -1085,7 +1103,18 @@ export function EntryEditor<TFields extends object>({
           setPendingLeaveHref(null);
           if (!href) return;
           skipLeaveGuardRef.current = true;
-          router.push(href);
+          const matchedLocale = LOCALES.find(
+            (loc) =>
+              href === `/${loc}` ||
+              href.startsWith(`/${loc}/`) ||
+              href.startsWith(`/${loc}?`),
+          );
+          if (matchedLocale) {
+            const stripped = href.slice(matchedLocale.length + 1) || "/";
+            router.push(stripped, { locale: matchedLocale });
+          } else {
+            router.push(href);
+          }
         }}
       />
 

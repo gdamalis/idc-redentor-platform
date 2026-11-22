@@ -436,4 +436,105 @@ describe("EntryEditor frame (Checkpoint 4)", () => {
     expect(screen.queryByTestId("email-box-slot")).toBeNull();
     replaceStateSpy.mockRestore();
   });
+
+  it("resumes saveDraft immediately after confirming lossy-save warning without stale closure", async () => {
+    const user = userEvent.setup();
+    const saveDraft = vi.fn().mockResolvedValue({
+      ok: true,
+      doc: {
+        ...baseDoc,
+        revision: 3,
+        draft: { title: { "es-AR": "Con formato simplificado" }, slug: "mi-articulo" },
+      },
+      status: "draft",
+      changedFields: ["title"],
+      noOp: false,
+    });
+
+    renderWithIntl(
+      <EntryEditor<TestDraft>
+        collection="posts"
+        docId={baseDoc._id}
+        initialDoc={baseDoc}
+        initialStatus="draft"
+        initialValues={baseDoc.draft}
+        backHref="/content/posts"
+        backLabel="Blog"
+        getTitle={(v) => v.title["es-AR"]}
+        permissions={{ canWrite: true, canPublish: true, canPublishProtected: true }}
+        isTrialMode={false}
+        actionOverrides={{ saveDraft }}
+        renderLocalizedFields={({ form }) => (
+          <div>
+            <button
+              type="button"
+              onClick={() => {
+                form.markLossyField("title.es-AR", true);
+                form.setField("title", { "es-AR": "Con formato simplificado" });
+              }}
+            >
+              Simular cambio lossy
+            </button>
+          </div>
+        )}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Simular cambio lossy" }));
+    await user.click(screen.getByRole("button", { name: "Guardar borrador" }));
+
+    expect(
+      await screen.findByText("¿Guardar y simplificar formato?"),
+    ).toBeDefined();
+    expect(saveDraft).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Guardar igual" }));
+
+    await waitFor(() => {
+      expect(saveDraft).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.queryByText("¿Guardar y simplificar formato?")).toBeNull();
+  });
+
+  it("strips leading locale prefix when confirming unsaved-leave navigation so locale is never doubled", async () => {
+    const user = userEvent.setup();
+    const localizedHref = "/es-AR/content/posts";
+
+    renderWithIntl(
+      <div>
+        <a href={localizedHref}>Volver al blog</a>
+        <EntryEditor<TestDraft>
+          collection="posts"
+          docId={baseDoc._id}
+          initialDoc={baseDoc}
+          initialStatus="draft"
+          initialValues={baseDoc.draft}
+          backHref="/content/posts"
+          backLabel="Blog"
+          getTitle={(v) => v.title["es-AR"]}
+          permissions={{ canWrite: true, canPublish: true, canPublishProtected: true }}
+          isTrialMode={false}
+          renderLocalizedFields={({ form }) => (
+            <input
+              aria-label="Título"
+              value={form.values.title["es-AR"]}
+              onChange={(e) =>
+                form.setField("title", { ...form.values.title, "es-AR": e.target.value })
+              }
+            />
+          )}
+        />
+      </div>,
+    );
+
+    await user.type(screen.getByLabelText("Título"), " editado");
+    await user.click(screen.getByRole("link", { name: "Volver al blog" }));
+
+    expect(await screen.findByText("Tenés cambios sin guardar")).toBeDefined();
+    await user.click(screen.getByRole("button", { name: "Salir sin guardar" }));
+
+    expect(mockRouterPush).toHaveBeenCalledWith("/content/posts", {
+      locale: "es-AR",
+    });
+  });
 });

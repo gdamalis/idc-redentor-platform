@@ -110,4 +110,91 @@ describe("useEntryForm", () => {
     expect(result.current.values.title["es-AR"]).toBe("B");
     spy.mockRestore();
   });
+
+  it("preserves edits typed while a save is in flight instead of wiping them on commitSaved", () => {
+    const initial: SampleDraft = {
+      title: { "es-AR": "Original" },
+      slug: "original",
+    };
+
+    const { result } = renderHook(() =>
+      useEntryForm<SampleDraft>({
+        initialValues: initial,
+        loadedRevision: 1,
+        storageKey,
+      }),
+    );
+
+    act(() => {
+      result.current.setField("title", { "es-AR": "Guardando v2" });
+    });
+    const submittedSnapshot = result.current.values;
+
+    // User keeps typing a different field while save is in flight
+    act(() => {
+      result.current.setField("slug", "en-vuelo");
+    });
+
+    act(() => {
+      result.current.commitSaved(
+        { title: { "es-AR": "Guardando v2" }, slug: "original" },
+        2,
+        submittedSnapshot,
+      );
+    });
+
+    expect(result.current.revision).toBe(2);
+    expect(result.current.values.title["es-AR"]).toBe("Guardando v2");
+    expect(result.current.values.slug).toBe("en-vuelo");
+    expect(result.current.isDirty).toBe(true);
+    expect(result.current.buildPatch()).toEqual({ slug: "en-vuelo" });
+  });
+
+  it("retains the recovered draft's concurrency revision and baseline when restoring stale recovery", () => {
+    const rev1Baseline: SampleDraft = {
+      title: { "es-AR": "Rev 1" },
+      slug: "rev-1",
+    };
+
+    const first = renderHook(() =>
+      useEntryForm<SampleDraft>({
+        initialValues: rev1Baseline,
+        loadedRevision: 1,
+        storageKey,
+      }),
+    );
+
+    act(() => {
+      first.result.current.setField("title", { "es-AR": "Borrador local sobre rev 1" });
+    });
+    act(() => {
+      first.result.current.flushRecovery();
+    });
+
+    // Another editor saved rev 2 before we reopened the page
+    const rev2Loaded: SampleDraft = {
+      title: { "es-AR": "Rev 1" },
+      slug: "editado-por-otro",
+    };
+    const second = renderHook(() =>
+      useEntryForm<SampleDraft>({
+        initialValues: rev2Loaded,
+        loadedRevision: 2,
+        storageKey,
+      }),
+    );
+
+    act(() => {
+      second.result.current.restoreRecovery();
+    });
+
+    // Concurrency revision MUST stay at 1 so saving triggers 409 conflict instead of silently overwriting rev 2
+    expect(second.result.current.revision).toBe(1);
+    expect(second.result.current.values.title["es-AR"]).toBe(
+      "Borrador local sobre rev 1",
+    );
+    expect(second.result.current.buildPatch()).toEqual({
+      title: { "es-AR": "Borrador local sobre rev 1" },
+    });
+  });
 });

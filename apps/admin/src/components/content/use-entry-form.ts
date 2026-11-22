@@ -11,6 +11,7 @@ export interface LocalRecoveryRecord<TFields> {
   readonly revision: number;
   readonly savedAt: number;
   readonly values: TFields;
+  readonly baseline?: TFields;
 }
 
 export interface UseEntryFormOptions<TFields> {
@@ -40,7 +41,11 @@ export interface UseEntryFormReturn<TFields> {
   readonly markLossyField: (fieldPath: string, isLossy: boolean) => void;
   readonly buildPatch: () => Partial<TFields>;
   readonly buildFullDraft: () => TFields;
-  readonly commitSaved: (nextValues: TFields, nextRevision: number) => void;
+  readonly commitSaved: (
+    nextValues: TFields,
+    nextRevision: number,
+    submittedSnapshot?: TFields,
+  ) => void;
   readonly flushRecovery: () => void;
   readonly clearRecovery: () => void;
   readonly restoreRecovery: () => void;
@@ -145,11 +150,13 @@ export function useEntryForm<TFields extends object>({
   );
 
   const valuesRef = React.useRef(values);
+  const savedBaselineRef = React.useRef(savedBaseline);
   const revisionRef = React.useRef(revision);
   React.useEffect(() => {
     valuesRef.current = values;
+    savedBaselineRef.current = savedBaseline;
     revisionRef.current = revision;
-  }, [values, revision]);
+  }, [values, savedBaseline, revision]);
 
   const excludedSet = React.useMemo(
     () => new Set<string>((excludeFromPatch ?? []).map(String)),
@@ -176,6 +183,7 @@ export function useEntryForm<TFields extends object>({
       revision: revisionRef.current,
       savedAt: Date.now(),
       values: valuesRef.current,
+      baseline: savedBaselineRef.current,
     });
   }, [storageKey]);
 
@@ -292,19 +300,69 @@ export function useEntryForm<TFields extends object>({
   }, [lossyFields, savedBaseline, values]);
 
   const commitSaved = React.useCallback(
-    (nextValues: TFields, nextRevision: number) => {
-      setValues(nextValues);
+    (
+      nextValues: TFields,
+      nextRevision: number,
+      submittedSnapshot?: TFields,
+    ) => {
+      let mergedValues = nextValues;
+      if (submittedSnapshot) {
+        const latest = valuesRef.current as Record<string, unknown>;
+        const submitted = submittedSnapshot as Record<string, unknown>;
+        const nextRec = { ...(nextValues as Record<string, unknown>) };
+        const keys = new Set([
+          ...Object.keys(latest),
+          ...Object.keys(submitted),
+        ]);
+        let hadInFlightEdits = false;
+        for (const key of keys) {
+          if (!canonicalEqual(latest[key], submitted[key])) {
+            hadInFlightEdits = true;
+            if (latest[key] === undefined) {
+              delete nextRec[key];
+            } else {
+              nextRec[key] = latest[key];
+            }
+          }
+        }
+        if (hadInFlightEdits) {
+          mergedValues = nextRec as TFields;
+        }
+      }
+
+      setValues(mergedValues);
       setSavedBaseline(nextValues);
       setRevision(nextRevision);
+      valuesRef.current = mergedValues;
+      savedBaselineRef.current = nextValues;
+      revisionRef.current = nextRevision;
       setFieldErrors({});
-      clearRecovery();
+
+      if (canonicalEqual(mergedValues, nextValues)) {
+        clearRecovery();
+      } else {
+        safeWriteStorage(storageKey, {
+          revision: nextRevision,
+          savedAt: Date.now(),
+          values: mergedValues,
+          baseline: nextValues,
+        });
+        setPendingRecovery(null);
+      }
     },
-    [clearRecovery],
+    [clearRecovery, storageKey],
   );
 
   const restoreRecovery = React.useCallback(() => {
     if (!pendingRecovery) return;
     setValues(pendingRecovery.values);
+    valuesRef.current = pendingRecovery.values;
+    if (pendingRecovery.baseline !== undefined) {
+      setSavedBaseline(pendingRecovery.baseline);
+      savedBaselineRef.current = pendingRecovery.baseline;
+    }
+    setRevision(pendingRecovery.revision);
+    revisionRef.current = pendingRecovery.revision;
     setPendingRecovery(null);
   }, [pendingRecovery]);
 
