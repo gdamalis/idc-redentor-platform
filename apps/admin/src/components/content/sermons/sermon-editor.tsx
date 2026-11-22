@@ -15,7 +15,7 @@ import {
   isNeedsReviewDraft,
 } from "@src/lib/content/status-helpers";
 import { formatDuration } from "@src/lib/media/policy";
-import { normalizeSermonAudioLanguages } from "@src/service/content/sermons/sermon-hash.service";
+import { normalizeSermonAudioLanguages } from "@src/service/content/sermons/sermon-helpers";
 import type {
   BibleVersePickerItem,
   ContentPickerOption,
