@@ -51,5 +51,11 @@ declare namespace NodeJS {
     WEBSITE_PREVIEW_URL?: string;
     // Pre-cutover trial mode banner: active unless explicitly "false" (flipped by ICR-206).
     CONTENT_TRIAL_MODE?: string;
+
+    // File storage — Vercel Blob (ICR-196, server-only, NEVER in apps/web)
+    // Production -> idcr-media; Preview/staging/Development -> idcr-media-staging.
+    BLOB_READ_WRITE_TOKEN?: string;
+    // Reserved for ICR-177 private finance invoice attachments store.
+    FINANCE_BLOB_READ_WRITE_TOKEN?: string;
   }
 }
