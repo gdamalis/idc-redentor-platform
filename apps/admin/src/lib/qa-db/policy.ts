@@ -32,6 +32,7 @@ export const COLLECTION_ALLOW: ReadonlySet<string> = new Set([
   "globals",
   "media",
   "content_audit",
+  "content_pdf_jobs",
   "pdf_jobs",
   "likes",
   "contact",
