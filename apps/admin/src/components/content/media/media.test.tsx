@@ -398,6 +398,100 @@ describe("MediaPicker & MediaField (AC3, AC6)", () => {
     expect(onSelect).toHaveBeenCalledWith([PAGE2_DOC, IMAGE_DOC]);
   });
 
+  it("Codex P2: retains selected document after search excludes it and disables confirm while hydrating off-page selections", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    const OTHER_IMG: SerializedMediaDoc = {
+      ...IMAGE_DOC,
+      _id: "507f1f77bcf86cd799439088",
+      pathname: "media/507f1f77bcf86cd799439088/otra.jpg",
+      filename: "otra.jpg",
+      title: { "es-AR": "Otra foto" },
+      alt: { "es-AR": "Otra descripción" },
+    };
+
+    mockListMediaAction.mockImplementation(
+      async ({ query }: { query?: string }) => ({
+        ok: true,
+        items: query ? [OTHER_IMG] : [IMAGE_DOC],
+        total: 1,
+        page: 1,
+        pageSize: 24,
+        hasMore: false,
+      }),
+    );
+
+    const { unmount } = renderIntl(
+      <MediaPicker
+        open
+        onOpenChange={vi.fn()}
+        accept="image"
+        canUpload={false}
+        onSelect={onSelect}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Bautismo 2026")).toBeDefined();
+    });
+    await user.click(screen.getByText("Bautismo 2026"));
+
+    // Search replaces `items` with OTHER_IMG, excluding IMAGE_DOC
+    const searchInput = screen.getByPlaceholderText(/Buscar por nombre/i);
+    await user.type(searchInput, "Otra");
+    await waitFor(() => {
+      expect(screen.getByText("Otra foto")).toBeDefined();
+    });
+
+    // Confirming still returns cached IMAGE_DOC
+    await user.click(screen.getByRole("button", { name: "Usar este archivo" }));
+    expect(onSelect).toHaveBeenCalledWith([IMAGE_DOC]);
+    unmount();
+
+    // Pending hydration disables confirm button until resolved
+    let resolveHydrate!: (value: { ok: true; items: SerializedMediaDoc[] }) => void;
+    mockGetMediaByIdsAction.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveHydrate = resolve;
+        }),
+    );
+    mockListMediaAction.mockResolvedValue({
+      ok: true,
+      items: [OTHER_IMG],
+      total: 2,
+      page: 1,
+      pageSize: 24,
+      hasMore: false,
+    });
+
+    renderIntl(
+      <MediaPicker
+        open
+        onOpenChange={vi.fn()}
+        accept="image"
+        multiple
+        selectedIds={[IMAGE_DOC._id]}
+        canUpload={false}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(mockGetMediaByIdsAction).toHaveBeenCalledWith([IMAGE_DOC._id]);
+    });
+    expect(
+      screen.getByRole("button", { name: "Usar este archivo" }),
+    ).toBeDisabled();
+
+    resolveHydrate({ ok: true, items: [IMAGE_DOC] });
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Usar este archivo" }),
+      ).toBeEnabled();
+    });
+  });
+
   it("C1: disables Library tab during active upload and resets isUploading on MediaUploadPanel unmount", async () => {
     const user = userEvent.setup();
     const onUploadingChange = vi.fn();

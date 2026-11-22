@@ -80,6 +80,7 @@ export function MediaPicker({
   const [selectedIds, setSelectedIds] = React.useState<string[]>([
     ...resolvedInitialSelected,
   ]);
+  const [hydratingCount, setHydratingCount] = React.useState(0);
   const [isUploading, setIsUploading] = React.useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = React.useState(false);
 
@@ -112,6 +113,11 @@ export function MediaPicker({
         });
         if (res.ok) {
           setItems((prev) => (append ? [...prev, ...res.items] : res.items));
+          setHydratedById((prev) => {
+            const next = { ...prev };
+            for (const item of res.items) next[item._id] = item;
+            return next;
+          });
           setHasMore(res.hasMore);
           setPage(targetPage);
         }
@@ -144,14 +150,21 @@ export function MediaPicker({
     );
     if (missing.length === 0) return;
     for (const id of missing) requestedHydrationRef.current.add(id);
-    void getMediaByIdsAction(missing).then((res) => {
-      if (!isMountedRef.current || !res.ok) return;
-      setHydratedById((prev) => {
-        const next = { ...prev };
-        for (const doc of res.items) next[doc._id] = doc;
-        return next;
+    setHydratingCount((c) => c + 1);
+    void getMediaByIdsAction(missing)
+      .then((res) => {
+        if (!isMountedRef.current || !res.ok) return;
+        setHydratedById((prev) => {
+          const next = { ...prev };
+          for (const doc of res.items) next[doc._id] = doc;
+          return next;
+        });
+      })
+      .finally(() => {
+        if (isMountedRef.current) {
+          setHydratingCount((c) => Math.max(0, c - 1));
+        }
       });
-    });
   }, [open, selectedIds]);
 
   React.useEffect(() => {
@@ -201,6 +214,7 @@ export function MediaPicker({
   const hasUnselectableSelection = selectedDocs.some(
     (doc) => !isMediaSelectable(doc),
   );
+  const isHydratingSelection = hydratingCount > 0;
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen && isUploading) {
@@ -211,6 +225,7 @@ export function MediaPicker({
   };
 
   const handleConfirmSelection = (ids: string[]) => {
+    if (isHydratingSelection) return;
     const chosen = ids
       .map((id) => allKnownById.get(id))
       .filter(
@@ -347,7 +362,7 @@ export function MediaPicker({
         onLoadMore={() => void loadPage(page + 1, searchQuery, true)}
         headerSlot={headerSlot}
         footerSummary={footerSummary}
-        confirmDisabled={hasUnselectableSelection}
+        confirmDisabled={hasUnselectableSelection || isHydratingSelection}
         hideFooter={tab === "upload"}
         customBody={
           tab === "upload" && canUpload ? (

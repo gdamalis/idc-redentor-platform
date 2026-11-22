@@ -2429,4 +2429,67 @@ describe("Reference write/delete serialization (write-skew guard)", () => {
       ),
     ).toEqual({ ok: false, reason: "not-found" });
   });
+
+  it("serializes media references via target-side _refGuardRev lock on create/update and rejects missing 24-hex mediaIds", async () => {
+    const mediaOid = new ObjectId();
+    const mediaId = mediaOid.toHexString();
+    const missingMediaId = new ObjectId().toHexString();
+    const h = createTestHarness({
+      seed: {
+        media: [
+          {
+            _id: mediaOid,
+            pathname: `media/${mediaId}/hero.jpg`,
+            url: `https://abc.public.blob.vercel-storage.com/media/${mediaId}/hero.jpg`,
+          } as unknown as StoredContentEnvelope<Record<string, unknown>>,
+        ],
+      },
+    });
+
+    // Rejects referencing a deleted/non-existent 24-hex media ObjectId
+    const badCreate = await postService.create(
+      writer,
+      {
+        title: { "es-AR": "Post con media borrada" },
+        slug: "post-media-borrada",
+        featuredImageId: missingMediaId,
+      },
+      h.deps,
+    );
+    expect(badCreate.ok).toBe(false);
+    if (!badCreate.ok) expect(badCreate.reason).toBe("invalid");
+
+    // Referencing an existing media doc increments `_refGuardRev` inside the tx
+    const created = await postService.create(
+      writer,
+      {
+        title: { "es-AR": "Post con media real" },
+        slug: "post-media-real",
+        featuredImageId: mediaId,
+      },
+      h.deps,
+    );
+    expect(created.ok).toBe(true);
+    const lockedMedia = h.store
+      .get("media")
+      ?.find((d) => d._id.equals(mediaOid)) as
+      | (Record<string, unknown> & { _refGuardRev?: number })
+      | undefined;
+    expect(lockedMedia?._refGuardRev).toBe(1);
+
+    // Updating to a missing 24-hex mediaId is also rejected
+    if (created.ok) {
+      const badUpdate = await postService.saveDraft(
+        writer,
+        {
+          docId: created.doc._id,
+          patch: { featuredImageId: missingMediaId },
+          expectedRevision: 1,
+        },
+        h.deps,
+      );
+      expect(badUpdate.ok).toBe(false);
+      if (!badUpdate.ok) expect(badUpdate.reason).toBe("invalid");
+    }
+  });
 });
