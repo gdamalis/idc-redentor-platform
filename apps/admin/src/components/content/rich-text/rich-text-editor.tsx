@@ -147,7 +147,13 @@ export function RichTextEditor({
     },
     onUpdate: ({ editor: current }) => {
       isInternalUpdateRef.current = true;
-      onChangeRef.current(current.getJSON() as RichTextDoc);
+      // ProseMirror creates node/mark `attrs` with `Object.create(null)`, which
+      // React 19 / Next.js 16 Flight serializes as `"$T"` temporary references
+      // across Server Action boundaries. Deep-cloning through JSON restores
+      // `Object.prototype` on every nested object.
+      onChangeRef.current(
+        JSON.parse(JSON.stringify(current.getJSON())) as RichTextDoc,
+      );
     },
   });
 
