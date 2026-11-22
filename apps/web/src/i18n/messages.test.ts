@@ -42,4 +42,13 @@ describe("locale message files", () => {
       "This sermon's audio is in Spanish.",
     );
   });
+
+  it("expose the preview banner keys in both locales (ICR-201)", () => {
+    for (const messages of [esAR, enUS]) {
+      const keys = flattenKeys(messages);
+      expect(keys).toContain("preview.banner");
+      expect(keys).toContain("preview.exit");
+      expect(keys).toContain("preview.staging");
+    }
+  });
 });
