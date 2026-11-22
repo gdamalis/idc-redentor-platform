@@ -1,9 +1,13 @@
 export {
+  BLOB_STORE_IDS,
   diagnoseBrokenHref,
+  extractBlobStoreId,
   isAllowedWebsiteDbName,
   normalizeContentfulAssetUrl,
   scanBrokenLinksInTipTap,
+  validateImportBlobStore,
   validateImportTargetDb,
+  type BlobStoreGuardResult,
   type TargetDbGuardOptions,
   type TargetDbGuardResult,
 } from "./guards";

@@ -780,6 +780,32 @@ describe("runContentfulImport end-to-end (AC1–AC6)", () => {
     );
     expect(pubDraft.contentHash).toBe(expectedHash);
 
+    // Verify Spanish-only July draft sermon matches ICR-200's `hasEnglishPdfContent` (`undefined` en-US arg)
+    const july1 = julyDrafts.find(
+      (s) => s.sourceContentfulId === "cf-sermon-july-1",
+    )!;
+    const july1Draft = july1.draft as Record<string, unknown>;
+    const expectedJuly1Hash = computeTipTapSermonContentHash(
+      {
+        title: "Borrador Julio 1",
+        sermonDate: "2026-07-12",
+        content: (july1Draft.content as Record<string, unknown>)["es-AR"] as never,
+        scriptureReferences: [
+          {
+            book: "Salmos",
+            chapter: 23,
+            fromVerse: 1,
+            toVerse: null,
+            verseContent: "El Señor es mi pastor.",
+          },
+        ],
+        preacherName: "Pastor Demo",
+        additionalPreacherNames: [],
+      },
+      undefined,
+    );
+    expect(july1Draft.contentHash).toBe(expectedJuly1Hash);
+
     // Verify privacy topic is protected: true and keeps original timestamps
     const privacyDoc = store.get(COLLECTIONS.topics)?.[0] as Record<string, unknown>;
     expect((privacyDoc.draft as Record<string, unknown>).protected).toBe(true);
@@ -848,17 +874,31 @@ describe("runContentfulImport end-to-end (AC1–AC6)", () => {
     expect(md).toContain("Untouched Scratch Documents");
   });
 
-  it("refuses bare production 'website' DB without allowProd flag", async () => {
+  it("refuses bare production 'website' DB without allowProd flag and refuses production Blob token on staging", async () => {
     const snapshot = buildFullSyntheticSnapshot();
     const { db, getWriteCount } = createInMemoryContentDb("website");
 
     const report = await runContentfulImport(
       snapshot,
       { apply: true },
-      { getContentDb: () => db },
+      { getContentDb: () => db, blobReadWriteToken: undefined },
     );
     expect(report.ok).toBe(false);
     expect(report.errors[0]).toContain("--prod");
     expect(getWriteCount()).toBe(0);
+
+    const staging = createInMemoryContentDb("website-staging");
+    const prodBlobReport = await runContentfulImport(
+      snapshot,
+      { apply: true },
+      {
+        getContentDb: () => staging.db,
+        blobReadWriteToken: "vercel_blob_rw_84ITqLAkqBDRwxYo_fakeSecretValue",
+      },
+    );
+    expect(prodBlobReport.ok).toBe(false);
+    expect(prodBlobReport.errors[0]).toContain("idcr-media");
+    expect(prodBlobReport.errors[0]).not.toContain("fakeSecretValue");
+    expect(staging.getWriteCount()).toBe(0);
   });
 });

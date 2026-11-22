@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
+  BLOB_STORE_IDS,
   collapseAsciiWhitespace,
   computeTipTapSermonContentHash,
   convertAndVerifyRichText,
   diagnoseBrokenHref,
+  extractBlobStoreId,
   extractPlainTextFromContentful,
   extractPlainTextFromTipTap,
   isAllowedWebsiteDbName,
   normalizeContentfulAssetUrl,
   scanBrokenLinksInTipTap,
+  validateImportBlobStore,
   validateImportTargetDb,
   verifyLosslessTipTapRoundTrip,
 } from "../index";
@@ -78,6 +81,66 @@ describe("validateImportTargetDb & URL/link guards (AC1)", () => {
     expect(
       validateImportTargetDb("website-test", { allowTestDb: true }).ok,
     ).toBe(true);
+  });
+
+  it("enforces production vs staging Vercel Blob store guard without leaking token secrets (C2)", () => {
+    const fakeSecret = "SECRET_SEGMENT_DO_NOT_LEAK";
+    const prodToken = `vercel_blob_rw_84ITqLAkqBDRwxYo_${fakeSecret}`;
+    const stagingToken = `vercel_blob_rw_KmIXa14hB4dGuVjF_${fakeSecret}`;
+
+    expect(extractBlobStoreId(prodToken)).toBe(BLOB_STORE_IDS.production);
+    expect(extractBlobStoreId(stagingToken)).toBe(BLOB_STORE_IDS.staging);
+
+    // Production Blob store refused on staging (both dry-run and apply)
+    const prodOnStaging = validateImportBlobStore(prodToken, {
+      apply: false,
+      isProd: false,
+      allowProd: false,
+    });
+    expect(prodOnStaging.ok).toBe(false);
+    if (!prodOnStaging.ok) {
+      expect(prodOnStaging.reason).toContain("idcr-media");
+      expect(prodOnStaging.reason).not.toContain(fakeSecret);
+    }
+
+    // Production Blob store allowed ONLY when targeting prod DB with --prod
+    expect(
+      validateImportBlobStore(prodToken, {
+        apply: true,
+        isProd: true,
+        allowProd: true,
+      }).ok,
+    ).toBe(true);
+
+    // Staging Blob store refused when targeting production DB "website"
+    const stagingOnProd = validateImportBlobStore(stagingToken, {
+      apply: true,
+      isProd: true,
+      allowProd: true,
+    });
+    expect(stagingOnProd.ok).toBe(false);
+    if (!stagingOnProd.ok) {
+      expect(stagingOnProd.reason).toContain("idcr-media-staging");
+      expect(stagingOnProd.reason).not.toContain(fakeSecret);
+    }
+
+    // Staging Blob store allowed on staging DB
+    expect(
+      validateImportBlobStore(stagingToken, {
+        apply: true,
+        isProd: false,
+        allowProd: false,
+      }).ok,
+    ).toBe(true);
+
+    // Missing token refused on --apply when required
+    expect(
+      validateImportBlobStore(undefined, {
+        apply: true,
+        isProd: false,
+        requireTokenOnApply: true,
+      }).ok,
+    ).toBe(false);
   });
 
   it("normalizes protocol-relative Contentful URLs", () => {

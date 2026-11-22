@@ -5,6 +5,7 @@ export {
   runDataParity,
   type DataParityCheckResult,
   type DataParityDiff,
+  type DataParityReconciliation,
   type DataParityReport,
   type ParityMode,
   type ParityReaders,
@@ -17,6 +18,11 @@ export {
   type HostGuardResult,
 } from "./host-guard";
 export {
+  loadParityMapsFromMongo,
+  type CollectionCountSummary,
+  type MongoParityContext,
+} from "./mongo-maps";
+export {
   createMediaIdentityMap,
   normalizeHtmlForPageParity,
   normalizeMediaUrl,
@@ -28,6 +34,7 @@ export {
 } from "./normalize";
 export {
   buildParityRouteInventory,
+  comparePngPixels,
   formatPageParityReportMarkdown,
   runPageParity,
   type HtmlDiffSnippet,

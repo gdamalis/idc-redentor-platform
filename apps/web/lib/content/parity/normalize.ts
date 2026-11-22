@@ -1,11 +1,16 @@
 import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
 import { BLOCKS, INLINES, type Document } from "@contentful/rich-text-types";
-import type {
-  MediaView,
-  RichTextMark,
-  RichTextNode,
-  RichTextTextNode,
-  RichTextView,
+import {
+  HEADING_LEVELS,
+  isAllowedHref,
+  LIMITS,
+  RICH_TEXT_MARK,
+  RICH_TEXT_NODE,
+  RICH_TEXT_PROFILES,
+  type MediaView,
+  type RichTextNode,
+  type RichTextProfile,
+  type RichTextView,
 } from "@idcr/content";
 import { createElement, Fragment, type ComponentType, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -316,6 +321,7 @@ const TypographyAny = Typography as ComponentType<{
 }>;
 
 interface StaticTipTapPreset {
+  readonly profile: RichTextProfile;
   readonly renderParagraph: (children: ReactNode, key: string) => ReactNode;
   readonly renderHeading?: (
     level: 2 | 3,
@@ -345,6 +351,7 @@ interface StaticTipTapPreset {
 }
 
 const STATIC_ARTICLE_PRESET: StaticTipTapPreset = {
+  profile: "article",
   renderParagraph: (children, key) =>
     createElement(TypographyAny, { key, component: "p", variant: "body" }, children),
   renderHeading: (level, children, key) =>
@@ -379,6 +386,7 @@ const STATIC_ARTICLE_PRESET: StaticTipTapPreset = {
 };
 
 const STATIC_SECTION_DESC_PRESET: StaticTipTapPreset = {
+  profile: "inline",
   renderParagraph: (children, key) =>
     createElement("p", { key, className: "text-muted-foreground text-lg" }, children),
   renderBold: (children, key) => createElement("b", { key }, children),
@@ -386,6 +394,7 @@ const STATIC_SECTION_DESC_PRESET: StaticTipTapPreset = {
 };
 
 const STATIC_CARD_DESC_PRESET: StaticTipTapPreset = {
+  profile: "inline",
   renderParagraph: (children, key) =>
     createElement(
       "p",
@@ -398,6 +407,7 @@ const STATIC_CARD_DESC_PRESET: StaticTipTapPreset = {
 
 function createStaticInlinePreset(className: string): StaticTipTapPreset {
   return {
+    profile: "inline",
     renderParagraph: (children, key) =>
       createElement(
         TypographyAny,
@@ -410,6 +420,7 @@ function createStaticInlinePreset(className: string): StaticTipTapPreset {
 }
 
 const STATIC_CONTACT_AGREEMENT_PRESET: StaticTipTapPreset = {
+  profile: "inlineLink",
   renderParagraph: (children, key) =>
     createElement(
       TypographyAny,
@@ -436,119 +447,292 @@ const STATIC_CONTACT_AGREEMENT_PRESET: StaticTipTapPreset = {
     ),
 };
 
+interface StaticRenderContext {
+  readonly preset: StaticTipTapPreset;
+  readonly media: Readonly<Record<string, MediaView>>;
+  readonly allowedNodes: ReadonlySet<string>;
+  readonly allowedMarks: ReadonlySet<string>;
+  nodeCount: number;
+}
+
+function isStaticRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function allowedStaticChildrenFor(parentType: string): readonly string[] | null {
+  switch (parentType) {
+    case RICH_TEXT_NODE.doc:
+      return [
+        RICH_TEXT_NODE.paragraph,
+        RICH_TEXT_NODE.heading,
+        RICH_TEXT_NODE.blockquote,
+        RICH_TEXT_NODE.bulletList,
+        RICH_TEXT_NODE.orderedList,
+        RICH_TEXT_NODE.embeddedMedia,
+      ];
+    case RICH_TEXT_NODE.blockquote:
+      return [RICH_TEXT_NODE.paragraph];
+    case RICH_TEXT_NODE.bulletList:
+    case RICH_TEXT_NODE.orderedList:
+      return [RICH_TEXT_NODE.listItem];
+    case RICH_TEXT_NODE.listItem:
+      return [
+        RICH_TEXT_NODE.paragraph,
+        RICH_TEXT_NODE.bulletList,
+        RICH_TEXT_NODE.orderedList,
+      ];
+    default:
+      return null;
+  }
+}
+
+/**
+ * Mirrors `@lib/content/rich-text/render#renderRichText` profile allowlist rules
+ * (`RICH_TEXT_PROFILES`, `isAllowedHref`, `LIMITS.maxNodes`/`maxNodeDepth`) without
+ * triggering `ICR-202`'s dormancy check (which forbids importing `content/rich-text`
+ * from outside `lib/content/rich-text/`).
+ */
 function renderStaticInlineNodes(
-  nodes: readonly RichTextNode[] | undefined,
-  preset: StaticTipTapPreset,
-  keyPrefix: string,
+  rawChildren: unknown,
+  parentKey: string,
+  depth: number,
+  ctx: StaticRenderContext,
 ): ReactNode[] {
-  if (!nodes || nodes.length === 0) return [];
-  const textNodes = nodes.filter(
-    (n): n is RichTextTextNode => n.type === "text" && typeof n.text === "string",
-  );
+  if (!Array.isArray(rawChildren) || depth > LIMITS.maxNodeDepth) return [];
+  const out: ReactNode[] = [];
+  let activeLink: {
+    readonly href: string;
+    readonly key: string;
+    readonly children: ReactNode[];
+  } | null = null;
 
-  const getLinkHref = (marks?: readonly RichTextMark[]): string | undefined =>
-    marks?.find((m) => m.type === "link")?.attrs?.href;
-
-  const renderNonLinkMarks = (node: RichTextTextNode, key: string): ReactNode => {
-    let el: ReactNode = node.text;
-    for (const mark of node.marks ?? []) {
-      if (mark.type === "bold") el = preset.renderBold(el, `${key}-b`);
-      else if (mark.type === "italic") el = preset.renderItalic(el, `${key}-i`);
+  const flushLink = () => {
+    if (!activeLink) return;
+    if (ctx.preset.renderLink && activeLink.children.length > 0) {
+      out.push(
+        ctx.preset.renderLink(activeLink.href, activeLink.children, activeLink.key),
+      );
     }
-    return el;
+    activeLink = null;
   };
 
-  const out: ReactNode[] = [];
-  let i = 0;
-  while (i < textNodes.length) {
-    const href = getLinkHref(textNodes[i]!.marks);
-    if (href && preset.renderLink) {
-      const group: ReactNode[] = [];
-      const start = i;
-      while (i < textNodes.length && getLinkHref(textNodes[i]!.marks) === href) {
-        group.push(
-          createElement(
-            Fragment,
-            { key: `${keyPrefix}-t-${i}` },
-            renderNonLinkMarks(textNodes[i]!, `${keyPrefix}-t-${i}`),
-          ),
-        );
-        i += 1;
+  for (let i = 0; i < rawChildren.length; i += 1) {
+    ctx.nodeCount += 1;
+    if (ctx.nodeCount > LIMITS.maxNodes) break;
+    const child = rawChildren[i];
+    const key = `${parentKey}-${i}`;
+
+    if (
+      !isStaticRecord(child) ||
+      child.type !== RICH_TEXT_NODE.text ||
+      typeof child.text !== "string"
+    ) {
+      flushLink();
+      continue;
+    }
+
+    const rawMarks = child.marks;
+    if (
+      rawMarks !== undefined &&
+      (!Array.isArray(rawMarks) || rawMarks.length > ctx.allowedMarks.size)
+    ) {
+      flushLink();
+      continue;
+    }
+
+    let linkHref: string | undefined;
+    let disallowed = false;
+    const seen = new Set<string>();
+    const nonLinkMarks: Array<"bold" | "italic"> = [];
+
+    if (Array.isArray(rawMarks)) {
+      for (const rawMark of rawMarks) {
+        if (!isStaticRecord(rawMark) || typeof rawMark.type !== "string") {
+          disallowed = true;
+          break;
+        }
+        const markType = rawMark.type;
+        if (!ctx.allowedMarks.has(markType) || seen.has(markType)) {
+          disallowed = true;
+          break;
+        }
+        seen.add(markType);
+        if (markType === RICH_TEXT_MARK.link) {
+          const href = isStaticRecord(rawMark.attrs) ? rawMark.attrs.href : undefined;
+          if (!isAllowedHref(href) || !ctx.preset.renderLink) {
+            disallowed = true;
+            break;
+          }
+          linkHref = href;
+        } else if (
+          markType === RICH_TEXT_MARK.bold ||
+          markType === RICH_TEXT_MARK.italic
+        ) {
+          nonLinkMarks.push(markType);
+        } else {
+          disallowed = true;
+          break;
+        }
       }
-      out.push(preset.renderLink(href, group, `${keyPrefix}-a-${start}`));
+    }
+
+    if (disallowed) {
+      flushLink();
+      continue;
+    }
+
+    let rendered: ReactNode = child.text;
+    for (let m = 0; m < nonLinkMarks.length; m += 1) {
+      const mk = `${key}-m${m}`;
+      rendered =
+        nonLinkMarks[m] === RICH_TEXT_MARK.bold
+          ? ctx.preset.renderBold(rendered, mk)
+          : ctx.preset.renderItalic(rendered, mk);
+    }
+
+    const wrapped =
+      nonLinkMarks.length === 0
+        ? createElement(Fragment, { key }, rendered)
+        : rendered;
+
+    if (linkHref !== undefined) {
+      if (activeLink && activeLink.href === linkHref) {
+        activeLink.children.push(wrapped);
+      } else {
+        flushLink();
+        activeLink = { href: linkHref, key: `${key}-link`, children: [wrapped] };
+      }
     } else {
-      out.push(
-        createElement(
-          Fragment,
-          { key: `${keyPrefix}-t-${i}` },
-          renderNonLinkMarks(textNodes[i]!, `${keyPrefix}-t-${i}`),
-        ),
-      );
-      i += 1;
+      flushLink();
+      out.push(wrapped);
     }
   }
+
+  flushLink();
   return out;
+}
+
+function renderStaticBlockChildren(
+  rawChildren: unknown,
+  parentType: string,
+  parentKey: string,
+  depth: number,
+  ctx: StaticRenderContext,
+): ReactNode[] {
+  if (!Array.isArray(rawChildren) || depth > LIMITS.maxNodeDepth) return [];
+  const allowedForParent = allowedStaticChildrenFor(parentType);
+  if (!allowedForParent) return [];
+
+  const nodes: ReactNode[] = [];
+  for (let i = 0; i < rawChildren.length; i += 1) {
+    const child = rawChildren[i];
+    if (!isStaticRecord(child) || typeof child.type !== "string") continue;
+    if (!allowedForParent.includes(child.type)) continue;
+    const rendered = renderStaticTipTapNode(
+      child as unknown as RichTextNode,
+      `${parentKey}-${i}`,
+      depth,
+      ctx,
+    );
+    if (rendered !== null && rendered !== undefined) {
+      nodes.push(rendered);
+    }
+  }
+  return nodes;
 }
 
 function renderStaticTipTapNode(
   node: RichTextNode,
-  preset: StaticTipTapPreset,
-  media: Readonly<Record<string, MediaView>>,
   key: string,
+  depth: number,
+  ctx: StaticRenderContext,
 ): ReactNode {
+  ctx.nodeCount += 1;
+  if (depth > LIMITS.maxNodeDepth || ctx.nodeCount > LIMITS.maxNodes) {
+    return null;
+  }
+  if (!ctx.allowedNodes.has(node.type)) {
+    return null;
+  }
+
   switch (node.type) {
-    case "paragraph":
-      return preset.renderParagraph(
-        renderStaticInlineNodes(node.content, preset, key),
+    case RICH_TEXT_NODE.paragraph:
+      return ctx.preset.renderParagraph(
+        renderStaticInlineNodes(node.content, key, depth + 1, ctx),
         key,
       );
-    case "heading": {
-      const level = node.attrs?.level === 3 ? 3 : 2;
-      const children = renderStaticInlineNodes(node.content, preset, key);
-      return preset.renderHeading
-        ? preset.renderHeading(level, children, key)
-        : createElement(level === 2 ? "h2" : "h3", { key }, children);
-    }
-    case "blockquote": {
-      const children = (node.content ?? []).map((child, idx) =>
-        renderStaticTipTapNode(child, preset, media, `${key}-bq-${idx}`),
+    case RICH_TEXT_NODE.heading: {
+      if (!ctx.preset.renderHeading) return null;
+      const level = node.attrs?.level;
+      if (!HEADING_LEVELS.includes(level as never)) return null;
+      return ctx.preset.renderHeading(
+        level as 2 | 3,
+        renderStaticInlineNodes(node.content, key, depth + 1, ctx),
+        key,
       );
-      return preset.renderBlockquote
-        ? preset.renderBlockquote(children, key)
-        : createElement("blockquote", { key }, children);
     }
-    case "bulletList": {
-      const children = (node.content ?? []).map((child, idx) =>
-        renderStaticTipTapNode(child, preset, media, `${key}-ul-${idx}`),
+    case RICH_TEXT_NODE.blockquote: {
+      if (!ctx.preset.renderBlockquote) return null;
+      const children = renderStaticBlockChildren(
+        node.content,
+        node.type,
+        key,
+        depth + 1,
+        ctx,
       );
-      return preset.renderBulletList
-        ? preset.renderBulletList(children, key)
-        : createElement("ul", { key }, children);
+      return children.length > 0 ? ctx.preset.renderBlockquote(children, key) : null;
     }
-    case "orderedList": {
-      const children = (node.content ?? []).map((child, idx) =>
-        renderStaticTipTapNode(child, preset, media, `${key}-ol-${idx}`),
+    case RICH_TEXT_NODE.bulletList: {
+      if (!ctx.preset.renderBulletList) return null;
+      const children = renderStaticBlockChildren(
+        node.content,
+        node.type,
+        key,
+        depth + 1,
+        ctx,
       );
+      return children.length > 0 ? ctx.preset.renderBulletList(children, key) : null;
+    }
+    case RICH_TEXT_NODE.orderedList: {
+      if (!ctx.preset.renderOrderedList) return null;
+      const children = renderStaticBlockChildren(
+        node.content,
+        node.type,
+        key,
+        depth + 1,
+        ctx,
+      );
+      if (children.length === 0) return null;
+      const rawStart = node.attrs?.start;
       const start =
-        typeof node.attrs?.start === "number" ? node.attrs.start : undefined;
-      return preset.renderOrderedList
-        ? preset.renderOrderedList(children, key, start)
-        : createElement("ol", { key }, children);
+        typeof rawStart === "number" &&
+        Number.isInteger(rawStart) &&
+        rawStart >= 1 &&
+        rawStart <= 10_000
+          ? rawStart
+          : undefined;
+      return ctx.preset.renderOrderedList(children, key, start);
     }
-    case "listItem": {
-      const children = (node.content ?? []).map((child, idx) =>
-        renderStaticTipTapNode(child, preset, media, `${key}-li-${idx}`),
+    case RICH_TEXT_NODE.listItem: {
+      if (!ctx.preset.renderListItem) return null;
+      const children = renderStaticBlockChildren(
+        node.content,
+        node.type,
+        key,
+        depth + 1,
+        ctx,
       );
-      return preset.renderListItem
-        ? preset.renderListItem(children, key)
-        : createElement("li", { key }, children);
+      return children.length > 0 ? ctx.preset.renderListItem(children, key) : null;
     }
-    case "embeddedMedia": {
+    case RICH_TEXT_NODE.embeddedMedia: {
+      if (!ctx.preset.renderEmbeddedMedia) return null;
       const mediaId =
-        typeof node.attrs?.mediaId === "string" ? node.attrs.mediaId : "";
-      return preset.renderEmbeddedMedia
-        ? preset.renderEmbeddedMedia(mediaId, media[mediaId], key)
-        : null;
+        typeof node.attrs?.mediaId === "string" ? node.attrs.mediaId.trim() : "";
+      if (!mediaId) return null;
+      const media = Object.prototype.hasOwnProperty.call(ctx.media, mediaId)
+        ? ctx.media[mediaId]
+        : undefined;
+      return ctx.preset.renderEmbeddedMedia(mediaId, media, key);
     }
     default:
       return null;
@@ -559,10 +743,25 @@ function renderStaticTipTap(
   view: RichTextView,
   preset: StaticTipTapPreset,
 ): ReactNode {
-  const media = view.media ?? {};
-  return (view.doc.content ?? []).map((node, idx) =>
-    renderStaticTipTapNode(node, preset, media, `rt-${idx}`),
+  if (!view?.doc || view.doc.type !== RICH_TEXT_NODE.doc || !Array.isArray(view.doc.content)) {
+    return null;
+  }
+  const spec = RICH_TEXT_PROFILES[preset.profile];
+  const ctx: StaticRenderContext = {
+    preset,
+    media: view.media ?? {},
+    allowedNodes: new Set<string>(spec.nodes),
+    allowedMarks: new Set<string>(spec.marks),
+    nodeCount: 1,
+  };
+  const rendered = renderStaticBlockChildren(
+    view.doc.content,
+    RICH_TEXT_NODE.doc,
+    "rt",
+    2,
+    ctx,
   );
+  return rendered.length > 0 ? rendered : null;
 }
 
 function buildContentfulInlineOptions(className: string) {
@@ -764,6 +963,7 @@ export function renderRichTextPairForParity(
       case "sermon":
         mongoElement = renderStaticTipTap(tiptapValue, {
           ...STATIC_ARTICLE_PRESET,
+          profile: "sermon",
           renderEmbeddedMedia: (_id, media, key) =>
             media ? renderSermonEmbeddedStatic(media, key) : null,
         });

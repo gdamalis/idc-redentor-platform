@@ -12,11 +12,9 @@
  */
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { COLLECTIONS, type Locale } from "@idcr/content";
-import { requireContentDb } from "../lib/content/db";
 import {
-  createMediaIdentityMap,
   formatDataParityReportMarkdown,
+  loadParityMapsFromMongo,
   runDataParity,
   type ParityMode,
 } from "../lib/content/parity";
@@ -49,102 +47,19 @@ function parseArgs(argv: readonly string[]): {
   return { modes, reportDir };
 }
 
-async function loadParityMapsFromMongo(): Promise<{
-  readonly mediaMap: ReturnType<typeof createMediaIdentityMap>;
-  readonly entryIdByContentfulId: Map<string, string>;
-  readonly topicSlugsByLocale: Record<Locale, string[]>;
-}> {
-  const db = await requireContentDb();
-
-  const mediaDocs = await db
-    .collection<{
-      _id: { toHexString: () => string };
-      url: string;
-      sha256: string;
-      sourceContentfulIds?: string[];
-    }>(COLLECTIONS.media)
-    .find({}, { projection: { _id: 1, url: 1, sha256: 1, sourceContentfulIds: 1 } })
-    .toArray();
-
-  const mediaMap = createMediaIdentityMap(
-    mediaDocs.map((m) => ({
-      canonicalKey: m.sha256,
-      urls: [m.url],
-      mongoMediaIds: [m._id.toHexString()],
-      contentfulAssetIds: (m.sourceContentfulIds ?? []).map((id) =>
-        id.includes(":") ? id.split(":")[0]! : id,
-      ),
-    })),
-  );
-
-  const entryIdByContentfulId = new Map<string, string>();
-  const contentCollections = [
-    COLLECTIONS.sections,
-    COLLECTIONS.beliefCollections,
-    COLLECTIONS.eventBanners,
-    COLLECTIONS.seoEntries,
-    COLLECTIONS.globals,
-    COLLECTIONS.posts,
-    COLLECTIONS.sermons,
-    COLLECTIONS.topics,
-    COLLECTIONS.authors,
-    COLLECTIONS.bibleVerses,
-  ] as const;
-
-  for (const col of contentCollections) {
-    const docs = await db
-      .collection<{ _id: { toHexString: () => string }; sourceContentfulId?: string }>(
-        col,
-      )
-      .find(
-        { sourceContentfulId: { $type: "string" } },
-        { projection: { _id: 1, sourceContentfulId: 1 } },
-      )
-      .toArray();
-    for (const d of docs) {
-      if (d.sourceContentfulId) {
-        entryIdByContentfulId.set(d.sourceContentfulId, d._id.toHexString());
-      }
-    }
-  }
-
-  const topicDocs = await db
-    .collection<{
-      draft?: { slug?: Partial<Record<Locale, string>> };
-      published?: { slug?: Partial<Record<Locale, string>> };
-    }>(COLLECTIONS.topics)
-    .find({}, { projection: { "draft.slug": 1, "published.slug": 1 } })
-    .toArray();
-
-  const esTopics = new Set<string>();
-  const enTopics = new Set<string>();
-  for (const doc of topicDocs) {
-    const es = doc.published?.slug?.["es-AR"] ?? doc.draft?.slug?.["es-AR"];
-    const en = doc.published?.slug?.["en-US"] ?? doc.draft?.slug?.["en-US"];
-    if (es) esTopics.add(es);
-    if (en) enTopics.add(en);
-  }
-
-  return {
-    mediaMap,
-    entryIdByContentfulId,
-    topicSlugsByLocale: {
-      "es-AR": esTopics.size > 0 ? [...esTopics].sort() : ["privacidad"],
-      "en-US": enTopics.size > 0 ? [...enTopics].sort() : ["privacy"],
-    },
-  };
-}
-
 async function main(): Promise<void> {
   const { modes, reportDir } = parseArgs(process.argv.slice(2));
-  const { mediaMap, entryIdByContentfulId, topicSlugsByLocale } =
-    await loadParityMapsFromMongo();
+  const ctx = await loadParityMapsFromMongo();
 
   const report = await runDataParity({
     modes,
-    mediaMap,
-    entryIdByContentfulId,
-    topicSlugsByLocale,
+    mediaMap: ctx.mediaMap,
+    entryIdByContentfulId: ctx.entryIdByContentfulId,
+    topicSlugsByLocale: ctx.topicSlugsByLocale,
+    extraBlogSlugs: ctx.postSlugs,
+    extraSermonSlugs: ctx.sermonSlugs,
+    mongoMediaCount: ctx.mediaCount,
+    mongoCollections: ctx.collectionCounts,
   });
 
   const markdown = formatDataParityReportMarkdown(report);

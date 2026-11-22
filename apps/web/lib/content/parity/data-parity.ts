@@ -15,6 +15,7 @@ import * as contentfulSingleEmail from "@lib/contentful/getSingleEmailForm";
 import * as contentfulTextBlock from "@lib/contentful/getTextBlockComponent";
 import * as contentfulMapCollection from "@lib/contentful/mapContentCollection";
 import * as mongoContent from "@lib/content";
+import type { CollectionCountSummary } from "./mongo-maps";
 import {
   normalizeMediaUrl,
   renderRichTextPairForParity,
@@ -194,6 +195,25 @@ export interface DataParityCheckResult {
   readonly diffCount: number;
 }
 
+export interface DataParityReconciliation {
+  readonly mongoMediaCount?: number;
+  readonly mongoCollections?: Readonly<Record<string, CollectionCountSummary>>;
+  readonly discoveredCountsByMode: Readonly<
+    Partial<
+      Record<
+        ParityMode,
+        {
+          readonly contentfulPosts: number;
+          readonly mongoPosts: number;
+          readonly contentfulSermons: number;
+          readonly mongoSermons: number;
+          readonly topicsChecked: number;
+        }
+      >
+    >
+  >;
+}
+
 export interface DataParityReport {
   readonly startedAt: string;
   readonly completedAt: string;
@@ -205,6 +225,7 @@ export interface DataParityReport {
   readonly ok: boolean;
   readonly checks: readonly DataParityCheckResult[];
   readonly diffs: readonly DataParityDiff[];
+  readonly reconciliation: DataParityReconciliation;
 }
 
 export interface RunDataParityOptions {
@@ -219,6 +240,9 @@ export interface RunDataParityOptions {
   readonly extraBlogSlugs?: readonly string[];
   /** Explicit extra draft sermon slugs (discovered via `getAllSermons` if omitted). */
   readonly extraSermonSlugs?: readonly string[];
+  /** Optional MongoDB collection & media counts for reconciliation reporting. */
+  readonly mongoMediaCount?: number;
+  readonly mongoCollections?: Readonly<Record<string, CollectionCountSummary>>;
   readonly contentfulReaders?: ParityReaders;
   readonly mongoReaders?: ParityReaders;
 }
@@ -290,8 +314,13 @@ function resolveRichTextPresetForPath(
   ) {
     return "article";
   }
-  if (checkName.startsWith("getContentCollection")) {
-    return fieldPath.includes("items[")
+  if (
+    checkName.startsWith("getContentCollection") ||
+    checkName.startsWith("mapContentCollection")
+  ) {
+    return fieldPath.includes("items[") ||
+      fieldPath.includes("creedItems[") ||
+      fieldPath.includes("valueItems[")
       ? "cardDescription"
       : "sectionDescription";
   }
@@ -301,6 +330,45 @@ function resolveRichTextPresetForPath(
     return SECTION_PRESET_BY_NAME[machineName] ?? "sectionDescription";
   }
   return "article";
+}
+
+const NULLABLE_LIST_FIELDS = new Set([
+  "keywords",
+  "values",
+  "mainPoints",
+  "socialLinks",
+  "additionalPreachers",
+  "scriptureReferences",
+  "relatedSermons",
+]);
+
+const NULLABLE_STRING_DEFAULTED_FIELDS = new Set([
+  "title",
+  "description",
+  "shortDescription",
+  "ctaText",
+  "placeholder",
+  "inputPlaceholder",
+  "successMessage",
+  "thesis",
+  "excerpt",
+  "seoTitle",
+  "seoDescription",
+  "name",
+  "dayOfWeek",
+  "time",
+  "addressLine1",
+  "city",
+  "country",
+  "book",
+  "verseContent",
+  "bibleVersion",
+]);
+
+function lastPathSegment(fieldPath: string): string {
+  const withoutIndex = fieldPath.replace(/\[\d+\]$/, "");
+  const dot = withoutIndex.lastIndexOf(".");
+  return dot >= 0 ? withoutIndex.slice(dot + 1) : withoutIndex;
 }
 
 function compareValues(
@@ -320,6 +388,23 @@ function compareValues(
   if (cfValue === null && mongoValue === null) return;
   // Treat null vs undefined on optional nullable GraphQL fields as equivalent ONLY when both are absent
   if ((cfValue === null || cfValue === undefined) && (mongoValue === null || mongoValue === undefined)) {
+    return;
+  }
+
+  // Contentful GraphQL emits `null` for unset list/string fields that `lib/content/*` defaults to `[]` / `""`
+  const leaf = lastPathSegment(path);
+  if (
+    NULLABLE_LIST_FIELDS.has(leaf) &&
+    ((cfValue === null && Array.isArray(mongoValue) && mongoValue.length === 0) ||
+      (mongoValue === null && Array.isArray(cfValue) && cfValue.length === 0))
+  ) {
+    return;
+  }
+  if (
+    NULLABLE_STRING_DEFAULTED_FIELDS.has(leaf) &&
+    ((cfValue === null && mongoValue === "") ||
+      (mongoValue === null && cfValue === ""))
+  ) {
     return;
   }
 
@@ -364,7 +449,13 @@ function compareValues(
     }
     if (path.endsWith(".sys.id") || path === "sys.id") {
       // Embedded BeliefItem sys.id has no Mongo document id (embedded array item)
-      if (ctx.check.startsWith("getContentCollection") && path.includes("items[")) {
+      if (
+        (ctx.check.startsWith("getContentCollection") ||
+          ctx.check.startsWith("mapContentCollection")) &&
+        (path.includes("items[") ||
+          path.includes("creedItems[") ||
+          path.includes("valueItems["))
+      ) {
         return;
       }
       const a = ctx.normalizeId(cfValue);
@@ -528,8 +619,26 @@ export async function runDataParity(
     "en-US": options.topicSlugsByLocale?.["en-US"] ?? ["privacy"],
   };
 
+  const discoveredCountsByMode: Partial<
+    Record<
+      ParityMode,
+      {
+        contentfulPosts: number;
+        mongoPosts: number;
+        contentfulSermons: number;
+        mongoSermons: number;
+        topicsChecked: number;
+      }
+    >
+  > = {};
+
   for (const mode of modes) {
     const isDraftMode = mode === "draft";
+    const cfPostSlugsMode = new Set<string>();
+    const mgPostSlugsMode = new Set<string>();
+    const cfSermonSlugsMode = new Set<string>();
+    const mgSermonSlugsMode = new Set<string>();
+    const topicsCheckedMode = new Set<string>();
 
     for (const locale of locales) {
       // 1. SEO entries
@@ -610,6 +719,8 @@ export async function runDataParity(
 
       // 4. Content Collections (+ mapContentCollection)
       for (const name of collectionNames) {
+        let cfRawColl: unknown;
+        let mgRawColl: unknown;
         await runCheck(
           `getContentCollection(${name})`,
           mode,
@@ -619,13 +730,27 @@ export async function runDataParity(
               cf.getContentCollection(name, locale, isDraftMode),
               mg.getContentCollection(name, locale, isDraftMode),
             ]);
+            cfRawColl = cfRaw;
+            mgRawColl = mgRaw;
             return [cfRaw, mgRaw];
           },
         );
+        if (cfRawColl && mgRawColl) {
+          await runCheck(
+            `mapContentCollection(${name})`,
+            mode,
+            locale,
+            async () => [
+              cf.mapContentCollection(cfRawColl as never),
+              mg.mapContentCollection(mgRawColl as never),
+            ],
+          );
+        }
       }
 
       // 5. Topics (per-locale slugs + cross-locale negative check)
       for (const slug of topicSlugsByLocale[locale]) {
+        topicsCheckedMode.add(`${locale}:${slug}`);
         await runCheck(`getChurchInfoTopic(${slug})`, mode, locale, async () =>
           Promise.all([
             cf.getChurchInfoTopic(slug, locale, isDraftMode),
@@ -642,9 +767,18 @@ export async function runDataParity(
             cf.getAllBlogPostSlugs(locale),
             mg.getAllBlogPostSlugs(locale),
           ]);
-          for (const s of cfSlugs) discoveredBlogSlugs.add(s.slug);
-          for (const s of mgSlugs) discoveredBlogSlugs.add(s.slug);
-          return [cfSlugs, mgSlugs];
+          for (const s of cfSlugs) {
+            discoveredBlogSlugs.add(s.slug);
+            cfPostSlugsMode.add(s.slug);
+          }
+          for (const s of mgSlugs) {
+            discoveredBlogSlugs.add(s.slug);
+            mgPostSlugsMode.add(s.slug);
+          }
+          return [
+            [...cfSlugs].sort((a, b) => a.slug.localeCompare(b.slug)),
+            [...mgSlugs].sort((a, b) => a.slug.localeCompare(b.slug)),
+          ];
         });
       }
 
@@ -653,9 +787,16 @@ export async function runDataParity(
           cf.getLatestBlogPostPages(locale, { isDraftMode }),
           mg.getLatestBlogPostPages(locale, { isDraftMode }),
         ]);
-        for (const p of [...cfPosts, ...mgPosts]) {
+        for (const p of cfPosts) {
           if (isRecord(p) && typeof p.slug === "string") {
             discoveredBlogSlugs.add(p.slug);
+            cfPostSlugsMode.add(p.slug);
+          }
+        }
+        for (const p of mgPosts) {
+          if (isRecord(p) && typeof p.slug === "string") {
+            discoveredBlogSlugs.add(p.slug);
+            mgPostSlugsMode.add(p.slug);
           }
         }
         return [cfPosts, mgPosts];
@@ -699,9 +840,18 @@ export async function runDataParity(
             cf.getAllSermonSlugs(locale),
             mg.getAllSermonSlugs(locale),
           ]);
-          for (const s of cfSlugs) discoveredSermonSlugs.add(s.slug);
-          for (const s of mgSlugs) discoveredSermonSlugs.add(s.slug);
-          return [cfSlugs, mgSlugs];
+          for (const s of cfSlugs) {
+            discoveredSermonSlugs.add(s.slug);
+            cfSermonSlugsMode.add(s.slug);
+          }
+          for (const s of mgSlugs) {
+            discoveredSermonSlugs.add(s.slug);
+            mgSermonSlugsMode.add(s.slug);
+          }
+          return [
+            [...cfSlugs].sort((a, b) => a.slug.localeCompare(b.slug)),
+            [...mgSlugs].sort((a, b) => a.slug.localeCompare(b.slug)),
+          ];
         });
       }
 
@@ -710,9 +860,16 @@ export async function runDataParity(
           cf.getAllSermons(locale, { isDraftMode }),
           mg.getAllSermons(locale, { isDraftMode }),
         ]);
-        for (const s of [...cfAll, ...mgAll]) {
+        for (const s of cfAll) {
           if (isRecord(s) && typeof s.slug === "string") {
             discoveredSermonSlugs.add(s.slug);
+            cfSermonSlugsMode.add(s.slug);
+          }
+        }
+        for (const s of mgAll) {
+          if (isRecord(s) && typeof s.slug === "string") {
+            discoveredSermonSlugs.add(s.slug);
+            mgSermonSlugsMode.add(s.slug);
           }
         }
         return [cfAll, mgAll];
@@ -753,6 +910,13 @@ export async function runDataParity(
         }
       }
     }
+    discoveredCountsByMode[mode] = {
+      contentfulPosts: cfPostSlugsMode.size,
+      mongoPosts: mgPostSlugsMode.size,
+      contentfulSermons: cfSermonSlugsMode.size,
+      mongoSermons: mgSermonSlugsMode.size,
+      topicsChecked: topicsCheckedMode.size,
+    };
   }
 
   const passedChecks = checks.filter((c) => c.ok).length;
@@ -769,6 +933,15 @@ export async function runDataParity(
     ok: failedChecks === 0,
     checks,
     diffs,
+    reconciliation: {
+      ...(options.mongoMediaCount !== undefined && {
+        mongoMediaCount: options.mongoMediaCount,
+      }),
+      ...(options.mongoCollections !== undefined && {
+        mongoCollections: options.mongoCollections,
+      }),
+      discoveredCountsByMode,
+    },
   };
 }
 
@@ -784,7 +957,39 @@ export function formatDataParityReportMarkdown(
     `- **Started:** ${report.startedAt}`,
     `- **Completed:** ${report.completedAt}`,
     "",
+    "## Count Reconciliation",
+    "",
+    "| Mode | Contentful Posts | Mongo Posts | Contentful Sermons | Mongo Sermons | Topics Checked |",
+    "|---|---:|---:|---:|---:|---:|",
   ];
+
+  for (const [mode, counts] of Object.entries(
+    report.reconciliation.discoveredCountsByMode,
+  )) {
+    if (!counts) continue;
+    lines.push(
+      `| ${mode} | ${counts.contentfulPosts} | ${counts.mongoPosts} | ${counts.contentfulSermons} | ${counts.mongoSermons} | ${counts.topicsChecked} |`,
+    );
+  }
+  lines.push("");
+
+  if (report.reconciliation.mongoCollections) {
+    lines.push(
+      "### MongoDB Collections",
+      "",
+      ...(report.reconciliation.mongoMediaCount !== undefined
+        ? [`- Media records: **${report.reconciliation.mongoMediaCount}**`, ""]
+        : []),
+      "| Collection | Total | Published | Draft-Only |",
+      "|---|---:|---:|---:|",
+    );
+    for (const [col, c] of Object.entries(
+      report.reconciliation.mongoCollections,
+    ).sort(([a], [b]) => a.localeCompare(b))) {
+      lines.push(`| \`${col}\` | ${c.total} | ${c.published} | ${c.draftOnly} |`);
+    }
+    lines.push("");
+  }
 
   if (report.diffs.length > 0) {
     lines.push("## Differences", "");

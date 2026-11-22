@@ -49,6 +49,8 @@ export interface PlannedMediaGroup {
     readonly lookupKey: string;
     readonly sourceTag: string;
   }[];
+  /** All normalized Contentful CDN URLs mapped to this deduplicated `media` record. */
+  readonly sourceUrls: readonly string[];
   readonly filename: string;
   readonly contentType: string;
   readonly size: number;
@@ -80,6 +82,7 @@ export interface MediaLookup {
 
 export interface StoredImportedMediaDoc extends StoredMediaDoc {
   sourceContentfulIds?: string[];
+  sourceContentfulUrls?: string[];
 }
 
 function buildAssetTitle(
@@ -139,6 +142,7 @@ export function planMediaImport(
     readonly asset: ContentfulAsset;
     readonly file: SnapshotDownloadedAssetFile;
     readonly localeBinding?: Locale;
+    readonly sourceUrls: readonly string[];
     readonly title: Localized<string>;
   }
 
@@ -149,6 +153,14 @@ export function planMediaImport(
   );
 
   for (const asset of sortedAssets) {
+    // Skip archived CMA assets so fileless archived assets never trigger missingAssetFiles
+    if (
+      asset.sys.archivedVersion !== undefined &&
+      asset.sys.archivedVersion !== null
+    ) {
+      continue;
+    }
+
     const assetFiles = filesByAsset.get(asset.sys.id) ?? [];
     const esFile = assetFiles.find((f) => f.locale === "es-AR");
     const enFile = assetFiles.find((f) => f.locale === "en-US");
@@ -176,7 +188,12 @@ export function planMediaImport(
           sha256: esFile.sha256,
           locales: LOCALES,
         });
-        units.push({ asset, file: esFile, title });
+        units.push({
+          asset,
+          file: esFile,
+          sourceUrls: [...new Set([esFile.url, enFile.url])],
+          title,
+        });
       } else {
         splitLocaleAssets.push({
           assetId: asset.sys.id,
@@ -193,14 +210,27 @@ export function planMediaImport(
             },
           ],
         });
-        units.push({ asset, file: esFile, localeBinding: "es-AR", title });
-        units.push({ asset, file: enFile, localeBinding: "en-US", title });
+        units.push({
+          asset,
+          file: esFile,
+          localeBinding: "es-AR",
+          sourceUrls: [esFile.url],
+          title,
+        });
+        units.push({
+          asset,
+          file: enFile,
+          localeBinding: "en-US",
+          sourceUrls: [enFile.url],
+          title,
+        });
       }
     } else {
       units.push({
         asset,
         file: primaryFile,
         ...(esFile ? {} : { localeBinding: primaryFile.locale }),
+        sourceUrls: [primaryFile.url],
         title,
       });
     }
@@ -269,11 +299,16 @@ export function planMediaImport(
         : u.asset.sys.id,
     }));
 
+    const sourceUrls = [
+      ...new Set(groupUnits.flatMap((u) => u.sourceUrls)),
+    ].sort();
+
     groups.push({
       sha256,
       primaryFile: first.file,
       canonicalAssetId: first.asset.sys.id,
       bindings,
+      sourceUrls,
       filename: first.file.fileName,
       contentType,
       size: first.file.size,
@@ -328,7 +363,14 @@ export async function executeMediaImport(
   const existingDocs = await mediaCol
     .find(
       { sha256: { $in: plan.groups.map((g) => g.sha256) } },
-      { projection: { _id: 1, sha256: 1, sourceContentfulIds: 1 } },
+      {
+        projection: {
+          _id: 1,
+          sha256: 1,
+          sourceContentfulIds: 1,
+          sourceContentfulUrls: 1,
+        },
+      },
     )
     .toArray();
 
@@ -350,13 +392,11 @@ export async function executeMediaImport(
 
   for (const group of plan.groups) {
     const existing = existingBySha.get(group.sha256);
+    // Keep split-locale bindings strictly scoped to `assetId:locale` so ES/EN PDFs never collide!
     const desiredTags = [
-      ...new Set(
-        group.bindings.flatMap((b) =>
-          b.locale ? [b.sourceTag, b.assetId] : [b.assetId],
-        ),
-      ),
+      ...new Set(group.bindings.map((b) => b.sourceTag)),
     ].sort();
+    const desiredUrls = [...group.sourceUrls];
 
     let resolvedMediaId: string;
 
@@ -374,11 +414,18 @@ export async function executeMediaImport(
 
       const currentTags = new Set(existing.sourceContentfulIds ?? []);
       const missingTags = desiredTags.filter((tag) => !currentTags.has(tag));
-      if (missingTags.length > 0) {
-        await mediaCol.updateOne(
-          { _id: existing._id },
-          { $addToSet: { sourceContentfulIds: { $each: missingTags } } },
-        );
+      const currentUrls = new Set(existing.sourceContentfulUrls ?? []);
+      const missingUrls = desiredUrls.filter((url) => !currentUrls.has(url));
+
+      if (missingTags.length > 0 || missingUrls.length > 0) {
+        const $addToSet: Record<string, { $each: string[] }> = {};
+        if (missingTags.length > 0) {
+          $addToSet.sourceContentfulIds = { $each: missingTags };
+        }
+        if (missingUrls.length > 0) {
+          $addToSet.sourceContentfulUrls = { $each: missingUrls };
+        }
+        await mediaCol.updateOne({ _id: existing._id }, { $addToSet });
         metadataLinked += 1;
       }
     } else {
@@ -424,9 +471,15 @@ export async function executeMediaImport(
         uploadedBytes += bytes.byteLength;
       }
 
+      const $addToSet: Record<string, { $each: string[] }> = {
+        sourceContentfulIds: { $each: desiredTags },
+      };
+      if (desiredUrls.length > 0) {
+        $addToSet.sourceContentfulUrls = { $each: desiredUrls };
+      }
       await mediaCol.updateOne(
         { _id: new ObjectId(resolvedMediaId) },
-        { $addToSet: { sourceContentfulIds: { $each: desiredTags } } },
+        { $addToSet },
       );
       metadataLinked += 1;
     }

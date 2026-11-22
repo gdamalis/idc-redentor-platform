@@ -51,20 +51,38 @@ function makeInMemoryMediaDb() {
     },
     updateOne: async (
       filter: Record<string, unknown>,
-      update: { $addToSet?: { sourceContentfulIds?: { $each?: string[] } } },
+      update: {
+        $addToSet?: {
+          sourceContentfulIds?: { $each?: string[] };
+          sourceContentfulUrls?: { $each?: string[] };
+        };
+      },
     ) => {
       const target = docs.find((d) => matches(d, filter));
       if (!target) return { matchedCount: 0, modifiedCount: 0 };
-      const add = update.$addToSet?.sourceContentfulIds?.$each ?? [];
-      const current = new Set(target.sourceContentfulIds ?? []);
       let modified = 0;
-      for (const item of add) {
-        if (!current.has(item)) {
-          current.add(item);
-          modified = 1;
+      const addIds = update.$addToSet?.sourceContentfulIds?.$each ?? [];
+      if (addIds.length > 0) {
+        const current = new Set(target.sourceContentfulIds ?? []);
+        for (const item of addIds) {
+          if (!current.has(item)) {
+            current.add(item);
+            modified = 1;
+          }
         }
+        target.sourceContentfulIds = [...current];
       }
-      target.sourceContentfulIds = [...current];
+      const addUrls = update.$addToSet?.sourceContentfulUrls?.$each ?? [];
+      if (addUrls.length > 0) {
+        const current = new Set(target.sourceContentfulUrls ?? []);
+        for (const item of addUrls) {
+          if (!current.has(item)) {
+            current.add(item);
+            modified = 1;
+          }
+        }
+        target.sourceContentfulUrls = [...current];
+      }
       return { matchedCount: 1, modifiedCount: modified };
     },
   };
@@ -335,12 +353,23 @@ describe("planMediaImport & executeMediaImport (AC2, AC3, AC4)", () => {
     expect(audio2Id).toBeDefined();
     expect(audio1Id).not.toBe(audio2Id);
 
-    // Differing locale PDFs -> TWO distinct mediaIds per locale
+    // Differing locale PDFs -> TWO distinct mediaIds per locale, scoped tags & exact URLs (C1)
     const pdfEsId = first.lookup.resolveMediaId("asset-pdf-bilingual", "es-AR");
     const pdfEnId = first.lookup.resolveMediaId("asset-pdf-bilingual", "en-US");
     expect(pdfEsId).toBeDefined();
     expect(pdfEnId).toBeDefined();
     expect(pdfEsId).not.toBe(pdfEnId);
+
+    const pdfEsDoc = docs.find((d) => d._id.toHexString() === pdfEsId);
+    const pdfEnDoc = docs.find((d) => d._id.toHexString() === pdfEnId);
+    expect(pdfEsDoc?.sourceContentfulIds).toEqual(["asset-pdf-bilingual:es-AR"]);
+    expect(pdfEnDoc?.sourceContentfulIds).toEqual(["asset-pdf-bilingual:en-US"]);
+    expect(pdfEsDoc?.sourceContentfulUrls).toEqual([
+      "https://assets.ctfassets.net/s/asset-pdf-bilingual/1/predica.es-AR.pdf",
+    ]);
+    expect(pdfEnDoc?.sourceContentfulUrls).toEqual([
+      "https://assets.ctfassets.net/s/asset-pdf-bilingual/2/predica.en-US.pdf",
+    ]);
 
     // Image asset copies title -> alt and preserves original createdAt & width/height
     const logoDoc = docs.find((d) => d._id.toHexString() === first.lookup.resolveMediaId("asset-logo-1"));
@@ -350,6 +379,13 @@ describe("planMediaImport & executeMediaImport (AC2, AC3, AC4)", () => {
     expect(logoDoc?.createdAt.toISOString()).toBe("2025-01-10T10:00:00.000Z");
     expect(logoDoc?.sourceContentfulIds).toEqual(
       expect.arrayContaining(["asset-logo-1", "asset-logo-dup"]),
+    );
+    expect(logoDoc?.sourceContentfulUrls).toEqual(
+      expect.arrayContaining([
+        "https://images.ctfassets.net/s/asset-logo-1/1/redentor_logo.png",
+        "https://images.ctfassets.net/s/asset-logo-1/2/redentor_logo.png",
+        "https://images.ctfassets.net/s/asset-logo-dup/1/redentor_logo.png",
+      ]),
     );
 
     // Run 2: apply again -> ZERO uploads, ZERO metadata writes
@@ -386,5 +422,27 @@ describe("planMediaImport & executeMediaImport (AC2, AC3, AC4)", () => {
       "asset-logo-1",
       "asset-logo-dup",
     ]);
+  });
+
+  it("skips archived fileless CMA assets without reporting missingAssetFiles (C2)", () => {
+    const withArchivedAsset: ContentfulSnapshotManifest = {
+      ...manifest,
+      cmaAssets: [
+        ...manifest.cmaAssets,
+        {
+          sys: {
+            id: "asset-archived-fileless",
+            createdAt: "2024-01-01T00:00:00.000Z",
+            updatedAt: "2024-01-02T00:00:00.000Z",
+            archivedVersion: 1,
+          },
+          fields: { title: { "es-AR": "Archivo Archivado" } },
+        },
+      ],
+    };
+
+    const plan = planMediaImport(withArchivedAsset, new Set());
+    expect(plan.missingAssetFiles).toEqual([]);
+    expect(plan.groups).toHaveLength(6);
   });
 });

@@ -4,6 +4,7 @@ import {
   CONTENT_SCHEMAS,
   GLOBAL_KIND,
   extractReferences,
+  isEmptyValue,
   type AuthorFields,
   type BeliefCollectionFields,
   type BeliefItemFields,
@@ -1225,7 +1226,7 @@ export function planContentImport(
       return snap?.name;
     };
 
-    const preacherName = getAuthorName(fields.preacherId);
+    const preacherName = getAuthorName(fields.preacherId) ?? "";
     const additionalPreacherNames = (fields.additionalPreacherIds ?? [])
       .map((id) => getAuthorName(id))
       .filter((name): name is string => typeof name === "string" && name.length > 0);
@@ -1240,27 +1241,44 @@ export function planContentImport(
             : entry?.draft;
         if (!verse) continue;
         scriptureReferences.push({
-          book: verse.book?.[locale] ?? verse.book?.["es-AR"] ?? "",
+          book:
+            locale === "es-AR"
+              ? (verse.book?.["es-AR"] ?? "")
+              : (verse.book?.["en-US"] ?? verse.book?.["es-AR"] ?? ""),
           chapter: verse.chapter,
           fromVerse: verse.fromVerse,
           toVerse: verse.toVerse ?? null,
-          verseContent: verse.text?.[locale] ?? verse.text?.["es-AR"] ?? "",
+          verseContent:
+            locale === "es-AR"
+              ? (verse.text?.["es-AR"] ?? "")
+              : (verse.text?.["en-US"] ?? verse.text?.["es-AR"] ?? ""),
         });
       }
 
       return {
-        title: fields.title?.[locale] ?? fields.title?.["es-AR"] ?? "",
+        title:
+          locale === "es-AR"
+            ? (fields.title?.["es-AR"] ?? "")
+            : (fields.title?.["en-US"] ?? fields.title?.["es-AR"] ?? ""),
         sermonDate: fields.sermonDate ?? "",
-        content: fields.content?.[locale] ?? fields.content?.["es-AR"] ?? null,
+        content:
+          locale === "es-AR"
+            ? (fields.content?.["es-AR"] ?? null)
+            : (fields.content?.["en-US"] ?? fields.content?.["es-AR"] ?? null),
         scriptureReferences,
         preacherName,
         additionalPreacherNames,
       };
     };
 
+    // Aligns with ICR-200 `hasEnglishPdfContent`: Spanish-only drafts pass `undefined` for en-US
+    const hasEn =
+      !isEmptyValue(fields.content?.["en-US"]) ||
+      !isEmptyValue(fields.title?.["en-US"]);
+
     return computeTipTapSermonContentHash(
       buildLocaleInput("es-AR"),
-      buildLocaleInput("en-US"),
+      hasEn ? buildLocaleInput("en-US") : undefined,
     );
   };
 

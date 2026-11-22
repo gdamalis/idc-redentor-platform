@@ -1,3 +1,4 @@
+import { inflateSync } from "node:zlib";
 import type { Locale } from "@idcr/content";
 import { assertSafeParityBaseUrl } from "./host-guard";
 import {
@@ -119,11 +120,190 @@ function findFirstHtmlDiff(a: string, b: string): HtmlDiffSnippet | undefined {
   };
 }
 
+interface DecodedPng {
+  readonly width: number;
+  readonly height: number;
+  readonly rgba: Uint8Array;
+}
+
+const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+
+function paethPredictor(a: number, b: number, c: number): number {
+  const p = a + b - c;
+  const pa = Math.abs(p - a);
+  const pb = Math.abs(p - b);
+  const pc = Math.abs(p - c);
+  if (pa <= pb && pa <= pc) return a;
+  if (pb <= pc) return b;
+  return c;
+}
+
+/**
+ * Pure zero-dependency 8-bit PNG decoder (`node:zlib` `inflateSync` + standard
+ * PNG scanline unfiltering) for Playwright screenshot pixel comparison.
+ */
+function decodePngToRgba(buf: Buffer): DecodedPng | null {
+  if (buf.length < 33 || !buf.subarray(0, 8).equals(PNG_SIGNATURE)) {
+    return null;
+  }
+
+  let width = 0;
+  let height = 0;
+  let bitDepth = 0;
+  let colorType = 0;
+  const idatChunks: Buffer[] = [];
+
+  let offset = 8;
+  while (offset + 12 <= buf.length) {
+    const length = buf.readUInt32BE(offset);
+    const type = buf.subarray(offset + 4, offset + 8).toString("ascii");
+    const dataStart = offset + 8;
+    const dataEnd = dataStart + length;
+    if (dataEnd + 4 > buf.length) return null;
+
+    if (type === "IHDR" && length >= 13) {
+      width = buf.readUInt32BE(dataStart);
+      height = buf.readUInt32BE(dataStart + 4);
+      bitDepth = buf[dataStart + 8]!;
+      colorType = buf[dataStart + 9]!;
+      const interlace = buf[dataStart + 12]!;
+      if (bitDepth !== 8 || interlace !== 0) return null;
+    } else if (type === "IDAT") {
+      idatChunks.push(buf.subarray(dataStart, dataEnd));
+    } else if (type === "IEND") {
+      break;
+    }
+
+    offset = dataEnd + 4;
+  }
+
+  if (width <= 0 || height <= 0 || idatChunks.length === 0) return null;
+
+  const channels =
+    colorType === 6 ? 4 : colorType === 2 ? 3 : colorType === 4 ? 2 : colorType === 0 ? 1 : 0;
+  if (channels === 0) return null;
+
+  const inflated = inflateSync(Buffer.concat(idatChunks));
+  const stride = width * channels;
+  if (inflated.length < height * (stride + 1)) return null;
+
+  const raw = new Uint8Array(height * stride);
+  for (let y = 0; y < height; y += 1) {
+    const filter = inflated[y * (stride + 1)]!;
+    const srcRow = y * (stride + 1) + 1;
+    const dstRow = y * stride;
+    for (let x = 0; x < stride; x += 1) {
+      const byte = inflated[srcRow + x]!;
+      const a = x >= channels ? raw[dstRow + x - channels]! : 0;
+      const b = y > 0 ? raw[dstRow - stride + x]! : 0;
+      const c = y > 0 && x >= channels ? raw[dstRow - stride + x - channels]! : 0;
+      let val: number;
+      if (filter === 0) val = byte;
+      else if (filter === 1) val = (byte + a) & 0xff;
+      else if (filter === 2) val = (byte + b) & 0xff;
+      else if (filter === 3) val = (byte + ((a + b) >> 1)) & 0xff;
+      else if (filter === 4) val = (byte + paethPredictor(a, b, c)) & 0xff;
+      else return null;
+      raw[dstRow + x] = val;
+    }
+  }
+
+  const rgba = new Uint8Array(width * height * 4);
+  for (let i = 0; i < width * height; i += 1) {
+    const dst = i * 4;
+    if (channels === 4) {
+      rgba[dst] = raw[dst]!;
+      rgba[dst + 1] = raw[dst + 1]!;
+      rgba[dst + 2] = raw[dst + 2]!;
+      rgba[dst + 3] = raw[dst + 3]!;
+    } else if (channels === 3) {
+      const src = i * 3;
+      rgba[dst] = raw[src]!;
+      rgba[dst + 1] = raw[src + 1]!;
+      rgba[dst + 2] = raw[src + 2]!;
+      rgba[dst + 3] = 255;
+    } else if (channels === 2) {
+      const src = i * 2;
+      rgba[dst] = raw[src]!;
+      rgba[dst + 1] = raw[src]!;
+      rgba[dst + 2] = raw[src]!;
+      rgba[dst + 3] = raw[src + 1]!;
+    } else {
+      rgba[dst] = raw[i]!;
+      rgba[dst + 1] = raw[i]!;
+      rgba[dst + 2] = raw[i]!;
+      rgba[dst + 3] = 255;
+    }
+  }
+
+  return { width, height, rgba };
+}
+
+/**
+ * Compares two PNG screenshots on decoded RGBA pixels (`differingPixels / totalPixels`)
+ * instead of compressed PNG bytes (where a single pixel shifts ~99% of DEFLATE bytes).
+ */
+export function comparePngPixels(
+  bufA: Buffer,
+  bufB: Buffer,
+  channelTolerance = 2,
+): { readonly byteEqual: boolean; readonly diffRatio: number } {
+  if (bufA.equals(bufB)) {
+    return { byteEqual: true, diffRatio: 0 };
+  }
+
+  const imgA = decodePngToRgba(bufA);
+  const imgB = decodePngToRgba(bufB);
+  if (!imgA || !imgB) {
+    return { byteEqual: false, diffRatio: 1 };
+  }
+
+  const maxWidth = Math.max(imgA.width, imgB.width);
+  const maxHeight = Math.max(imgA.height, imgB.height);
+  const totalPixels = Math.max(maxWidth * maxHeight, 1);
+  let differingPixels = 0;
+
+  for (let y = 0; y < maxHeight; y += 1) {
+    for (let x = 0; x < maxWidth; x += 1) {
+      if (
+        x >= imgA.width ||
+        y >= imgA.height ||
+        x >= imgB.width ||
+        y >= imgB.height
+      ) {
+        differingPixels += 1;
+        continue;
+      }
+      const idxA = (y * imgA.width + x) * 4;
+      const idxB = (y * imgB.width + x) * 4;
+      const dr = Math.abs(imgA.rgba[idxA]! - imgB.rgba[idxB]!);
+      const dg = Math.abs(imgA.rgba[idxA + 1]! - imgB.rgba[idxB + 1]!);
+      const db = Math.abs(imgA.rgba[idxA + 2]! - imgB.rgba[idxB + 2]!);
+      const da = Math.abs(imgA.rgba[idxA + 3]! - imgB.rgba[idxB + 3]!);
+      if (
+        dr > channelTolerance ||
+        dg > channelTolerance ||
+        db > channelTolerance ||
+        da > channelTolerance
+      ) {
+        differingPixels += 1;
+      }
+    }
+  }
+
+  return {
+    byteEqual: false,
+    diffRatio: differingPixels / totalPixels,
+  };
+}
+
 async function runPlaywrightScreenshots(
   baseUrlA: string,
   baseUrlB: string,
   routes: readonly string[],
   threshold: number,
+  headersA?: Readonly<Record<string, string>>,
+  headersB?: Readonly<Record<string, string>>,
 ): Promise<ScreenshotParityResult[]> {
   if (routes.length === 0) return [];
 
@@ -132,26 +312,49 @@ async function runPlaywrightScreenshots(
   const results: ScreenshotParityResult[] = [];
 
   try {
-    const context = await browser.newContext({
-      viewport: { width: 1280, height: 800 },
-      reducedMotion: "reduce",
-    });
+    const createContext = async (
+      extraHTTPHeaders?: Readonly<Record<string, string>>,
+    ) => {
+      const ctx = await browser.newContext({
+        viewport: { width: 1280, height: 800 },
+        reducedMotion: "reduce",
+        ...(extraHTTPHeaders ? { extraHTTPHeaders: { ...extraHTTPHeaders } } : {}),
+      });
+      // Suppress ConsentBanner deterministically BEFORE navigation (`apps/web/src/lib/consent.ts:1`)
+      await ctx.addInitScript(() => {
+        try {
+          window.localStorage.setItem("analytics-consent", "denied");
+        } catch {
+          // ignore storage errors on opaque origins
+        }
+      });
+      return ctx;
+    };
 
-    const capture = async (url: string): Promise<Buffer> => {
+    const [contextA, contextB] = await Promise.all([
+      createContext(headersA),
+      createContext(headersB),
+    ]);
+
+    const capture = async (
+      context: Awaited<ReturnType<typeof browser.newContext>>,
+      url: string,
+    ): Promise<Buffer> => {
       const page = await context.newPage();
       try {
         await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
-        // Dismiss consent banner if present so screenshots stay deterministic
+        // Fallback click if a consent banner still renders with localized copy
         const consentBtn = page
           .locator(
-            'button:has-text("Aceptar"), button:has-text("Accept"), button:has-text("Entendido")',
+            'button:has-text("Prefiero que no"), button:has-text("I\'d rather not"), button:has-text("Está bien"), button:has-text("That\'s fine")',
           )
           .first();
-        if (await consentBtn.isVisible({ timeout: 1_000 }).catch(() => false)) {
+        if (await consentBtn.isVisible({ timeout: 500 }).catch(() => false)) {
           await consentBtn.click().catch(() => {});
         }
         const masks = [
           page.locator('iframe[src*="google.com/maps"]'),
+          page.locator("div:has(> audio)"),
           page.locator("audio"),
           page.locator('[data-testid="sermon-audio-player"]'),
         ];
@@ -168,29 +371,17 @@ async function runPlaywrightScreenshots(
     for (const route of routes) {
       try {
         const [bufA, bufB] = await Promise.all([
-          capture(`${baseUrlA}${route}`),
-          capture(`${baseUrlB}${route}`),
+          capture(contextA, `${baseUrlA}${route}`),
+          capture(contextB, `${baseUrlB}${route}`),
         ]);
-        const byteEqual = bufA.equals(bufB);
-        if (byteEqual) {
-          results.push({ route, ok: true, byteEqual: true, diffRatio: 0 });
-          continue;
-        }
-        // Compute byte-level divergence ratio as conservative upper bound when PNGs differ
-        const maxLen = Math.max(bufA.length, bufB.length, 1);
-        const minLen = Math.min(bufA.length, bufB.length);
-        let differingBytes = Math.abs(bufA.length - bufB.length);
-        for (let i = 0; i < minLen; i += 1) {
-          if (bufA[i] !== bufB[i]) differingBytes += 1;
-        }
-        const diffRatio = differingBytes / maxLen;
+        const { byteEqual, diffRatio } = comparePngPixels(bufA, bufB);
         results.push({
           route,
           ok: diffRatio <= threshold,
-          byteEqual: false,
+          byteEqual,
           diffRatio,
           ...(diffRatio > threshold && {
-            reason: `Screenshot diff ratio ${(diffRatio * 100).toFixed(2)}% exceeded threshold ${(threshold * 100).toFixed(2)}%`,
+            reason: `Screenshot pixel diff ratio ${(diffRatio * 100).toFixed(2)}% exceeded threshold ${(threshold * 100).toFixed(2)}%`,
           }),
         });
       } catch (err) {
@@ -204,7 +395,7 @@ async function runPlaywrightScreenshots(
       }
     }
 
-    await context.close();
+    await Promise.all([contextA.close(), contextB.close()]);
   } finally {
     await browser.close();
   }
@@ -282,6 +473,8 @@ export async function runPageParity(
     baseUrlB,
     options.screenshotRoutes ?? [],
     options.screenshotDiffThreshold ?? 0.005,
+    options.headersA,
+    options.headersB,
   );
 
   const passedRoutes = routes.filter((r) => r.ok).length;

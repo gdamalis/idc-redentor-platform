@@ -15,7 +15,7 @@ import {
   ensureMediaIndexes,
   type MediaServiceDeps,
 } from "@src/service/media/media.service";
-import { validateImportTargetDb } from "./guards";
+import { validateImportBlobStore, validateImportTargetDb } from "./guards";
 import { executeMediaImport, planMediaImport } from "./media-import";
 import {
   collectReferencedAssetIds,
@@ -41,6 +41,7 @@ export interface ImporterDeps {
     db: Db,
   ) => Promise<void>;
   readonly ensureMediaIndexesFn?: (db: Db) => Promise<void>;
+  readonly blobReadWriteToken?: string | undefined;
   readonly now?: () => Date;
 }
 
@@ -98,7 +99,26 @@ export async function runContentfulImport(
     allowTestDb: options.allowTestDb,
   });
 
-  if (!guard.ok) {
+  const blobToken =
+    "blobReadWriteToken" in deps
+      ? deps.blobReadWriteToken
+      : process.env.BLOB_READ_WRITE_TOKEN;
+
+  const blobGuard = guard.ok
+    ? validateImportBlobStore(blobToken, {
+        apply,
+        isProd: guard.isProd,
+        allowProd: options.allowProd,
+        requireTokenOnApply: deps.createServerMediaFn === undefined,
+      })
+    : null;
+
+  if (!guard.ok || (blobGuard && !blobGuard.ok)) {
+    const refusalReason = !guard.ok
+      ? guard.reason
+      : blobGuard && !blobGuard.ok
+        ? blobGuard.reason
+        : "Refused by target guard";
     return {
       mode: apply ? "apply" : "dry-run",
       targetDatabase: db.databaseName,
@@ -106,7 +126,7 @@ export async function runContentfulImport(
       startedAt,
       completedAt: (deps.now ?? (() => new Date()))().toISOString(),
       ok: false,
-      errors: [guard.reason],
+      errors: [refusalReason],
       countsByContentType: {},
       countsByCollection: {},
       media: {

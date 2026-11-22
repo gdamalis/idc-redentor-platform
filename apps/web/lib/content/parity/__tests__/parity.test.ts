@@ -6,6 +6,7 @@ import type { RichTextView } from "@idcr/content";
 import {
   assertSafeParityBaseUrl,
   buildParityRouteInventory,
+  comparePngPixels,
   createMediaIdentityMap,
   formatDataParityReportMarkdown,
   formatPageParityReportMarkdown,
@@ -148,6 +149,42 @@ describe("normalizeHtmlForPageParity & media identity mapping (F-C3)", () => {
       mediaMap,
     );
     expect(res.equal).toBe(true);
+
+    // Profile-disallowed heading in `sectionDescription` (inline profile) MUST drop to "" (C3)
+    const cfWithHeading = {
+      json: {
+        nodeType: "document" as const,
+        data: {},
+        content: [
+          {
+            nodeType: "heading-2" as const,
+            data: {},
+            content: [{ nodeType: "text" as const, value: "Should Drop", marks: [], data: {} }],
+          },
+        ],
+      },
+    };
+    const mongoWithHeading: RichTextView = {
+      doc: {
+        type: "doc",
+        content: [
+          {
+            type: "heading",
+            attrs: { level: 2 },
+            content: [{ type: "text", text: "Should Drop" }],
+          },
+        ],
+      },
+      media: {},
+    };
+    const inlineCheck = renderRichTextPairForParity(
+      cfWithHeading as never,
+      mongoWithHeading,
+      "sectionDescription",
+      mediaMap,
+    );
+    expect(inlineCheck.mongoHtml).toBe("");
+    expect(inlineCheck.equal).toBe(false);
   });
 });
 
@@ -161,6 +198,24 @@ describe("runDataParity mode-matched comparison (AC7)", () => {
       ],
       contentfulAssetIds: ["cfImg1"],
       mongoMediaIds: ["670000000000000000000001"],
+    },
+    {
+      // Split-locale bilingual sermon PDF (es-AR) mapped by exact Contentful CDN URL (C1)
+      canonicalKey: "pdf-sha-es",
+      urls: [
+        "https://assets.ctfassets.net/s/cfPdfBilingual/es-hash/predica.es-AR.pdf",
+        "https://store.public.blob.vercel-storage.com/media/670000000000000000000002/predica-es.pdf",
+      ],
+      mongoMediaIds: ["670000000000000000000002"],
+    },
+    {
+      // Split-locale bilingual sermon PDF (en-US) mapped by exact Contentful CDN URL (C1)
+      canonicalKey: "pdf-sha-en",
+      urls: [
+        "https://assets.ctfassets.net/s/cfPdfBilingual/en-hash/predica.en-US.pdf",
+        "https://store.public.blob.vercel-storage.com/media/670000000000000000000003/predica-en.pdf",
+      ],
+      mongoMediaIds: ["670000000000000000000003"],
     },
   ]);
 
@@ -176,11 +231,30 @@ describe("runDataParity mode-matched comparison (AC7)", () => {
     ["cf-coll", "670000000000000000000018"],
   ]);
 
-  function makeReaders(kind: "cf" | "mongo", tamperTitle?: string): ParityReaders {
+  function makeReaders(
+    kind: "cf" | "mongo",
+    options: { readonly tamperTitle?: string; readonly swapBilingualPdf?: boolean } = {},
+  ): ParityReaders {
     const imgUrl =
       kind === "cf"
         ? "https://images.ctfassets.net/s/cfImg1/h/img.jpg"
         : "https://store.public.blob.vercel-storage.com/media/670000000000000000000001/img.jpg";
+    const pdfUrl = (locale: string) => {
+      const effectiveLocale =
+        options.swapBilingualPdf && kind === "mongo"
+          ? locale === "es-AR"
+            ? "en-US"
+            : "es-AR"
+          : locale;
+      if (kind === "cf") {
+        return effectiveLocale === "es-AR"
+          ? "https://assets.ctfassets.net/s/cfPdfBilingual/es-hash/predica.es-AR.pdf"
+          : "https://assets.ctfassets.net/s/cfPdfBilingual/en-hash/predica.en-US.pdf";
+      }
+      return effectiveLocale === "es-AR"
+        ? "https://store.public.blob.vercel-storage.com/media/670000000000000000000002/predica-es.pdf"
+        : "https://store.public.blob.vercel-storage.com/media/670000000000000000000003/predica-en.pdf";
+    };
     const id = (cfId: string) =>
       kind === "cf" ? cfId : entryIdByContentfulId.get(cfId) ?? cfId;
     const rt = (text: string) =>
@@ -208,12 +282,22 @@ describe("runDataParity mode-matched comparison (AC7)", () => {
             media: {},
           };
 
-    const makeSermon = (slug: string, cfId: string) => ({
-      title: slug === "predica-1" && tamperTitle ? tamperTitle : `Título ${slug}`,
+    const makeSermon = (slug: string, cfId: string, locale: string) => ({
+      title:
+        slug === "predica-1" && options.tamperTitle
+          ? options.tamperTitle
+          : `Título ${slug}`,
       slug,
       sermonDate: "2026-07-01",
+      // Nullable GraphQL draft fields vs Mongo "" / [] defaults (C3)
+      thesis: slug === "borrador-julio" ? (kind === "cf" ? null : "") : "Tesis",
+      keywords: kind === "cf" ? null : [],
       content: rt(`Cuerpo ${slug}`),
       featuredImage: { url: imgUrl, title: "Img" },
+      pdfSummary: {
+        url: pdfUrl(locale),
+        title: locale === "es-AR" ? "Resumen" : "Summary",
+      },
       sys: { id: id(cfId), publishedAt: "2026-07-01T12:00:00.000Z" },
     });
 
@@ -263,7 +347,16 @@ describe("runDataParity mode-matched comparison (AC7)", () => {
       getContactForm: async () => ({
         title: "Contacto",
         agreementNote: rt("Acepto"),
-        formFields: [],
+        formFields: [
+          {
+            inputId: "name",
+            type: "Short text",
+            required: true,
+            name: "Nombre",
+            placeholder: kind === "cf" ? null : "",
+            values: kind === "cf" ? null : [],
+          },
+        ],
       }),
       getEventBanner: async () => ({
         eventInfo: { name: "Culto", dayOfWeek: "Domingo", time: "17:00" },
@@ -300,38 +393,48 @@ describe("runDataParity mode-matched comparison (AC7)", () => {
         body: rt("Texto legal"),
         sys: { id: id("cf-topic-priv"), publishedAt: "2026-05-01T00:00:00.000Z" },
       }),
-      getAllSermonSlugs: async () => [
-        { slug: "predica-1", updatedAt: "2026-07-01T12:00:00.000Z" },
-      ],
-      getAllSermons: async (_locale, opts) =>
+      getAllSermonSlugs: async () =>
+        // Reverse order on CF vs Mongo to prove unordered sitemap slug comparison sorts by slug (C3)
+        kind === "cf"
+          ? [
+              { slug: "predica-1", updatedAt: "2026-07-01T12:00:00.000Z" },
+              { slug: "predica-0", updatedAt: "2026-06-01T12:00:00.000Z" },
+            ]
+          : [
+              { slug: "predica-0", updatedAt: "2026-06-01T12:00:00.000Z" },
+              { slug: "predica-1", updatedAt: "2026-07-01T12:00:00.000Z" },
+            ],
+      getAllSermons: async (locale, opts) =>
         opts?.isDraftMode
           ? [
-              makeSermon("predica-1", "cf-sermon-pub"),
-              makeSermon("borrador-julio", "cf-sermon-draft"),
+              makeSermon("predica-1", "cf-sermon-pub", locale),
+              makeSermon("borrador-julio", "cf-sermon-draft", locale),
             ]
-          : [makeSermon("predica-1", "cf-sermon-pub")],
-      getLatestSermons: async (_locale, opts) =>
+          : [makeSermon("predica-1", "cf-sermon-pub", locale)],
+      getLatestSermons: async (locale, opts) =>
         opts?.isDraftMode
           ? [
-              makeSermon("predica-1", "cf-sermon-pub"),
-              makeSermon("borrador-julio", "cf-sermon-draft"),
+              makeSermon("predica-1", "cf-sermon-pub", locale),
+              makeSermon("borrador-julio", "cf-sermon-draft", locale),
             ]
-          : [makeSermon("predica-1", "cf-sermon-pub")],
-      getSermon: async (slug) =>
+          : [makeSermon("predica-1", "cf-sermon-pub", locale)],
+      getSermon: async (slug, locale) =>
         slug === "borrador-julio"
-          ? makeSermon("borrador-julio", "cf-sermon-draft")
-          : makeSermon("predica-1", "cf-sermon-pub"),
-      getSermonById: async (reqId) =>
+          ? makeSermon("borrador-julio", "cf-sermon-draft", locale)
+          : makeSermon(slug, "cf-sermon-pub", locale),
+      getSermonById: async (reqId, locale) =>
         reqId === id("cf-sermon-draft")
-          ? makeSermon("borrador-julio", "cf-sermon-draft")
-          : makeSermon("predica-1", "cf-sermon-pub"),
+          ? makeSermon("borrador-julio", "cf-sermon-draft", locale)
+          : makeSermon("predica-1", "cf-sermon-pub", locale),
     };
   }
 
-  it("reports 0 diffs across all readers in published & draft modes and both locales", async () => {
+  it("reports 0 diffs across all readers (incl. mapContentCollection, split-locale PDFs, nullable GraphQL fields & reconciliation)", async () => {
     const report = await runDataParity({
       mediaMap,
       entryIdByContentfulId,
+      mongoMediaCount: 3,
+      mongoCollections: { sermons: { total: 2, published: 1, draftOnly: 1 } },
       contentfulReaders: makeReaders("cf"),
       mongoReaders: makeReaders("mongo"),
     });
@@ -339,26 +442,43 @@ describe("runDataParity mode-matched comparison (AC7)", () => {
     expect(report.ok).toBe(true);
     expect(report.totalDiffs).toBe(0);
     expect(report.totalChecks).toBeGreaterThan(80);
-    expect(formatDataParityReportMarkdown(report)).toContain("PASS (0 diffs)");
+    expect(
+      report.checks.some((c) => c.check.startsWith("mapContentCollection(")),
+    ).toBe(true);
+    expect(report.reconciliation.mongoMediaCount).toBe(3);
+    const md = formatDataParityReportMarkdown(report);
+    expect(md).toContain("PASS (0 diffs)");
+    expect(md).toContain("## Count Reconciliation");
   });
 
-  it("detects and reports a planted difference cleanly", async () => {
+  it("detects both a planted title diff and swapped bilingual ES/EN sermon PDFs (C1)", async () => {
     const report = await runDataParity({
       modes: ["published"],
       locales: ["es-AR"],
       mediaMap,
       entryIdByContentfulId,
       contentfulReaders: makeReaders("cf"),
-      mongoReaders: makeReaders("mongo", "Título Alterado"),
+      mongoReaders: makeReaders("mongo", {
+        tamperTitle: "Título Alterado",
+        swapBilingualPdf: true,
+      }),
     });
 
     expect(report.ok).toBe(false);
-    expect(report.totalDiffs).toBeGreaterThan(0);
     expect(
       report.diffs.some(
         (d) =>
           d.check === "getSermon(predica-1)" &&
           d.mongoValue === "Título Alterado",
+      ),
+    ).toBe(true);
+    expect(
+      report.diffs.some(
+        (d) =>
+          d.check === "getSermon(predica-1)" &&
+          d.path === "$.pdfSummary.url" &&
+          d.contentfulValue === "media:pdf-sha-es" &&
+          d.mongoValue === "media:pdf-sha-en",
       ),
     ).toBe(true);
   });
@@ -435,4 +555,56 @@ describe("runPageParity against local HTTP server (AC8)", () => {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
   });
+
+  it("computes true decoded-pixel diffRatio on Playwright screenshots: stable self-compare + planted visual diff (C4)", async () => {
+    let plantVisualDiff = false;
+    const server = http.createServer((req, res) => {
+      const isVariantB = req.headers["x-variant"] === "B";
+      const bg = plantVisualDiff && isVariantB ? "#dc2626" : "#ffffff";
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(
+        `<!doctype html><html><body style="margin:0;background:${bg};height:400px"><main style="padding:32px;font-family:sans-serif"><h1>Iglesia Demo</h1></main></body></html>`,
+      );
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const { port } = server.address() as AddressInfo;
+    const baseUrl = `http://127.0.0.1:${port}`;
+
+    try {
+      // Self-comparison with Playwright screenshots -> 0% pixel diff
+      const selfShot = await runPageParity({
+        baseUrlA: baseUrl,
+        baseUrlB: baseUrl,
+        routes: ["/es-AR"],
+        screenshotRoutes: ["/es-AR"],
+      });
+      expect(selfShot.ok).toBe(true);
+      expect(selfShot.screenshots).toHaveLength(1);
+      expect(selfShot.screenshots[0]?.ok).toBe(true);
+      expect(selfShot.screenshots[0]?.diffRatio).toBe(0);
+
+      // Planted full-page visual difference -> high decoded pixel diffRatio caught cleanly
+      plantVisualDiff = true;
+      const diffShot = await runPageParity({
+        baseUrlA: baseUrl,
+        baseUrlB: baseUrl,
+        headersA: { "x-variant": "A" },
+        headersB: { "x-variant": "B" },
+        routes: ["/es-AR"],
+        screenshotRoutes: ["/es-AR"],
+        screenshotDiffThreshold: 0.005,
+      });
+      expect(diffShot.ok).toBe(false);
+      expect(diffShot.screenshots[0]?.ok).toBe(false);
+      expect(diffShot.screenshots[0]?.diffRatio).toBeGreaterThan(0.5);
+
+      // Invalid PNG buffers fail closed to diffRatio = 1
+      expect(
+        comparePngPixels(Buffer.from("not-a-png-a"), Buffer.from("not-a-png-b")),
+      ).toEqual({ byteEqual: false, diffRatio: 1 });
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  }, 30_000);
 });

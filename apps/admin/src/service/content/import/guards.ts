@@ -74,6 +74,82 @@ export function validateImportTargetDb(
   return { ok: true, dbName, isProd: false };
 }
 
+export const BLOB_STORE_IDS = {
+  /** Production Vercel Blob store `idcr-media` (`store_84ITqLAkqBDRwxYo`). */
+  production: "84itqlakqbdrwxyo",
+  /** Staging Vercel Blob store `idcr-media-staging` (`store_KmIXa14hB4dGuVjF`). */
+  staging: "kmixa14hb4dguvjf",
+} as const;
+
+const BLOB_TOKEN_STORE_RE = /^vercel_blob_rw_([a-z0-9]+)_/i;
+
+/**
+ * Extracts ONLY the non-secret public store ID segment from a Vercel Blob
+ * read-write token (`vercel_blob_rw_<storeId>_<secret>`). Never returns or
+ * exposes any secret characters.
+ */
+export function extractBlobStoreId(
+  token: string | null | undefined,
+): string | null {
+  if (typeof token !== "string") return null;
+  const match = BLOB_TOKEN_STORE_RE.exec(token.trim());
+  return match?.[1] ? match[1].toLowerCase() : null;
+}
+
+export type BlobStoreGuardResult =
+  | { readonly ok: true; readonly storeId: string | null }
+  | { readonly ok: false; readonly reason: string };
+
+/**
+ * Fail-closed Vercel Blob store guard (`ICR-203` C2):
+ * - Refuses production store `idcr-media` unless BOTH `isProd` and `allowProd` are true
+ *   (checked even on dry-run whenever `BLOB_READ_WRITE_TOKEN` is set).
+ * - Refuses staging store `idcr-media-staging` when targeting production DB `"website"`.
+ * - Never includes any token characters in error messages.
+ */
+export function validateImportBlobStore(
+  blobToken: string | null | undefined,
+  options: {
+    readonly apply: boolean;
+    readonly isProd: boolean;
+    readonly allowProd?: boolean;
+    readonly requireTokenOnApply?: boolean;
+  },
+): BlobStoreGuardResult {
+  const trimmed = (blobToken ?? "").trim();
+  if (!trimmed) {
+    if (options.apply && options.requireTokenOnApply !== false) {
+      return {
+        ok: false,
+        reason:
+          "Refusing --apply: BLOB_READ_WRITE_TOKEN is required to upload media assets.",
+      };
+    }
+    return { ok: true, storeId: null };
+  }
+
+  const storeId = extractBlobStoreId(trimmed);
+  if (storeId === BLOB_STORE_IDS.production) {
+    if (!(options.allowProd && options.isProd)) {
+      return {
+        ok: false,
+        reason:
+          'Refusing production Vercel Blob store ("idcr-media") without --prod against production database "website".',
+      };
+    }
+  }
+
+  if (storeId === BLOB_STORE_IDS.staging && options.isProd) {
+    return {
+      ok: false,
+      reason:
+        'Refusing staging Vercel Blob store ("idcr-media-staging") while targeting production database "website".',
+    };
+  }
+
+  return { ok: true, storeId };
+}
+
 /**
  * Normalizes Contentful protocol-relative URLs (`//images.ctfassets.net/...`)
  * returned by CMA to `https://...` while leaving absolute URLs untouched.
