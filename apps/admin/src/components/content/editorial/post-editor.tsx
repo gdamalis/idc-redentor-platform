@@ -35,6 +35,7 @@ import {
   POST_CATEGORY_MESSAGE_KEYS,
   extractPlainTextFromRichText,
   isAllowedPostCategory,
+  toPlainRichTextDoc,
 } from "@src/service/content/editorial/editorial-rules";
 import type {
   AuthorSummary,
@@ -319,16 +320,17 @@ export function PostEditor({
                   form.markLossyField(`content.${activeLocale}`, lossy)
                 }
                 onChange={(nextDoc) => {
+                  const plainDoc = toPlainRichTextDoc(nextDoc);
                   const nextEs =
                     activeLocale === "es-AR"
-                      ? nextDoc
+                      ? plainDoc
                       : (values.content?.["es-AR"] ?? {
                           type: "doc",
                           content: [{ type: "paragraph" }],
                         });
                   const nextEn =
                     activeLocale === "en-US"
-                      ? nextDoc
+                      ? plainDoc
                       : values.content?.["en-US"];
                   form.setField("content", {
                     "es-AR": nextEs,
@@ -349,7 +351,7 @@ export function PostEditor({
                     ? () =>
                         form.setField("content", {
                           "es-AR": values.content!["es-AR"],
-                          "en-US": structuredClone(values.content!["es-AR"]),
+                          "en-US": toPlainRichTextDoc(values.content!["es-AR"]),
                         })
                     : undefined
                 }

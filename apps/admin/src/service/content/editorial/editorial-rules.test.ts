@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { POST_CATEGORIES, SITE_PAGE_SLUGS } from "@idcr/content";
+import {
+  POST_CATEGORIES,
+  SITE_PAGE_SLUGS,
+  type RichTextDoc,
+} from "@idcr/content";
 import {
   POST_CATEGORY_MESSAGE_KEYS,
   RESERVED_TOPIC_SLUGS,
@@ -10,6 +14,7 @@ import {
   normalizeKeywords,
   normalizeOptionalString,
   resolvePublicLiveUrl,
+  toPlainRichTextDoc,
 } from "./editorial-rules";
 
 describe("editorial-rules", () => {
@@ -126,5 +131,46 @@ describe("editorial-rules", () => {
         baseUrl: "https://staging.idcredentor.org",
       }),
     ).toBeUndefined();
+  });
+
+  it("converts ProseMirror null-prototype attrs into plain objects for Server Actions", () => {
+    const headingAttrs = Object.assign(Object.create(null), { level: 2 });
+    const linkAttrs = Object.assign(Object.create(null), {
+      href: "https://example.org",
+    });
+    const rawDoc: RichTextDoc = {
+      type: "doc",
+      content: [
+        {
+          type: "heading",
+          attrs: headingAttrs,
+          content: [{ type: "text", text: "Título" }],
+        },
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: "Sitio",
+              marks: [{ type: "link", attrs: linkAttrs }],
+            },
+          ],
+        },
+      ],
+    };
+
+    const plain = toPlainRichTextDoc(rawDoc);
+    const h = plain.content?.[0] as { attrs?: Record<string, unknown> };
+    const p = plain.content?.[1] as {
+      content?: Array<{ marks?: Array<{ attrs?: Record<string, unknown> }> }>;
+    };
+    expect(Object.getPrototypeOf(h.attrs)).toBe(Object.prototype);
+    expect(h.attrs).toEqual({ level: 2 });
+    expect(Object.getPrototypeOf(p.content?.[0]?.marks?.[0]?.attrs)).toBe(
+      Object.prototype,
+    );
+    expect(p.content?.[0]?.marks?.[0]?.attrs).toEqual({
+      href: "https://example.org",
+    });
   });
 });

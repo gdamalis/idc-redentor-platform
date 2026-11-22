@@ -24,7 +24,10 @@ import { Field } from "@src/components/ui/field";
 import { Input } from "@src/components/ui/input";
 import { Notice } from "@src/components/ui/notice";
 import { Textarea } from "@src/components/ui/textarea";
-import { extractPlainTextFromRichText } from "@src/service/content/editorial/editorial-rules";
+import {
+  extractPlainTextFromRichText,
+  toPlainRichTextDoc,
+} from "@src/service/content/editorial/editorial-rules";
 
 export interface TopicEditorProps {
   readonly docId?: string;
@@ -370,15 +373,16 @@ export function TopicEditor({
                   form.markLossyField(`body.${activeLocale}`, lossy)
                 }
                 onChange={(nextDoc) => {
+                  const plainDoc = toPlainRichTextDoc(nextDoc);
                   const nextEs =
                     activeLocale === "es-AR"
-                      ? nextDoc
+                      ? plainDoc
                       : (values.body?.["es-AR"] ?? {
                           type: "doc",
                           content: [{ type: "paragraph" }],
                         });
                   const nextEn =
-                    activeLocale === "en-US" ? nextDoc : values.body?.["en-US"];
+                    activeLocale === "en-US" ? plainDoc : values.body?.["en-US"];
                   form.setField("body", {
                     "es-AR": nextEs,
                     ...(nextEn !== undefined ? { "en-US": nextEn } : {}),
@@ -398,7 +402,7 @@ export function TopicEditor({
                     ? () =>
                         form.setField("body", {
                           "es-AR": values.body!["es-AR"],
-                          "en-US": structuredClone(values.body!["es-AR"]),
+                          "en-US": toPlainRichTextDoc(values.body!["es-AR"]),
                         })
                     : undefined
                 }

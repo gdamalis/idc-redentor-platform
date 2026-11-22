@@ -115,6 +115,16 @@ export function extractPlainTextFromRichText(
   return blocks.join("\n\n");
 }
 
+/**
+ * Converts a TipTap/ProseMirror `RichTextDoc` into plain JSON objects whose
+ * prototypes are `Object.prototype`. ProseMirror `toJSON()` allocates node and
+ * mark `attrs` via `Object.create(null)`, which React 19 / Next.js Server Action
+ * Flight serialization encodes as `"$T"` temporary references instead of JSON.
+ */
+export function toPlainRichTextDoc(doc: RichTextDoc): RichTextDoc {
+  return JSON.parse(JSON.stringify(doc)) as RichTextDoc;
+}
+
 /** Builds up to 2 uppercase initials for an author avatar fallback. */
 export function buildPersonInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
