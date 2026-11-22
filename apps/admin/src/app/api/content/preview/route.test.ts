@@ -192,4 +192,46 @@ describe("GET /api/content/preview (AC7)", () => {
       secret: TEST_SECRET,
     });
   });
+
+  it("fails closed with 503 when CONTENT_PREVIEW_SECRET is unset/blank or server website URLs are unset (ignoring NEXT_PUBLIC_WEBSITE_URL)", async () => {
+    mockRequirePermission.mockResolvedValue(makeAuthz(["content:read"]));
+    mockGetContentById.mockResolvedValue({
+      ok: true,
+      status: "draft",
+      doc: {
+        _id: "65f1234567890abcdef12345",
+        draft: { slug: "gracia-y-verdad", title: { "es-AR": "Gracia" } },
+        revision: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        updatedBy: "u1",
+      },
+    });
+
+    // Unset secret
+    delete process.env.CONTENT_PREVIEW_SECRET;
+    const missingSecret = await GET(
+      makeRequest("collection=posts&id=65f1234567890abcdef12345&locale=es-AR"),
+    );
+    expect(missingSecret.status).toBe(503);
+    expect(missingSecret.headers.get("Cache-Control")).toBe("no-store");
+
+    // Blank secret
+    process.env.CONTENT_PREVIEW_SECRET = "   ";
+    const blankSecret = await GET(
+      makeRequest("collection=posts&id=65f1234567890abcdef12345&locale=es-AR"),
+    );
+    expect(blankSecret.status).toBe(503);
+
+    // Unset server website URLs even when NEXT_PUBLIC_WEBSITE_URL is set
+    process.env.CONTENT_PREVIEW_SECRET = TEST_SECRET;
+    delete process.env.WEBSITE_PREVIEW_URL;
+    delete process.env.WEBSITE_REVALIDATE_URL;
+    process.env.NEXT_PUBLIC_WEBSITE_URL = "https://staging.idcredentor.org";
+    const missingOrigin = await GET(
+      makeRequest("collection=posts&id=65f1234567890abcdef12345&locale=es-AR"),
+    );
+    expect(missingOrigin.status).toBe(503);
+    expect(missingOrigin.headers.get("Cache-Control")).toBe("no-store");
+  });
 });

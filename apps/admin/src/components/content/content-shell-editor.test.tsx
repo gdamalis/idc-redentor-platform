@@ -117,4 +117,98 @@ describe("ContentShellEditor patch-safety invariant (PM Catch #4)", () => {
     expect(sentPatch).not.toHaveProperty("body");
     expect(sentPatch).not.toHaveProperty("slug");
   });
+
+  it("strips excluded fields (protected, slug) even when restored from tampered localStorage recovery", async () => {
+    window.localStorage.clear();
+    mockSaveDraftAction.mockReset();
+
+    const user = userEvent.setup();
+    const initialValues = {
+      name: { "es-AR": "Política de privacidad" },
+      slug: { "es-AR": "privacidad", "en-US": "privacy" },
+      body: { "es-AR": { type: "doc", content: [{ type: "paragraph" }] } },
+      protected: true,
+    };
+
+    window.localStorage.setItem(
+      "idcr-admin:draft:topics:t1",
+      JSON.stringify({
+        revision: 1,
+        savedAt: Date.now(),
+        values: {
+          ...initialValues,
+          name: { "es-AR": "Privacidad restaurada" },
+          protected: false,
+          slug: { "es-AR": "hacked" },
+        },
+      }),
+    );
+
+    mockSaveDraftAction.mockResolvedValue({
+      ok: true,
+      doc: {
+        _id: "t1",
+        draft: { ...initialValues, name: { "es-AR": "Privacidad restaurada" } },
+        revision: 2,
+        createdAt: "2026-11-20T00:00:00.000Z",
+        updatedAt: "2026-11-21T00:00:00.000Z",
+        updatedBy: "u1",
+      },
+      status: "draft",
+      changedFields: ["name"],
+      noOp: false,
+    });
+
+    render(
+      <NextIntlClientProvider locale="es-AR" messages={esMessages}>
+        <ContentShellEditor
+          collection="topics"
+          docId="t1"
+          initialDoc={{
+            _id: "t1",
+            draft: initialValues,
+            revision: 1,
+            createdAt: "2026-11-20T00:00:00.000Z",
+            updatedAt: "2026-11-21T00:00:00.000Z",
+            updatedBy: "u1",
+          }}
+          initialStatus="draft"
+          initialValues={initialValues}
+          backHref="/content/topics"
+          backLabel="Páginas informativas"
+          fallbackTitle="Política de privacidad"
+          editableField={{
+            kind: "localizedText",
+            key: "name",
+            labelKey: "lists.columns.name",
+          }}
+          permissions={{
+            canWrite: true,
+            canPublish: true,
+            canPublishProtected: false,
+          }}
+          isTrialMode
+          isPublishEmailsEnabled={false}
+          isProtected
+          protectedKind="legal"
+        />
+      </NextIntlClientProvider>,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Restaurar" }));
+    await user.click(screen.getByRole("button", { name: "Guardar borrador" }));
+
+    await waitFor(() => {
+      expect(mockSaveDraftAction).toHaveBeenCalledTimes(1);
+    });
+
+    const sentPatch = mockSaveDraftAction.mock.calls[0]![0].patch as Record<
+      string,
+      unknown
+    >;
+    expect(Object.keys(sentPatch)).toEqual(["name"]);
+    expect(sentPatch).not.toHaveProperty("protected");
+    expect(sentPatch).not.toHaveProperty("slug");
+    window.localStorage.clear();
+  });
 });

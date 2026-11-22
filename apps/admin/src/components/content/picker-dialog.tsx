@@ -43,6 +43,8 @@ export interface PickerDialogProps<T> {
   readonly footerSummary?: React.ReactNode;
   /** Hide default Cancel / Confirm footer when `customBody` supplies its own submit controls. */
   readonly hideFooter?: boolean;
+  /** Optional extra disable condition on the confirm button (e.g. undescribed image in ICR-196). */
+  readonly confirmDisabled?: boolean;
   readonly onConfirm: (selectedIds: string[]) => void;
 }
 
@@ -78,6 +80,7 @@ export function PickerDialog<T>({
   customBody,
   footerSummary,
   hideFooter = false,
+  confirmDisabled = false,
   onConfirm,
 }: PickerDialogProps<T>) {
   const toggleItem = (id: string) => {
@@ -207,7 +210,7 @@ export function PickerDialog<T>({
               </Button>
               <Button
                 type="button"
-                disabled={selectedIds.length === 0}
+                disabled={selectedIds.length === 0 || confirmDisabled}
                 onClick={() => onConfirm([...selectedIds])}
               >
                 {confirmLabel}

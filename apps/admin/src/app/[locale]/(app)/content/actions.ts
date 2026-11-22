@@ -84,7 +84,7 @@ export type PreparePublishResult<TFields = Record<string, unknown>> =
       readonly doc: SerializedContentDoc<TFields>;
       readonly status: ContentStatus;
       readonly isFirstPublish: boolean;
-      readonly isPublishEmailsEnabled: boolean;
+      readonly isPublishEmailsEnabled?: boolean;
       readonly willCascade: readonly {
         readonly collection: ContentCollectionName;
         readonly docId: string;

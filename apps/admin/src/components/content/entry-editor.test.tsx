@@ -19,6 +19,14 @@ vi.mock("@src/app/[locale]/(app)/content/actions", () => ({
   checkContentUsagesAction: vi.fn(),
 }));
 
+const { mockRouterPush, mockRouterReplace, mockRouterRefresh } = vi.hoisted(
+  () => ({
+    mockRouterPush: vi.fn(),
+    mockRouterReplace: vi.fn(),
+    mockRouterRefresh: vi.fn(),
+  }),
+);
+
 vi.mock("@src/i18n/routing", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: ReactNode }) => (
     <a href={href} {...rest}>
@@ -26,9 +34,9 @@ vi.mock("@src/i18n/routing", () => ({
     </a>
   ),
   useRouter: () => ({
-    push: vi.fn(),
-    replace: vi.fn(),
-    refresh: vi.fn(),
+    push: mockRouterPush,
+    replace: mockRouterReplace,
+    refresh: mockRouterRefresh,
   }),
 }));
 
@@ -60,6 +68,9 @@ function renderWithIntl(ui: React.ReactElement) {
 describe("EntryEditor frame (Checkpoint 4)", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    mockRouterPush.mockReset();
+    mockRouterReplace.mockReset();
+    mockRouterRefresh.mockReset();
   });
 
   it("shows focused ErrorSummary (no dialog) when strict publish check fails, and saves draft first", async () => {
@@ -309,5 +320,113 @@ describe("EntryEditor frame (Checkpoint 4)", () => {
     );
 
     expect(screen.getByText("· faltan 4")).toBeDefined();
+  });
+
+  it("sends full on-screen draft on clean-form conflict overwrite in preparePublish (C1)", async () => {
+    const user = userEvent.setup();
+    const preparePublish = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        reason: "conflict",
+        updatedBy: "u2",
+        updatedByLabel: "Carlos",
+        updatedAt: "2026-11-21T16:00:00.000Z",
+        currentRevision: 5,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        doc: { ...baseDoc, revision: 6 },
+        status: "draft",
+        isFirstPublish: true,
+        isPublishEmailsEnabled: false,
+        willCascade: [],
+      });
+
+    renderWithIntl(
+      <EntryEditor<TestDraft>
+        collection="posts"
+        docId={baseDoc._id}
+        initialDoc={baseDoc}
+        initialStatus="draft"
+        initialValues={baseDoc.draft}
+        backHref="/content/posts"
+        backLabel="Blog"
+        getTitle={(v) => v.title["es-AR"]}
+        permissions={{ canWrite: true, canPublish: true, canPublishProtected: true }}
+        isTrialMode={false}
+        actionOverrides={{ preparePublish }}
+        renderLocalizedFields={() => <div>Campos</div>}
+      />,
+    );
+
+    // Clean form (isDirty === false): click Publish -> conflict
+    await user.click(screen.getByRole("button", { name: "Publicar" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Esta entrada cambió desde que la abriste"),
+      ).toBeDefined();
+    });
+    expect(preparePublish).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ draftPatch: undefined, overwrite: undefined }),
+    );
+
+    // Confirm Overwrite -> MUST send full on-screen draft + overwrite: true
+    await user.click(
+      screen.getByRole("button", { name: "Sobrescribir con mi versión" }),
+    );
+
+    await waitFor(() => {
+      expect(preparePublish).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          draftPatch: baseDoc.draft,
+          overwrite: true,
+        }),
+      );
+    });
+  });
+
+  it("replaces /new URL on direct preparePublish and respects isPublishEmailsEnabled={false} fallback (C3)", async () => {
+    const user = userEvent.setup();
+    const newId = "65f1234567890abcdef77777";
+    const preparePublish = vi.fn().mockResolvedValue({
+      ok: true,
+      doc: { ...baseDoc, _id: newId, revision: 1 },
+      status: "draft",
+      isFirstPublish: true,
+      willCascade: [],
+    });
+
+    renderWithIntl(
+      <EntryEditor<TestDraft>
+        collection="posts"
+        initialStatus="draft"
+        initialValues={baseDoc.draft}
+        backHref="/content/posts"
+        backLabel="Blog"
+        getTitle={(v) => v.title["es-AR"]}
+        permissions={{ canWrite: true, canPublish: true, canPublishProtected: true }}
+        isTrialMode={false}
+        isPublishEmailsEnabled={false}
+        actionOverrides={{ preparePublish }}
+        publishDialogExtras={(ctx) =>
+          ctx.isFirstPublish && ctx.isPublishEmailsEnabled ? (
+            <div data-testid="email-box-slot">Avisar por email</div>
+          ) : null
+        }
+        renderLocalizedFields={() => <div>Campos</div>}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Publicar" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeDefined();
+    });
+    expect(mockRouterReplace).toHaveBeenCalledWith(`/content/posts/${newId}`);
+    expect(screen.queryByTestId("email-box-slot")).toBeNull();
   });
 });

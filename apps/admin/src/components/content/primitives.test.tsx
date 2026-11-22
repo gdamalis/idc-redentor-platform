@@ -138,6 +138,30 @@ describe("Shared UI & content primitives (Checkpoint 2)", () => {
     expect(onConfirm).toHaveBeenCalledWith(["a1"]);
   });
 
+  it("disables PickerDialog confirm button when confirmDisabled is true even with a selection (ICR-196 AC3)", () => {
+    render(
+      <PickerDialog
+        open
+        onOpenChange={() => {}}
+        title="Elegir imagen"
+        closeLabel="Cerrar"
+        cancelLabel="Cancelar"
+        confirmLabel="Usar este archivo"
+        items={[{ id: "m1", name: "Sin descripción" }]}
+        getKey={(item) => item.id}
+        renderItem={(item) => <span>{item.name}</span>}
+        selectedIds={["m1"]}
+        onSelectionChange={() => {}}
+        confirmDisabled
+        onConfirm={() => {}}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Usar este archivo" }),
+    ).toBeDisabled();
+  });
+
   it("locks SlugField when published until the user confirms the warning dialog", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

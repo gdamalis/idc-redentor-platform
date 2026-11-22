@@ -33,7 +33,7 @@ export function ActionMenu({
   if (items.length === 0) return null;
 
   return (
-    <DropdownMenuPrimitive.Root>
+    <DropdownMenuPrimitive.Root modal={false}>
       <DropdownMenuPrimitive.Trigger asChild>
         <Button
           type="button"

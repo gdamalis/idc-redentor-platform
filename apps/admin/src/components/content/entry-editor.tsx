@@ -352,7 +352,9 @@ export function EntryEditor<TFields extends object>({
           return created.doc;
         }
 
-        const patch = form.buildPatch();
+        const patch = overwrite
+          ? (form.buildFullDraft() as Partial<TFields>)
+          : form.buildPatch();
         const saved = await actions.saveDraft({
           collection,
           docId,
@@ -416,13 +418,18 @@ export function EntryEditor<TFields extends object>({
       setStatusFeedback(null);
 
       try {
+        const wasNew = !docId;
         const prepared: PreparePublishResult<TFields> =
           await actions.preparePublish({
             collection,
             ...(docId
               ? {
                   docId,
-                  draftPatch: form.isDirty ? form.buildPatch() : undefined,
+                  draftPatch: overwrite
+                    ? (form.buildFullDraft() as Partial<TFields>)
+                    : form.isDirty
+                      ? form.buildPatch()
+                      : undefined,
                   expectedRevision: form.revision,
                   overwrite: overwrite || undefined,
                 }
@@ -441,6 +448,15 @@ export function EntryEditor<TFields extends object>({
               prepared.savedDoc.revision,
             );
             setLastSavedAt(formatShortTime(new Date(), panelLocale));
+            if (wasNew) {
+              skipLeaveGuardRef.current = true;
+              router.replace(
+                getEntryEditorHref(collection, prepared.savedDoc._id),
+              );
+              window.setTimeout(() => {
+                skipLeaveGuardRef.current = false;
+              }, 0);
+            }
           }
           handleFailure(prepared, { kind: "prepare-publish" });
           return;
@@ -452,13 +468,18 @@ export function EntryEditor<TFields extends object>({
         form.commitSaved(prepared.doc.draft, prepared.doc.revision);
         setLastSavedAt(formatShortTime(new Date(), panelLocale));
         onAfterSave?.(prepared.doc);
+        if (wasNew) {
+          skipLeaveGuardRef.current = true;
+          router.replace(getEntryEditorHref(collection, prepared.doc._id));
+          window.setTimeout(() => {
+            skipLeaveGuardRef.current = false;
+          }, 0);
+        }
 
         setPublishDialogCtx({
           isFirstPublish: prepared.isFirstPublish,
           isPublishEmailsEnabled:
-            prepared.isPublishEmailsEnabled && initialPublishEmailsEnabled
-              ? true
-              : prepared.isPublishEmailsEnabled,
+            prepared.isPublishEmailsEnabled ?? initialPublishEmailsEnabled,
           isTrialMode,
           missingEnCount: countMissingEn
             ? countMissingEn(prepared.doc.draft)
@@ -481,6 +502,7 @@ export function EntryEditor<TFields extends object>({
       lossyConfirmed,
       onAfterSave,
       panelLocale,
+      router,
     ],
   );
 
