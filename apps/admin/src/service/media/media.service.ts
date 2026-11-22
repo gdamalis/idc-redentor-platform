@@ -389,11 +389,31 @@ export async function confirmMediaUpload(
   }
   const sha256 = shaParsed.data.toLowerCase();
 
-  if (!isAllowedPublicBlobUrl(input.url, input.pathname)) {
+  if (
+    !input.pathname.startsWith(`media/${input.mediaId}/`) ||
+    !isAllowedPublicBlobUrl(input.url, input.pathname)
+  ) {
     return {
       ok: false,
       reason: "policy-violation",
       detail: "Blob URL does not match public store host or expected pathname",
+    };
+  }
+
+  // Never run head/cleanup against a blob already registered in the media library.
+  const mediaCol = deps.getContentDb().collection<StoredMediaDoc>(COLLECTIONS.media);
+  const alreadyRegistered = (await mediaCol.findOne({
+    $or: [
+      { _id: objectId },
+      { pathname: input.pathname },
+      { url: input.url },
+    ],
+  })) as StoredMediaDoc | null;
+  if (alreadyRegistered) {
+    return {
+      ok: false,
+      reason: "invalid",
+      fieldErrors: { pathname: ["duplicate-key"] },
     };
   }
 
@@ -413,17 +433,33 @@ export async function confirmMediaUpload(
   const verifiedType = normalizeMediaContentType(verifiedBlob.contentType);
   const cap = getMediaSizeCapForContentType(verifiedType);
 
+  // Reject identity/path mismatches without deleting anything that may belong to another record.
+  if (
+    verifiedBlob.pathname !== input.pathname ||
+    !isAllowedPublicBlobUrl(verifiedBlob.url, verifiedBlob.pathname)
+  ) {
+    return {
+      ok: false,
+      reason: "policy-violation",
+      detail: "Uploaded blob identity did not match expected pathname",
+    };
+  }
+
   const violatesPolicy =
     !isAllowedMediaContentType(verifiedType) ||
     cap === null ||
     verifiedBlob.size <= 0 ||
     verifiedBlob.size > cap ||
-    verifiedBlob.pathname !== input.pathname ||
-    !isValidMediaPathname(verifiedBlob.pathname, input.mediaId, verifiedType) ||
-    !isAllowedPublicBlobUrl(verifiedBlob.url, verifiedBlob.pathname);
+    !isValidMediaPathname(verifiedBlob.pathname, input.mediaId, verifiedType);
 
   if (violatesPolicy) {
-    await deps.delBlob(STORAGE_CLASS.publicMedia, verifiedBlob.url);
+    // Defense-in-depth: only delete unregistered blobs so cleanup can never bypass deleteMedia guards.
+    const registered = (await mediaCol.findOne({
+      $or: [{ pathname: verifiedBlob.pathname }, { url: verifiedBlob.url }],
+    })) as StoredMediaDoc | null;
+    if (!registered) {
+      await deps.delBlob(STORAGE_CLASS.publicMedia, verifiedBlob.url);
+    }
     return {
       ok: false,
       reason: "policy-violation",

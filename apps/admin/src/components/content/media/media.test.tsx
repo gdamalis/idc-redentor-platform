@@ -469,6 +469,58 @@ describe("MediaPicker & MediaField (AC3, AC6)", () => {
     expect(onUploadingChange).toHaveBeenLastCalledWith(false);
   });
 
+  it("Codex P2: unmounting MediaUploadPanel during preprocessing cancels before upload() is invoked", async () => {
+    let resolvePrepare!: (value: {
+      ok: true;
+      status: "ready";
+      mediaId: string;
+      pathname: string;
+      normalizedContentType: "image/jpeg";
+      maxBytes: number;
+      multipart: false;
+    }) => void;
+    mockPrepareMediaUploadAction.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvePrepare = resolve;
+        }),
+    );
+
+    const panel = renderIntl(
+      <MediaUploadPanel
+        acceptKinds={["image"]}
+        submitLabel="Guardar"
+        onComplete={vi.fn()}
+      />,
+    );
+
+    const fileInput = screen.getByLabelText("Elegir archivo");
+    const file = new File([new Uint8Array([1, 2, 3])], "pre-unmount.jpg", {
+      type: "image/jpeg",
+    });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(mockPrepareMediaUploadAction).toHaveBeenCalledTimes(1);
+    });
+
+    panel.unmount();
+
+    resolvePrepare({
+      ok: true,
+      status: "ready",
+      mediaId: IMAGE_DOC._id,
+      pathname: IMAGE_DOC.pathname,
+      normalizedContentType: "image/jpeg",
+      maxBytes: 15 * 1024 * 1024,
+      multipart: false,
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
+
   it("C2 + C3: MediaField accepts initialMedia with Date createdAt and displays en-US title", () => {
     const mediaDocWithDate = {
       ...IMAGE_DOC,

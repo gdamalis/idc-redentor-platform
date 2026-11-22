@@ -27,69 +27,23 @@ const SHA256_K = new Uint32Array([
   0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
 ]);
 
-/** Zero-dependency incremental FIPS 180-4 SHA-256 hasher for chunked browser reads. */
-export class StreamingSha256 {
-  private readonly state = new Uint32Array(SHA256_H);
-  private readonly buffer = new Uint8Array(64);
-  private readonly words = new Uint32Array(64);
-  private bufferLen = 0;
-  private totalBytes = 0;
+export interface StreamingSha256Hasher {
+  update(chunk: Uint8Array): StreamingSha256Hasher;
+  digestHex(): string;
+}
 
-  update(chunk: Uint8Array): this {
-    this.totalBytes += chunk.length;
-    let offset = 0;
+/** Zero-dependency incremental FIPS 180-4 SHA-256 hasher factory for chunked browser reads. */
+export function createStreamingSha256(): StreamingSha256Hasher {
+  const state = new Uint32Array(SHA256_H);
+  const buffer = new Uint8Array(64);
+  const words = new Uint32Array(64);
+  let bufferLen = 0;
+  let totalBytes = 0;
 
-    if (this.bufferLen > 0) {
-      const take = Math.min(64 - this.bufferLen, chunk.length);
-      this.buffer.set(chunk.subarray(0, take), this.bufferLen);
-      this.bufferLen += take;
-      offset += take;
-      if (this.bufferLen === 64) {
-        this.compress(this.buffer, 0);
-        this.bufferLen = 0;
-      }
-    }
-
-    while (offset + 64 <= chunk.length) {
-      this.compress(chunk, offset);
-      offset += 64;
-    }
-
-    if (offset < chunk.length) {
-      const remaining = chunk.subarray(offset);
-      this.buffer.set(remaining, 0);
-      this.bufferLen = remaining.length;
-    }
-
-    return this;
-  }
-
-  digestHex(): string {
-    const bitLen = this.totalBytes * 8;
-    const highBits = Math.floor(bitLen / 0x1_0000_0000);
-    const lowBits = bitLen >>> 0;
-
-    // Append 0x80 followed by zeros until length % 64 === 56, then 64-bit big-endian bit length.
-    const padLen = this.bufferLen < 56 ? 56 - this.bufferLen : 120 - this.bufferLen;
-    const finalBlock = new Uint8Array(padLen + 8);
-    finalBlock[0] = 0x80;
-    const view = new DataView(finalBlock.buffer);
-    view.setUint32(padLen, highBits, false);
-    view.setUint32(padLen + 4, lowBits, false);
-    this.update(finalBlock);
-
-    let hex = "";
-    for (let i = 0; i < 8; i += 1) {
-      hex += (this.state[i] ?? 0).toString(16).padStart(8, "0");
-    }
-    return hex;
-  }
-
-  private compress(block: Uint8Array, offset: number): void {
-    const w = this.words;
+  const compress = (block: Uint8Array, offset: number): void => {
     for (let i = 0; i < 16; i += 1) {
       const j = offset + i * 4;
-      w[i] =
+      words[i] =
         (((block[j] ?? 0) << 24) |
           ((block[j + 1] ?? 0) << 16) |
           ((block[j + 2] ?? 0) << 8) |
@@ -97,27 +51,39 @@ export class StreamingSha256 {
         0;
     }
     for (let i = 16; i < 64; i += 1) {
-      const w15 = w[i - 15] ?? 0;
-      const w2 = w[i - 2] ?? 0;
-      const s0 = ((w15 >>> 7) | (w15 << 25)) ^ ((w15 >>> 18) | (w15 << 14)) ^ (w15 >>> 3);
-      const s1 = ((w2 >>> 17) | (w2 << 15)) ^ ((w2 >>> 19) | (w2 << 13)) ^ (w2 >>> 10);
-      w[i] = (((w[i - 16] ?? 0) + s0 + (w[i - 7] ?? 0) + s1) >>> 0);
+      const w15 = words[i - 15] ?? 0;
+      const w2 = words[i - 2] ?? 0;
+      const s0 =
+        ((w15 >>> 7) | (w15 << 25)) ^
+        ((w15 >>> 18) | (w15 << 14)) ^
+        (w15 >>> 3);
+      const s1 =
+        ((w2 >>> 17) | (w2 << 15)) ^
+        ((w2 >>> 19) | (w2 << 13)) ^
+        (w2 >>> 10);
+      words[i] = ((words[i - 16] ?? 0) + s0 + (words[i - 7] ?? 0) + s1) >>> 0;
     }
 
-    let a = this.state[0] ?? 0;
-    let b = this.state[1] ?? 0;
-    let c = this.state[2] ?? 0;
-    let d = this.state[3] ?? 0;
-    let e = this.state[4] ?? 0;
-    let f = this.state[5] ?? 0;
-    let g = this.state[6] ?? 0;
-    let h = this.state[7] ?? 0;
+    let a = state[0] ?? 0;
+    let b = state[1] ?? 0;
+    let c = state[2] ?? 0;
+    let d = state[3] ?? 0;
+    let e = state[4] ?? 0;
+    let f = state[5] ?? 0;
+    let g = state[6] ?? 0;
+    let h = state[7] ?? 0;
 
     for (let i = 0; i < 64; i += 1) {
-      const S1 = ((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7));
+      const S1 =
+        ((e >>> 6) | (e << 26)) ^
+        ((e >>> 11) | (e << 21)) ^
+        ((e >>> 25) | (e << 7));
       const ch = (e & f) ^ (~e & g);
-      const temp1 = (h + S1 + ch + (SHA256_K[i] ?? 0) + (w[i] ?? 0)) >>> 0;
-      const S0 = ((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10));
+      const temp1 = (h + S1 + ch + (SHA256_K[i] ?? 0) + (words[i] ?? 0)) >>> 0;
+      const S0 =
+        ((a >>> 2) | (a << 30)) ^
+        ((a >>> 13) | (a << 19)) ^
+        ((a >>> 22) | (a << 10));
       const maj = (a & b) ^ (a & c) ^ (b & c);
       const temp2 = (S0 + maj) >>> 0;
 
@@ -131,15 +97,69 @@ export class StreamingSha256 {
       a = (temp1 + temp2) >>> 0;
     }
 
-    this.state[0] = ((this.state[0] ?? 0) + a) >>> 0;
-    this.state[1] = ((this.state[1] ?? 0) + b) >>> 0;
-    this.state[2] = ((this.state[2] ?? 0) + c) >>> 0;
-    this.state[3] = ((this.state[3] ?? 0) + d) >>> 0;
-    this.state[4] = ((this.state[4] ?? 0) + e) >>> 0;
-    this.state[5] = ((this.state[5] ?? 0) + f) >>> 0;
-    this.state[6] = ((this.state[6] ?? 0) + g) >>> 0;
-    this.state[7] = ((this.state[7] ?? 0) + h) >>> 0;
-  }
+    state[0] = ((state[0] ?? 0) + a) >>> 0;
+    state[1] = ((state[1] ?? 0) + b) >>> 0;
+    state[2] = ((state[2] ?? 0) + c) >>> 0;
+    state[3] = ((state[3] ?? 0) + d) >>> 0;
+    state[4] = ((state[4] ?? 0) + e) >>> 0;
+    state[5] = ((state[5] ?? 0) + f) >>> 0;
+    state[6] = ((state[6] ?? 0) + g) >>> 0;
+    state[7] = ((state[7] ?? 0) + h) >>> 0;
+  };
+
+  const hasher: StreamingSha256Hasher = {
+    update(chunk: Uint8Array): StreamingSha256Hasher {
+      totalBytes += chunk.length;
+      let offset = 0;
+
+      if (bufferLen > 0) {
+        const take = Math.min(64 - bufferLen, chunk.length);
+        buffer.set(chunk.subarray(0, take), bufferLen);
+        bufferLen += take;
+        offset += take;
+        if (bufferLen === 64) {
+          compress(buffer, 0);
+          bufferLen = 0;
+        }
+      }
+
+      while (offset + 64 <= chunk.length) {
+        compress(chunk, offset);
+        offset += 64;
+      }
+
+      if (offset < chunk.length) {
+        const remaining = chunk.subarray(offset);
+        buffer.set(remaining, 0);
+        bufferLen = remaining.length;
+      }
+
+      return hasher;
+    },
+
+    digestHex(): string {
+      const bitLen = totalBytes * 8;
+      const highBits = Math.floor(bitLen / 0x1_0000_0000);
+      const lowBits = bitLen >>> 0;
+
+      // Append 0x80 followed by zeros until length % 64 === 56, then 64-bit big-endian bit length.
+      const padLen = bufferLen < 56 ? 56 - bufferLen : 120 - bufferLen;
+      const finalBlock = new Uint8Array(padLen + 8);
+      finalBlock[0] = 0x80;
+      const view = new DataView(finalBlock.buffer);
+      view.setUint32(padLen, highBits, false);
+      view.setUint32(padLen + 4, lowBits, false);
+      hasher.update(finalBlock);
+
+      let hex = "";
+      for (let i = 0; i < 8; i += 1) {
+        hex += (state[i] ?? 0).toString(16).padStart(8, "0");
+      }
+      return hex;
+    },
+  };
+
+  return hasher;
 }
 
 function bufferToHex(buf: ArrayBuffer): string {
@@ -154,7 +174,7 @@ function bufferToHex(buf: ArrayBuffer): string {
 /**
  * Computes lowercase 64-char hex SHA-256 of a `File`/`Blob`.
  * Uses Web Crypto `crypto.subtle` for files <= 16 MiB and 4 MiB chunked
- * `StreamingSha256` above that threshold (or when `crypto.subtle` is unavailable).
+ * `createStreamingSha256` above that threshold (or when `crypto.subtle` is unavailable).
  */
 export async function computeFileSha256(
   file: Blob,
@@ -175,7 +195,7 @@ export async function computeFileSha256(
     return bufferToHex(digest);
   }
 
-  const hasher = new StreamingSha256();
+  const hasher = createStreamingSha256();
   for (let offset = 0; offset < file.size; offset += chunkSize) {
     const slice = file.slice(offset, Math.min(offset + chunkSize, file.size));
     const buf = await slice.arrayBuffer();

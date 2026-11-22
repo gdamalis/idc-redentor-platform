@@ -584,6 +584,48 @@ describe("media.service — upload, dedup, verification & service caller", () =>
     if (!oversized.ok) expect(oversized.reason).toBe("policy-violation");
     expect(h.deps.delBlob).toHaveBeenCalledWith("public-media", urlOversized);
     expect(h.getStore(COLLECTIONS.media)).toHaveLength(1);
+
+    // Codex P1: mismatched mediaId targeting an existing registered blob NEVER calls headBlob or delBlob
+    const delCallsBefore = vi.mocked(h.deps.delBlob).mock.calls.length;
+    const headCallsBeforeMismatch = vi.mocked(h.deps.headBlob).mock.calls.length;
+    const mismatchedId = new ObjectId().toHexString();
+    const mismatchRes = await confirmMediaUpload(
+      ADMIN,
+      {
+        mediaId: mismatchedId,
+        pathname,
+        url,
+        filename: "portada.jpg",
+        sha256: SHA_A,
+        title: { "es-AR": "Hijack attempt" },
+        decorative: true,
+      },
+      h.deps,
+    );
+    expect(mismatchRes.ok).toBe(false);
+    if (!mismatchRes.ok) expect(mismatchRes.reason).toBe("policy-violation");
+    expect(vi.mocked(h.deps.headBlob).mock.calls.length).toBe(
+      headCallsBeforeMismatch,
+    );
+    expect(vi.mocked(h.deps.delBlob).mock.calls.length).toBe(delCallsBefore);
+
+    // Submitting an already-registered mediaId/pathname/url also never deletes the registered blob
+    const dupConfirmRes = await confirmMediaUpload(
+      ADMIN,
+      {
+        mediaId: id,
+        pathname,
+        url,
+        filename: "portada.jpg",
+        sha256: SHA_A,
+        title: { "es-AR": "Already registered" },
+        decorative: true,
+      },
+      h.deps,
+    );
+    expect(dupConfirmRes.ok).toBe(false);
+    if (!dupConfirmRes.ok) expect(dupConfirmRes.reason).toBe("invalid");
+    expect(vi.mocked(h.deps.delBlob).mock.calls.length).toBe(delCallsBefore);
   });
 
   it("createServerMedia checks { sha256 } BEFORE putBlob by default (ICR-203 dedup), supports dedupeBySha256: false & { buffer } (ICR-200), and supports ServiceContentCaller", async () => {

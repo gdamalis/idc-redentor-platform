@@ -178,6 +178,9 @@ export function MediaUploadPanel({
       return;
     }
 
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     setStage({ phase: "hashing", file });
 
     try {
@@ -186,6 +189,7 @@ export function MediaUploadPanel({
         kind === "image" ? readImageDimensions(file) : Promise.resolve(undefined),
         kind === "audio" ? readAudioDuration(file) : Promise.resolve(undefined),
       ]);
+      if (controller.signal.aborted) return;
 
       const prepared = await prepareMediaUploadAction({
         filename: file.name,
@@ -193,6 +197,7 @@ export function MediaUploadPanel({
         size: file.size,
         sha256,
       });
+      if (controller.signal.aborted) return;
 
       if (!prepared.ok) {
         const msg =
@@ -205,11 +210,13 @@ export function MediaUploadPanel({
               : prepared.reason === "unsupported-type"
                 ? t("errors.unsupportedType")
                 : t("errors.uploadFailed");
+        abortControllerRef.current = null;
         setStage({ phase: "error", file, message: msg });
         return;
       }
 
       if (prepared.status === "duplicate") {
+        abortControllerRef.current = null;
         setStage({
           phase: "duplicate",
           file,
@@ -218,8 +225,6 @@ export function MediaUploadPanel({
         return;
       }
 
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
       setStage({ phase: "uploading", file, percentage: 0 });
 
       const blob = await upload(prepared.pathname, file, {

@@ -1,12 +1,12 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { StreamingSha256, computeFileSha256 } from "./client-file";
+import { createStreamingSha256, computeFileSha256 } from "./client-file";
 
 function nodeSha256(data: Uint8Array): string {
   return createHash("sha256").update(data).digest("hex");
 }
 
-describe("StreamingSha256 & computeFileSha256", () => {
+describe("createStreamingSha256 & computeFileSha256", () => {
   it.each([0, 1, 55, 56, 63, 64, 65, 128, 1024, 65_537])(
     "matches node:crypto sha256 exactly for %i bytes",
     (length) => {
@@ -14,7 +14,7 @@ describe("StreamingSha256 & computeFileSha256", () => {
       for (let i = 0; i < length; i += 1) {
         data[i] = (i * 31 + 17) & 0xff;
       }
-      const hasher = new StreamingSha256();
+      const hasher = createStreamingSha256();
       // Feed irregular slice sizes to exercise partial-block buffering
       let pos = 0;
       for (const step of [7, 13, 64, 19, 1000, 4096]) {
