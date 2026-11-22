@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import type { ClientSession } from "mongodb";
 import {
+  COLLECTIONS,
   CONTENT_SCHEMAS,
   LOCALES,
   bibleVerseKey,

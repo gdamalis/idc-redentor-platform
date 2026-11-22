@@ -2435,13 +2435,13 @@ describe("Reference write/delete serialization (write-skew guard)", () => {
     const mediaId = mediaOid.toHexString();
     const missingMediaId = new ObjectId().toHexString();
     const h = createTestHarness({
-      seed: {
+      initial: {
         media: [
           {
             _id: mediaOid,
             pathname: `media/${mediaId}/hero.jpg`,
             url: `https://abc.public.blob.vercel-storage.com/media/${mediaId}/hero.jpg`,
-          } as unknown as StoredContentEnvelope<Record<string, unknown>>,
+          },
         ],
       },
     });
@@ -2470,9 +2470,9 @@ describe("Reference write/delete serialization (write-skew guard)", () => {
       h.deps,
     );
     expect(created.ok).toBe(true);
-    const lockedMedia = h.store
-      .get("media")
-      ?.find((d) => d._id.equals(mediaOid)) as
+    const lockedMedia = h
+      .getDocs("media")
+      .find((d) => d._id.equals(mediaOid)) as
       | (Record<string, unknown> & { _refGuardRev?: number })
       | undefined;
     expect(lockedMedia?._refGuardRev).toBe(1);
