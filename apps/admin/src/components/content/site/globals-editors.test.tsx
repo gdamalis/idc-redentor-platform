@@ -12,8 +12,9 @@ import type {
 } from "@idcr/content";
 import { loadMessages } from "@src/i18n/load-messages";
 
-const { mockSaveDraftAction } = vi.hoisted(() => ({
+const { mockSaveDraftAction, mockDiscardChangesAction } = vi.hoisted(() => ({
   mockSaveDraftAction: vi.fn(),
+  mockDiscardChangesAction: vi.fn(),
 }));
 
 vi.mock("@src/app/[locale]/(app)/content/actions", () => ({
@@ -21,7 +22,7 @@ vi.mock("@src/app/[locale]/(app)/content/actions", () => ({
   saveDraftAction: mockSaveDraftAction,
   preparePublishAction: vi.fn(),
   confirmPublishAction: vi.fn(),
-  discardChangesAction: vi.fn(),
+  discardChangesAction: mockDiscardChangesAction,
   unpublishContentAction: vi.fn(),
   deleteContentAction: vi.fn(),
   retryRevalidationAction: vi.fn(),
@@ -107,7 +108,8 @@ describe("Globals editors (menu, footer, location, subscribe, contact)", () => {
     expect(screen.getAllByRole("combobox")).toHaveLength(2);
   });
 
-  it("FooterEditor offers only facebook/instagram/youtube platforms and shows SharedLocationCard", () => {
+  it("FooterEditor offers only facebook/instagram/youtube platforms, trims social URL on save, and shows SharedLocationCard", async () => {
+    const user = userEvent.setup();
     const initial: FooterFields = {
       kind: "footer",
       machineName: "footer",
@@ -117,6 +119,14 @@ describe("Globals editors (menu, footer, location, subscribe, contact)", () => {
         { platform: "instagram", url: "https://instagram.com/idcredentor" },
       ],
     };
+
+    mockSaveDraftAction.mockResolvedValue({
+      ok: true,
+      doc: makeDoc("g-footer", initial),
+      status: "changed",
+      changedFields: ["socialLinks"],
+      noOp: false,
+    });
 
     render(
       <NextIntlClientProvider locale="es-AR" messages={esMessages}>
@@ -151,9 +161,19 @@ describe("Globals editors (menu, footer, location, subscribe, contact)", () => {
     expect(screen.getByTestId("shared-location-card")).toHaveTextContent(
       "Perón 4385",
     );
+
+    const urlInput = screen.getByLabelText(/Dirección \(URL\)/i);
+    await user.clear(urlInput);
+    await user.type(urlInput, "  https://instagram.com/idcr  ");
+    await user.click(screen.getByRole("button", { name: "Guardar borrador" }));
+
+    await waitFor(() => expect(mockSaveDraftAction).toHaveBeenCalledTimes(1));
+    expect(mockSaveDraftAction.mock.calls[0]?.[0].patch.socialLinks).toEqual([
+      { platform: "instagram", url: "https://instagram.com/idcr" },
+    ]);
   });
 
-  it("LocationEditor hides LocaleTabs (non-localized) and shows shared address notice", async () => {
+  it("LocationEditor hides LocaleTabs, rejects non-numeric coordinates instead of unsetting, and shows shared address notice (C2.1)", async () => {
     const user = userEvent.setup();
     const initial: LocationFields = {
       kind: "location",
@@ -166,18 +186,24 @@ describe("Globals editors (menu, footer, location, subscribe, contact)", () => {
     };
 
     mockSaveDraftAction.mockResolvedValue({
+      ok: false,
+      reason: "invalid",
+      fieldErrors: { lat: ["Expected number"] },
+    });
+    mockDiscardChangesAction.mockResolvedValue({
       ok: true,
-      doc: makeDoc("g-loc", { ...initial, city: "CABA" }),
-      status: "changed",
-      changedFields: ["city"],
-      noOp: false,
+      doc: {
+        ...makeDoc("g-loc", initial),
+        revision: 2,
+      },
+      status: "published",
     });
 
     render(
       <NextIntlClientProvider locale="es-AR" messages={esMessages}>
         <LocationEditor
           initialDoc={makeDoc("g-loc", initial)}
-          initialStatus="published"
+          initialStatus="changed"
           initialValues={initial}
           backHref="/content"
           backLabel="Contenido"
@@ -197,15 +223,30 @@ describe("Globals editors (menu, footer, location, subscribe, contact)", () => {
       screen.getByText(/tanto en el pie de página como en la sección/i),
     ).toBeInTheDocument();
 
-    const cityInput = screen.getByLabelText(/Ciudad/i);
-    await user.clear(cityInput);
-    await user.type(cityInput, "CABA");
+    // Non-numeric text submits NaN (not undefined) so server Zod returns errors.lat
+    const latInput = screen.getByLabelText(/Latitud/i);
+    await user.clear(latInput);
+    await user.type(latInput, "abc");
     await user.click(screen.getByRole("button", { name: "Guardar borrador" }));
 
     await waitFor(() => expect(mockSaveDraftAction).toHaveBeenCalledTimes(1));
-    expect(mockSaveDraftAction.mock.calls[0]?.[0].patch).toEqual({
-      city: "CABA",
-    });
+    expect(Number.isNaN(mockSaveDraftAction.mock.calls[0]?.[0].patch.lat)).toBe(
+      true,
+    );
+    await waitFor(() =>
+      expect(
+        screen.getAllByText(/La latitud debe ser un número entre -90 y 90/i)
+          .length,
+      ).toBeGreaterThan(0),
+    );
+
+    // External reset via "Descartar cambios" resyncs latDraft back to published value (-34.6058)
+    await user.click(screen.getByRole("button", { name: /Más acciones/i }));
+    await user.click(screen.getByRole("menuitem", { name: /Descartar cambios/i }));
+    await user.click(
+      screen.getByRole("button", { name: "Descartar cambios" }),
+    );
+    await waitFor(() => expect(latInput).toHaveValue("-34.6058"));
   });
 
   it("SingleEmailFormEditor binds all 5 localized fields", () => {
@@ -321,6 +362,14 @@ describe("Globals editors (menu, footer, location, subscribe, contact)", () => {
     // Verse displays stored version verbatim
     expect(screen.getByText("Salmos 23:1 · RVR1960")).toBeInTheDocument();
 
+    // agreementNote uses inlineLink profile: Bold/Italic/Link present, Heading/List absent (kills M16)
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Enlace" })).toBeInTheDocument(),
+    );
+    expect(screen.getByRole("button", { name: "Negrita" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Lista con viñetas" })).toBeNull();
+    expect(screen.queryByLabelText("Estilo de párrafo")).toBeNull();
+
     // Locked fields section shows both fields, read-only inputIds, and NO add/remove field controls
     const lockedBox = screen.getByTestId("contact-form-locked-fields");
     const nameFieldCard = within(lockedBox).getByTestId("contact-field-name");
@@ -336,10 +385,14 @@ describe("Globals editors (menu, footer, location, subscribe, contact)", () => {
     expect(within(subjectCard).getByDisplayValue("Información")).toBeInTheDocument();
     expect(within(subjectCard).getByDisplayValue("Oración")).toBeInTheDocument();
 
-    // Edit label on `name` field and verify structural keys stay intact in patch
+    // Edit label on `name` field AND add a blank en-US dropdown option; verify blank en-US is stripped (C1)
     const labelInput = within(nameFieldCard).getByLabelText(/Etiqueta/i);
     await user.clear(labelInput);
     await user.type(labelInput, "Nombre completo");
+    await user.click(screen.getByRole("tab", { name: /English/i }));
+    await user.click(
+      within(subjectCard).getByRole("button", { name: /Agregar opción/i }),
+    );
     await user.click(screen.getByRole("button", { name: "Guardar borrador" }));
 
     await waitFor(() => expect(mockSaveDraftAction).toHaveBeenCalledTimes(1));
@@ -355,6 +408,8 @@ describe("Globals editors (menu, footer, location, subscribe, contact)", () => {
       inputId: "subject",
       type: "Dropdown",
       required: true,
+      values: { "es-AR": ["Información", "Oración"] },
     });
+    expect(patchedFields[1].values["en-US"]).toBeUndefined();
   });
 });

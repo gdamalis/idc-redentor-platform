@@ -20,8 +20,10 @@ import { LocalizedFieldReference } from "@src/components/content/localized-field
 import { MediaField } from "@src/components/content/media";
 import { createSiteFieldErrorMapper } from "@src/lib/content/site/field-errors";
 import { countEventBannerMissingEn } from "@src/lib/content/site/missing-en";
+import { normalizeEventBannerDraft } from "@src/lib/content/site/normalize";
 import type { SharedLocationSummary } from "@src/service/content/site/loaders";
 import { FixedIdentityMeta } from "./fixed-identity-meta";
+import { createNormalizedSiteActions } from "./normalized-actions";
 import { SharedLocationCard } from "./shared-location-card";
 
 export interface EventBannerEditorProps {
@@ -92,6 +94,11 @@ export function EventBannerEditor({
     [tSite],
   );
 
+  const actionOverrides = React.useMemo(
+    () => createNormalizedSiteActions(initialValues, normalizeEventBannerDraft),
+    [initialValues],
+  );
+
   const requiredMark = tContent("errors.requiredMark");
 
   return (
@@ -111,6 +118,7 @@ export function EventBannerEditor({
       fixedAppearsOn={appearsOn}
       liveUrl={liveUrl}
       excludeFromPatch={EXCLUDE_IMMUTABLE}
+      actionOverrides={actionOverrides}
       countMissingEn={countEventBannerMissingEn}
       customFieldErrorMap={customFieldErrorMap}
       renderLocalizedFields={({ activeLocale, values, form, readOnly, getError }) => {

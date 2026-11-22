@@ -31,12 +31,27 @@ export function normalizeOptionalText(
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-/** Parses an optional finite number from text input; blank or invalid returns `undefined`. */
+/** Strips leading `?` characters from URL query parameters (`ComponentCta.tsx` prepends `?`). */
+export function normalizeUrlParameters(
+  value: string | undefined,
+): string | undefined {
+  if (value === undefined) return undefined;
+  const cleaned = value.trim().replace(/^\?+/, "");
+  return cleaned.length > 0 ? cleaned : undefined;
+}
+
+/**
+ * Parses an optional finite number from text input:
+ * - blank / whitespace → `undefined` (clear optional field)
+ * - valid finite number → `number`
+ * - non-blank invalid text (e.g. `"abc"`) → `Number.NaN` so server Zod validation
+ *   surfaces `errors.lat`/`errors.lon` instead of silently unsetting an existing value.
+ */
 export function normalizeOptionalNumber(raw: string): number | undefined {
   const trimmed = raw.trim();
   if (!trimmed) return undefined;
   const parsed = Number(trimmed);
-  return Number.isFinite(parsed) ? parsed : undefined;
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
 }
 
 /**
@@ -168,7 +183,7 @@ export function normalizeSectionDraft(values: SectionFields): SectionFields {
   const subHeadline = normalizeLocalizedText(values.subHeadline);
   const body = normalizeLocalizedRichText(values.body);
   const ctaText = normalizeLocalizedText(values.ctaText);
-  const urlParameters = normalizeOptionalText(values.urlParameters);
+  const urlParameters = normalizeUrlParameters(values.urlParameters);
   const image = normalizeOptionalText(values.image);
   const images =
     values.images && values.images.length > 0 ? [...values.images] : undefined;
@@ -303,14 +318,10 @@ export function normalizeLocationDraft(values: LocationFields): LocationFields {
   const country = normalizeOptionalText(values.country);
   const mapEmbedUrl = normalizeOptionalText(values.mapEmbedUrl);
   const googleMapsUrl = normalizeOptionalText(values.googleMapsUrl);
-  const lat =
-    typeof values.lat === "number" && Number.isFinite(values.lat)
-      ? values.lat
-      : undefined;
-  const lon =
-    typeof values.lon === "number" && Number.isFinite(values.lon)
-      ? values.lon
-      : undefined;
+  // Preserve explicit invalid numbers (e.g. NaN from non-numeric input) so Zod
+  // rejects them with `errors.lat`/`errors.lon` instead of silently clearing coordinates.
+  const lat = values.lat;
+  const lon = values.lon;
 
   return {
     kind: "location",

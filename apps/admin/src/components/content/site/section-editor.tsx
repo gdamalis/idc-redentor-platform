@@ -19,14 +19,19 @@ import type { EntryEditorPermissions } from "@src/components/content/entry-edito
 import { LocalizedFieldReference } from "@src/components/content/localized-field";
 import { MediaField, MediaListField } from "@src/components/content/media";
 import { RichTextEditor } from "@src/components/content/rich-text/rich-text-editor";
-import { createSiteFieldErrorMapper } from "@src/lib/content/site/field-errors";
+import {
+  createSiteFieldErrorMapper,
+  findRichTextFieldError,
+} from "@src/lib/content/site/field-errors";
 import { countSectionMissingEn } from "@src/lib/content/site/missing-en";
 import {
   EMPTY_RICH_TEXT_DOC,
   extractRichTextPlainText,
+  normalizeSectionDraft,
 } from "@src/lib/content/site/normalize";
 import { getSectionLayoutFieldConfig } from "@src/lib/content/site/section-layout";
 import { FixedIdentityMeta } from "./fixed-identity-meta";
+import { createNormalizedSiteActions } from "./normalized-actions";
 import { SitePageSelect } from "./site-page-select";
 
 export interface SectionEditorProps {
@@ -114,6 +119,11 @@ export function SectionEditor({
     [tSite],
   );
 
+  const actionOverrides = React.useMemo(
+    () => createNormalizedSiteActions(initialValues, normalizeSectionDraft),
+    [initialValues],
+  );
+
   const requiredMark = tContent("errors.requiredMark");
 
   return (
@@ -133,6 +143,7 @@ export function SectionEditor({
       fixedAppearsOn={appearsOn}
       liveUrl={liveUrl}
       excludeFromPatch={EXCLUDE_IMMUTABLE}
+      actionOverrides={actionOverrides}
       countMissingEn={countSectionMissingEn}
       customFieldErrorMap={customFieldErrorMap}
       renderLocalizedFields={({ activeLocale, values, form, readOnly, getError }) => {
@@ -243,7 +254,12 @@ export function SectionEditor({
                 requiredToPublish={cfg.requireBodyEs && activeLocale === "es-AR"}
                 requiredMarkLabel={requiredMark}
                 hint={tSite("sections.bodyHint")}
-                error={getError(`body.${activeLocale}`) ?? getError("body")}
+                error={findRichTextFieldError(
+                  getError,
+                  form.fieldErrors,
+                  `body.${activeLocale}`,
+                  "body",
+                )}
               >
                 <RichTextEditor
                   key={`section-body-${activeLocale}`}

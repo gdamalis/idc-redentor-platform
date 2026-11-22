@@ -4,7 +4,10 @@ import * as React from "react";
 import { BookOpen } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import type { Locale } from "@idcr/content";
-import type { BibleVersePickerItem } from "@src/app/[locale]/(app)/content/actions";
+import {
+  searchBibleVersesAction,
+  type BibleVersePickerItem,
+} from "@src/app/[locale]/(app)/content/actions";
 import { formatVerseChipLabel } from "@src/lib/content/bible-books";
 import { Button } from "@src/components/ui/button";
 import { StatusChip } from "@src/components/content/status-chip";
@@ -40,7 +43,13 @@ export function SingleVerseField({
 
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const [selectedVerse, setSelectedVerse] =
-    React.useState<BibleVersePickerItem | null>(initialVerse);
+    React.useState<BibleVersePickerItem | null>(
+      value && initialVerse?.id === value ? initialVerse : null,
+    );
+  const onVerseLoadedRef = React.useRef(onVerseLoaded);
+  React.useEffect(() => {
+    onVerseLoadedRef.current = onVerseLoaded;
+  }, [onVerseLoaded]);
 
   React.useEffect(() => {
     if (!value) {
@@ -49,8 +58,27 @@ export function SingleVerseField({
     }
     if (initialVerse && initialVerse.id === value) {
       setSelectedVerse(initialVerse);
+      return;
     }
-  }, [initialVerse, value]);
+    if (selectedVerse?.id === value) {
+      return;
+    }
+    // External reset (e.g. "Descartar cambios" or local recovery) to a different
+    // verse ID: immediately drop the stale previous verse and resolve the target.
+    setSelectedVerse(null);
+    let cancelled = false;
+    void searchBibleVersesAction({}).then((res) => {
+      if (cancelled || !res.ok) return;
+      const matched = res.items.find((item) => item.id === value);
+      if (matched) {
+        setSelectedVerse(matched);
+        onVerseLoadedRef.current?.(matched);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialVerse, selectedVerse?.id, value]);
 
   const handleSelect = (verse: BibleVersePickerItem) => {
     setSelectedVerse(verse);

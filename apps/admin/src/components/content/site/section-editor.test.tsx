@@ -123,39 +123,74 @@ describe("SectionEditor", () => {
     );
     expect(screen.getByLabelText(/Subtítulo/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Página destino/i)).toBeInTheDocument();
+    // Inline rich-text profile: Bold & Italic present, Heading/List/Link absent (kills M6)
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Negrita" })).toBeInTheDocument(),
+    );
+    expect(screen.getByRole("button", { name: "Cursiva" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Enlace" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Lista con viñetas" })).toBeNull();
+    expect(screen.queryByLabelText("Estilo de párrafo")).toBeNull();
     // Fixed entry offers no Delete or Unpublish
     expect(screen.queryByRole("button", { name: /Eliminar/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /Despublicar/i })).toBeNull();
 
+    // Clearing optional subHeadline normalizes to `undefined` ($unset, kills M25)
     const subInput = screen.getByLabelText(/Subtítulo/i);
     await user.clear(subInput);
-    await user.type(subInput, "A nuestra casa");
     await user.click(screen.getByRole("button", { name: "Guardar borrador" }));
 
     await waitFor(() => {
       expect(mockSaveDraftAction).toHaveBeenCalledTimes(1);
     });
     const call = mockSaveDraftAction.mock.calls[0]?.[0];
-    expect(call.patch).toEqual({ subHeadline: { "es-AR": "A nuestra casa" } });
+    expect(call.patch).toEqual({ subHeadline: undefined });
     expect(call.patch.machineName).toBeUndefined();
     expect(call.patch.layout).toBeUndefined();
   });
 
-  it("renders cta fields (urlParameters, optional targetPage) and hides body/images", () => {
-    renderSection({
+  it("renders cta fields, strips leading ? on urlParameters on save (C1 / M25), and hides body/images", async () => {
+    const user = userEvent.setup();
+    const cta: SectionFields = {
       machineName: "connect-with-us",
       layout: "cta",
       headline: { "es-AR": "Conectate" },
       ctaText: { "es-AR": "Escribinos" },
       targetPage: "come-meet-us",
       urlParameters: "subject=oracion",
+    };
+
+    mockSaveDraftAction.mockResolvedValue({
+      ok: true,
+      doc: {
+        _id: "sec-1",
+        draft: { ...cta, urlParameters: "subject=consulta" },
+        published: cta,
+        revision: 4,
+        createdAt: "2026-11-20T00:00:00.000Z",
+        updatedAt: "2026-11-21T00:00:00.000Z",
+        updatedBy: "u1",
+      },
+      status: "changed",
+      changedFields: ["urlParameters"],
+      noOp: false,
     });
 
-    expect(screen.getByLabelText(/Parámetros de URL/i)).toHaveValue(
-      "subject=oracion",
-    );
+    renderSection(cta);
+
+    const paramsInput = screen.getByLabelText(/Parámetros de URL/i);
+    expect(paramsInput).toHaveValue("subject=oracion");
     expect(screen.queryByLabelText(/Subtítulo/i)).toBeNull();
     expect(screen.queryByText(/Galería de imágenes/i)).toBeNull();
+
+    await user.clear(paramsInput);
+    await user.type(paramsInput, "?subject=consulta");
+    await user.click(screen.getByRole("button", { name: "Guardar borrador" }));
+
+    await waitFor(() => expect(mockSaveDraftAction).toHaveBeenCalledTimes(1));
+    expect(mockSaveDraftAction.mock.calls[0]?.[0].patch).toEqual({
+      urlParameters: "subject=consulta",
+    });
   });
 
   it("renders textBlock fields (body, multi-image gallery) and hides ctaText/targetPage", () => {

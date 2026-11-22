@@ -13,9 +13,19 @@ import {
 } from "@idcr/content";
 import { getSectionLayoutFieldConfig } from "./section-layout";
 
+function isSiteValueEmpty(value: unknown): boolean {
+  if (isEmptyValue(value)) return true;
+  if (Array.isArray(value)) {
+    return value.every(
+      (item) => typeof item === "string" && item.trim().length === 0,
+    );
+  }
+  return false;
+}
+
 function isMissingEnglish(field: Localized<unknown> | undefined): boolean {
   if (!field) return false;
-  return !isEmptyValue(field["es-AR"]) && isEmptyValue(field["en-US"]);
+  return !isSiteValueEmpty(field["es-AR"]) && isSiteValueEmpty(field["en-US"]);
 }
 
 function countFields(fields: readonly (Localized<unknown> | undefined)[]): number {

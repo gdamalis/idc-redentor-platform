@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import esSite from "../../../../messages/content/site.es-AR.json";
 import enSite from "../../../../messages/content/site.en-US.json";
-import { createSiteFieldErrorMapper, type SiteTranslator } from "./field-errors";
+import {
+  createSiteFieldErrorMapper,
+  findRichTextFieldError,
+  type SiteTranslator,
+} from "./field-errors";
 
 function makeTranslator(catalog: typeof esSite): SiteTranslator {
   return (key, values) => {
@@ -70,6 +74,28 @@ describe("createSiteFieldErrorMapper", () => {
     expect(mapContact("agreementNote.es-AR", ["Disallowed node heading"])).toBe(
       "Este texto solo permite párrafos, negrita, cursiva y enlaces.",
     );
+    // Invalid link href & nested `.content.` subpath map to richTextInlineLink (C3.4)
+    expect(
+      mapContact("agreementNote.es-AR", [
+        "Link address must start with https://, http://, mailto: or /",
+      ]),
+    ).toBe("Este texto solo permite párrafos, negrita, cursiva y enlaces.");
+    expect(
+      mapContact("agreementNote.es-AR.content.0.content.0.marks.0.attrs.href", [
+        "Invalid",
+      ]),
+    ).toBe("Este texto solo permite párrafos, negrita, cursiva y enlaces.");
+    expect(
+      findRichTextFieldError(
+        (p) =>
+          p === "agreementNote.es-AR.content.0.marks.0"
+            ? "Este texto solo permite párrafos, negrita, cursiva y enlaces."
+            : undefined,
+        { "agreementNote.es-AR.content.0.marks.0": ["Invalid"] },
+        "agreementNote.es-AR",
+        "agreementNote",
+      ),
+    ).toBe("Este texto solo permite párrafos, negrita, cursiva y enlaces.");
     expect(mapContact("fields.1.name.es-AR", ["Required"])).toBe(
       "Campo 2: falta la etiqueta en español.",
     );

@@ -22,6 +22,7 @@ import {
   normalizeSectionDraft,
   normalizeSeoEntryDraft,
   normalizeSingleEmailFormDraft,
+  normalizeUrlParameters,
 } from "./normalize";
 
 const sampleDoc = (text: string): RichTextDoc => ({
@@ -30,14 +31,19 @@ const sampleDoc = (text: string): RichTextDoc => ({
 });
 
 describe("site content normalization helpers", () => {
-  it("normalizes optional text and numbers cleanly", () => {
+  it("normalizes optional text, urlParameters, and numbers cleanly", () => {
     expect(normalizeOptionalText(undefined)).toBeUndefined();
     expect(normalizeOptionalText("   ")).toBeUndefined();
     expect(normalizeOptionalText("  hello  ")).toBe("hello");
 
+    expect(normalizeUrlParameters("???subject=oracion")).toBe(
+      "subject=oracion",
+    );
+    expect(normalizeUrlParameters("  ?  ")).toBeUndefined();
+
     expect(normalizeOptionalNumber("")).toBeUndefined();
     expect(normalizeOptionalNumber("   ")).toBeUndefined();
-    expect(normalizeOptionalNumber("abc")).toBeUndefined();
+    expect(Number.isNaN(normalizeOptionalNumber("abc"))).toBe(true);
     expect(normalizeOptionalNumber("-34.6058")).toBe(-34.6058);
   });
 
@@ -239,14 +245,25 @@ describe("site content normalization helpers", () => {
       googleMapsUrl: "  ",
       mapEmbedUrl: "https://maps.google.com/embed?pb=1",
       lat: -34.6058,
-      lon: Number.NaN,
+      lon: -58.4287,
     });
     expect(loc.neighborhood).toBeUndefined();
     expect(loc.googleMapsUrl).toBeUndefined();
-    expect(loc.lon).toBeUndefined();
     expect(CONTENT_SCHEMAS.location.publishable.safeParse(loc).success).toBe(
       true,
     );
+
+    // Invalid coordinate (NaN) is preserved so Zod rejects it cleanly instead of unsetting
+    const badLoc = normalizeLocationDraft({
+      kind: "location",
+      machineName: "location",
+      addressLine1: "Perón 4385",
+      city: "Buenos Aires",
+      country: "Argentina",
+      lat: Number.NaN,
+    });
+    expect(Number.isNaN(badLoc.lat)).toBe(true);
+    expect(CONTENT_SCHEMAS.location.draft.safeParse(badLoc).success).toBe(false);
 
     const sub = normalizeSingleEmailFormDraft({
       kind: "singleEmailForm",

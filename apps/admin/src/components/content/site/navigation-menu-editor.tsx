@@ -18,7 +18,9 @@ import { LocalizedFieldReference } from "@src/components/content/localized-field
 import { SortableList } from "@src/components/content/sortable-list";
 import { createSiteFieldErrorMapper } from "@src/lib/content/site/field-errors";
 import { countNavigationMenuMissingEn } from "@src/lib/content/site/missing-en";
+import { normalizeNavigationMenuDraft } from "@src/lib/content/site/normalize";
 import { FixedIdentityMeta } from "./fixed-identity-meta";
+import { createNormalizedSiteActions } from "./normalized-actions";
 import { SitePageSelect } from "./site-page-select";
 
 export interface NavigationMenuEditorProps {
@@ -86,6 +88,12 @@ export function NavigationMenuEditor({
     [tSite],
   );
 
+  const actionOverrides = React.useMemo(
+    () =>
+      createNormalizedSiteActions(initialValues, normalizeNavigationMenuDraft),
+    [initialValues],
+  );
+
   const requiredMark = tContent("errors.requiredMark");
 
   return (
@@ -105,6 +113,7 @@ export function NavigationMenuEditor({
       fixedAppearsOn={appearsOn}
       liveUrl={liveUrl}
       excludeFromPatch={EXCLUDE_IMMUTABLE}
+      actionOverrides={actionOverrides}
       countMissingEn={countNavigationMenuMissingEn}
       customFieldErrorMap={customFieldErrorMap}
       renderLocalizedFields={({ activeLocale, values, form, readOnly, getError }) => {

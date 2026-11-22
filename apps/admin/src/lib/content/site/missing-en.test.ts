@@ -81,7 +81,7 @@ describe("missing-English counters for site content editors", () => {
         machineName: "seo-home",
         title: { "es-AR": "Inicio" },
         description: { "es-AR": "Desc", "en-US": "Desc EN" },
-        keywords: { "es-AR": ["iglesia"] },
+        keywords: { "es-AR": ["iglesia"], "en-US": ["", "   "] },
         siteName: { "es-AR": "IDCR" },
       }),
     ).toBe(3);
@@ -147,7 +147,7 @@ describe("missing-English counters for site content editors", () => {
             type: "Dropdown",
             required: true,
             name: { "es-AR": "Asunto", "en-US": "Subject" },
-            values: { "es-AR": ["Información", "Oración"] },
+            values: { "es-AR": ["Información", "Oración"], "en-US": [""] },
           },
         ],
       }),

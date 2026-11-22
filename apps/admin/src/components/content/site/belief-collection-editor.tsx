@@ -27,13 +27,18 @@ import { LocalizedFieldReference } from "@src/components/content/localized-field
 import { MediaField } from "@src/components/content/media";
 import { RichTextEditor } from "@src/components/content/rich-text/rich-text-editor";
 import { SortableList } from "@src/components/content/sortable-list";
-import { createSiteFieldErrorMapper } from "@src/lib/content/site/field-errors";
+import {
+  createSiteFieldErrorMapper,
+  findRichTextFieldError,
+} from "@src/lib/content/site/field-errors";
 import { countBeliefCollectionMissingEn } from "@src/lib/content/site/missing-en";
 import {
   EMPTY_RICH_TEXT_DOC,
   extractRichTextPlainText,
+  normalizeBeliefCollectionDraft,
 } from "@src/lib/content/site/normalize";
 import { FixedIdentityMeta } from "./fixed-identity-meta";
+import { createNormalizedSiteActions } from "./normalized-actions";
 import { SingleVerseField } from "./single-verse-field";
 
 export interface BeliefCollectionEditorProps {
@@ -155,6 +160,15 @@ export function BeliefCollectionEditor({
     [tSite],
   );
 
+  const actionOverrides = React.useMemo(
+    () =>
+      createNormalizedSiteActions(
+        initialValues,
+        normalizeBeliefCollectionDraft,
+      ),
+    [initialValues],
+  );
+
   const requiredMark = tContent("errors.requiredMark");
   const defaultKind: BeliefKind =
     machineName === "our-creed" ? BELIEF_KIND.Creed : BELIEF_KIND.Value;
@@ -178,6 +192,7 @@ export function BeliefCollectionEditor({
       fixedAppearsOn={appearsOn}
       liveUrl={liveUrl}
       excludeFromPatch={EXCLUDE_IMMUTABLE}
+      actionOverrides={actionOverrides}
       countMissingEn={countBeliefCollectionMissingEn}
       customFieldErrorMap={customFieldErrorMap}
       renderLocalizedFields={({ activeLocale, values, form, readOnly, getError }) => {
@@ -242,10 +257,12 @@ export function BeliefCollectionEditor({
               label={tSite("beliefs.description")}
               fieldPath={`description.${activeLocale}`}
               hint={tSite("beliefs.descriptionHint")}
-              error={
-                getError(`description.${activeLocale}`) ??
-                getError("description")
-              }
+              error={findRichTextFieldError(
+                getError,
+                form.fieldErrors,
+                `description.${activeLocale}`,
+                "description",
+              )}
             >
               <RichTextEditor
                 key={`belief-desc-${activeLocale}`}
@@ -418,10 +435,12 @@ export function BeliefCollectionEditor({
                         fieldPath={`items.${idx}.description.${activeLocale}`}
                         requiredToPublish
                         requiredMarkLabel={requiredMark}
-                        error={
-                          getError(`items.${idx}.description.${activeLocale}`) ??
-                          getError(`items.${idx}.description`)
-                        }
+                        error={findRichTextFieldError(
+                          getError,
+                          form.fieldErrors,
+                          `items.${idx}.description.${activeLocale}`,
+                          `items.${idx}.description`,
+                        )}
                       >
                         <RichTextEditor
                           key={`${itemKey}-desc-${activeLocale}`}

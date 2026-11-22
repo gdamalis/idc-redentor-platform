@@ -19,8 +19,10 @@ import { LocalizedFieldReference } from "@src/components/content/localized-field
 import { MediaField } from "@src/components/content/media";
 import { createSiteFieldErrorMapper } from "@src/lib/content/site/field-errors";
 import { countSeoEntryMissingEn } from "@src/lib/content/site/missing-en";
+import { normalizeSeoEntryDraft } from "@src/lib/content/site/normalize";
 import { FixedIdentityMeta } from "./fixed-identity-meta";
 import { LocalizedStringListField } from "./localized-string-list-field";
+import { createNormalizedSiteActions } from "./normalized-actions";
 
 export interface SeoEntryEditorProps {
   readonly initialDoc: SerializedContentDoc<SeoEntryFields>;
@@ -91,6 +93,11 @@ export function SeoEntryEditor({
     [tSite],
   );
 
+  const actionOverrides = React.useMemo(
+    () => createNormalizedSiteActions(initialValues, normalizeSeoEntryDraft),
+    [initialValues],
+  );
+
   const requiredMark = tContent("errors.requiredMark");
 
   return (
@@ -110,6 +117,7 @@ export function SeoEntryEditor({
       fixedAppearsOn={appearsOn}
       liveUrl={liveUrl}
       excludeFromPatch={EXCLUDE_IMMUTABLE}
+      actionOverrides={actionOverrides}
       countMissingEn={countSeoEntryMissingEn}
       customFieldErrorMap={customFieldErrorMap}
       renderLocalizedFields={({ activeLocale, values, form, readOnly, getError }) => {

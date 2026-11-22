@@ -26,14 +26,19 @@ import type { EntryEditorPermissions } from "@src/components/content/entry-edito
 import { LocalizedFieldReference } from "@src/components/content/localized-field";
 import { MediaField } from "@src/components/content/media";
 import { RichTextEditor } from "@src/components/content/rich-text/rich-text-editor";
-import { createSiteFieldErrorMapper } from "@src/lib/content/site/field-errors";
+import {
+  createSiteFieldErrorMapper,
+  findRichTextFieldError,
+} from "@src/lib/content/site/field-errors";
 import { countContactFormMissingEn } from "@src/lib/content/site/missing-en";
 import {
   EMPTY_RICH_TEXT_DOC,
   extractRichTextPlainText,
+  normalizeContactFormDraft,
 } from "@src/lib/content/site/normalize";
 import { FixedIdentityMeta } from "./fixed-identity-meta";
 import { LocalizedStringListField } from "./localized-string-list-field";
+import { createNormalizedSiteActions } from "./normalized-actions";
 import { SingleVerseField } from "./single-verse-field";
 
 export interface ContactFormEditorProps {
@@ -138,6 +143,14 @@ export function ContactFormEditor({
     [tSite],
   );
 
+  const actionOverrides = React.useMemo(
+    () =>
+      createNormalizedSiteActions(initialValues, (merged) =>
+        normalizeContactFormDraft(merged, initialDoc.draft.fields),
+      ),
+    [initialDoc.draft.fields, initialValues],
+  );
+
   const requiredMark = tContent("errors.requiredMark");
 
   return (
@@ -157,6 +170,7 @@ export function ContactFormEditor({
       fixedAppearsOn={appearsOn}
       liveUrl={liveUrl}
       excludeFromPatch={EXCLUDE_IMMUTABLE}
+      actionOverrides={actionOverrides}
       countMissingEn={countContactFormMissingEn}
       customFieldErrorMap={customFieldErrorMap}
       renderLocalizedFields={({ activeLocale, values, form, readOnly, getError }) => {
@@ -317,10 +331,12 @@ export function ContactFormEditor({
               requiredToPublish={activeLocale === "es-AR"}
               requiredMarkLabel={requiredMark}
               hint={tSite("contactForm.agreementNoteHint")}
-              error={
-                getError(`agreementNote.${activeLocale}`) ??
-                getError("agreementNote")
-              }
+              error={findRichTextFieldError(
+                getError,
+                form.fieldErrors,
+                `agreementNote.${activeLocale}`,
+                "agreementNote",
+              )}
             >
               <RichTextEditor
                 key={`contact-agreement-${activeLocale}`}

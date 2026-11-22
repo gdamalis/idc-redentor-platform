@@ -10,8 +10,12 @@ import { Notice } from "@src/components/ui/notice";
 import { EntryEditor } from "@src/components/content/entry-editor";
 import type { EntryEditorPermissions } from "@src/components/content/entry-editor-types";
 import { createSiteFieldErrorMapper } from "@src/lib/content/site/field-errors";
-import { normalizeOptionalNumber } from "@src/lib/content/site/normalize";
+import {
+  normalizeLocationDraft,
+  normalizeOptionalNumber,
+} from "@src/lib/content/site/normalize";
 import { FixedIdentityMeta } from "./fixed-identity-meta";
+import { createNormalizedSiteActions } from "./normalized-actions";
 
 export interface LocationEditorProps {
   readonly initialDoc: SerializedContentDoc<LocationFields>;
@@ -32,6 +36,93 @@ const EXCLUDE_IMMUTABLE: readonly (keyof LocationFields)[] = [
   "kind",
   "machineName",
 ];
+
+interface CoordinateInputsProps {
+  readonly lat: number | undefined;
+  readonly lon: number | undefined;
+  readonly readOnly: boolean;
+  readonly latLabel: string;
+  readonly lonLabel: string;
+  readonly latError?: string;
+  readonly lonError?: string;
+  readonly onChangeLat: (next: number | undefined) => void;
+  readonly onChangeLon: (next: number | undefined) => void;
+}
+
+function CoordinateInputs({
+  lat,
+  lon,
+  readOnly,
+  latLabel,
+  lonLabel,
+  latError,
+  lonError,
+  onChangeLat,
+  onChangeLon,
+}: CoordinateInputsProps) {
+  const [latDraft, setLatDraft] = React.useState<string>(() =>
+    lat !== undefined && Number.isFinite(lat) ? String(lat) : "",
+  );
+  const [lonDraft, setLonDraft] = React.useState<string>(() =>
+    lon !== undefined && Number.isFinite(lon) ? String(lon) : "",
+  );
+  const lastSentLatRef = React.useRef<number | undefined>(lat);
+  const lastSentLonRef = React.useRef<number | undefined>(lon);
+
+  // Sync draft text whenever `values.lat`/`values.lon` resets externally
+  // (e.g. "Descartar cambios" or local recovery) without disturbing live typing.
+  React.useEffect(() => {
+    if (!Object.is(lat, lastSentLatRef.current)) {
+      lastSentLatRef.current = lat;
+      setLatDraft(lat !== undefined && Number.isFinite(lat) ? String(lat) : "");
+    }
+  }, [lat]);
+
+  React.useEffect(() => {
+    if (!Object.is(lon, lastSentLonRef.current)) {
+      lastSentLonRef.current = lon;
+      setLonDraft(lon !== undefined && Number.isFinite(lon) ? String(lon) : "");
+    }
+  }, [lon]);
+
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <Field label={latLabel} htmlFor="location-lat" fieldPath="lat" error={latError}>
+        <Input
+          id="location-lat"
+          type="text"
+          inputMode="decimal"
+          disabled={readOnly}
+          value={latDraft}
+          onChange={(e) => {
+            const raw = e.target.value;
+            setLatDraft(raw);
+            const parsed = normalizeOptionalNumber(raw);
+            lastSentLatRef.current = parsed;
+            onChangeLat(parsed);
+          }}
+        />
+      </Field>
+
+      <Field label={lonLabel} htmlFor="location-lon" fieldPath="lon" error={lonError}>
+        <Input
+          id="location-lon"
+          type="text"
+          inputMode="decimal"
+          disabled={readOnly}
+          value={lonDraft}
+          onChange={(e) => {
+            const raw = e.target.value;
+            setLonDraft(raw);
+            const parsed = normalizeOptionalNumber(raw);
+            lastSentLonRef.current = parsed;
+            onChangeLon(parsed);
+          }}
+        />
+      </Field>
+    </div>
+  );
+}
 
 /**
  * Non-localized shared church address & map global (`globals` / `kind: "location"`).
@@ -54,13 +145,6 @@ export function LocationEditor({
   const tContent = useTranslations("content");
   const tSite = useTranslations("contentSite");
 
-  const [latDraft, setLatDraft] = React.useState<string>(() =>
-    initialValues.lat !== undefined ? String(initialValues.lat) : "",
-  );
-  const [lonDraft, setLonDraft] = React.useState<string>(() =>
-    initialValues.lon !== undefined ? String(initialValues.lon) : "",
-  );
-
   const customFieldErrorMap = React.useMemo(
     () =>
       createSiteFieldErrorMapper(
@@ -68,6 +152,11 @@ export function LocationEditor({
         "location",
       ),
     [tSite],
+  );
+
+  const actionOverrides = React.useMemo(
+    () => createNormalizedSiteActions(initialValues, normalizeLocationDraft),
+    [initialValues],
   );
 
   const requiredMark = tContent("errors.requiredMark");
@@ -89,6 +178,7 @@ export function LocationEditor({
       fixedAppearsOn={appearsOn}
       liveUrl={liveUrl}
       excludeFromPatch={EXCLUDE_IMMUTABLE}
+      actionOverrides={actionOverrides}
       customFieldErrorMap={customFieldErrorMap}
       topNotices={
         <Notice variant="info">{tSite("location.sharedNotice")}</Notice>
@@ -234,51 +324,17 @@ export function LocationEditor({
                 />
               </Field>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field
-                  label={tSite("location.lat")}
-                  htmlFor="location-lat"
-                  fieldPath="lat"
-                  error={getError("lat")}
-                >
-                  <Input
-                    id="location-lat"
-                    type="number"
-                    step="any"
-                    min={-90}
-                    max={90}
-                    disabled={readOnly}
-                    value={latDraft}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      setLatDraft(raw);
-                      form.setField("lat", normalizeOptionalNumber(raw));
-                    }}
-                  />
-                </Field>
-
-                <Field
-                  label={tSite("location.lon")}
-                  htmlFor="location-lon"
-                  fieldPath="lon"
-                  error={getError("lon")}
-                >
-                  <Input
-                    id="location-lon"
-                    type="number"
-                    step="any"
-                    min={-180}
-                    max={180}
-                    disabled={readOnly}
-                    value={lonDraft}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      setLonDraft(raw);
-                      form.setField("lon", normalizeOptionalNumber(raw));
-                    }}
-                  />
-                </Field>
-              </div>
+              <CoordinateInputs
+                lat={values.lat}
+                lon={values.lon}
+                readOnly={readOnly}
+                latLabel={tSite("location.lat")}
+                lonLabel={tSite("location.lon")}
+                latError={getError("lat")}
+                lonError={getError("lon")}
+                onChangeLat={(next) => form.setField("lat", next)}
+                onChangeLon={(next) => form.setField("lon", next)}
+              />
               <p className="text-xs text-muted-foreground">
                 {tSite("location.coordinatesHint")}
               </p>

@@ -17,7 +17,9 @@ import type { EntryEditorPermissions } from "@src/components/content/entry-edito
 import { LocalizedFieldReference } from "@src/components/content/localized-field";
 import { createSiteFieldErrorMapper } from "@src/lib/content/site/field-errors";
 import { countSingleEmailFormMissingEn } from "@src/lib/content/site/missing-en";
+import { normalizeSingleEmailFormDraft } from "@src/lib/content/site/normalize";
 import { FixedIdentityMeta } from "./fixed-identity-meta";
+import { createNormalizedSiteActions } from "./normalized-actions";
 
 export interface SingleEmailFormEditorProps {
   readonly initialDoc: SerializedContentDoc<SingleEmailFormFields>;
@@ -83,6 +85,15 @@ export function SingleEmailFormEditor({
     [tSite],
   );
 
+  const actionOverrides = React.useMemo(
+    () =>
+      createNormalizedSiteActions(
+        initialValues,
+        normalizeSingleEmailFormDraft,
+      ),
+    [initialValues],
+  );
+
   const requiredMark = tContent("errors.requiredMark");
 
   return (
@@ -102,6 +113,7 @@ export function SingleEmailFormEditor({
       fixedAppearsOn={appearsOn}
       liveUrl={liveUrl}
       excludeFromPatch={EXCLUDE_IMMUTABLE}
+      actionOverrides={actionOverrides}
       countMissingEn={countSingleEmailFormMissingEn}
       customFieldErrorMap={customFieldErrorMap}
       renderLocalizedFields={({ activeLocale, values, form, readOnly, getError }) => {

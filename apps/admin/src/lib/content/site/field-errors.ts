@@ -19,16 +19,43 @@ const MENU_ITEM_PATH_RE = /^menuItems\.(\d+)\.(groupName|groupLink)(?:\.(es-AR|e
 const SOCIAL_LINK_PATH_RE = /^socialLinks\.(\d+)\.(platform|url)$/;
 const CONTACT_FIELD_PATH_RE = /^fields\.(\d+)\.(name|placeholder|values)(?:\.(es-AR|en-US))?(?:\..*)?$/;
 
-function isRichTextProfileError(rawMessages: readonly string[]): boolean {
+function isRichTextProfileError(
+  path: string,
+  rawMessages: readonly string[],
+): boolean {
+  if (path.includes(".content.")) return true;
   return rawMessages.some((msg) => {
     const lower = msg.toLowerCase();
     return (
       lower.includes("node") ||
       lower.includes("mark") ||
       lower.includes("profile") ||
-      lower.includes("allowed")
+      lower.includes("allowed") ||
+      lower.includes("link")
     );
   });
+}
+
+/**
+ * Resolves an inline error for a rich-text `<Field>` even when Zod reports a
+ * nested TipTap subpath (e.g. `agreementNote.es-AR.content.0.content.0.marks.0.attrs.href`).
+ */
+export function findRichTextFieldError(
+  getError: (fieldPath: string) => string | undefined,
+  fieldErrors: Readonly<Record<string, readonly string[]>>,
+  localizedPath: string,
+  basePath: string,
+): string | undefined {
+  const direct = getError(localizedPath) ?? getError(basePath);
+  if (direct) return direct;
+  const prefix = `${localizedPath}.`;
+  for (const key of Object.keys(fieldErrors)) {
+    if (key.startsWith(prefix)) {
+      const mapped = getError(key);
+      if (mapped) return mapped;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -51,12 +78,12 @@ export function createSiteFieldErrorMapper(
       if (path === "title" || path === "title.es-AR") return t("errors.titleEs");
       if (path === "title.en-US") return t("errors.titleEn");
       if (path.startsWith("description.es-AR") || path === "description") {
-        return isRichTextProfileError(rawMessages)
+        return isRichTextProfileError(path, rawMessages)
           ? t("errors.richTextInline")
           : t("errors.descriptionEs");
       }
       if (path.startsWith("description.en-US")) {
-        return isRichTextProfileError(rawMessages)
+        return isRichTextProfileError(path, rawMessages)
           ? t("errors.richTextInline")
           : t("errors.descriptionEn");
       }
@@ -71,7 +98,7 @@ export function createSiteFieldErrorMapper(
             : t("errors.beliefItemTitleEs", { index });
         }
         if (field === "description") {
-          if (isRichTextProfileError(rawMessages)) {
+          if (isRichTextProfileError(path, rawMessages)) {
             return t("errors.richTextInline");
           }
           return loc === "en-US"
@@ -90,7 +117,7 @@ export function createSiteFieldErrorMapper(
         return t("errors.headlineEs");
       }
       if (path === "body" || path.startsWith("body.")) {
-        return isRichTextProfileError(rawMessages)
+        return isRichTextProfileError(path, rawMessages)
           ? t("errors.richTextInline")
           : t("errors.bodyEs");
       }
@@ -179,7 +206,7 @@ export function createSiteFieldErrorMapper(
       }
       if (path === "bibleVerseId") return t("errors.bibleVerse");
       if (path === "agreementNote" || path.startsWith("agreementNote.")) {
-        return isRichTextProfileError(rawMessages)
+        return isRichTextProfileError(path, rawMessages)
           ? t("errors.richTextInlineLink")
           : t("errors.agreementNoteEs");
       }

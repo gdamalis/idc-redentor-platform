@@ -24,8 +24,10 @@ import { MediaField } from "@src/components/content/media";
 import { SortableList } from "@src/components/content/sortable-list";
 import { createSiteFieldErrorMapper } from "@src/lib/content/site/field-errors";
 import { countFooterMissingEn } from "@src/lib/content/site/missing-en";
+import { normalizeFooterDraft } from "@src/lib/content/site/normalize";
 import type { SharedLocationSummary } from "@src/service/content/site/loaders";
 import { FixedIdentityMeta } from "./fixed-identity-meta";
+import { createNormalizedSiteActions } from "./normalized-actions";
 import { SharedLocationCard } from "./shared-location-card";
 
 export interface FooterEditorProps {
@@ -106,6 +108,11 @@ export function FooterEditor({
     [tSite],
   );
 
+  const actionOverrides = React.useMemo(
+    () => createNormalizedSiteActions(initialValues, normalizeFooterDraft),
+    [initialValues],
+  );
+
   const requiredMark = tContent("errors.requiredMark");
 
   return (
@@ -125,6 +132,7 @@ export function FooterEditor({
       fixedAppearsOn={appearsOn}
       liveUrl={liveUrl}
       excludeFromPatch={EXCLUDE_IMMUTABLE}
+      actionOverrides={actionOverrides}
       countMissingEn={countFooterMissingEn}
       customFieldErrorMap={customFieldErrorMap}
       renderLocalizedFields={({ activeLocale, values, form, readOnly, getError }) => {

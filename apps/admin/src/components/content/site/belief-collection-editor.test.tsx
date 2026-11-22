@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import type { ReactNode } from "react";
@@ -112,7 +112,7 @@ describe("BeliefCollectionEditor", () => {
     vi.clearAllMocks();
   });
 
-  it("shows doctrinal protected notice, Creed title icon hint, stored verse label, and disables Publish without content:publish-protected (AC6)", () => {
+  it("shows doctrinal protected notice, Creed title icon hint, inline toolbar only, stored verse label, and disables Publish without content:publish-protected (AC4, AC6)", async () => {
     renderBeliefEditor(false);
 
     expect(
@@ -124,6 +124,15 @@ describe("BeliefCollectionEditor", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Juan 3:16 · NVI")).toBeInTheDocument();
+    // Inline rich-text profile: Bold/Italic present, Heading/List/Link absent
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("button", { name: "Negrita" }).length,
+      ).toBeGreaterThan(0),
+    );
+    expect(screen.queryByRole("button", { name: "Enlace" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Lista con viñetas" })).toBeNull();
+    expect(screen.queryByLabelText("Estilo de párrafo")).toBeNull();
     // Publish is disabled with reason when lacking content:publish-protected
     const publishBtn = screen.getByRole("button", { name: /Publicar cambios/i });
     expect(publishBtn).toBeDisabled();

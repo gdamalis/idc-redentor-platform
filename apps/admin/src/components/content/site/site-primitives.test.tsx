@@ -1,10 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import type { ReactNode } from "react";
 import { SITE_PAGE_SLUGS } from "@idcr/content";
 import { loadMessages } from "@src/i18n/load-messages";
+
+const { mockSearchBibleVersesAction } = vi.hoisted(() => ({
+  mockSearchBibleVersesAction: vi.fn(),
+}));
 
 vi.mock("@src/i18n/routing", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: ReactNode }) => (
@@ -15,7 +19,7 @@ vi.mock("@src/i18n/routing", () => ({
 }));
 
 vi.mock("@src/app/[locale]/(app)/content/actions", () => ({
-  searchBibleVersesAction: vi.fn().mockResolvedValue({ ok: true, items: [] }),
+  searchBibleVersesAction: mockSearchBibleVersesAction,
   createOrReuseBibleVerseAction: vi.fn(),
 }));
 
@@ -105,10 +109,27 @@ describe("Shared site-editor building blocks", () => {
     ).toBeInTheDocument();
   });
 
-  it("SingleVerseField displays stored version verbatim and unlinks without deleting", async () => {
+  it("SingleVerseField displays stored version verbatim, unlinks without deleting, and resyncs on external value reset (C2.2)", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    wrap(
+    mockSearchBibleVersesAction.mockResolvedValue({
+      ok: true,
+      items: [
+        {
+          id: "v2",
+          status: "published",
+          revision: 1,
+          fields: {
+            book: { "es-AR": "Romanos", "en-US": "Romans" },
+            chapter: 8,
+            fromVerse: 28,
+            version: { "es-AR": "NVI", "en-US": "NIV" },
+          },
+        },
+      ],
+    });
+
+    const { rerender } = wrap(
       <SingleVerseField
         value="v1"
         initialVerse={{
@@ -128,6 +149,22 @@ describe("Shared site-editor building blocks", () => {
     );
 
     expect(screen.getByText("Juan 3:16 · RVR1960")).toBeInTheDocument();
+
+    // External reset to another verse ID drops stale Juan 3:16 and resolves v2
+    rerender(
+      <NextIntlClientProvider locale="es-AR" messages={esMessages}>
+        <SingleVerseField
+          value="v2"
+          initialVerse={null}
+          onChange={onChange}
+        />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.queryByText("Juan 3:16 · RVR1960")).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByText("Romanos 8:28 · NVI")).toBeInTheDocument(),
+    );
+
     await user.click(screen.getByRole("button", { name: "Quitar" }));
     expect(onChange).toHaveBeenCalledWith(undefined);
   });

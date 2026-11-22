@@ -126,7 +126,7 @@ describe("EventBannerEditor & SeoEntryEditor", () => {
     );
   });
 
-  it("SeoEntryEditor shows live advisory char counts without blocking edits", async () => {
+  it("SeoEntryEditor shows exact advisory char counts (kills M14) and strips blank en-US keywords on save (C1 / M25)", async () => {
     const user = userEvent.setup();
     const initial: SeoEntryFields = {
       machineName: "seo-home",
@@ -136,6 +136,22 @@ describe("EventBannerEditor & SeoEntryEditor", () => {
       siteName: { "es-AR": "IDCR" },
       type: "website",
     };
+
+    mockSaveDraftAction.mockResolvedValue({
+      ok: true,
+      doc: {
+        _id: "seo-1",
+        draft: initial,
+        published: initial,
+        revision: 2,
+        createdAt: "2026-11-20T00:00:00.000Z",
+        updatedAt: "2026-11-21T00:00:00.000Z",
+        updatedBy: "u1",
+      },
+      status: "changed",
+      changedFields: ["keywords"],
+      noOp: false,
+    });
 
     render(
       <NextIntlClientProvider locale="es-AR" messages={esMessages}>
@@ -169,17 +185,34 @@ describe("EventBannerEditor & SeoEntryEditor", () => {
       </NextIntlClientProvider>,
     );
 
+    // Exact text assertions kill M14 (`60` -> `600` mutation)
     expect(screen.getByTestId("seo-title-char-count")).toHaveTextContent(
-      "6 / 60",
+      /^6 \/ 60 caracteres recomendados$/,
     );
+    expect(screen.getByTestId("seo-description-char-count")).toHaveTextContent(
+      /^11 \/ 160 caracteres recomendados$/,
+    );
+
     const titleInput = screen.getByLabelText(/Título para buscadores/i);
-    await user.type(titleInput, " ".repeat(60));
+    await user.type(titleInput, "a".repeat(60));
     expect(screen.getByTestId("seo-title-char-count")).toHaveTextContent(
-      "66 / 60",
+      /^66 \/ 60 caracteres recomendados \(puede recortarse en resultados\)$/,
     );
     // Advisory only — Save draft stays enabled
     expect(
       screen.getByRole("button", { name: "Guardar borrador" }),
     ).toBeEnabled();
+
+    // Switch to English, add a blank keyword row, and verify `en-US` is omitted on save (C1)
+    await user.click(screen.getByRole("tab", { name: /English/i }));
+    await user.click(
+      screen.getByRole("button", { name: /Agregar palabra clave/i }),
+    );
+    await user.click(screen.getByRole("button", { name: "Guardar borrador" }));
+
+    await waitFor(() => expect(mockSaveDraftAction).toHaveBeenCalledTimes(1));
+    expect(mockSaveDraftAction.mock.calls[0]?.[0].patch.keywords).toEqual({
+      "es-AR": ["iglesia"],
+    });
   });
 });
