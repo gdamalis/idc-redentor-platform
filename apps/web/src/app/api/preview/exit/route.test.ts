@@ -56,7 +56,9 @@ describe("POST /api/preview/exit", () => {
       const res = await POST(makeFormPost(staticPath));
       expect(res.status).toBe(303);
       expect(res.headers.get("Location")).toBe(staticPath);
-      expect(res.headers.get("Cache-Control")).toBe("no-store");
+      expect(res.headers.get("Cache-Control")).toBe(
+        "private, no-cache, no-store, max-age=0, must-revalidate",
+      );
       expect(res.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
     }
 

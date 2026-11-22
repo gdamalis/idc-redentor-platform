@@ -39,7 +39,9 @@ describe("GET /api/preview", () => {
 
     expect(res.status).toBe(307);
     expect(res.headers.get("Location")).toBe("/es-AR/blog/mi-articulo");
-    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(res.headers.get("Cache-Control")).toBe(
+      "private, no-cache, no-store, max-age=0, must-revalidate",
+    );
     expect(res.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
     expect(enable).toHaveBeenCalledTimes(1);
 
@@ -88,7 +90,9 @@ describe("GET /api/preview", () => {
         makeRequest({ path: badPath, exp: String(Math.floor(Date.now() / 1000) + 30), sig: "abc" }),
       );
       expect(res.status, badPath).toBe(400);
-      expect(res.headers.get("Cache-Control")).toBe("no-store");
+      expect(res.headers.get("Cache-Control")).toBe(
+      "private, no-cache, no-store, max-age=0, must-revalidate",
+    );
     }
 
     const missing = await GET(makeRequest({ path: "/es-AR" }));

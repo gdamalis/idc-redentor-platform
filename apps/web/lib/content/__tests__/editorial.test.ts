@@ -533,6 +533,56 @@ describe("blog post readers", () => {
     expect(excluding.map((p) => p.slug)).toEqual(["post-tres", "post-uno"]);
   });
 
+  it("ignores envelope updatedAt on published same-date ties so unpublished saveDrafts never reorder posts (C1)", async () => {
+    const seed = makeSeed();
+    const posts = seed[COLLECTIONS.posts]!;
+    // Give higher-_id POST_3 a newer envelope updatedAt than same-date POST_2 (simulating saveDraft)
+    posts[1]!.updatedAt = T1; // ID_POST_2, publishedDate 2026-03-01
+    posts[2]!.updatedAt = T3; // ID_POST_3, publishedDate 2026-03-01
+    state.mockDb!.setCollection(COLLECTIONS.posts, posts);
+
+    const latest = await getLatestBlogPostPages("es-AR");
+    expect(latest.map((p) => p.slug)).toEqual([
+      "post-dos",
+      "post-tres",
+      "post-uno",
+    ]);
+  });
+
+  it("caps relatedPostIds to 3 AFTER filtering unpublished/missing targets (C2)", async () => {
+    const idPost4 = new ObjectId("660000000000000000000035");
+    const seed = makeSeed();
+    const posts = seed[COLLECTIONS.posts]!;
+    posts.push({
+      _id: idPost4,
+      revision: 1,
+      createdAt: T1,
+      updatedAt: T1,
+      updatedBy: "admin",
+      publishedAt: T1,
+      draft: { slug: "post-cuatro", title: { "es-AR": "Post Cuatro" } },
+      published: {
+        slug: "post-cuatro",
+        title: { "es-AR": "Post Cuatro" },
+        publishedDate: "2026-01-01",
+      },
+    } as never);
+    posts[0]!.published!.relatedPostIds = [
+      ID_POST_DRAFT.toHexString(),
+      ID_POST_3.toHexString(),
+      ID_POST_2.toHexString(),
+      idPost4.toHexString(),
+    ];
+    state.mockDb!.setCollection(COLLECTIONS.posts, posts);
+
+    const post = (await getBlogPostPage("post-uno", "es-AR"))!;
+    expect(post.relatedBlogPostsCollection.items.map((r) => r.slug)).toEqual([
+      "post-tres",
+      "post-dos",
+      "post-cuatro",
+    ]);
+  });
+
   it("getBlogPostPage preserves stored related order, omits unpublished related posts in published mode, and applies en-US fallback", async () => {
     const post = (await getBlogPostPage("post-uno", "en-US"))!;
     expect(post.title).toBe("Post One");
@@ -711,6 +761,41 @@ describe("sermon readers", () => {
   it("getLatestSermons orders by sermonDate DESC and excludes given slug", async () => {
     const latest = await getLatestSermons("es-AR", { slug: "el-amor" });
     expect(latest.map((s) => s.slug)).toEqual(["la-gracia", "la-fe"]);
+  });
+
+  it("caps relatedSermonIds to 3 AFTER filtering unpublished/missing targets (C2)", async () => {
+    const idSermon4 = new ObjectId("660000000000000000000055");
+    const seed = makeSeed();
+    const sermons = seed[COLLECTIONS.sermons]!;
+    sermons.push({
+      _id: idSermon4,
+      revision: 1,
+      createdAt: T1,
+      updatedAt: T1,
+      updatedBy: "admin",
+      publishedAt: T1,
+      draft: { slug: "la-esperanza", title: { "es-AR": "La Esperanza" } },
+      published: {
+        slug: "la-esperanza",
+        title: { "es-AR": "La Esperanza" },
+        sermonDate: "2026-03-02",
+        excerpt: { "es-AR": "Sobre la esperanza" },
+      },
+    } as never);
+    sermons[0]!.published!.relatedSermonIds = [
+      ID_SERMON_DRAFT.toHexString(),
+      ID_SERMON_3.toHexString(),
+      ID_SERMON_2.toHexString(),
+      idSermon4.toHexString(),
+    ];
+    state.mockDb!.setCollection(COLLECTIONS.sermons, sermons);
+
+    const sermon = (await getSermon("la-gracia", "es-AR"))!;
+    expect(sermon.relatedSermons.map((r) => r.slug)).toEqual([
+      "la-fe",
+      "el-amor",
+      "la-esperanza",
+    ]);
   });
 
   it("getAllSermons returns >100 items, defaults audioLanguages, and soft-fails to [] without caching the outage", async () => {

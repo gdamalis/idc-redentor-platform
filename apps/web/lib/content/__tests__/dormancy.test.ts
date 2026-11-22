@@ -35,11 +35,20 @@ describe("ICR-201 dormancy check (AC8)", () => {
   it("proves zero page, layout, metadata, sitemap, proxy, or existing API modules import lib/content or mount PreviewBanner", () => {
     const previewApiDir = path.join(WEB_ROOT, "src/app/api/preview");
     const appFiles = collectSourceFiles(path.join(WEB_ROOT, "src/app")).filter(
-      (file) => !file.startsWith(previewApiDir),
+      (file) => !file.startsWith(previewApiDir + path.sep),
     );
+
+    const previewBannerDir = path.join(
+      WEB_ROOT,
+      "src/components/shared/preview-banner",
+    );
+    const componentFiles = collectSourceFiles(
+      path.join(WEB_ROOT, "src/components"),
+    ).filter((file) => !file.startsWith(previewBannerDir + path.sep));
 
     const targets = [
       ...appFiles,
+      ...componentFiles,
       path.join(WEB_ROOT, "lib/metadata.ts"),
       path.join(WEB_ROOT, "lib/sermonMetadata.ts"),
       path.join(WEB_ROOT, "src/proxy.ts"),

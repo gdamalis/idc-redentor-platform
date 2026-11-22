@@ -56,7 +56,7 @@ async function hydratePosts(
     collectEmbeddedMediaIds(contentDoc, mediaIds);
     if (fields.featuredImageId) mediaIds.add(fields.featuredImageId);
     if (fields.authorId) authorIds.add(fields.authorId);
-    for (const relId of (fields.relatedPostIds ?? []).slice(0, RELATED_POSTS_LIMIT)) {
+    for (const relId of fields.relatedPostIds ?? []) {
       relatedIds.add(relId);
     }
     pairs.push({ doc, fields, contentDoc });
@@ -89,7 +89,8 @@ async function hydratePosts(
 
   return pairs.map(({ doc, fields, contentDoc }) => {
     const relatedItems: RelatedBlogPostView[] = [];
-    for (const relId of (fields.relatedPostIds ?? []).slice(0, RELATED_POSTS_LIMIT)) {
+    for (const relId of fields.relatedPostIds ?? []) {
+      if (relatedItems.length >= RELATED_POSTS_LIMIT) break;
       const rel = relatedMap.get(relId);
       if (!rel) continue;
       const item: RelatedBlogPostView = {
@@ -151,12 +152,17 @@ async function fetchLatestBlogPosts(
     filter[`${snap}.slug`] = { $ne: excludeSlug };
   }
 
-  // Aligns with ICR-195's `{ "published.publishedDate": -1 }` index so re-publishing a typo
-  // fix never jumps an old post to the top; secondary `updatedAt` handles drafts without a date.
+  // Published reads sort strictly by `published.publishedDate DESC, _id ASC` (matching
+  // `getAllBlogPostSlugs` and `ICR-195`'s index) so unpublished `saveDraft`s never reorder
+  // same-date published posts; draft mode adds secondary `updatedAt DESC` for undated drafts.
+  const sortSpec: Record<string, 1 | -1> = isDraftMode
+    ? { "draft.publishedDate": -1, updatedAt: -1, _id: 1 }
+    : { "published.publishedDate": -1, _id: 1 };
+
   const docs = await db
     .collection<StoredEnvelope<PostFields>>(COLLECTIONS.posts)
     .find(filter)
-    .sort({ [`${snap}.publishedDate`]: -1, updatedAt: -1, _id: 1 })
+    .sort(sortSpec)
     .limit(LATEST_POSTS_LIMIT)
     .toArray();
 

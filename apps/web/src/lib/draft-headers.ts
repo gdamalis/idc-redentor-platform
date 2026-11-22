@@ -3,7 +3,8 @@ import type { NextRequest, NextResponse } from "next/server";
 /** Next.js App Router Draft Mode cookie name. */
 export const DRAFT_MODE_COOKIE_NAME = "__prerender_bypass";
 
-export const DRAFT_CACHE_CONTROL = "no-store";
+export const DRAFT_CACHE_CONTROL =
+  "private, no-cache, no-store, max-age=0, must-revalidate";
 export const DRAFT_ROBOTS_TAG = "noindex, nofollow";
 
 export interface DraftEnvLike {

@@ -83,10 +83,7 @@ async function hydrateSermons(
       if (fields.interpreterId) authorIds.add(fields.interpreterId);
       for (const id of fields.additionalPreacherIds ?? []) authorIds.add(id);
       for (const id of fields.scriptureRefIds ?? []) verseIds.add(id);
-      for (const id of (fields.relatedSermonIds ?? []).slice(
-        0,
-        RELATED_SERMONS_LIMIT,
-      )) {
+      for (const id of fields.relatedSermonIds ?? []) {
         relatedIds.add(id);
       }
     }
@@ -141,10 +138,8 @@ async function hydrateSermons(
 
     const relatedSermons: RelatedSermonView[] = [];
     if (!cardOnly) {
-      for (const id of (fields.relatedSermonIds ?? []).slice(
-        0,
-        RELATED_SERMONS_LIMIT,
-      )) {
+      for (const id of fields.relatedSermonIds ?? []) {
+        if (relatedSermons.length >= RELATED_SERMONS_LIMIT) break;
         const rel = relatedMap.get(id);
         if (!rel) continue;
         const item: RelatedSermonView = {
