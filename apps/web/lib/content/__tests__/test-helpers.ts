@@ -25,6 +25,37 @@ export function createNextCacheHarness() {
     profile: string | { expire?: number };
   }> = [];
 
+  async function invoke<T extends (...args: never[]) => Promise<unknown>>(
+    fixedKey: string,
+    tags: string[],
+    cb: T,
+    args: Parameters<T>,
+  ): Promise<Awaited<ReturnType<T>>> {
+    unstableCacheCalls.push({ keyParts: fixedKey ? fixedKey.split(",") : [], tags });
+    const key = `${fixedKey}:${JSON.stringify(args)}`;
+    const existing = store.get(key);
+    if (existing && !existing.stale) {
+      return JSON.parse(existing.body) as Awaited<ReturnType<T>>;
+    }
+    if (existing && existing.stale) {
+      const staleValue = JSON.parse(existing.body) as Awaited<ReturnType<T>>;
+      const fresh = await cb(...args);
+      store.set(key, {
+        body: JSON.stringify(fresh),
+        tags,
+        stale: false,
+      });
+      return staleValue;
+    }
+    const result = await cb(...args);
+    store.set(key, {
+      body: JSON.stringify(result),
+      tags,
+      stale: false,
+    });
+    return result as Awaited<ReturnType<T>>;
+  }
+
   function unstable_cache<T extends (...args: never[]) => Promise<unknown>>(
     cb: T,
     keyParts?: string[],
@@ -33,32 +64,8 @@ export function createNextCacheHarness() {
     const tags = options?.tags ?? [];
     const fixedKey = `${keyParts?.join(",") ?? ""}`;
 
-    const wrapped = (async (...args: Parameters<T>) => {
-      unstableCacheCalls.push({ keyParts, tags });
-      const key = `${fixedKey}:${JSON.stringify(args)}`;
-      const existing = store.get(key);
-      if (existing && !existing.stale) {
-        return JSON.parse(existing.body);
-      }
-      if (existing && existing.stale) {
-        // Stale-while-revalidate ("max"): return stale value while refreshing in background
-        const staleValue = JSON.parse(existing.body);
-        const fresh = await cb(...args);
-        store.set(key, {
-          body: JSON.stringify(fresh),
-          tags,
-          stale: false,
-        });
-        return staleValue;
-      }
-      const result = await cb(...args);
-      store.set(key, {
-        body: JSON.stringify(result),
-        tags,
-        stale: false,
-      });
-      return result;
-    }) as T;
+    const wrapped = (async (...args: Parameters<T>) =>
+      invoke(fixedKey, tags, cb, args)) as T;
 
     return wrapped;
   }
@@ -90,6 +97,7 @@ export function createNextCacheHarness() {
     store,
     unstableCacheCalls,
     revalidateTagCalls,
+    invoke,
     unstable_cache,
     revalidateTag,
     reset,
@@ -171,13 +179,27 @@ function compareSortValues(a: unknown, b: unknown): number {
   return String(a).localeCompare(String(b));
 }
 
+function clonePreservingBson(value: unknown): unknown {
+  if (value instanceof ObjectId) return new ObjectId(value.toHexString());
+  if (value instanceof Date) return new Date(value.getTime());
+  if (Array.isArray(value)) return value.map(clonePreservingBson);
+  if (value !== null && typeof value === "object") {
+    const out: DocRecord = {};
+    for (const [k, v] of Object.entries(value as DocRecord)) {
+      out[k] = clonePreservingBson(v);
+    }
+    return out;
+  }
+  return value;
+}
+
 function applyProjection(doc: DocRecord, projection?: DocRecord): DocRecord {
   if (!projection) return doc;
   const keys = Object.keys(projection);
   if (keys.length === 0) return doc;
   const isExclusion = keys.every((k) => projection[k] === 0);
   if (isExclusion) {
-    const clone = structuredClone(doc);
+    const clone = clonePreservingBson(doc) as DocRecord;
     for (const dotted of keys) {
       const parts = dotted.split(".");
       let current: DocRecord | undefined = clone;
