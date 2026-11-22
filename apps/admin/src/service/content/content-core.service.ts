@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import type { ClientSession } from "mongodb";
 import {
+  COLLECTIONS,
   CONTENT_SCHEMAS,
   LOCALES,
   bibleVerseKey,
@@ -248,6 +249,61 @@ async function lockAndVerifyContentRefs(
           [ref.collection]: [
             `Referenced ${ref.collection} entry "${ref.id}" does not exist`,
           ],
+        },
+      };
+    }
+  }
+
+  return null;
+}
+
+function findAddedMediaRefs(
+  before: readonly string[],
+  after: readonly string[],
+): string[] {
+  const beforeSet = new Set(before.map((id) => id.trim()).filter(Boolean));
+  const added: string[] = [];
+  for (const rawId of after) {
+    const id = rawId.trim();
+    if (id && !beforeSet.has(id)) {
+      added.push(id);
+    }
+  }
+  return added;
+}
+
+/**
+ * Target-side write-locking protocol for `media` references (`_refGuardRev`):
+ * mirrors `lockAndVerifyContentRefs` so a concurrent `deleteMedia` transaction
+ * conflicts (`WriteConflict`) and retries against the committed `_refs.mediaIds`
+ * instead of deleting a blob that was just referenced under snapshot isolation.
+ */
+async function lockAndVerifyMediaRefs(
+  mediaIds: readonly string[],
+  session: ClientSession,
+  deps: ContentServiceDeps,
+): Promise<Extract<ContentResult<never>, { ok: false }> | null> {
+  const ordered = [
+    ...new Set(mediaIds.map((id) => id.trim()).filter(Boolean)),
+  ].sort();
+  if (ordered.length === 0) return null;
+
+  const col = deps.getContentDb().collection(COLLECTIONS.media);
+  for (const id of ordered) {
+    const mediaObjectId = parseObjectId(id);
+    if (!mediaObjectId) continue;
+
+    const res = await col.updateOne(
+      { _id: mediaObjectId },
+      { $inc: { _refGuardRev: 1 } },
+      { session },
+    );
+    if ((res.matchedCount ?? 0) === 0) {
+      return {
+        ok: false,
+        reason: "invalid",
+        fieldErrors: {
+          media: [`Referenced media "${id}" does not exist`],
         },
       };
     }
@@ -618,6 +674,16 @@ export async function createContent<TFields>(
       return refFailure;
     }
 
+    const mediaRefFailure = await lockAndVerifyMediaRefs(
+      refs.mediaIds,
+      session,
+      deps,
+    );
+    if (mediaRefFailure) {
+      await session.abortTransaction();
+      return mediaRefFailure;
+    }
+
     const now = deps.now();
     const toInsert: Omit<StoredContentEnvelope<TFields>, "_id"> = {
       draft: cleanDraft,
@@ -890,6 +956,20 @@ export async function saveDraft<TFields>(
     if (refFailure) {
       await session.abortTransaction();
       return refFailure;
+    }
+
+    const addedMediaRefs = findAddedMediaRefs(
+      existing._refs?.mediaIds ?? [],
+      refs.mediaIds,
+    );
+    const mediaRefFailure = await lockAndVerifyMediaRefs(
+      addedMediaRefs,
+      session,
+      deps,
+    );
+    if (mediaRefFailure) {
+      await session.abortTransaction();
+      return mediaRefFailure;
     }
 
     const naturalKey = computeNaturalKey(input.collection, nextDraftRecord);
@@ -1182,6 +1262,16 @@ export async function publishContent<TFields>(
       if (refFailure) {
         await session.abortTransaction();
         return refFailure;
+      }
+
+      const mediaRefFailure = await lockAndVerifyMediaRefs(
+        draftRefs.mediaIds,
+        session,
+        deps,
+      );
+      if (mediaRefFailure) {
+        await session.abortTransaction();
+        return mediaRefFailure;
       }
 
       // Atomic cascade publish of NEVER-PUBLISHED referenced `authors` & `bible_verses` (AC4, F §2.6)
@@ -1748,6 +1838,20 @@ export async function discardChanges<TFields>(
       return refFailure;
     }
 
+    const addedMediaRefs = findAddedMediaRefs(
+      existing._refs?.mediaIds ?? [],
+      refs.mediaIds,
+    );
+    const mediaRefFailure = await lockAndVerifyMediaRefs(
+      addedMediaRefs,
+      session,
+      deps,
+    );
+    if (mediaRefFailure) {
+      await session.abortTransaction();
+      return mediaRefFailure;
+    }
+
     const naturalKey = computeNaturalKey(input.collection, publishedRecord);
     const now = deps.now();
 
@@ -2226,6 +2330,20 @@ export async function updateSermonPdfMedia(
       draft: nextDraft,
       published: nextPublished,
     });
+
+    const addedMediaRefs = findAddedMediaRefs(
+      existing._refs?.mediaIds ?? [],
+      refs.mediaIds,
+    );
+    const mediaRefFailure = await lockAndVerifyMediaRefs(
+      addedMediaRefs,
+      session,
+      deps,
+    );
+    if (mediaRefFailure) {
+      await session.abortTransaction();
+      return mediaRefFailure;
+    }
 
     const setFields: Record<string, unknown> = {
       _refs: refs,
