@@ -1,0 +1,397 @@
+{
+  "hub": {
+    "title": "Contenido",
+    "subtitle": "Editá y publicá el contenido del sitio web de la iglesia.",
+    "groups": {
+      "needsReview": "Para revisar",
+      "needsReviewEmpty": "No hay prédicas ni artículos pendientes de revisión.",
+      "publishing": "Publicaciones",
+      "sitePages": "Páginas del sitio",
+      "site": "Sitio",
+      "library": "Biblioteca"
+    },
+    "destinations": {
+      "sermons": "Prédicas",
+      "sermonsDesc": "Mensajes, citas bíblicas, audio y PDF.",
+      "posts": "Blog",
+      "postsDesc": "Artículos, noticias y reflexiones.",
+      "sections": "Secciones",
+      "sectionsDesc": "Portada, llamados a la acción y bloques de texto.",
+      "beliefCollections": "Credo y valores",
+      "beliefCollectionsDesc": "Declaración de fe y valores de la iglesia.",
+      "eventBanner": "Reunión dominical",
+      "eventBannerDesc": "Horario, descripción e imagen del encuentro.",
+      "topics": "Páginas informativas",
+      "topicsDesc": "Política de privacidad y otras páginas informativas.",
+      "menu": "Menú",
+      "menuDesc": "Enlaces de la navegación principal.",
+      "footer": "Pie de página",
+      "footerDesc": "Logo, descripción y redes sociales.",
+      "location": "Dirección y mapa",
+      "locationDesc": "Dirección de la iglesia compartida por el sitio.",
+      "subscribeForm": "Formulario de suscripción",
+      "subscribeFormDesc": "Textos del formulario de suscripción por correo.",
+      "contactForm": "Formulario de contacto",
+      "contactFormDesc": "Textos, cita bíblica y etiquetas de los campos.",
+      "seo": "SEO de páginas",
+      "seoDesc": "Título, descripción e imagen para buscadores y redes.",
+      "media": "Imágenes y archivos",
+      "mediaDesc": "Biblioteca de imágenes, audios y PDFs.",
+      "authors": "Personas",
+      "authorsDesc": "Autores, predicadores e intérpretes.",
+      "verses": "Citas bíblicas",
+      "versesDesc": "Versículos compartidos entre prédicas, credo y contacto."
+    },
+    "entryCount": "{count, plural, =0 {Sin entradas} one {1 entrada} other {# entradas}}",
+    "directEdit": "Abrir editor"
+  },
+  "types": {
+    "sermons": "Prédicas",
+    "posts": "Blog",
+    "topics": "Páginas informativas",
+    "sections": "Secciones",
+    "beliefCollections": "Credo y valores",
+    "eventBanner": "Reunión dominical",
+    "seo": "SEO de páginas",
+    "menu": "Menú",
+    "footer": "Pie de página",
+    "location": "Dirección y mapa",
+    "subscribeForm": "Formulario de suscripción",
+    "contactForm": "Formulario de contacto",
+    "media": "Imágenes y archivos",
+    "authors": "Personas",
+    "verses": "Citas bíblicas"
+  },
+  "status": {
+    "draft": "Borrador",
+    "changed": "Cambios sin publicar",
+    "published": "Publicado"
+  },
+  "chip": {
+    "needsReview": "Para revisar",
+    "protected": "Protegido",
+    "missingEn": "Falta EN",
+    "es": "ES",
+    "en": "EN"
+  },
+  "header": {
+    "backToHub": "Contenido",
+    "lastEdit": "Última edición: {name}, {when}",
+    "notSavedYet": "Todavía sin guardar",
+    "savedAt": "Guardado {time}",
+    "readOnly": "Solo lectura: no tenés permiso para editar este contenido.",
+    "newEntry": "Nueva entrada"
+  },
+  "action": {
+    "saveDraft": "Guardar borrador",
+    "saving": "Guardando…",
+    "publish": "Publicar",
+    "publishChanges": "Publicar cambios",
+    "publishing": "Publicando…",
+    "publishedDisabled": "Publicado",
+    "preview": "Vista previa",
+    "openingPreview": "Abriendo vista previa…",
+    "viewOnSite": "Ver en el sitio",
+    "discard": "Descartar cambios",
+    "unpublish": "Despublicar",
+    "delete": "Eliminar",
+    "more": "Más acciones",
+    "cancel": "Cancelar",
+    "change": "Cambiar",
+    "confirm": "Confirmar",
+    "retry": "Reintentar",
+    "clearFilters": "Limpiar filtros",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "loadMore": "Cargar más",
+    "add": "Agregar",
+    "remove": "Quitar",
+    "moveUp": "Subir",
+    "moveDown": "Bajar",
+    "edit": "Editar",
+    "new": {
+      "sermons": "Nueva prédica",
+      "posts": "Nuevo artículo",
+      "topics": "Nueva página informativa",
+      "authors": "Nueva persona",
+      "verses": "Nueva cita bíblica"
+    }
+  },
+  "hint": {
+    "noPublishPermission": "No tenés permiso para publicar. Guardá el borrador y pedile a alguien con permiso que lo publique.",
+    "deleteNeedsUnpublish": "Despublicala primero.",
+    "previewNeedsContent": "Guardá o escribí algo antes de abrir la vista previa."
+  },
+  "lists": {
+    "searchPlaceholder": "Buscar…",
+    "searchByTitle": "Buscar por título o dirección…",
+    "searchByName": "Buscar por nombre…",
+    "searchByVerse": "Buscar por libro o cita…",
+    "statusFilterLabel": "Estado",
+    "statusAll": "Todos",
+    "showingRange": "Mostrando {from}–{to} de {total}",
+    "columns": {
+      "title": "Título",
+      "name": "Nombre",
+      "date": "Fecha",
+      "preacher": "Predicador",
+      "author": "Autor",
+      "category": "Categoría",
+      "slug": "Dirección",
+      "appearsOn": "Aparece en",
+      "status": "Estado",
+      "languages": "Idiomas",
+      "updated": "Actualizado",
+      "reference": "Cita",
+      "version": "Versión",
+      "usedIn": "Usada en"
+    },
+    "empty": {
+      "default": "Todavía no hay entradas.",
+      "sermons": "Todavía no hay prédicas. Las prédicas creadas desde el audio aparecen acá como borrador.",
+      "posts": "Todavía no hay artículos publicados ni borradores.",
+      "topics": "Todavía no hay páginas informativas.",
+      "authors": "Todavía no hay personas cargadas.",
+      "verses": "Todavía no hay citas bíblicas guardadas.",
+      "fixed": "No hay entradas fijas cargadas todavía en esta base de datos.",
+      "filtered": "No encontramos nada con esos filtros."
+    },
+    "usedInCount": "{count, plural, =0 {Sin usar} one {1 entrada} other {# entradas}}",
+    "mediaPlaceholder": "La biblioteca multimedia se integra en el siguiente paso (ICR-196)."
+  },
+  "dialogs": {
+    "publishFirst": {
+      "title": "¿Publicar «{title}»?",
+      "body": "Va a quedar visible en el sitio para todos."
+    },
+    "publishChanges": {
+      "title": "¿Publicar los cambios de «{title}»?",
+      "body": "Reemplaza la versión que hoy está en el sitio. No se puede volver a la versión anterior."
+    },
+    "publish": {
+      "appearsOn": "Se muestra en: {pages}.",
+      "cascade": "También se publica: {list}.",
+      "missingEnglish": "{count, plural, one {Falta 1 texto en inglés: el sitio en inglés va a mostrar ese texto en español.} other {Faltan # textos en inglés: el sitio en inglés va a mostrar esos textos en español.}}",
+      "confirm": "Publicar",
+      "success": "Publicado. Ya está en el sitio.",
+      "revalidateFailed": "Publicado, pero el sitio todavía no se actualizó.",
+      "revalidateRetried": "Sitio actualizado."
+    },
+    "discard": {
+      "title": "¿Descartar los cambios sin publicar?",
+      "body": "El borrador vuelve a ser igual a la versión publicada. Esta acción no se puede deshacer.",
+      "confirm": "Descartar cambios"
+    },
+    "unpublish": {
+      "title": "¿Despublicar «{title}»?",
+      "body": "La página deja de verse en el sitio y sus enlaces dejan de funcionar. No se borra nada: podés volver a publicarla cuando quieras.",
+      "confirm": "Despublicar"
+    },
+    "delete": {
+      "title": "¿Eliminar «{title}»?",
+      "body": "Se elimina de forma permanente. Esta acción no se puede deshacer.",
+      "confirm": "Eliminar"
+    },
+    "inUse": {
+      "title": "No se puede eliminar",
+      "body": "«{title}» se usa en: {list}. Quitalo de ahí primero.",
+      "confirm": "Entendido"
+    },
+    "unsaved": {
+      "title": "Tenés cambios sin guardar",
+      "body": "Si salís ahora, se pierden.",
+      "stay": "Seguir editando",
+      "leave": "Salir sin guardar"
+    },
+    "conflict": {
+      "title": "Esta entrada cambió desde que la abriste",
+      "body": "{name} la guardó {when}. Si guardás tu versión, se pierden sus cambios.",
+      "reload": "Recargar la entrada",
+      "overwrite": "Sobrescribir con mi versión"
+    },
+    "slugChange": {
+      "title": "¿Cambiar la dirección?",
+      "body": "Si cambiás la dirección, los enlaces viejos dejan de funcionar y los «me gusta» vuelven a cero.",
+      "confirm": "Cambiar dirección"
+    },
+    "lossySave": {
+      "title": "¿Guardar y simplificar formato?",
+      "body": "Uno o más campos de texto tenían formato que el editor no soporta. Si guardás estos cambios, ese formato no soportado se va a quitar.",
+      "confirm": "Guardar igual"
+    }
+  },
+  "recovery": {
+    "banner": "Encontramos cambios sin guardar del {when}.",
+    "restore": "Restaurar",
+    "discard": "Descartar"
+  },
+  "locale": {
+    "caption": "Idioma del contenido",
+    "es": "Español",
+    "en": "English",
+    "missing": "{count, plural, one {falta 1} other {faltan #}}",
+    "original": "Original en español",
+    "showOriginal": "Ver original en español",
+    "hideOriginal": "Ocultar original en español",
+    "copy": "Copiar del español",
+    "fallbackHint": "El sitio en inglés muestra el texto en español.",
+    "generalSection": "Datos generales"
+  },
+  "fixed": {
+    "note": "Contenido fijo del sitio: se puede editar, pero no crear ni eliminar.",
+    "identifier": "Lo usa el código del sitio; no se puede cambiar.",
+    "identifierLabel": "Identificador",
+    "layoutLabel": "Diseño",
+    "shellNotice": "Marco del editor listo: los campos completos de este tipo llegan en el siguiente paso. Podés editar el título/nombre, guardar, publicar y previsualizar sin alterar los demás campos."
+  },
+  "protected": {
+    "legal": "Texto legal protegido. Cualquier editor puede preparar cambios y guardarlos como borrador. Solo las personas autorizadas pueden publicarlos.",
+    "doctrine": "Contenido doctrinal protegido. Cualquier editor puede preparar cambios y guardarlos como borrador. Solo las personas autorizadas pueden publicarlos.",
+    "noPermission": "Necesitás el permiso «Publicar contenido protegido». Guardá el borrador y pedile a una persona autorizada que lo revise y lo publique."
+  },
+  "trial": {
+    "banner": "Modo de prueba: lo que edites acá todavía no se ve en el sitio y puede borrarse en la migración."
+  },
+  "errors": {
+    "summary": "{count, plural, one {Todavía no se puede publicar. Guardamos el borrador. Falta completar 1 cosa:} other {Todavía no se puede publicar. Guardamos el borrador. Falta completar # cosas:}}",
+    "draftSummary": "{count, plural, one {No se pudo guardar el borrador. Revisá 1 problema:} other {No se pudo guardar el borrador. Revisá # problemas:}}",
+    "requiredMark": "necesario para publicar",
+    "genericField": "Revisá este campo.",
+    "genericAction": "No pudimos completar la acción. Intentá de nuevo.",
+    "forbidden": "No tenés permiso para realizar esta acción.",
+    "notFound": "No encontramos esta entrada. Puede que haya sido eliminada.",
+    "operationNotAllowed": "Esta acción no está permitida para este tipo de contenido.",
+    "publishedMustUnpublish": "Despublicala primero antes de eliminarla.",
+    "slugTaken": "Esa dirección ya la usa otra entrada. Elegí otra.",
+    "duplicateKey": "Ya existe otra entrada con este mismo identificador.",
+    "previewFailed": "No pudimos abrir la vista previa. Revisá la configuración o guardá los cambios primero.",
+    "previewMissingSlug": "Completá la dirección antes de abrir la vista previa.",
+    "fields": {
+      "title": "Falta el título.",
+      "title.es-AR": "Falta el título (Español).",
+      "title.en-US": "Falta el título (English).",
+      "name": "Falta el nombre.",
+      "name.es-AR": "Falta el nombre (Español).",
+      "name.en-US": "Falta el nombre (English).",
+      "headline": "Falta el titular.",
+      "headline.es-AR": "Falta el titular (Español).",
+      "headline.en-US": "Falta el titular (English).",
+      "slug": "Ingresá una dirección válida (solo minúsculas, números y guiones).",
+      "slug.es-AR": "Ingresá una dirección válida en español.",
+      "slug.en-US": "Ingresá una dirección válida en inglés.",
+      "body": "Falta el contenido.",
+      "body.es-AR": "Falta el contenido (Español).",
+      "body.en-US": "Falta el contenido (English).",
+      "content": "Falta el contenido.",
+      "content.es-AR": "Falta el contenido (Español).",
+      "content.en-US": "Falta el contenido (English).",
+      "excerpt": "Falta el extracto.",
+      "excerpt.es-AR": "Falta el extracto (Español).",
+      "thesis": "Falta la tesis.",
+      "thesis.es-AR": "Falta la tesis (Español).",
+      "mainPoints": "Agregá al menos un punto principal.",
+      "mainPoints.es-AR": "Agregá al menos un punto principal (Español).",
+      "description": "Falta la descripción.",
+      "description.es-AR": "Falta la descripción (Español).",
+      "description.en-US": "Falta la descripción (English).",
+      "shortDescription": "Falta la descripción corta.",
+      "shortDescription.es-AR": "Falta la descripción corta (Español).",
+      "shortDescription.en-US": "Falta la descripción corta (English).",
+      "featuredImageId": "Falta la imagen destacada.",
+      "image": "Falta la imagen.",
+      "logo": "Falta el logo.",
+      "authorId": "Elegí un autor.",
+      "preacherId": "Elegí un predicador.",
+      "publishedDate": "Ingresá la fecha de publicación.",
+      "sermonDate": "Ingresá la fecha de la prédica.",
+      "seoTitle": "Falta el título para buscadores (SEO).",
+      "seoTitle.es-AR": "Falta el título para buscadores (Español).",
+      "seoDescription": "Falta la descripción para buscadores (SEO).",
+      "seoDescription.es-AR": "Falta la descripción para buscadores (Español).",
+      "ctaText": "Falta el texto del botón.",
+      "ctaText.es-AR": "Falta el texto del botón (Español).",
+      "targetPage": "Elegí la página de destino.",
+      "bibleVerseId": "Elegí una cita bíblica.",
+      "agreementNote": "Falta la nota de privacidad.",
+      "agreementNote.es-AR": "Falta la nota de privacidad (Español).",
+      "book": "Elegí un libro de la Biblia.",
+      "book.es-AR": "Elegí un libro de la Biblia.",
+      "chapter": "Ingresá un capítulo válido.",
+      "fromVerse": "Ingresá el versículo inicial.",
+      "toVerse": "El versículo final debe ser mayor o igual al inicial.",
+      "text": "Falta el texto de la cita.",
+      "text.es-AR": "Falta el texto de la cita (Español).",
+      "version": "Elegí la versión de la Biblia.",
+      "version.es-AR": "Elegí la versión en español.",
+      "email": "Ingresá un correo electrónico válido.",
+      "addressLine1": "Falta la dirección.",
+      "city": "Falta la ciudad.",
+      "country": "Falta el país.",
+      "items": "Agregá al menos un elemento.",
+      "menuItems": "Agregá al menos un enlace de menú.",
+      "fields": "Revisá los campos del formulario."
+    }
+  },
+  "richText": {
+    "toolbarLabel": "Herramientas de formato",
+    "styleLabel": "Estilo de párrafo",
+    "styles": {
+      "paragraph": "Párrafo",
+      "h2": "Título",
+      "h3": "Subtítulo"
+    },
+    "bold": "Negrita",
+    "italic": "Cursiva",
+    "bulletList": "Lista con viñetas",
+    "orderedList": "Lista numerada",
+    "blockquote": "Cita",
+    "link": "Enlace",
+    "undo": "Deshacer",
+    "redo": "Rehacer",
+    "pastedImage": "Las imágenes no van dentro del texto. Subila como imagen destacada.",
+    "lossyNotice": "Este texto contenía formato que el editor no soporta. Si no lo tocás, no se modifica; si lo editás y guardás, se va a simplificar.",
+    "linkDialog": {
+      "title": "Insertar enlace",
+      "editTitle": "Editar enlace",
+      "hrefLabel": "Dirección del enlace",
+      "hrefPlaceholder": "https://… o /comunidad",
+      "textLabel": "Texto",
+      "textPlaceholder": "Texto visible del enlace",
+      "save": "Guardar",
+      "remove": "Quitar enlace",
+      "invalidHref": "Ingresá una dirección válida (https://, http://, mailto: o una ruta que empiece con /)."
+    },
+    "linkBar": {
+      "edit": "Editar",
+      "remove": "Quitar"
+    }
+  },
+  "verses": {
+    "pickerTitle": "Elegir cita bíblica",
+    "tabSearch": "Buscar existente",
+    "tabCreate": "Crear cita nueva",
+    "searchPlaceholder": "Buscar (ej. Juan 3:16, John 3, RVR1960)…",
+    "useVerse": "Usar esta cita",
+    "createAndUse": "Guardar y usar",
+    "reusedExisting": "Esta cita ya existía en esa versión; la seleccionamos sin crear un duplicado.",
+    "sharedWarning": "{count, plural, one {Esta cita se usa en 1 entrada. El cambio se aplica a esa entrada.} other {Esta cita se usa en # entradas. El cambio se aplica a todas.}}",
+    "fields": {
+      "book": "Libro",
+      "chapter": "Capítulo",
+      "fromVerse": "Desde",
+      "toVerse": "Hasta (opcional)",
+      "versionEs": "Versión (Español)",
+      "versionEn": "Versión (English)",
+      "text": "Texto de la cita",
+      "textEs": "Texto en español",
+      "textEn": "Texto en inglés (opcional)"
+    },
+    "noResults": "No encontramos esa cita. Podés crearla en la pestaña «Crear cita nueva»."
+  },
+  "picker": {
+    "searchPlaceholder": "Buscar…",
+    "empty": "No hay elementos para mostrar.",
+    "confirm": "Seleccionar",
+    "selectedCount": "{count, plural, one {1 seleccionado} other {# seleccionados}}"
+  }
+}

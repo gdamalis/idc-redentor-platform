@@ -52,16 +52,17 @@ describe("splitNavItems", () => {
     expect(overflow).toHaveLength(0);
   });
 
-  it("splits the full 8-item admin nav as 4 + 4", () => {
+  it("splits the full 9-item admin nav as 4 + 5 with content second", () => {
     const { primary, overflow } = splitNavItems(NAV_ITEMS);
 
     expect(primary.map((item) => item.labelKey)).toEqual([
       "dashboard",
+      "content",
       "people",
       "families",
-      "activities",
     ]);
     expect(overflow.map((item) => item.labelKey)).toEqual([
+      "activities",
       "calendar",
       "users",
       "roles",
@@ -78,9 +79,10 @@ describe("splitNavItems", () => {
     expect(items.map((item) => item.href)).toEqual(before);
   });
 
-  it("ships the eight known nav destinations in order", () => {
+  it("ships the nine known nav destinations in order with content gated by content:read", () => {
     expect(NAV_ITEMS.map((item) => item.href)).toEqual([
       "/",
+      "/content",
       "/people",
       "/families",
       "/activities",
@@ -89,6 +91,7 @@ describe("splitNavItems", () => {
       "/roles",
       "/settings",
     ]);
+    expect(NAV_ITEMS[1]?.permission).toBe("content:read");
   });
 });
 

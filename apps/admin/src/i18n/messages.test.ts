@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
-import esAR from "../../messages/es-AR.json";
-import enUS from "../../messages/en-US.json";
+import { loadMessages } from "./load-messages";
 import { PERMISSION_KEYS } from "@src/lib/rbac/permissions";
+
+const esAR = loadMessages("es-AR");
+const enUS = loadMessages("en-US");
 
 /** Flattens {a:{b:"x"}} => ["a.b"], so a nested key can never drift between locales. */
 function flattenKeys(value: unknown, prefix = ""): string[] {
@@ -12,12 +14,19 @@ function flattenKeys(value: unknown, prefix = ""): string[] {
 }
 
 describe("admin locale message files", () => {
-  it("have identical key sets (no key may exist in one file only)", () => {
+  it("have identical key sets across core and all content namespaces", () => {
     const es = flattenKeys(esAR).sort();
     const en = flattenKeys(enUS).sort();
 
     expect(es.filter((k) => !en.includes(k))).toEqual([]); // missing from en-US
     expect(en.filter((k) => !es.includes(k))).toEqual([]); // missing from es-AR
+  });
+
+  it("exposes nav.content and the content namespace in both locales", () => {
+    expect(esAR.nav.content).toBe("Contenido");
+    expect(enUS.nav.content).toBe("Content");
+    expect(esAR.content.status.changed).toBe("Cambios sin publicar");
+    expect(enUS.content.status.changed).toBe("Unpublished changes");
   });
 });
 
