@@ -114,13 +114,24 @@ export const defaultContentServiceDeps: ContentServiceDeps = {
   now: () => new Date(),
 };
 
+const CANONICAL_OBJECT_ID_RE = /^[0-9a-f]{24}$/;
+
+/**
+ * Strictly requires canonical lowercase 24-hex ObjectId strings (matching
+ * `ObjectId.prototype.toHexString()`) so stored references, `docId` lookups,
+ * and case-sensitive `_refs` usage queries can never diverge on hex casing.
+ */
 function parseObjectId(id: string): ObjectId | null {
-  if (!/^[0-9a-f]{24}$/i.test(id)) return null;
+  if (!CANONICAL_OBJECT_ID_RE.test(id)) return null;
   try {
     return new ObjectId(id);
   } catch {
     return null;
   }
+}
+
+function canonicalizeHexId(id: string): string {
+  return /^[0-9a-f]{24}$/i.test(id) ? id.toLowerCase() : id;
 }
 
 function toContentDocView<TFields>(
@@ -403,13 +414,14 @@ async function queryContentUsagesInternal(
   const referencingCollections =
     REFERENCING_COLLECTIONS_BY_TARGET[target.collection] ?? [];
   const usages: ContentReferenceUsage[] = [];
-  const targetObjectId = parseObjectId(target.docId);
+  const canonicalDocId = canonicalizeHexId(target.docId);
+  const targetObjectId = parseObjectId(canonicalDocId);
 
   // Sequential across collections so an active ClientSession is never used in parallel.
   for (const sourceCollection of referencingCollections) {
     const filter: Record<string, unknown> = {
       "_refs.contentRefs": {
-        $elemMatch: { collection: target.collection, id: target.docId },
+        $elemMatch: { collection: target.collection, id: canonicalDocId },
       },
     };
     if (options.publishedOnly) {
@@ -427,7 +439,10 @@ async function queryContentUsagesInternal(
 
     for (const candidate of candidates) {
       const candidateId = candidate._id.toHexString();
-      if (sourceCollection === target.collection && candidateId === target.docId) {
+      if (
+        sourceCollection === target.collection &&
+        candidateId === canonicalDocId
+      ) {
         continue;
       }
 
@@ -439,7 +454,8 @@ async function queryContentUsagesInternal(
         );
         const stillReferencedInPublished = pubRefs.contentRefs.some(
           (ref) =>
-            ref.collection === target.collection && ref.id === target.docId,
+            ref.collection === target.collection &&
+            canonicalizeHexId(ref.id) === canonicalDocId,
         );
         if (!stillReferencedInPublished) continue;
       }

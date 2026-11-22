@@ -2262,4 +2262,84 @@ describe("Reference write/delete serialization (write-skew guard)", () => {
     }
     expect(h.getTotalRetries()).toBeGreaterThanOrEqual(1);
   });
+
+  it("rejects noncanonical uppercase ObjectId strings in deleteContent, unpublishContent, createContent, and saveDraft", async () => {
+    const fixedAuthorOid = new ObjectId("65abcdef0123456789abcdef");
+    const lowerAuthorId = fixedAuthorOid.toHexString();
+    const upperAuthorId = lowerAuthorId.toUpperCase();
+    const h = createTestHarness({
+      initial: {
+        authors: [
+          {
+            _id: fixedAuthorOid,
+            draft: { name: "Autor Hex" },
+            revision: 1,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            updatedBy: "writer-1",
+            _refs: { mediaIds: [], contentRefs: [] },
+          },
+        ],
+      },
+    });
+
+    // createContent rejects uppercase reference IDs
+    const badCreate = await postService.create(
+      writer,
+      { title: { "es-AR": "Upper" }, authorId: upperAuthorId },
+      h.deps,
+    );
+    expect(badCreate.ok).toBe(false);
+    if (!badCreate.ok) expect(badCreate.reason).toBe("invalid");
+
+    // Link canonical lowercase authorId in a post
+    const post = await postService.create(
+      writer,
+      {
+        title: { "es-AR": "Post Ref" },
+        slug: "post-ref-hex",
+        authorId: lowerAuthorId,
+        featuredImageId: "m1",
+        content: { "es-AR": sampleDoc("Body") },
+        publishedDate: "2026-11-21",
+        seoTitle: { "es-AR": "SEO" },
+        seoDescription: { "es-AR": "SEO" },
+      },
+      h.deps,
+    );
+    if (!post.ok) throw new Error("setup failed");
+
+    // saveDraft rejects uppercase reference IDs
+    const badSave = await postService.saveDraft(
+      writer,
+      {
+        docId: post.doc._id,
+        patch: { authorId: upperAuthorId },
+        expectedRevision: 1,
+      },
+      h.deps,
+    );
+    expect(badSave.ok).toBe(false);
+    if (!badSave.ok) expect(badSave.reason).toBe("invalid");
+
+    // deleteContent with uppercase docId cannot bypass in-use guard
+    const delUpper = await authorService.delete(
+      writer,
+      { docId: upperAuthorId, expectedRevision: 1 },
+      h.deps,
+    );
+    expect(delUpper).toEqual({ ok: false, reason: "not-found" });
+    expect(
+      (await authorService.getById(reader, lowerAuthorId, h.deps)).ok,
+    ).toBe(true);
+
+    // findUsages canonicalizes uppercase queries so it still reports usages
+    const usages = await authorService.findUsages(
+      reader,
+      upperAuthorId,
+      {},
+      h.deps,
+    );
+    expect(usages.ok && usages.usedBy).toHaveLength(1);
+  });
 });
