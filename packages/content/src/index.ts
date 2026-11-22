@@ -12,5 +12,6 @@ export * from "./rich-text/href";
 export * from "./rich-text/schema";
 export * from "./rich-text/spec";
 export * from "./rich-text/validate";
+export * from "./rich-text/view";
 export * from "./schemas";
 export * from "./status";
