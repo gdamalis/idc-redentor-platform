@@ -1,6 +1,7 @@
 import createMiddleware from "next-intl/middleware";
 import { NextRequest, NextResponse } from "next/server";
 import { routing } from "./i18n/routing";
+import { applyDraftResponseHeaders } from "./lib/draft-headers";
 
 const intlMiddleware = createMiddleware(routing);
 
@@ -39,7 +40,8 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  return intlMiddleware(request);
+  const response = intlMiddleware(request);
+  return applyDraftResponseHeaders(request, response);
 }
 
 export const config = {
