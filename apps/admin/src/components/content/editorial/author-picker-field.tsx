@@ -50,8 +50,10 @@ export function AuthorPickerField({
       setSelected(null);
     } else if (initialAuthor && initialAuthor.id === value) {
       setSelected(initialAuthor);
+    } else if (selected && selected.id !== value) {
+      setSelected(null);
     }
-  }, [initialAuthor, value]);
+  }, [initialAuthor, selected, value]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -91,7 +93,8 @@ export function AuthorPickerField({
     onChange(pickedId);
   };
 
-  const displayName = selected?.name ?? value ?? "";
+  const activeSelected = selected?.id === value ? selected : null;
+  const displayName = activeSelected?.name ?? value ?? "";
 
   return (
     <>
@@ -116,10 +119,10 @@ export function AuthorPickerField({
         ) : (
           <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-background p-2.5">
             <div className="flex min-w-0 items-center gap-2.5">
-              {selected?.avatarUrl ? (
+              {activeSelected?.avatarUrl ? (
                 <div className="relative size-8 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
                   <Image
-                    src={selected.avatarUrl}
+                    src={activeSelected.avatarUrl}
                     alt={displayName}
                     fill
                     unoptimized
@@ -138,11 +141,11 @@ export function AuthorPickerField({
                 <div className="truncate text-sm font-medium text-foreground">
                   {displayName}
                 </div>
-                {selected && (
+                {activeSelected && (
                   <div className="mt-0.5">
                     <StatusChip
-                      status={selected.status}
-                      label={t(`status.${selected.status}`)}
+                      status={activeSelected.status}
+                      label={t(`status.${activeSelected.status}`)}
                     />
                   </div>
                 )}

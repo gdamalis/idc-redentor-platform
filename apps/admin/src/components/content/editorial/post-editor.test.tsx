@@ -250,6 +250,94 @@ describe("PostEditor", () => {
         expect.objectContaining({ notify: true }),
       );
     });
+
+    // Case 3 (C3 M23 / EC3): global switch ON + republish (isFirstPublish: false) -> checkbox hidden & notify: false
+    const changedDoc: SerializedContentDoc<PostFields> = {
+      ...doc,
+      published: doc.draft,
+      firstPublishedAt: "2026-11-22T15:00:00.000Z",
+      revision: 2,
+    };
+    mockPreparePostPublishAction.mockResolvedValueOnce({
+      ok: true,
+      doc: changedDoc,
+      status: "changed",
+      isFirstPublish: false,
+      isPublishEmailsEnabled: true,
+      willCascade: [],
+    });
+    mockConfirmPostPublishAction.mockResolvedValueOnce({
+      ok: true,
+      doc: { ...changedDoc, revision: 3 },
+      status: "published",
+      revalidated: true,
+      notified: false,
+    });
+
+    renderWithIntl(
+      <PostEditor
+        docId={changedDoc._id}
+        initialDoc={changedDoc}
+        initialStatus="changed"
+        initialValues={changedDoc.draft}
+        initialFeaturedImage={null}
+        initialAuthor={null}
+        initialRelatedPosts={[]}
+        permissions={FULL_PERMS}
+        isTrialMode={false}
+        isPublishEmailsEnabled={true}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Publicar cambios" }));
+    await waitFor(() => {
+      expect(
+        screen.getByText("¿Publicar los cambios de «Artículo listo»?"),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByLabelText("Avisar por email a los suscriptores"),
+    ).not.toBeInTheDocument();
+
+    const republishConfirmBtns = screen.getAllByRole("button", {
+      name: "Publicar",
+    });
+    await user.click(republishConfirmBtns[republishConfirmBtns.length - 1]!);
+    await waitFor(() => {
+      expect(mockConfirmPostPublishAction).toHaveBeenLastCalledWith(
+        expect.objectContaining({ notify: false }),
+      );
+    });
+  });
+
+  it("auto-opens SEO details on publish error and keeps it open while typing (C1)", async () => {
+    const user = userEvent.setup();
+    mockPreparePostPublishAction.mockResolvedValueOnce({
+      ok: false,
+      reason: "invalid",
+      fieldErrors: { "seoTitle.es-AR": ["Required"] },
+    });
+
+    renderWithIntl(
+      <PostEditor
+        initialStatus="draft"
+        initialValues={{ title: { "es-AR": "SEO Test" } }}
+        initialFeaturedImage={null}
+        initialAuthor={null}
+        initialRelatedPosts={[]}
+        permissions={FULL_PERMS}
+        isTrialMode={false}
+        isPublishEmailsEnabled={false}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Publicar" }));
+    const seoInput = await screen.findByLabelText(/Título para buscadores/);
+    expect(seoInput).toBeVisible();
+
+    await user.type(seoInput, "Mi SEO");
+    expect(seoInput).toBeVisible();
+    expect(seoInput).toHaveValue("Mi SEO");
   });
 
   it("locks published slug behind localized warning (AC7), displays unknown stored category (EC7), and never patches untouched content (AC1)", async () => {

@@ -7,6 +7,7 @@ import type { SerializedContentDoc } from "@src/app/[locale]/(app)/content/actio
 import {
   confirmTopicPublishAction,
   createTopicAction,
+  discardTopicChangesAction,
   prepareTopicPublishAction,
   saveTopicDraftAction,
 } from "@src/app/[locale]/(app)/content/topics/actions";
@@ -58,6 +59,31 @@ function updateLocalizedText(
   };
 }
 
+/** Keeps lifted protected flags synchronized after recovery restore or unpublish (`C2`). */
+function ProtectedStateSync({
+  draftProtected,
+  isPublished,
+  onSyncDraft,
+  onClearPublished,
+}: {
+  readonly draftProtected: boolean;
+  readonly isPublished: boolean;
+  readonly onSyncDraft: (next: boolean) => void;
+  readonly onClearPublished: () => void;
+}) {
+  React.useEffect(() => {
+    onSyncDraft(draftProtected);
+  }, [draftProtected, onSyncDraft]);
+
+  React.useEffect(() => {
+    if (!isPublished) {
+      onClearPublished();
+    }
+  }, [isPublished, onClearPublished]);
+
+  return null;
+}
+
 /**
  * Info Topics editor (`ICR-199` — corrected `B-editors.md` §2.10 model):
  * `name`, `shortDescription`, localized `slug` (`es-AR` / `en-US`), `body`
@@ -87,6 +113,10 @@ export function TopicEditor({
 
   const isEffectiveProtected = publishedProtected || liveDraftProtected;
 
+  const handleClearPublishedProtected = React.useCallback(() => {
+    setPublishedProtected(false);
+  }, []);
+
   const actionOverrides = React.useMemo<
     Partial<EntryEditorActionHandlers<TopicFields>>
   >(
@@ -94,7 +124,22 @@ export function TopicEditor({
       create: createTopicAction,
       saveDraft: saveTopicDraftAction,
       preparePublish: prepareTopicPublishAction,
-      confirmPublish: confirmTopicPublishAction,
+      confirmPublish: async (input) => {
+        const res = await confirmTopicPublishAction(input);
+        if (res.ok) {
+          setLiveDraftProtected(Boolean(res.doc.draft.protected));
+          setPublishedProtected(Boolean(res.doc.published?.protected));
+        }
+        return res;
+      },
+      discardChanges: async (input) => {
+        const res = await discardTopicChangesAction(input);
+        if (res.ok) {
+          setLiveDraftProtected(Boolean(res.doc.draft.protected));
+          setPublishedProtected(Boolean(res.doc.published?.protected));
+        }
+        return res;
+      },
     }),
     [],
   );
@@ -104,7 +149,10 @@ export function TopicEditor({
       if (rawMessages.includes("reserved-route-slug")) {
         return tEd("errors.reservedRouteSlug");
       }
-      if (isEffectiveProtected) {
+      const isRequiredError = rawMessages.some((m) =>
+        m.toLowerCase().includes("required"),
+      );
+      if (isEffectiveProtected && isRequiredError) {
         if (path === "name.en-US") return tEd("errors.protectedMissingEnName");
         if (path === "slug.en-US" && !rawMessages.includes("duplicate-key")) {
           return tEd("errors.protectedMissingEnSlug");
@@ -359,31 +407,39 @@ export function TopicEditor({
           </>
         );
       }}
-      renderGeneralFields={({ values, form, readOnly, getError }) => {
+      renderGeneralFields={({ values, form, readOnly, isPublished, getError }) => {
         const canToggleProtected = !readOnly && permissions.canPublishProtected;
         return (
-          <Field
-            label={tEd("topics.protectedLabel")}
-            fieldPath="protected"
-            hint={
-              permissions.canPublishProtected
-                ? tEd("topics.protectedHint")
-                : tEd("topics.protectedReadOnlyHint")
-            }
-            error={getError("protected")}
-          >
-            <Checkbox
-              id="topic-protected"
-              checked={Boolean(values.protected)}
-              disabled={!canToggleProtected}
-              onChange={(e) => {
-                const next = e.target.checked;
-                setLiveDraftProtected(next);
-                form.setField("protected", next);
-              }}
-              label={tEd("topics.protectedLabel")}
+          <>
+            <ProtectedStateSync
+              draftProtected={Boolean(values.protected)}
+              isPublished={isPublished}
+              onSyncDraft={setLiveDraftProtected}
+              onClearPublished={handleClearPublishedProtected}
             />
-          </Field>
+            <Field
+              label={tEd("topics.protectedLabel")}
+              fieldPath="protected"
+              hint={
+                permissions.canPublishProtected
+                  ? tEd("topics.protectedHint")
+                  : tEd("topics.protectedReadOnlyHint")
+              }
+              error={getError("protected")}
+            >
+              <Checkbox
+                id="topic-protected"
+                checked={Boolean(values.protected)}
+                disabled={!canToggleProtected}
+                onChange={(e) => {
+                  const next = e.target.checked;
+                  setLiveDraftProtected(next);
+                  form.setField("protected", next);
+                }}
+                label={tEd("topics.protectedLabel")}
+              />
+            </Field>
+          </>
         );
       }}
     />

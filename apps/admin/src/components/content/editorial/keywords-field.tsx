@@ -71,6 +71,14 @@ export function KeywordsField({
               next[idx] = e.target.value;
               updateLocaleItems(next);
             }}
+            onBlur={(e) => {
+              const trimmed = e.target.value.trim();
+              if (trimmed !== item) {
+                const next = [...currentItems];
+                next[idx] = trimmed;
+                updateLocaleItems(next);
+              }
+            }}
           />
         )}
       />

@@ -11,6 +11,7 @@ import type {
 import type { RevalidateFailureReason } from "@src/lib/content/revalidate";
 import {
   confirmPublishAction,
+  discardChangesAction,
   preparePublishAction,
   type ContentActionResult,
   type PreparePublishResult,
@@ -203,6 +204,24 @@ export async function confirmTopicPublishAction(input: {
   if (guardFailure) return serializeFailure(guardFailure);
 
   return confirmPublishAction<TopicFields>({
+    ...input,
+    collection: "topics",
+  });
+}
+
+export async function discardTopicChangesAction(input: {
+  readonly collection: ContentCollectionName;
+  readonly docId: string;
+  readonly expectedRevision: number;
+  readonly overwrite?: boolean;
+}): Promise<
+  ContentActionResult<{
+    readonly doc: SerializedContentDoc<TopicFields>;
+    readonly status: ContentStatus;
+    readonly noOp: boolean;
+  }>
+> {
+  return discardChangesAction<TopicFields>({
     ...input,
     collection: "topics",
   });

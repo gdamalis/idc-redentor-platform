@@ -473,6 +473,66 @@ describe("editorial-guards.service — posts", () => {
     expect(
       (await getContentById<PostFields>(editor, "posts", goodCreate.doc._id, coreDeps)).ok,
     ).toBe(true);
+
+    // C3 (M14): validatePostBeforePublish with draftPatch omitted checks effective merged stored values
+    (raw.draft as Record<string, unknown>).category = "LegacyUnknown";
+    const pubBadCat = await validatePostBeforePublish(
+      editor,
+      { docId: goodCreate.doc._id },
+      guardDeps,
+    );
+    expect(pubBadCat).toEqual({
+      ok: false,
+      reason: "invalid",
+      fieldErrors: { category: ["invalid-category"] },
+    });
+
+    // Fix category, inject cross-snapshot duplicate slug directly in draft, verify clean publish refuses it
+    (raw.draft as Record<string, unknown>).category = "Events";
+    const otherPost = await createGuardedPost(
+      editor,
+      { title: { "es-AR": "Otro" }, slug: "slug-ocupado" },
+      guardDeps,
+    );
+    expect(otherPost.ok).toBe(true);
+    (raw.draft as Record<string, unknown>).slug = "slug-ocupado";
+    const pubDupSlug = await validatePostBeforePublish(
+      editor,
+      { docId: goodCreate.doc._id },
+      guardDeps,
+    );
+    expect(pubDupSlug?.reason).toBe("duplicate-key");
+  });
+
+  it("sanitizes blank keyword rows and strips empty en-US keywords on create & save (C1)", async () => {
+    const { guardDeps } = createHarness();
+    const editor = makeCaller(EDITOR_PERMS);
+
+    const created = await createGuardedPost(
+      editor,
+      {
+        title: { "es-AR": "Keywords" },
+        keywords: { "es-AR": [" fe ", "", "  "], "en-US": ["   "] },
+      },
+      guardDeps,
+    );
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    expect(created.doc.draft.keywords).toEqual({ "es-AR": ["fe"] });
+
+    const saved = await saveGuardedPostDraft(
+      editor,
+      {
+        docId: created.doc._id,
+        patch: { keywords: { "es-AR": ["", " "], "en-US": [" "] } },
+        expectedRevision: 1,
+      },
+      guardDeps,
+    );
+    expect(saved.ok).toBe(true);
+    if (saved.ok) {
+      expect(saved.doc.draft.keywords).toBeUndefined();
+    }
   });
 
   it("refuses unpublishing a post referenced by another published post's relatedPostIds (EC5)", async () => {
@@ -667,11 +727,12 @@ describe("editorial-guards.service — topics & protected legal matrix", () => {
     const admin = makeCaller(ADMIN_PERMS, "64b000000000000000000001", "Admin Legal");
 
     // 1. Editor without content:publish-protected cannot create with protected: true
+    //    (C3 M10: even with reserved slug "blog", authz precedes slug validation!)
     const createProtectedRefused = await createGuardedTopic(
       editor,
       {
         name: { "es-AR": "Privacidad" },
-        slug: { "es-AR": "privacidad" },
+        slug: { "es-AR": "blog" },
         protected: true,
       },
       guardDeps,
@@ -732,11 +793,12 @@ describe("editorial-guards.service — topics & protected legal matrix", () => {
     if (!draftEditOk.ok) return;
 
     // 4. Downgrade-then-publish attack: editor tries to flip protected -> false, then publish -> BOTH refused
+    //    (C3 M11: even with reserved slug "blog" in the same patch, authz precedes slug validation!)
     const downgradeRefused = await saveGuardedTopicDraft(
       editor,
       {
         docId: privacy.doc._id,
-        patch: { protected: false },
+        patch: { protected: false, slug: { "es-AR": "blog" } },
         expectedRevision: draftEditOk.doc.revision,
       },
       guardDeps,

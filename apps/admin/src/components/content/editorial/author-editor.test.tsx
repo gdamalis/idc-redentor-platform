@@ -115,9 +115,12 @@ describe("AuthorEditor", () => {
       screen.getByLabelText("Email (interno, no se muestra en el sitio)"),
     ).toHaveValue("pastor@example.org");
 
-    // Without users:read, no picker button & zero calls to admin.users
+    // Without users:read, no picker button ("Elegir..." or "Cambiar") & zero calls to admin.users (C3 M27)
     expect(
       screen.queryByRole("button", { name: "Elegir usuario del panel" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cambiar" }),
     ).not.toBeInTheDocument();
     expect(
       screen.getByText(/Solo quienes tienen permiso para ver usuarios/),

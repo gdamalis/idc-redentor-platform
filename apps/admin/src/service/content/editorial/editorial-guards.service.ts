@@ -20,7 +20,11 @@ import {
   type SaveDraftSuccess,
 } from "@src/service/content/content-core.service";
 import { ensureContentIndexes } from "@src/service/content/indexes";
-import { isAllowedPostCategory, isReservedTopicSlug } from "./editorial-rules";
+import {
+  isAllowedPostCategory,
+  isReservedTopicSlug,
+  sanitizeLocalizedKeywords,
+} from "./editorial-rules";
 
 export interface EditorialGuardsDeps {
   readonly getContentDb: typeof getContentDb;
@@ -171,9 +175,19 @@ export async function createGuardedPost(
     if (slugErr) return slugErr;
   }
 
+  const cleanDraft: PostFields = { ...draft };
+  if (Object.prototype.hasOwnProperty.call(draft, "keywords")) {
+    const sanitized = sanitizeLocalizedKeywords(draft.keywords);
+    if (sanitized === undefined) {
+      delete cleanDraft.keywords;
+    } else {
+      cleanDraft.keywords = sanitized;
+    }
+  }
+
   return deps.createContent<PostFields>(caller, {
     collection: "posts",
-    draft,
+    draft: cleanDraft,
   });
 }
 
@@ -231,10 +245,15 @@ export async function saveGuardedPostDraft(
     if (slugErr) return slugErr;
   }
 
+  const cleanPatch: Partial<PostFields> = { ...input.patch };
+  if (Object.prototype.hasOwnProperty.call(input.patch, "keywords")) {
+    cleanPatch.keywords = sanitizeLocalizedKeywords(input.patch.keywords);
+  }
+
   return deps.saveDraft<PostFields>(caller, {
     collection: "posts",
     docId: input.docId,
-    patch: input.patch,
+    patch: cleanPatch,
     expectedRevision: input.expectedRevision,
     overwrite: input.overwrite,
   });

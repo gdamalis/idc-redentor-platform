@@ -49,8 +49,10 @@ export function PlatformUserField({
       setSelected(null);
     } else if (initialUser && initialUser.id === value) {
       setSelected(initialUser);
+    } else if (selected && selected.id !== value) {
+      setSelected(null);
     }
-  }, [initialUser, value]);
+  }, [initialUser, selected, value]);
 
   React.useEffect(() => {
     if (!open || !canReadUsers) return;
@@ -82,6 +84,8 @@ export function PlatformUserField({
     setSelected(hit);
     onChange(pickedId);
   };
+
+  const activeSelected = selected?.id === value ? selected : null;
 
   return (
     <>
@@ -129,11 +133,11 @@ export function PlatformUserField({
           <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-background p-2.5">
             <div className="min-w-0">
               <div className="truncate text-sm font-medium text-foreground">
-                {selected?.displayName || selected?.email || value}
+                {activeSelected?.displayName || activeSelected?.email || value}
               </div>
-              {selected?.displayName && (
+              {activeSelected?.displayName && (
                 <div className="truncate text-xs text-muted-foreground">
-                  {selected.email}
+                  {activeSelected.email}
                 </div>
               )}
             </div>

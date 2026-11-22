@@ -13,11 +13,13 @@ const {
   mockSaveTopicDraftAction,
   mockPrepareTopicPublishAction,
   mockConfirmTopicPublishAction,
+  mockDiscardTopicChangesAction,
 } = vi.hoisted(() => ({
   mockCreateTopicAction: vi.fn(),
   mockSaveTopicDraftAction: vi.fn(),
   mockPrepareTopicPublishAction: vi.fn(),
   mockConfirmTopicPublishAction: vi.fn(),
+  mockDiscardTopicChangesAction: vi.fn(),
 }));
 
 vi.mock("@src/app/[locale]/(app)/content/topics/actions", () => ({
@@ -28,6 +30,8 @@ vi.mock("@src/app/[locale]/(app)/content/topics/actions", () => ({
     mockPrepareTopicPublishAction(...args),
   confirmTopicPublishAction: (...args: unknown[]) =>
     mockConfirmTopicPublishAction(...args),
+  discardTopicChangesAction: (...args: unknown[]) =>
+    mockDiscardTopicChangesAction(...args),
 }));
 
 vi.mock("@src/app/[locale]/(app)/content/actions", () => ({
@@ -231,5 +235,43 @@ describe("TopicEditor", () => {
         ).length,
       ).toBeGreaterThan(0);
     });
+  });
+
+  it("shows format error (not missing error) for malformed slug.en-US on a protected topic (C2)", async () => {
+    const user = userEvent.setup();
+    mockSaveTopicDraftAction.mockResolvedValueOnce({
+      ok: false,
+      reason: "invalid",
+      fieldErrors: {
+        "slug.en-US": ["Must be a lowercase kebab-case slug"],
+      },
+    });
+
+    renderWithIntl(
+      <TopicEditor
+        docId={PRIVACY_DOC._id}
+        initialDoc={PRIVACY_DOC}
+        initialStatus="published"
+        initialValues={PRIVACY_DOC.draft}
+        permissions={{
+          canWrite: true,
+          canPublish: true,
+          canPublishProtected: true,
+        }}
+        isTrialMode={false}
+      />,
+    );
+
+    await user.type(screen.getByLabelText(/Descripción corta/), " edit");
+    await user.click(screen.getByRole("button", { name: "Guardar borrador" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText("Ingresá una dirección válida en inglés.").length,
+      ).toBeGreaterThan(0);
+    });
+    expect(
+      screen.queryByText(/Falta la dirección en inglés/),
+    ).not.toBeInTheDocument();
   });
 });

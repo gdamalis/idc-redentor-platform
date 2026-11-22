@@ -58,6 +58,24 @@ export function normalizeKeywords(
   return cleaned.length > 0 ? cleaned : undefined;
 }
 
+/**
+ * Sanitizes localized SEO keywords (`C1`): trims items, drops blank rows per
+ * locale, omits empty `en-US` so Spanish fallback works, and collapses to
+ * `undefined` when both locales are empty.
+ */
+export function sanitizeLocalizedKeywords(
+  keywords: PostFields["keywords"],
+): PostFields["keywords"] {
+  if (!keywords) return undefined;
+  const es = normalizeKeywords(keywords["es-AR"]);
+  const en = normalizeKeywords(keywords["en-US"]);
+  if (!es && !en) return undefined;
+  return {
+    "es-AR": es ?? [],
+    ...(en ? { "en-US": en } : {}),
+  };
+}
+
 interface RichTextNodeLike {
   readonly type?: unknown;
   readonly text?: unknown;

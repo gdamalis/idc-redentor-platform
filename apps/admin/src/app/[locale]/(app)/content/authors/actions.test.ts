@@ -27,6 +27,7 @@ describe("authors/actions — searchPlatformUsersAction", () => {
     });
 
     const res = await searchPlatformUsersAction({ query: "ana" });
+    expect(mockRequireActionPermission).toHaveBeenCalledWith("users:read");
     expect(res).toEqual({
       ok: false,
       reason: "forbidden",
@@ -79,6 +80,7 @@ describe("authors/actions — searchPlatformUsersAction", () => {
     ]);
 
     const res = await searchPlatformUsersAction({ query: "ana" });
+    expect(mockRequireActionPermission).toHaveBeenCalledWith("users:read");
     expect(res).toEqual({
       ok: true,
       items: [

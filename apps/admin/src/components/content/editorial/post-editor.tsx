@@ -63,6 +63,41 @@ export interface PostEditorProps {
 const SEO_TITLE_RECOMMENDED = 60;
 const SEO_DESC_RECOMMENDED = 160;
 
+/**
+ * Stateful SEO accordion (`C1`): auto-opens when any SEO publish validation
+ * error appears and stays open while the user edits and clears errors.
+ */
+function SeoDetailsSection({
+  title,
+  hasError,
+  children,
+}: {
+  readonly title: string;
+  readonly hasError: boolean;
+  readonly children: React.ReactNode;
+}) {
+  const [isOpen, setIsOpen] = React.useState(hasError);
+
+  React.useEffect(() => {
+    if (hasError) {
+      setIsOpen(true);
+    }
+  }, [hasError]);
+
+  return (
+    <details
+      className="rounded-md border border-border bg-muted/10 p-4"
+      open={isOpen}
+      onToggle={(e) => setIsOpen(e.currentTarget.open)}
+    >
+      <summary className="cursor-pointer text-sm font-semibold text-foreground">
+        {title}
+      </summary>
+      <div className="mt-4 space-y-4">{children}</div>
+    </details>
+  );
+}
+
 function updateLocalizedString(
   current: Localized<string> | undefined,
   locale: Locale,
@@ -321,14 +356,10 @@ export function PostEditor({
               />
             </Field>
 
-            <details
-              className="rounded-md border border-border bg-muted/10 p-4"
-              open={hasSeoError || undefined}
+            <SeoDetailsSection
+              title={tEd("posts.seoSectionTitle")}
+              hasError={hasSeoError}
             >
-              <summary className="cursor-pointer text-sm font-semibold text-foreground">
-                {tEd("posts.seoSectionTitle")}
-              </summary>
-              <div className="mt-4 space-y-4">
                 <Field
                   label={tEd("posts.seoTitleLabel")}
                   htmlFor={`post-seo-title-${activeLocale}`}
@@ -445,8 +476,7 @@ export function PostEditor({
                   readOnly={readOnly}
                   error={getError(`keywords.${activeLocale}`)}
                 />
-              </div>
-            </details>
+            </SeoDetailsSection>
           </>
         );
       }}
