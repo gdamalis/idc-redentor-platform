@@ -23,6 +23,7 @@
   },
   "nav": {
     "dashboard": "Home",
+    "content": "Content",
     "people": "People",
     "families": "Families",
     "activities": "Activities",

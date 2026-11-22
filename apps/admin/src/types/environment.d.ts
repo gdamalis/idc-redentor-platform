@@ -43,5 +43,13 @@ declare namespace NodeJS {
     CONTENT_PUBLISH_EMAILS?: string;
     // Injected by Vercel ("production" | "preview" | "staging" | "development").
     VERCEL_TARGET_ENV?: string;
+
+    // Content platform — signed preview opener & pre-cutover trial mode (ICR-197)
+    // Server-only, NEVER NEXT_PUBLIC_*.
+    CONTENT_PREVIEW_SECRET?: string;
+    // Optional preview website origin; falls back to WEBSITE_REVALIDATE_URL.
+    WEBSITE_PREVIEW_URL?: string;
+    // Pre-cutover trial mode banner: active unless explicitly "false" (flipped by ICR-206).
+    CONTENT_TRIAL_MODE?: string;
   }
 }
