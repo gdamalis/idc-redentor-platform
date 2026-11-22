@@ -57,17 +57,17 @@ describe("MobileNav", () => {
     expect(screen.getAllByRole("link")).toHaveLength(5);
   });
 
-  it("renders 4 tabs plus a More sheet when the list overflows (8 items)", async () => {
+  it("renders 4 tabs plus a More sheet when the list overflows (9 items)", async () => {
     render(await MobileNav({ items: NAV_ITEMS }));
 
     expect(screen.getByTestId("more-sheet")).toBeDefined();
     expect(screen.getByRole("button", { name: "nav.more" })).toBeDefined();
-    // 4 primary tabs + 4 overflow links rendered inside the mocked sheet.
-    expect(screen.getAllByRole("link")).toHaveLength(8);
+    // 4 primary tabs + 5 overflow links rendered inside the mocked sheet.
+    expect(screen.getAllByRole("link")).toHaveLength(9);
     // MoreSheet needs every overflow href to derive its own active state.
     expect(screen.getByTestId("more-sheet")).toHaveAttribute(
       "data-overflow-hrefs",
-      "/calendar,/users,/roles,/settings",
+      "/activities,/calendar,/users,/roles,/settings",
     );
   });
 
@@ -134,7 +134,7 @@ describe("MobileNav", () => {
   });
 
   it("shows only the permitted items for a minimal permission set", async () => {
-    const items = [NAV_ITEMS[0], NAV_ITEMS[7]] as readonly NavItem[];
+    const items = [NAV_ITEMS[0], NAV_ITEMS[8]] as readonly NavItem[];
 
     render(await MobileNav({ items }));
 

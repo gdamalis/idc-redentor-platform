@@ -34,5 +34,28 @@ declare namespace NodeJS {
     // Email — invite + password-reset flows (server-only)
     RESEND_API_KEY: string;
     FROM_EMAIL: string;
+
+    // Content platform — post-commit site revalidation & publish-email gate (ICR-195)
+    // Server-only, NO fallback (never reads NEXT_PUBLIC_WEBSITE_URL).
+    WEBSITE_REVALIDATE_URL?: string;
+    WEBSITE_REVALIDATE_SECRET?: string;
+    // Global publish-email switch: off unless explicitly "true".
+    CONTENT_PUBLISH_EMAILS?: string;
+    // Injected by Vercel ("production" | "preview" | "staging" | "development").
+    VERCEL_TARGET_ENV?: string;
+
+    // Content platform — signed preview opener & pre-cutover trial mode (ICR-197)
+    // Server-only, NEVER NEXT_PUBLIC_*.
+    CONTENT_PREVIEW_SECRET?: string;
+    // Optional preview website origin; falls back to WEBSITE_REVALIDATE_URL.
+    WEBSITE_PREVIEW_URL?: string;
+    // Pre-cutover trial mode banner: active unless explicitly "false" (flipped by ICR-206).
+    CONTENT_TRIAL_MODE?: string;
+
+    // File storage — Vercel Blob (ICR-196, server-only, NEVER in apps/web)
+    // Production -> idcr-media; Preview/staging/Development -> idcr-media-staging.
+    BLOB_READ_WRITE_TOKEN?: string;
+    // Reserved for ICR-177 private finance invoice attachments store.
+    FINANCE_BLOB_READ_WRITE_TOKEN?: string;
   }
 }

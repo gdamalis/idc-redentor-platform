@@ -40,4 +40,28 @@ describe("buildSecurityHeaders", () => {
       expect(grab(prod)).toBe(grab(prev));
     }
   });
+
+  it("allows Vercel Blob public media host in img-src and media-src while preserving existing CMS hosts and read-only connect-src (ICR-196 AC8)", () => {
+    const csp = find(
+      buildSecurityHeaders({ previewLike: false }),
+      "Content-Security-Policy",
+    )!.value;
+    const grab = (d: string) =>
+      csp
+        .split(";")
+        .find((s) => s.trim().startsWith(d))
+        ?.trim() ?? "";
+
+    expect(grab("img-src")).toContain("https://*.public.blob.vercel-storage.com");
+    expect(grab("img-src")).toContain("https://images.ctfassets.net");
+    expect(grab("img-src")).toContain("https://images.eu.ctfassets.net");
+    expect(grab("img-src")).toContain("https://images.unsplash.com");
+
+    expect(grab("media-src")).toContain("https://*.public.blob.vercel-storage.com");
+    expect(grab("media-src")).toContain("https://assets.ctfassets.net");
+    expect(grab("media-src")).toContain("https://assets.eu.ctfassets.net");
+    expect(grab("media-src")).toContain("https://downloads.ctfassets.net");
+
+    expect(grab("connect-src")).not.toContain("blob.vercel-storage.com");
+  });
 });

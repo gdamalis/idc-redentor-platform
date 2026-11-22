@@ -23,6 +23,7 @@
   },
   "nav": {
     "dashboard": "Inicio",
+    "content": "Contenido",
     "people": "Personas",
     "families": "Familias",
     "activities": "Actividades",
@@ -162,13 +163,35 @@
       "label": "Crear/editar roles y permisos",
       "description": "Permite crear, editar y eliminar roles, y modificar sus permisos."
     },
+    "content:read": {
+      "label": "Ver contenido",
+      "description": "Permite ver las entradas de contenido del sitio y sus borradores."
+    },
+    "content:write": {
+      "label": "Crear/editar contenido",
+      "description": "Permite crear, guardar y eliminar borradores de contenido del sitio."
+    },
+    "content:publish": {
+      "label": "Publicar contenido",
+      "description": "Permite publicar y despublicar contenido del sitio, y eliminar entradas publicadas de la biblioteca."
+    },
+    "content:publish-protected": {
+      "label": "Publicar contenido protegido (legal y doctrinal)",
+      "description": "Permite publicar, despublicar y modificar la protección de textos legales y contenido doctrinal."
+    },
+    "media:manage": {
+      "label": "Gestionar imágenes y archivos",
+      "description": "Permite subir, editar y eliminar archivos de la biblioteca multimedia."
+    },
     "groups": {
       "people": "Personas",
       "families": "Familias",
       "activities": "Actividades",
       "calendar": "Calendario",
       "users": "Usuarios",
-      "roles": "Roles"
+      "roles": "Roles",
+      "content": "Contenido",
+      "media": "Multimedia"
     }
   },
   "roles": {
