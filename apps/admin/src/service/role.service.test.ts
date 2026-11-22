@@ -65,7 +65,7 @@ describe("seedSystemRoles", () => {
     ]);
   });
 
-  it("seeds Admin with all 15 keys", async () => {
+  it("seeds Admin with all 20 registry keys", async () => {
     const { seedSystemRoles } = await loadService();
     const { PERMISSION_KEYS } = await import("@src/lib/rbac/permissions");
     await seedSystemRoles();
