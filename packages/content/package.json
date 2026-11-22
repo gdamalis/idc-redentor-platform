@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./tiptap": "./src/tiptap/index.ts"
+    "./tiptap": "./src/tiptap/index.ts",
+    "./preview": "./src/preview/index.ts"
   },
   "scripts": {
     "type-check": "tsc --noEmit",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@idcr/config": "workspace:*",
+    "@types/node": "^24.10.0",
     "eslint": "^9.39.1",
     "typescript": "^5.9.3",
     "vitest": "^4.1.9",

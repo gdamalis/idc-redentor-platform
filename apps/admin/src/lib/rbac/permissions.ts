@@ -22,6 +22,11 @@ export const PERMISSIONS = {
   "users:manage": "Invite users, assign roles",
   "roles:read": "View roles",
   "roles:manage": "Create/edit roles + permissions",
+  "content:read": "View content",
+  "content:write": "Create/edit content drafts",
+  "content:publish": "Publish/unpublish content",
+  "content:publish-protected": "Publish protected content (legal and doctrinal)",
+  "media:manage": "Upload/edit/delete media",
 } as const satisfies Record<string, string>;
 
 export type PermissionKey = keyof typeof PERMISSIONS;

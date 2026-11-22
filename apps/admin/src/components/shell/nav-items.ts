@@ -2,6 +2,7 @@
 import {
   Activity,
   CalendarDays,
+  FileText,
   LayoutDashboard,
   Settings,
   ShieldCheck,
@@ -14,6 +15,7 @@ import type { PermissionKey } from "@src/lib/rbac/permissions";
 
 export type NavLabelKey =
   | "dashboard"
+  | "content"
   | "people"
   | "families"
   | "activities"
@@ -36,6 +38,12 @@ export interface NavItem {
 // still be refused there.
 export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/", labelKey: "dashboard", icon: LayoutDashboard },
+  {
+    href: "/content",
+    labelKey: "content",
+    icon: FileText,
+    permission: "content:read",
+  },
   {
     href: "/people",
     labelKey: "people",

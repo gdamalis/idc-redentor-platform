@@ -124,5 +124,10 @@
     "like": "Me gusta",
     "unlike": "Ya no me gusta",
     "tags": "Etiquetas"
+  },
+  "preview": {
+    "banner": "Vista previa. Estás viendo contenido sin publicar; los visitantes no lo ven.",
+    "exit": "Salir de la vista previa",
+    "staging": "Entorno de pruebas: siempre muestra borradores."
   }
 }
