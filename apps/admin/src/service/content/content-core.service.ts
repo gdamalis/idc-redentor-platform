@@ -21,7 +21,10 @@ import {
   getContentDb,
   withContentTransaction,
 } from "@src/service/database.service";
-import { appendContentAuditEntry } from "@src/service/content-audit.service";
+import {
+  CONTENT_AUDIT_COLLECTION,
+  appendContentAuditEntry,
+} from "@src/service/content-audit.service";
 import { isDuplicateKeyError } from "@src/service/user.service";
 import {
   getCallerActor,
@@ -1970,6 +1973,10 @@ export async function deleteContent(
     }
 
     const naturalKey = computeNaturalKey(input.collection, existingDraftRecord);
+    const deleteMeta = {
+      ...(input.overwrite ? { overwrite: true } : {}),
+      ...(wasPublished ? { wasPublished: true } : {}),
+    };
     await deps.appendContentAuditEntry(
       {
         actorId: actor.id,
@@ -1981,7 +1988,7 @@ export async function deleteContent(
         ...(naturalKey !== undefined && { naturalKey }),
         changedFields: [],
         revision: existing.revision,
-        ...(input.overwrite ? { meta: { overwrite: true } } : {}),
+        ...(Object.keys(deleteMeta).length > 0 ? { meta: deleteMeta } : {}),
       },
       session,
     );
@@ -2042,8 +2049,30 @@ export async function retryRevalidation(
     .getContentDb()
     .collection(collection)
     .findOne({ _id: objectId })) as StoredContentEnvelope<Record<string, unknown>> | null;
-  if (!exists || !isVisibleFixedEntry(collection, asRecord(exists.draft))) {
-    return { ok: false, reason: "not-found" };
+
+  if (exists) {
+    if (!isVisibleFixedEntry(collection, asRecord(exists.draft))) {
+      return { ok: false, reason: "not-found" };
+    }
+  } else {
+    // Allow recovery after a committed delete-of-published (e.g. unused published
+    // author or bible verse) whose post-commit site refresh failed, verified via
+    // its committed `content.delete` audit record.
+    if (!COLLECTION_META[collection].canDeletePublished) {
+      return { ok: false, reason: "not-found" };
+    }
+    const deletedPublishedAudit = await deps
+      .getContentDb()
+      .collection(CONTENT_AUDIT_COLLECTION)
+      .findOne({
+        collection,
+        docId,
+        action: "content.delete",
+        "meta.wasPublished": true,
+      });
+    if (!deletedPublishedAudit) {
+      return { ok: false, reason: "not-found" };
+    }
   }
 
   const reval = await deps.revalidateWebsite({

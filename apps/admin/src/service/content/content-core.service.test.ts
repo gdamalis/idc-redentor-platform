@@ -309,7 +309,13 @@ function createTestHarness(options?: {
     ) => {
       expect(inTransaction).toBe(true);
       expect(session).toBeDefined();
-      workingAudit.push(cloneDoc(entry));
+      const cloned = cloneDoc(entry);
+      workingAudit.push(cloned);
+      getColDocs("content_audit").push({
+        ...(cloned as unknown as Record<string, unknown>),
+        _id: new ObjectId(),
+        at: new Date(clock),
+      });
     },
   );
 
@@ -2341,5 +2347,86 @@ describe("Reference write/delete serialization (write-skew guard)", () => {
       h.deps,
     );
     expect(usages.ok && usages.usedBy).toHaveLength(1);
+  });
+
+  it("allows retryRevalidation to recover after a committed delete-of-published fails revalidation, while rejecting unpublished deletes and unknown IDs", async () => {
+    const h = createTestHarness({
+      revalidateResult: { ok: false, reason: "network-error" },
+    });
+
+    // 1. Create & publish an author, then delete it while revalidation fails
+    const pubAuthor = await authorService.create(
+      writer,
+      { name: "Autor Publicado" },
+      h.deps,
+    );
+    if (!pubAuthor.ok) throw new Error("setup failed");
+    const published = await authorService.publish(
+      publisher,
+      { docId: pubAuthor.doc._id, expectedRevision: 1 },
+      h.deps,
+    );
+    if (!published.ok) throw new Error("publish failed");
+
+    const delPub = await authorService.delete(
+      publisher,
+      { docId: pubAuthor.doc._id, expectedRevision: published.doc.revision },
+      h.deps,
+    );
+    expect(delPub).toEqual({
+      ok: true,
+      docId: pubAuthor.doc._id,
+      wasPublished: true,
+      revalidated: false,
+      revalidateReason: "network-error",
+    });
+
+    // Site refresh recovers on retry even though the author document is gone
+    h.revalidateMock.mockResolvedValueOnce({ ok: true as const });
+    const recovered = await authorService.retryRevalidation(
+      publisher,
+      pubAuthor.doc._id,
+      h.deps,
+    );
+    expect(recovered).toEqual({ ok: true, revalidated: true });
+    expect(h.revalidateMock).toHaveBeenLastCalledWith({
+      type: "author",
+      id: pubAuthor.doc._id,
+      notify: false,
+    });
+
+    // 2. Deleting an UNPUBLISHED draft does NOT allow retryRevalidation
+    const draftAuthor = await authorService.create(
+      writer,
+      { name: "Autor Borrador" },
+      h.deps,
+    );
+    if (!draftAuthor.ok) throw new Error("setup failed");
+    const delDraft = await authorService.delete(
+      writer,
+      { docId: draftAuthor.doc._id, expectedRevision: 1 },
+      h.deps,
+    );
+    expect(delDraft).toEqual({
+      ok: true,
+      docId: draftAuthor.doc._id,
+      wasPublished: false,
+    });
+    expect(
+      await authorService.retryRevalidation(
+        publisher,
+        draftAuthor.doc._id,
+        h.deps,
+      ),
+    ).toEqual({ ok: false, reason: "not-found" });
+
+    // 3. Unknown ID still returns not-found
+    expect(
+      await authorService.retryRevalidation(
+        publisher,
+        new ObjectId().toHexString(),
+        h.deps,
+      ),
+    ).toEqual({ ok: false, reason: "not-found" });
   });
 });

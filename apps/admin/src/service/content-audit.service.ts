@@ -32,6 +32,8 @@ export interface ContentAuditMeta {
   };
   /** Optional field reserved for protected-publish confirmation tick. */
   readonly approvedConfirmed?: boolean;
+  /** Recorded on `content.delete` when the deleted entry had a published copy requiring site refresh. */
+  readonly wasPublished?: boolean;
 }
 
 /**
@@ -80,6 +82,7 @@ const contentAuditMetaSchema = z.strictObject({
     })
     .optional(),
   approvedConfirmed: z.boolean().optional(),
+  wasPublished: z.boolean().optional(),
 });
 
 export const contentAuditEntrySchema = z.strictObject({
