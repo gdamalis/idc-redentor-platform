@@ -22,6 +22,18 @@ describe("admin locale message files", () => {
     expect(en.filter((k) => !es.includes(k))).toEqual([]); // missing from es-AR
   });
 
+  it("contains zero dots inside individual JSON keys (next-intl v4 requirement)", () => {
+    function assertNoDotKeys(value: unknown, trail = ""): void {
+      if (!value || typeof value !== "object") return;
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+        expect(k, `dot in key "${k}" under "${trail}"`).not.toContain(".");
+        assertNoDotKeys(v, trail ? `${trail}.${k}` : k);
+      }
+    }
+    assertNoDotKeys(esAR);
+    assertNoDotKeys(enUS);
+  });
+
   it("exposes nav.content and the content namespace in both locales", () => {
     expect(esAR.nav.content).toBe("Contenido");
     expect(enUS.nav.content).toBe("Content");

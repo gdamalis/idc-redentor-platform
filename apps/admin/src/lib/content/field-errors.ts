@@ -98,7 +98,9 @@ export function translateFieldErrors(
 
     if (!resolved) {
       for (const candidate of buildLookupCandidates(path)) {
-        const hit = options.lookupFieldMessage(candidate);
+        const hit =
+          options.lookupFieldMessage(candidate.replaceAll(".", "__")) ??
+          options.lookupFieldMessage(candidate);
         if (hit) {
           resolved = hit;
           break;
