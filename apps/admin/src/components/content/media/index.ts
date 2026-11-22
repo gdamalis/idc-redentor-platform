@@ -10,4 +10,7 @@ export {
   MediaLibraryView,
   type MediaLibraryViewProps,
 } from "./media-library-view";
-export type { SerializedMediaDoc } from "@src/app/[locale]/(app)/content/media/actions";
+export type {
+  MediaDocLike,
+  SerializedMediaDoc,
+} from "@src/app/[locale]/(app)/content/media/actions";

@@ -203,12 +203,21 @@ async function collectUsedMediaIds(deps: MediaServiceDeps): Promise<Set<string>>
   const used = new Set<string>();
   const db = deps.getContentDb();
   for (const sourceCollection of MEDIA_REFERENCING_COLLECTIONS) {
-    const ids = await db
+    // MongoDB Stable API v1 (strict: true) forbids `distinct`; use a projected `find` instead.
+    const docs = (await db
       .collection(sourceCollection)
-      .distinct("_refs.mediaIds");
-    for (const id of ids) {
-      if (typeof id === "string" && id.trim().length > 0) {
-        used.add(id.trim());
+      .find(
+        { "_refs.mediaIds.0": { $exists: true } },
+        { projection: { "_refs.mediaIds": 1 } },
+      )
+      .toArray()) as { readonly _refs?: { readonly mediaIds?: readonly unknown[] } }[];
+    for (const doc of docs) {
+      const ids = doc._refs?.mediaIds;
+      if (!Array.isArray(ids)) continue;
+      for (const id of ids) {
+        if (typeof id === "string" && id.trim().length > 0) {
+          used.add(id.trim());
+        }
       }
     }
   }
@@ -509,10 +518,9 @@ export async function confirmMediaUpload(
 
 // ── Server-Side Media Creation (`ICR-200` PDF worker & `ICR-203` importer) ──
 
-export interface CreateServerMediaInput {
+export interface CreateServerMediaBaseInput {
   readonly filename: string;
   readonly contentType: string;
-  readonly body: Buffer | Uint8Array;
   readonly title: Localized<string>;
   readonly alt?: Localized<string>;
   readonly decorative?: boolean;
@@ -524,6 +532,12 @@ export interface CreateServerMediaInput {
   /** Default `true`: checks `{ sha256 }` BEFORE `putBlob` so `ICR-203` re-runs upload zero duplicates. */
   readonly dedupeBySha256?: boolean;
 }
+
+export type CreateServerMediaInput = CreateServerMediaBaseInput &
+  (
+    | { readonly body: Buffer | Uint8Array; readonly buffer?: never }
+    | { readonly buffer: Buffer | Uint8Array; readonly body?: never }
+  );
 
 export type CreateServerMediaSuccess =
   | {
@@ -564,7 +578,8 @@ export async function createServerMedia(
     };
   }
 
-  const size = input.body.byteLength;
+  const bytes = input.body ?? input.buffer;
+  const size = bytes.byteLength;
   const maxBytes = getMediaSizeCapForContentType(normalizedType);
   if (maxBytes === null || size <= 0) {
     return {
@@ -582,7 +597,7 @@ export async function createServerMedia(
     };
   }
 
-  const sha256 = createHash("sha256").update(input.body).digest("hex");
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
   await deps.ensureMediaIndexes();
 
   if (input.dedupeBySha256 !== false) {
@@ -649,7 +664,7 @@ export async function createServerMedia(
   const uploaded = await deps.putBlob(
     STORAGE_CLASS.publicMedia,
     pathname,
-    input.body,
+    bytes,
     {
       contentType: normalizedType,
       multipart: isMultipartUpload(normalizedType),

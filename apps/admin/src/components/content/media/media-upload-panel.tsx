@@ -102,6 +102,8 @@ export function MediaUploadPanel({
 
   const isBusyUploading =
     stage.phase === "hashing" || stage.phase === "uploading";
+  const onUploadingChangeRef = React.useRef(onUploadingChange);
+  onUploadingChangeRef.current = onUploadingChange;
 
   React.useEffect(() => {
     onUploadingChange?.(isBusyUploading);
@@ -118,10 +120,11 @@ export function MediaUploadPanel({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isBusyUploading]);
 
-  // Clean up object URLs and active abort controller on unmount.
+  // Clean up object URLs, active abort controller, and parent uploading state on unmount.
   React.useEffect(() => {
     return () => {
       abortControllerRef.current?.abort();
+      onUploadingChangeRef.current?.(false);
     };
   }, []);
 
@@ -364,6 +367,14 @@ export function MediaUploadPanel({
     const existing = stage.existing;
     const isExistingImage = existing.contentType.startsWith("image/");
     const selectable = isMediaSelectable(existing);
+    const existingTitle =
+      locale === "en-US" && existing.title["en-US"]?.trim()
+        ? existing.title["en-US"]
+        : existing.title["es-AR"];
+    const existingAlt =
+      (locale === "en-US" && existing.alt?.["en-US"]?.trim()
+        ? existing.alt["en-US"]
+        : existing.alt?.["es-AR"]) ?? existingTitle;
 
     return (
       <div className="space-y-4">
@@ -376,7 +387,7 @@ export function MediaUploadPanel({
             <div className="relative size-16 shrink-0 overflow-hidden rounded border border-border bg-muted">
               <Image
                 src={existing.url}
-                alt={existing.alt?.["es-AR"] ?? existing.title["es-AR"]}
+                alt={existingAlt}
                 fill
                 unoptimized
                 className="object-cover"
@@ -394,7 +405,7 @@ export function MediaUploadPanel({
 
           <div className="min-w-0 flex-1 space-y-1">
             <p className="truncate font-medium text-foreground">
-              {existing.title["es-AR"]}
+              {existingTitle}
             </p>
             <p className="truncate text-xs text-muted-foreground">
               {existing.filename} · {formatFileSize(existing.size, locale)}

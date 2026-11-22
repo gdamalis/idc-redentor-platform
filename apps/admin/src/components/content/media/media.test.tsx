@@ -348,6 +348,145 @@ describe("MediaPicker & MediaField (AC3, AC6)", () => {
     expect(onChange).toHaveBeenCalledWith(undefined);
     expect(onSelectDoc).toHaveBeenCalledWith(null);
   });
+
+  it("C1 + C2: MediaPicker hydrates off-page selectedIds via getMediaByIdsAction so paginated multi-select never drops them", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    const PAGE2_DOC: SerializedMediaDoc = {
+      ...IMAGE_DOC,
+      _id: "507f1f77bcf86cd799439099",
+      pathname: "media/507f1f77bcf86cd799439099/pagina2.jpg",
+      filename: "pagina2.jpg",
+      title: { "es-AR": "Foto página 2" },
+      alt: { "es-AR": "Foto de la página 2" },
+    };
+
+    mockListMediaAction.mockResolvedValue({
+      ok: true,
+      items: [IMAGE_DOC],
+      total: 25,
+      page: 1,
+      pageSize: 24,
+      hasMore: true,
+    });
+    mockGetMediaByIdsAction.mockResolvedValue({
+      ok: true,
+      items: [PAGE2_DOC],
+    });
+
+    renderIntl(
+      <MediaPicker
+        open
+        onOpenChange={vi.fn()}
+        accept="image"
+        multiple
+        selectedIds={[PAGE2_DOC._id]}
+        canUpload={false}
+        onSelect={onSelect}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(mockGetMediaByIdsAction).toHaveBeenCalledWith([PAGE2_DOC._id]);
+      expect(screen.getByText("Bautismo 2026")).toBeDefined();
+    });
+
+    await user.click(screen.getByText("Bautismo 2026"));
+    await user.click(
+      screen.getByRole("button", { name: /Usar 2 archivos/i }),
+    );
+    expect(onSelect).toHaveBeenCalledWith([PAGE2_DOC, IMAGE_DOC]);
+  });
+
+  it("C1: disables Library tab during active upload and resets isUploading on MediaUploadPanel unmount", async () => {
+    const user = userEvent.setup();
+    const onUploadingChange = vi.fn();
+    let resolveUpload!: (val: {
+      pathname: string;
+      url: string;
+      contentType: string;
+    }) => void;
+    mockUpload.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveUpload = resolve;
+        }),
+    );
+    mockPrepareMediaUploadAction.mockResolvedValue({
+      ok: true,
+      status: "ready",
+      mediaId: IMAGE_DOC._id,
+      pathname: IMAGE_DOC.pathname,
+      normalizedContentType: "image/jpeg",
+      maxBytes: 15 * 1024 * 1024,
+      multipart: false,
+    });
+    mockListMediaAction.mockResolvedValue({
+      ok: true,
+      items: [],
+      total: 0,
+      page: 1,
+      pageSize: 24,
+      hasMore: false,
+    });
+
+    const { unmount } = renderIntl(
+      <MediaPicker
+        open
+        onOpenChange={vi.fn()}
+        accept="image"
+        canUpload
+        onSelect={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("tab", { name: "Subir" }));
+    const fileInput = screen.getByLabelText("Elegir archivo");
+    const file = new File([new Uint8Array([1, 2, 3])], "mid.jpg", {
+      type: "image/jpeg",
+    });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByRole("tab", { name: "Biblioteca" })).toBeDisabled();
+    });
+    unmount();
+    resolveUpload({
+      pathname: IMAGE_DOC.pathname,
+      url: IMAGE_DOC.url,
+      contentType: "image/jpeg",
+    });
+
+    // Direct MediaUploadPanel unmount resets onUploadingChange(false)
+    const panel = renderIntl(
+      <MediaUploadPanel
+        acceptKinds={["image"]}
+        submitLabel="Guardar"
+        onComplete={vi.fn()}
+        onUploadingChange={onUploadingChange}
+      />,
+    );
+    panel.unmount();
+    expect(onUploadingChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it("C2 + C3: MediaField accepts initialMedia with Date createdAt and displays en-US title", () => {
+    const mediaDocWithDate = {
+      ...IMAGE_DOC,
+      title: { "es-AR": "Bautismo 2026", "en-US": "Baptism 2026" },
+      createdAt: new Date("2026-11-22T08:00:00.000Z"),
+    };
+    renderIntl(
+      <MediaField
+        accept="image"
+        value={IMAGE_DOC._id}
+        initialMedia={mediaDocWithDate}
+        canUpload={false}
+        onChange={vi.fn()}
+      />,
+      "en-US",
+    );
+    expect(screen.getByText("Baptism 2026")).toBeDefined();
+  });
 });
 
 describe("MediaLibraryView (AC5, AC7)", () => {
@@ -463,5 +602,44 @@ describe("MediaLibraryView (AC5, AC7)", () => {
     await waitFor(() => {
       expect(mockDeleteMediaAction).toHaveBeenCalledWith(IMAGE_DOC._id);
     });
+  });
+
+  it("C3.2: renders en-US localized title and links globals usages directly to their singleton editor", async () => {
+    const user = userEvent.setup();
+    const bilingualImg: SerializedMediaDoc = {
+      ...IMAGE_DOC,
+      title: { "es-AR": "Logo pie", "en-US": "Footer Logo" },
+    };
+    mockGetMediaUsagesAction.mockResolvedValue({
+      ok: true,
+      usedBy: [
+        {
+          collection: "globals",
+          docId: "global-footer-id",
+          label: "footer",
+          isPublished: true,
+        },
+      ],
+    });
+
+    renderIntl(
+      <MediaLibraryView
+        initialItems={[bilingualImg]}
+        total={1}
+        page={1}
+        pageSize={24}
+        currentKind=""
+        currentUnused={false}
+        currentQuery=""
+        canManageMedia
+      />,
+      "en-US",
+    );
+
+    expect(screen.getByText("Footer Logo")).toBeDefined();
+    await user.click(screen.getByText("Footer Logo"));
+
+    const footerLink = await screen.findByRole("link", { name: "footer" });
+    expect(footerLink.getAttribute("href")).toBe("/content/footer");
   });
 });

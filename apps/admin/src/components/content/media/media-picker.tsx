@@ -14,6 +14,7 @@ import {
   type MediaKind,
 } from "@src/lib/media/policy";
 import {
+  getMediaByIdsAction,
   listMediaAction,
   type SerializedMediaDoc,
 } from "@src/app/[locale]/(app)/content/media/actions";
@@ -27,6 +28,8 @@ export interface MediaPickerProps {
   readonly multiple?: boolean;
   readonly maxSelect?: number;
   readonly initialSelectedIds?: readonly string[];
+  /** Alias for `initialSelectedIds` (matches `ICR-196` spec & Wave 4 callers). */
+  readonly selectedIds?: readonly string[];
   /** True when the current user holds `media:manage`. Picking existing files needs only `content:write`. */
   readonly canUpload: boolean;
   readonly onSelect: (items: SerializedMediaDoc[]) => void;
@@ -34,13 +37,23 @@ export interface MediaPickerProps {
 
 const PAGE_SIZE = 24;
 
+function pickLocalizedText(
+  value: { readonly "es-AR": string; readonly "en-US"?: string } | undefined,
+  locale: string,
+): string {
+  if (!value) return "";
+  if (locale === "en-US" && value["en-US"]?.trim()) return value["en-US"];
+  return value["es-AR"];
+}
+
 export function MediaPicker({
   open,
   onOpenChange,
   accept,
   multiple = false,
   maxSelect,
-  initialSelectedIds = [],
+  initialSelectedIds,
+  selectedIds: selectedIdsProp,
   canUpload,
   onSelect,
 }: MediaPickerProps) {
@@ -48,6 +61,7 @@ export function MediaPicker({
   const tCommon = useTranslations("common");
   const locale = useLocale();
 
+  const resolvedInitialSelected = selectedIdsProp ?? initialSelectedIds ?? [];
   const acceptKey = typeof accept === "string" ? accept : accept.join(",");
   const acceptKinds = React.useMemo<readonly MediaKind[]>(
     () => (acceptKey ? (acceptKey.split(",") as MediaKind[]) : []),
@@ -57,18 +71,34 @@ export function MediaPicker({
   const [tab, setTab] = React.useState<"library" | "upload">("library");
   const [searchQuery, setSearchQuery] = React.useState("");
   const [items, setItems] = React.useState<SerializedMediaDoc[]>([]);
+  const [hydratedById, setHydratedById] = React.useState<
+    Readonly<Record<string, SerializedMediaDoc>>
+  >({});
   const [page, setPage] = React.useState(1);
   const [hasMore, setHasMore] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState<string[]>([
-    ...initialSelectedIds,
+    ...resolvedInitialSelected,
   ]);
   const [isUploading, setIsUploading] = React.useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = React.useState(false);
 
   const wasOpenRef = React.useRef(false);
-  const initialSelectedRef = React.useRef(initialSelectedIds);
-  initialSelectedRef.current = initialSelectedIds;
+  const initialSelectedRef = React.useRef(resolvedInitialSelected);
+  initialSelectedRef.current = resolvedInitialSelected;
+  const requestedHydrationRef = React.useRef<Set<string>>(new Set());
+  const itemsRef = React.useRef(items);
+  itemsRef.current = items;
+  const hydratedByIdRef = React.useRef(hydratedById);
+  hydratedByIdRef.current = hydratedById;
+  const isMountedRef = React.useRef(true);
+
+  React.useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const loadPage = React.useCallback(
     async (targetPage: number, query: string, append: boolean) => {
@@ -97,9 +127,32 @@ export function MediaPicker({
       setTab("library");
       setSelectedIds([...initialSelectedRef.current]);
       setSearchQuery("");
+      requestedHydrationRef.current.clear();
     }
     wasOpenRef.current = open;
   }, [open]);
+
+  // C1: hydrate pre-selected IDs that live on page 2+ (or before library loads) so multi-select never drops them.
+  React.useEffect(() => {
+    if (!open || selectedIds.length === 0) return;
+    const loadedIds = new Set(itemsRef.current.map((item) => item._id));
+    const missing = selectedIds.filter(
+      (id) =>
+        !loadedIds.has(id) &&
+        !hydratedByIdRef.current[id] &&
+        !requestedHydrationRef.current.has(id),
+    );
+    if (missing.length === 0) return;
+    for (const id of missing) requestedHydrationRef.current.add(id);
+    void getMediaByIdsAction(missing).then((res) => {
+      if (!isMountedRef.current || !res.ok) return;
+      setHydratedById((prev) => {
+        const next = { ...prev };
+        for (const doc of res.items) next[doc._id] = doc;
+        return next;
+      });
+    });
+  }, [open, selectedIds]);
 
   React.useEffect(() => {
     if (!open || tab !== "library") return;
@@ -128,12 +181,22 @@ export function MediaPicker({
   const isImageOnly =
     acceptKinds.length === 1 && acceptKinds[0] === "image";
 
+  const allKnownById = React.useMemo(() => {
+    const map = new Map<string, SerializedMediaDoc>();
+    for (const [id, doc] of Object.entries(hydratedById)) {
+      map.set(id, doc);
+    }
+    for (const item of items) {
+      map.set(item._id, item);
+    }
+    return map;
+  }, [hydratedById, items]);
+
   const selectedDocs = React.useMemo(() => {
-    const byId = new Map(items.map((item) => [item._id, item]));
     return selectedIds
-      .map((id) => byId.get(id))
+      .map((id) => allKnownById.get(id))
       .filter((doc): doc is SerializedMediaDoc => doc !== undefined);
-  }, [items, selectedIds]);
+  }, [allKnownById, selectedIds]);
 
   const hasUnselectableSelection = selectedDocs.some(
     (doc) => !isMediaSelectable(doc),
@@ -148,9 +211,8 @@ export function MediaPicker({
   };
 
   const handleConfirmSelection = (ids: string[]) => {
-    const byId = new Map(items.map((item) => [item._id, item]));
     const chosen = ids
-      .map((id) => byId.get(id))
+      .map((id) => allKnownById.get(id))
       .filter(
         (doc): doc is SerializedMediaDoc =>
           doc !== undefined && isMediaSelectable(doc),
@@ -162,9 +224,10 @@ export function MediaPicker({
 
   const handleUploadComplete = (doc: SerializedMediaDoc) => {
     setItems((prev) => [doc, ...prev.filter((item) => item._id !== doc._id)]);
+    setHydratedById((prev) => ({ ...prev, [doc._id]: doc }));
     if (multiple) {
       const mergedIds = [...new Set([...selectedIds, doc._id])];
-      const byId = new Map(items.map((i) => [i._id, i]));
+      const byId = new Map(allKnownById);
       byId.set(doc._id, doc);
       const chosen = mergedIds
         .map((id) => byId.get(id))
@@ -187,9 +250,12 @@ export function MediaPicker({
           type="button"
           role="tab"
           aria-selected={tab === "library"}
-          onClick={() => setTab("library")}
+          disabled={isUploading}
+          onClick={() => {
+            if (!isUploading) setTab("library");
+          }}
           className={cn(
-            "rounded px-3 py-1 text-xs font-medium transition-colors",
+            "rounded px-3 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
             tab === "library"
               ? "bg-primary text-primary-foreground"
               : "text-muted-foreground hover:text-foreground",
@@ -231,6 +297,7 @@ export function MediaPicker({
     }
     if (selectedDocs.length === 1) {
       const doc = selectedDocs[0]!;
+      const altText = pickLocalizedText(doc.alt, locale);
       return (
         <div className="space-y-0.5">
           <p className="truncate font-medium text-foreground">
@@ -240,10 +307,8 @@ export function MediaPicker({
               ? ` · ${formatDuration(doc.durationSeconds)}`
               : ""}
           </p>
-          {doc.alt?.["es-AR"] && (
-            <p className="truncate text-muted-foreground">
-              {doc.alt["es-AR"]}
-            </p>
+          {altText && (
+            <p className="truncate text-muted-foreground">{altText}</p>
           )}
         </div>
       );
@@ -298,20 +363,22 @@ export function MediaPicker({
         onConfirm={handleConfirmSelection}
         renderItem={(item) => {
           const selectable = isMediaSelectable(item);
+          const itemTitle = pickLocalizedText(item.title, locale);
+          const itemAlt = pickLocalizedText(item.alt, locale) || itemTitle;
           if (item.contentType.startsWith("image/")) {
             return (
               <div className="space-y-1.5">
                 <div className="relative aspect-[4/3] w-full overflow-hidden rounded bg-muted">
                   <Image
                     src={item.url}
-                    alt={item.alt?.["es-AR"] ?? item.title["es-AR"]}
+                    alt={itemAlt}
                     fill
                     unoptimized
                     className="object-cover"
                   />
                 </div>
                 <p className="truncate text-xs font-medium text-foreground">
-                  {item.title["es-AR"]}
+                  {itemTitle}
                 </p>
                 {!selectable && (
                   <span className="inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">
@@ -333,7 +400,7 @@ export function MediaPicker({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-foreground">
-                  {item.title["es-AR"]}
+                  {itemTitle}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
                   {item.filename} · {formatFileSize(item.size, locale)}

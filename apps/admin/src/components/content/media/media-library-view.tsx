@@ -32,7 +32,10 @@ import { Textarea } from "@src/components/ui/textarea";
 import { InUseDialog } from "@src/components/content/in-use-dialog";
 import { StatusChip } from "@src/components/content/status-chip";
 import type { ContentReferenceUsage } from "@src/lib/content/errors";
-import { getEntryEditorHref } from "@src/lib/content/routes";
+import {
+  CONTENT_DESTINATIONS,
+  getEntryEditorHref,
+} from "@src/lib/content/routes";
 import { formatAdminTimestamp } from "@src/lib/content/status-helpers";
 import {
   formatDuration,
@@ -46,6 +49,15 @@ import {
   type SerializedMediaDoc,
 } from "@src/app/[locale]/(app)/content/media/actions";
 import { MediaUploadPanel } from "./media-upload-panel";
+
+function pickLocalizedText(
+  value: { readonly "es-AR": string; readonly "en-US"?: string } | undefined,
+  locale: string,
+): string {
+  if (!value) return "";
+  if (locale === "en-US" && value["en-US"]?.trim()) return value["en-US"];
+  return value["es-AR"];
+}
 
 export interface MediaLibraryViewProps {
   readonly initialItems: readonly SerializedMediaDoc[];
@@ -252,7 +264,7 @@ export function MediaLibraryView({
     if (!selected) return;
     if (usages.length > 0) {
       setInUseDialogData({
-        title: selected.title["es-AR"],
+        title: pickLocalizedText(selected.title, locale),
         usedBy: usages,
       });
       return;
@@ -270,7 +282,7 @@ export function MediaLibraryView({
         if (res.reason === "in-use") {
           setUsages([...res.usedBy]);
           setInUseDialogData({
-            title: selected.title["es-AR"],
+            title: pickLocalizedText(selected.title, locale),
             usedBy: res.usedBy,
           });
           return;
@@ -418,7 +430,10 @@ export function MediaLibraryView({
                   {isImg ? (
                     <Image
                       src={doc.url}
-                      alt={doc.alt?.["es-AR"] ?? doc.title["es-AR"]}
+                      alt={
+                        pickLocalizedText(doc.alt, locale) ||
+                        pickLocalizedText(doc.title, locale)
+                      }
                       fill
                       unoptimized
                       className="object-cover transition-transform group-hover:scale-[1.02]"
@@ -437,7 +452,7 @@ export function MediaLibraryView({
                 </div>
                 <div className="space-y-0.5 p-2.5">
                   <p className="truncate text-xs font-medium text-foreground">
-                    {doc.title["es-AR"]}
+                    {pickLocalizedText(doc.title, locale)}
                   </p>
                   <p className="truncate text-[11px] text-muted-foreground">
                     {formatFileSize(doc.size, locale)}
@@ -548,7 +563,7 @@ export function MediaLibraryView({
           >
             <DialogHeader className="border-b border-border px-5 py-4">
               <DialogTitle className="truncate pr-6">
-                {selected.title["es-AR"]}
+                {pickLocalizedText(selected.title, locale)}
               </DialogTitle>
             </DialogHeader>
 
@@ -558,7 +573,10 @@ export function MediaLibraryView({
                 <div className="relative aspect-video w-full overflow-hidden rounded-md border border-border bg-muted">
                   <Image
                     src={selected.url}
-                    alt={selected.alt?.["es-AR"] ?? selected.title["es-AR"]}
+                    alt={
+                      pickLocalizedText(selected.alt, locale) ||
+                      pickLocalizedText(selected.title, locale)
+                    }
                     fill
                     unoptimized
                     className="object-contain"
@@ -745,30 +763,41 @@ export function MediaLibraryView({
                   </p>
                 ) : (
                   <ul className="space-y-1.5">
-                    {usages.map((usage) => (
-                      <li
-                        key={`${usage.collection}:${usage.docId}`}
-                        className="flex items-center justify-between gap-2 rounded border border-border px-3 py-2 text-xs"
-                      >
-                        <Link
-                          href={getEntryEditorHref(
-                            usage.collection,
-                            usage.docId,
-                          )}
-                          className="truncate font-medium text-primary hover:underline"
+                    {usages.map((usage) => {
+                      const globalKind =
+                        usage.collection === "globals"
+                          ? CONTENT_DESTINATIONS.find(
+                              (d) =>
+                                d.collection === "globals" &&
+                                d.fixedMachineName === usage.label,
+                            )?.globalKind
+                          : undefined;
+                      return (
+                        <li
+                          key={`${usage.collection}:${usage.docId}`}
+                          className="flex items-center justify-between gap-2 rounded border border-border px-3 py-2 text-xs"
                         >
-                          {usage.label}
-                        </Link>
-                        <StatusChip
-                          status={usage.isPublished ? "published" : "draft"}
-                          label={
-                            usage.isPublished
-                              ? t("details.statusPublished")
-                              : t("details.statusDraft")
-                          }
-                        />
-                      </li>
-                    ))}
+                          <Link
+                            href={getEntryEditorHref(
+                              usage.collection,
+                              usage.docId,
+                              globalKind,
+                            )}
+                            className="truncate font-medium text-primary hover:underline"
+                          >
+                            {usage.label}
+                          </Link>
+                          <StatusChip
+                            status={usage.isPublished ? "published" : "draft"}
+                            label={
+                              usage.isPublished
+                                ? t("details.statusPublished")
+                                : t("details.statusDraft")
+                            }
+                          />
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>
@@ -797,7 +826,7 @@ export function MediaLibraryView({
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         title={t("details.deleteTitle", {
-          name: selected?.title["es-AR"] ?? "",
+          name: selected ? pickLocalizedText(selected.title, locale) : "",
         })}
         description={t("details.deleteBody")}
         closeLabel={tCommon("close")}

@@ -15,6 +15,7 @@ import type {
   UserContentCaller,
 } from "@src/lib/content/caller";
 import type { ContentAuditEntry } from "@src/service/content-audit.service";
+import { MEDIA_SIZE_CAPS } from "@src/lib/media/policy";
 import {
   confirmMediaUpload,
   createServerMedia,
@@ -92,6 +93,10 @@ function matchesFilter(doc: RawDoc, filter: Record<string, unknown>): boolean {
       !Array.isArray(expected)
     ) {
       const ops = expected as Record<string, unknown>;
+      if ("$exists" in ops) {
+        const exists = actual !== undefined;
+        if (Boolean(ops.$exists) !== exists) return false;
+      }
       if ("$in" in ops && Array.isArray(ops.$in)) {
         const matched = ops.$in.some((candidate) =>
           candidate instanceof ObjectId && actual instanceof ObjectId
@@ -171,17 +176,14 @@ function createHarness(options: { readonly retryTxOnce?: boolean } = {}) {
       countDocuments: vi.fn(async (filter: Record<string, unknown> = {}) => {
         return getStore(name).filter((d) => matchesFilter(d, filter)).length;
       }),
-      distinct: vi.fn(async (field: string) => {
-        const vals = new Set<unknown>();
-        for (const doc of getStore(name)) {
-          const val = getByPath(doc, field);
-          if (Array.isArray(val)) {
-            for (const item of val) vals.add(item);
-          } else if (val !== undefined) {
-            vals.add(val);
-          }
-        }
-        return [...vals];
+      distinct: vi.fn(async () => {
+        // Mirror MongoDB Atlas Stable API v1 (strict: true), which bans `distinct` (`QA-F1`).
+        throw Object.assign(
+          new Error(
+            "Provided apiStrict:true, but the command distinct is not in API Version 1",
+          ),
+          { codeName: "APIStrictError" },
+        );
       }),
       insertOne: vi.fn(async (doc: RawDoc) => {
         const store = getStore(name);
@@ -525,9 +527,66 @@ describe("media.service — upload, dedup, verification & service caller", () =>
     if (!spoofed.ok) expect(spoofed.reason).toBe("policy-violation");
     expect(h.deps.delBlob).toHaveBeenCalledWith("public-media", url2);
     expect(h.getStore(COLLECTIONS.media)).toHaveLength(1);
+
+    // M7: off-store URL is rejected BEFORE calling headBlob
+    const headCallsBefore = vi.mocked(h.deps.headBlob).mock.calls.length;
+    const idOffStore = new ObjectId().toHexString();
+    const pathnameOffStore = `media/${idOffStore}/evil.jpg`;
+    const offStore = await confirmMediaUpload(
+      ADMIN,
+      {
+        mediaId: idOffStore,
+        pathname: pathnameOffStore,
+        url: `https://evil.example.com/${pathnameOffStore}`,
+        filename: "evil.jpg",
+        sha256: SHA_B,
+        title: { "es-AR": "Off store" },
+        decorative: true,
+      },
+      h.deps,
+    );
+    expect(offStore.ok).toBe(false);
+    if (!offStore.ok) expect(offStore.reason).toBe("policy-violation");
+    expect(vi.mocked(h.deps.headBlob).mock.calls.length).toBe(headCallsBefore);
+
+    // M9: headBlob reporting size > cap deletes blob and returns policy-violation
+    const idOversized = new ObjectId().toHexString();
+    const pathnameOversized = `media/${idOversized}/huge.jpg`;
+    const urlOversized = `https://abc123.public.blob.vercel-storage.com/${pathnameOversized}`;
+    vi.mocked(h.deps.headBlob).mockResolvedValueOnce({
+      ok: true,
+      blob: {
+        url: urlOversized,
+        downloadUrl: urlOversized,
+        pathname: pathnameOversized,
+        contentType: "image/jpeg",
+        size: MEDIA_SIZE_CAPS.image + 1,
+        uploadedAt: new Date(),
+        contentDisposition: "inline",
+        cacheControl: "",
+        etag: "e2",
+      },
+    });
+    const oversized = await confirmMediaUpload(
+      ADMIN,
+      {
+        mediaId: idOversized,
+        pathname: pathnameOversized,
+        url: urlOversized,
+        filename: "huge.jpg",
+        sha256: SHA_B,
+        title: { "es-AR": "Oversized" },
+        decorative: true,
+      },
+      h.deps,
+    );
+    expect(oversized.ok).toBe(false);
+    if (!oversized.ok) expect(oversized.reason).toBe("policy-violation");
+    expect(h.deps.delBlob).toHaveBeenCalledWith("public-media", urlOversized);
+    expect(h.getStore(COLLECTIONS.media)).toHaveLength(1);
   });
 
-  it("createServerMedia checks { sha256 } BEFORE putBlob by default (ICR-203 dedup) and supports ServiceContentCaller", async () => {
+  it("createServerMedia checks { sha256 } BEFORE putBlob by default (ICR-203 dedup), supports dedupeBySha256: false & { buffer } (ICR-200), and supports ServiceContentCaller", async () => {
     const h = createHarness();
     const pdfBytes = Buffer.from("%PDF-1.7 sermon summary");
     const expectedSha = createHash("sha256").update(pdfBytes).digest("hex");
@@ -567,6 +626,25 @@ describe("media.service — upload, dedup, verification & service caller", () =>
       expect(second.reused).toBe(true);
     }
     expect(h.deps.putBlob).toHaveBeenCalledTimes(1);
+
+    // M12 + C2.3: dedupeBySha256: false with `{ buffer }` uploads a fresh copy
+    const third = await createServerMedia(
+      SERVICE_CALLER,
+      {
+        filename: "predica-fresh.es-AR.pdf",
+        contentType: "application/pdf",
+        buffer: pdfBytes,
+        title: { "es-AR": "Resumen prédica nueva" },
+        dedupeBySha256: false,
+      },
+      h.deps,
+    );
+    expect(third.ok).toBe(true);
+    if (third.ok) {
+      expect(third.status).toBe("created");
+      expect(third.reused).toBe(false);
+    }
+    expect(h.deps.putBlob).toHaveBeenCalledTimes(2);
   });
 });
 

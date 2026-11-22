@@ -29,6 +29,11 @@ import {
   updateMediaDetails,
 } from "@src/service/media/media.service";
 
+/** Client-compatible media record accepting either RSC `MediaDoc` (`Date`) or Server Action `SerializedMediaDoc` (`string`). */
+export interface MediaDocLike extends Omit<MediaDoc, "createdAt"> {
+  readonly createdAt: string | Date;
+}
+
 /** JSON-safe media record passed between RSCs, Server Actions, and Client Components. */
 export interface SerializedMediaDoc extends Omit<MediaDoc, "createdAt"> {
   readonly createdAt: string;

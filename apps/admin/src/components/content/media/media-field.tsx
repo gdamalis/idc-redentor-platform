@@ -12,14 +12,36 @@ import {
 } from "@src/lib/media/policy";
 import {
   getMediaByIdsAction,
+  type MediaDocLike,
   type SerializedMediaDoc,
 } from "@src/app/[locale]/(app)/content/media/actions";
 import { MediaPicker } from "./media-picker";
 
+function normalizeMediaDoc(doc: MediaDocLike): SerializedMediaDoc {
+  return {
+    ...doc,
+    createdAt:
+      typeof doc.createdAt === "string"
+        ? doc.createdAt
+        : doc.createdAt.toISOString(),
+  };
+}
+
+function pickLocalizedText(
+  value: { readonly "es-AR": string; readonly "en-US"?: string } | undefined,
+  locale: string,
+): string {
+  if (!value) return "";
+  if (locale === "en-US" && value["en-US"]?.trim()) return value["en-US"];
+  return value["es-AR"];
+}
+
 export interface MediaFieldProps {
   readonly accept: MediaKind;
   readonly value?: string;
-  readonly initialDoc?: SerializedMediaDoc | null;
+  readonly initialDoc?: MediaDocLike | null;
+  /** Alias for `initialDoc` (matches `ICR-199` spec). */
+  readonly initialMedia?: MediaDocLike | null;
   readonly canUpload: boolean;
   readonly disabled?: boolean;
   readonly readOnly?: boolean;
@@ -36,6 +58,7 @@ export function MediaField({
   accept,
   value,
   initialDoc = null,
+  initialMedia = null,
   canUpload,
   disabled = false,
   readOnly = false,
@@ -45,7 +68,10 @@ export function MediaField({
   const t = useTranslations("contentMedia");
   const locale = useLocale();
 
-  const [doc, setDoc] = React.useState<SerializedMediaDoc | null>(initialDoc);
+  const seedDoc = initialDoc ?? initialMedia;
+  const [doc, setDoc] = React.useState<SerializedMediaDoc | null>(() =>
+    seedDoc ? normalizeMediaDoc(seedDoc) : null,
+  );
   const [isLoading, setIsLoading] = React.useState(false);
   const [pickerOpen, setPickerOpen] = React.useState(false);
 
@@ -121,7 +147,10 @@ export function MediaField({
             <div className="relative size-16 shrink-0 overflow-hidden rounded border border-border bg-muted">
               <Image
                 src={doc.url}
-                alt={doc.alt?.["es-AR"] ?? doc.title["es-AR"]}
+                alt={
+                  pickLocalizedText(doc.alt, locale) ||
+                  pickLocalizedText(doc.title, locale)
+                }
                 fill
                 unoptimized
                 className="object-cover"
@@ -139,7 +168,7 @@ export function MediaField({
 
           <div className="min-w-0 flex-1 space-y-1">
             <p className="truncate text-sm font-medium text-foreground">
-              {doc?.title["es-AR"] ?? value}
+              {doc ? pickLocalizedText(doc.title, locale) : value}
             </p>
             {doc && (
               <p className="truncate text-xs text-muted-foreground">
@@ -198,7 +227,7 @@ export function MediaField({
 export interface MediaListFieldProps {
   readonly accept?: MediaKind;
   readonly values: readonly string[];
-  readonly initialDocs?: readonly SerializedMediaDoc[];
+  readonly initialDocs?: readonly MediaDocLike[];
   readonly canUpload: boolean;
   readonly disabled?: boolean;
   readonly readOnly?: boolean;
@@ -223,7 +252,9 @@ export function MediaListField({
   const [docsById, setDocsById] = React.useState<
     Readonly<Record<string, SerializedMediaDoc>>
   >(() =>
-    Object.fromEntries(initialDocs.map((doc) => [doc._id, doc])),
+    Object.fromEntries(
+      initialDocs.map((doc) => [doc._id, normalizeMediaDoc(doc)]),
+    ),
   );
   const [pickerOpen, setPickerOpen] = React.useState(false);
 
@@ -288,7 +319,10 @@ export function MediaListField({
                   <div className="relative size-12 shrink-0 overflow-hidden rounded border border-border bg-muted">
                     <Image
                       src={doc.url}
-                      alt={doc.alt?.["es-AR"] ?? doc.title["es-AR"]}
+                      alt={
+                        pickLocalizedText(doc.alt, locale) ||
+                        pickLocalizedText(doc.title, locale)
+                      }
                       fill
                       unoptimized
                       className="object-cover"
@@ -302,7 +336,7 @@ export function MediaListField({
 
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
-                    {doc?.title["es-AR"] ?? id}
+                    {doc ? pickLocalizedText(doc.title, locale) : id}
                   </p>
                   {doc && (
                     <p className="truncate text-xs text-muted-foreground">
