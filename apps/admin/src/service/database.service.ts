@@ -221,3 +221,29 @@ export async function withAdminTransaction<T>(
     await session.endSession();
   }
 }
+
+/**
+ * Website-client twin of `withAdminTransaction` (ICR-195). Asserts the
+ * `WEBSITE_MONGODB_URI` positive DB-name allowlist via `getContentDb()` BEFORE
+ * opening a session, so a misconfigured URI fails closed before any transaction
+ * starts.
+ *
+ * Same driver rules (mongodb 7.9.0 `mongodb.d.ts:2385-2396`):
+ * 1. Every read/write inside `fn` MUST pass `{ session }` and run sequentially
+ *    (no `Promise.all` on one `ClientSession`).
+ * 2. `fn` may be retried by the driver — NEVER perform external side effects
+ *    (HTTP revalidation, emails) inside `fn`; run them after commit.
+ * 3. Functional-first refusals call `await session.abortTransaction()` and
+ *    return a discriminated result (never throw custom `Error` subclasses).
+ */
+export async function withContentTransaction<T>(
+  fn: (session: ClientSession) => Promise<T>,
+): Promise<T> {
+  getContentDb();
+  const session = getWebsiteClient().startSession();
+  try {
+    return await session.withTransaction((s) => fn(s));
+  } finally {
+    await session.endSession();
+  }
+}

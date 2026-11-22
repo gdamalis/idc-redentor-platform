@@ -1,27 +1,47 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { MongoClientMock } = vi.hoisted(() => {
-  /**
-   * Mirrors the driver: `client.db()` resolves the URI's PATH database, and
-   * falls back to "test" when the URI carries no path (mongodb 7.9.0 connection_string.js
-   * :366-368). Deriving the name from the URI — rather than from a shared
-   * stub — is what makes the cross-wiring and independence cases real: each
-   * client can only report the database its OWN connection string names.
-   */
-  function resolveDbNameFromUri(uri: string): string {
-    const afterScheme = uri.split("://")[1] ?? "";
-    const slash = afterScheme.indexOf("/");
-    if (slash === -1) return "test";
-    const path = afterScheme.slice(slash + 1).split("?")[0];
-    return path || "test";
-  }
+const { MongoClientMock, startSessionMock, endSessionMock, withTransactionMock } =
+  vi.hoisted(() => {
+    /**
+     * Mirrors the driver: `client.db()` resolves the URI's PATH database, and
+     * falls back to "test" when the URI carries no path (mongodb 7.9.0 connection_string.js
+     * :366-368). Deriving the name from the URI — rather than from a shared
+     * stub — is what makes the cross-wiring and independence cases real: each
+     * client can only report the database its OWN connection string names.
+     */
+    function resolveDbNameFromUri(uri: string): string {
+      const afterScheme = uri.split("://")[1] ?? "";
+      const slash = afterScheme.indexOf("/");
+      if (slash === -1) return "test";
+      const path = afterScheme.slice(slash + 1).split("?")[0];
+      return path || "test";
+    }
 
-  const MongoClientMock = vi.fn(function MongoClient(uri: string) {
-    const databaseName = resolveDbNameFromUri(uri);
-    return { connect: vi.fn(), db: vi.fn(() => ({ databaseName })) };
+    const endSessionMock = vi.fn().mockResolvedValue(undefined);
+    const withTransactionMock = vi.fn(
+      async (fn: (s: unknown) => Promise<unknown>) =>
+        fn({ id: "content-session", abortTransaction: vi.fn() }),
+    );
+    const startSessionMock = vi.fn(() => ({
+      withTransaction: withTransactionMock,
+      endSession: endSessionMock,
+    }));
+
+    const MongoClientMock = vi.fn(function MongoClient(uri: string) {
+      const databaseName = resolveDbNameFromUri(uri);
+      return {
+        connect: vi.fn(),
+        db: vi.fn(() => ({ databaseName })),
+        startSession: startSessionMock,
+      };
+    });
+    return {
+      MongoClientMock,
+      startSessionMock,
+      endSessionMock,
+      withTransactionMock,
+    };
   });
-  return { MongoClientMock };
-});
 
 vi.mock("mongodb", () => ({
   MongoClient: MongoClientMock,
@@ -242,5 +262,59 @@ describe("cross-wiring", () => {
       "mongodb://localhost:27017/ministry-admin?authSource=admin",
       "mongodb://localhost:27017/website?authSource=admin",
     ]);
+  });
+});
+
+describe("withContentTransaction", () => {
+  it("runs fn inside a website-client session and always ends the session", async () => {
+    vi.stubEnv(
+      "WEBSITE_MONGODB_URI",
+      "mongodb://localhost:27017/website-staging?authSource=admin",
+    );
+    vi.stubEnv("MONGODB_URI", "");
+    const { withContentTransaction } = await loadService();
+
+    const result = await withContentTransaction(async (session) => {
+      expect(session).toBeDefined();
+      return { ok: true as const, value: 42 };
+    });
+
+    expect(result).toEqual({ ok: true, value: 42 });
+    expect(startSessionMock).toHaveBeenCalledTimes(1);
+    expect(withTransactionMock).toHaveBeenCalledTimes(1);
+    expect(endSessionMock).toHaveBeenCalledTimes(1);
+    expect(MongoClientMock.mock.calls.map(([uri]) => uri)).toEqual([
+      "mongodb://localhost:27017/website-staging?authSource=admin",
+    ]);
+  });
+
+  it("ends the session even when the transaction callback rejects", async () => {
+    vi.stubEnv(
+      "WEBSITE_MONGODB_URI",
+      "mongodb://localhost:27017/website-staging?authSource=admin",
+    );
+    const { withContentTransaction } = await loadService();
+
+    await expect(
+      withContentTransaction(async () => {
+        throw new Error("boom");
+      }),
+    ).rejects.toThrow("boom");
+
+    expect(endSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed before starting a session when WEBSITE_MONGODB_URI points to a disallowed DB", async () => {
+    vi.stubEnv(
+      "WEBSITE_MONGODB_URI",
+      "mongodb://localhost:27017/ministry-admin-staging?authSource=admin",
+    );
+    const { withContentTransaction } = await loadService();
+
+    await expect(
+      withContentTransaction(async () => "never"),
+    ).rejects.toThrow("ministry-admin-staging");
+
+    expect(startSessionMock).not.toHaveBeenCalled();
   });
 });
