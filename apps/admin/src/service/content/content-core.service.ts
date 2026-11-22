@@ -76,6 +76,13 @@ export interface StoredContentEnvelope<TFields> {
   sourceContentfulId?: string;
   _naturalKey?: string;
   _refs: ExtractedReferences;
+  /**
+   * Internal monotonic counter bumped inside transactions to create a shared
+   * target-side write key between reference-introducing writes and concurrent
+   * `deleteContent` / `unpublishContent` operations (prevents MongoDB
+   * snapshot-isolation write skew without bumping `revision`).
+   */
+  _refGuardRev?: number;
 }
 
 export interface ContentDocumentView<TFields> {
@@ -151,6 +158,88 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object"
     ? (value as Record<string, unknown>)
     : {};
+}
+
+function referenceKey(ref: ContentReference): string {
+  return `${ref.collection}:${ref.id}`;
+}
+
+function findAddedContentRefs(
+  existingRefs: readonly ContentReference[],
+  nextRefs: readonly ContentReference[],
+  self?: { readonly collection: ContentCollectionName; readonly docId: string },
+): ContentReference[] {
+  const existingKeys = new Set(existingRefs.map(referenceKey));
+  return nextRefs.filter((ref) => {
+    if (self && ref.collection === self.collection && ref.id === self.docId) {
+      return false;
+    }
+    return !existingKeys.has(referenceKey(ref));
+  });
+}
+
+/**
+ * Acquires a target-side transactional write lock on every referenced content
+ * document (sorted deterministically by `collection:id`) by bumping internal
+ * `_refGuardRev` (leaving `revision`, `draft`, and `published` untouched) and
+ * verifying each target still exists in the transaction's snapshot.
+ *
+ * Because `deleteContent` and `unpublishContent` also write the target document
+ * inside their transaction before checking usages, MongoDB snapshot isolation
+ * raises a retryable `WriteConflict` if a reference write and a target
+ * deletion/unpublish overlap — preventing dangling references.
+ */
+async function lockAndVerifyContentRefs(
+  refs: readonly ContentReference[],
+  session: ClientSession,
+  deps: ContentServiceDeps,
+): Promise<Extract<ContentResult<never>, { ok: false }> | null> {
+  const deduped = new Map<string, ContentReference>();
+  for (const ref of refs) {
+    deduped.set(referenceKey(ref), ref);
+  }
+  const ordered = [...deduped.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([, ref]) => ref);
+
+  // Sequential across targets so an active ClientSession is never used in parallel.
+  for (const ref of ordered) {
+    const refObjectId = parseObjectId(ref.id);
+    if (!refObjectId) {
+      return {
+        ok: false,
+        reason: "invalid",
+        fieldErrors: {
+          [ref.collection]: [
+            `Referenced ${ref.collection} id "${ref.id}" is invalid`,
+          ],
+        },
+      };
+    }
+
+    const res = await deps
+      .getContentDb()
+      .collection(ref.collection)
+      .updateOne(
+        { _id: refObjectId },
+        { $inc: { _refGuardRev: 1 } },
+        { session },
+      );
+
+    if ((res.matchedCount ?? 0) === 0) {
+      return {
+        ok: false,
+        reason: "invalid",
+        fieldErrors: {
+          [ref.collection]: [
+            `Referenced ${ref.collection} entry "${ref.id}" does not exist`,
+          ],
+        },
+      };
+    }
+  }
+
+  return null;
 }
 
 // ── Read operations ─────────────────────────────────────────────────────────
@@ -500,6 +589,16 @@ export async function createContent<TFields>(
   const actor = getCallerActor(caller);
 
   return deps.withContentTransaction(async (session) => {
+    const refFailure = await lockAndVerifyContentRefs(
+      refs.contentRefs,
+      session,
+      deps,
+    );
+    if (refFailure) {
+      await session.abortTransaction();
+      return refFailure;
+    }
+
     const now = deps.now();
     const toInsert: Omit<StoredContentEnvelope<TFields>, "_id"> = {
       draft: cleanDraft,
@@ -763,6 +862,17 @@ export async function saveDraft<TFields>(
       draft: nextDraftRecord,
       published: existing.published ? asRecord(existing.published) : undefined,
     });
+    const addedRefs = findAddedContentRefs(
+      existing._refs?.contentRefs ?? [],
+      refs.contentRefs,
+      { collection: input.collection, docId: input.docId },
+    );
+    const refFailure = await lockAndVerifyContentRefs(addedRefs, session, deps);
+    if (refFailure) {
+      await session.abortTransaction();
+      return refFailure;
+    }
+
     const naturalKey = computeNaturalKey(input.collection, nextDraftRecord);
 
     const setFields: Record<string, unknown> = {
@@ -1036,12 +1146,27 @@ export async function publishContent<TFields>(
       const publishableRecord = asRecord(publishableDraft);
       const now = deps.now();
 
-      // Atomic cascade publish of NEVER-PUBLISHED referenced `authors` & `bible_verses` (AC4, F §2.6)
+      // Lock and verify every referenced content entry inside this transaction
+      // so concurrent delete/unpublish of any target conflicts and retries.
       const draftRefs = extractReferences(concreteType, {
         draft: publishableDraft,
         published: undefined,
       });
-      const cascadeTargets = draftRefs.contentRefs.filter(
+      const nonSelfDraftRefs = draftRefs.contentRefs.filter(
+        (ref) => !(ref.collection === input.collection && ref.id === input.docId),
+      );
+      const refFailure = await lockAndVerifyContentRefs(
+        nonSelfDraftRefs,
+        session,
+        deps,
+      );
+      if (refFailure) {
+        await session.abortTransaction();
+        return refFailure;
+      }
+
+      // Atomic cascade publish of NEVER-PUBLISHED referenced `authors` & `bible_verses` (AC4, F §2.6)
+      const cascadeTargets = nonSelfDraftRefs.filter(
         (ref) => ref.collection === "authors" || ref.collection === "bible_verses",
       );
       const cascaded: ContentReference[] = [];
@@ -1381,6 +1506,18 @@ export async function unpublishContent<TFields>(
       };
     }
 
+    // Acquire a target-side write lock before checking published dependents so
+    // any concurrent publish referencing this entry conflicts and retries.
+    const guardTouch = await col.updateOne(
+      { _id: objectId },
+      { $inc: { _refGuardRev: 1 } },
+      { session },
+    );
+    if ((guardTouch.matchedCount ?? 0) === 0) {
+      await session.abortTransaction();
+      return { ok: false, reason: "not-found" };
+    }
+
     // Refuse unpublish if another PUBLISHED entry depends on this entry (Edge case 4)
     const publishedDependents = await queryContentUsagesInternal(
       { collection: input.collection, docId: input.docId },
@@ -1581,6 +1718,17 @@ export async function discardChanges<TFields>(
       concreteType ?? COLLECTION_META[input.collection].contentType,
       { draft: existing.published, published: existing.published },
     );
+    const addedRefs = findAddedContentRefs(
+      existing._refs?.contentRefs ?? [],
+      refs.contentRefs,
+      { collection: input.collection, docId: input.docId },
+    );
+    const refFailure = await lockAndVerifyContentRefs(addedRefs, session, deps);
+    if (refFailure) {
+      await session.abortTransaction();
+      return refFailure;
+    }
+
     const naturalKey = computeNaturalKey(input.collection, publishedRecord);
     const now = deps.now();
 
@@ -1755,6 +1903,18 @@ export async function deleteContent(
         updatedAt: existing.updatedAt,
         currentRevision: existing.revision,
       };
+    }
+
+    // Acquire a target-side write lock before checking usages so any concurrent
+    // write introducing a reference to this entry conflicts and retries.
+    const guardTouch = await col.updateOne(
+      { _id: objectId },
+      { $inc: { _refGuardRev: 1 } },
+      { session },
+    );
+    if ((guardTouch.matchedCount ?? 0) === 0) {
+      await session.abortTransaction();
+      return { ok: false, reason: "not-found" };
     }
 
     // Refuse delete if referenced anywhere in draft OR published (Edge case 5)

@@ -263,7 +263,10 @@ function createTestHarness(options?: {
       },
       updateOne: async (
         filter: Record<string, unknown>,
-        update: { $set?: Record<string, unknown> },
+        update: {
+          $set?: Record<string, unknown>;
+          $inc?: Record<string, number>;
+        },
       ) => {
         const list = getColDocs(name);
         const idx = list.findIndex((d) => matchesFilter(d, filter));
@@ -271,6 +274,10 @@ function createTestHarness(options?: {
         const next = cloneDoc(list[idx]!);
         for (const [k, v] of Object.entries(update.$set ?? {})) {
           setByPath(next, k, cloneDoc(v));
+        }
+        for (const [k, delta] of Object.entries(update.$inc ?? {})) {
+          const cur = Number(getByPath(next, k) ?? 0);
+          setByPath(next, k, cur + delta);
         }
         list[idx] = next;
         return { matchedCount: 1, modifiedCount: 1 };
@@ -1202,6 +1209,12 @@ describe("Guards, fixed-entry filtering, media usage, and sermon PDF worker (PM 
 
   it("updateSermonPdfMedia checks contentHash, updates _refs, returns previousMediaIds, audits without bumping revision, and revalidates only when published updates (PM #9)", async () => {
     const h = createTestHarness();
+    const preacher = await authorService.create(
+      writer,
+      { name: "Predicador PDF" },
+      h.deps,
+    );
+    if (!preacher.ok) throw new Error("setup failed");
     const sermon = await sermonService.create(
       writer,
       {
@@ -1213,7 +1226,7 @@ describe("Guards, fixed-entry filtering, media usage, and sermon PDF worker (PM 
         sermonDate: "2026-11-21",
         content: { "es-AR": sampleDoc("Cuerpo") },
         featuredImageId: "media-img",
-        preacherId: new ObjectId().toHexString(),
+        preacherId: preacher.doc._id,
         pdfSummaryMediaId: { "es-AR": "pdf-old-es" },
         seoTitle: { "es-AR": "SEO" },
         seoDescription: { "es-AR": "SEO" },
@@ -1664,5 +1677,589 @@ describe("listContent pagination & status filter", () => {
       h.deps,
     );
     expect(dottedLocale).toEqual({ ok: false, reason: "not-found" });
+  });
+});
+
+// ── Concurrent snapshot-isolation harness for reference write-skew tests ────
+
+interface TxContext {
+  readonly id: number;
+  readonly snapshotVersion: number;
+  readonly store: Map<string, RawDoc[]>;
+  readonly audit: Array<Omit<ContentAuditEntry, "_id" | "at">>;
+  readonly writtenKeys: Set<string>;
+  aborted: boolean;
+}
+
+const WRITE_CONFLICT_TAG = Symbol("SimulatedWriteConflict");
+
+function createWriteConflictError(key: string): Error & { [WRITE_CONFLICT_TAG]: true } {
+  return Object.assign(new Error(`WriteConflict on ${key}`), {
+    [WRITE_CONFLICT_TAG]: true as const,
+  });
+}
+
+function isSimulatedWriteConflict(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    (err as unknown as Record<symbol, unknown>)[WRITE_CONFLICT_TAG] === true
+  );
+}
+
+function createSnapshotIsolationHarness(options?: {
+  onBeforeUpdateOne?: (
+    collection: string,
+    txId: number,
+    attempt: number,
+  ) => Promise<void>;
+}) {
+  let committedVersion = 0;
+  const committedStore = new Map<string, RawDoc[]>();
+  let committedAudit: Array<Omit<ContentAuditEntry, "_id" | "at">> = [];
+  const committedKeyVersion = new Map<string, number>();
+  let nextTxId = 0;
+  let clock = new Date("2026-11-21T15:00:00Z").getTime();
+  const retryCounts = new Map<number, number>();
+
+  function cloneStoreMap(src: Map<string, RawDoc[]>): Map<string, RawDoc[]> {
+    const out = new Map<string, RawDoc[]>();
+    for (const [k, v] of src.entries()) {
+      out.set(k, v.map(cloneDoc));
+    }
+    return out;
+  }
+
+  function getTx(session?: ClientSession): TxContext | null {
+    return (
+      (session as unknown as { __tx?: TxContext } | undefined)?.__tx ?? null
+    );
+  }
+
+  function getStoreFor(session?: ClientSession): Map<string, RawDoc[]> {
+    return getTx(session)?.store ?? committedStore;
+  }
+
+  function getDocsIn(
+    store: Map<string, RawDoc[]>,
+    name: string,
+  ): RawDoc[] {
+    let list = store.get(name);
+    if (!list) {
+      list = [];
+      store.set(name, list);
+    }
+    return list;
+  }
+
+  function assertNoWriteConflict(tx: TxContext | null, key: string): void {
+    if (!tx) return;
+    const latestVer = committedKeyVersion.get(key) ?? 0;
+    if (latestVer > tx.snapshotVersion) {
+      throw createWriteConflictError(key);
+    }
+    tx.writtenKeys.add(key);
+  }
+
+  function collectionHandle(name: string) {
+    return {
+      findOne: async (
+        filter: Record<string, unknown>,
+        opts?: { session?: ClientSession },
+      ) => {
+        const list = getDocsIn(getStoreFor(opts?.session), name);
+        const found = list.find((d) => matchesFilter(d, filter));
+        return found ? cloneDoc(found) : null;
+      },
+      find: (
+        filter: Record<string, unknown>,
+        opts?: { session?: ClientSession },
+      ) => ({
+        toArray: async () =>
+          getDocsIn(getStoreFor(opts?.session), name)
+            .filter((d) => matchesFilter(d, filter))
+            .map(cloneDoc),
+      }),
+      insertOne: async (
+        doc: Record<string, unknown>,
+        opts?: { session?: ClientSession },
+      ) => {
+        const tx = getTx(opts?.session);
+        const store = getStoreFor(opts?.session);
+        const inserted: RawDoc = {
+          ...(cloneDoc(doc) as Record<string, unknown>),
+          _id: (doc._id as ObjectId | undefined) ?? new ObjectId(),
+        };
+        const key = `${name}:${inserted._id.toHexString()}`;
+        assertNoWriteConflict(tx, key);
+        getDocsIn(store, name).push(inserted);
+        return { insertedId: inserted._id };
+      },
+      findOneAndUpdate: async (
+        filter: Record<string, unknown>,
+        update: {
+          $set?: Record<string, unknown>;
+          $unset?: Record<string, unknown>;
+          $inc?: Record<string, number>;
+        },
+        opts?: { session?: ClientSession },
+      ) => {
+        const tx = getTx(opts?.session);
+        const store = getStoreFor(opts?.session);
+        const list = getDocsIn(store, name);
+        const idx = list.findIndex((d) => matchesFilter(d, filter));
+        if (idx === -1) return null;
+        const key = `${name}:${list[idx]!._id.toHexString()}`;
+        assertNoWriteConflict(tx, key);
+        const next = cloneDoc(list[idx]!);
+        for (const [k, v] of Object.entries(update.$set ?? {})) {
+          setByPath(next, k, cloneDoc(v));
+        }
+        for (const k of Object.keys(update.$unset ?? {})) {
+          unsetByPath(next, k);
+        }
+        for (const [k, delta] of Object.entries(update.$inc ?? {})) {
+          const cur = Number(getByPath(next, k) ?? 0);
+          setByPath(next, k, cur + delta);
+        }
+        list[idx] = next;
+        return cloneDoc(next);
+      },
+      updateOne: async (
+        filter: Record<string, unknown>,
+        update: {
+          $set?: Record<string, unknown>;
+          $inc?: Record<string, number>;
+        },
+        opts?: { session?: ClientSession },
+      ) => {
+        const tx = getTx(opts?.session);
+        if (tx && options?.onBeforeUpdateOne) {
+          const attempt = (retryCounts.get(tx.id) ?? 0) + 1;
+          await options.onBeforeUpdateOne(name, tx.id, attempt);
+        }
+        const store = getStoreFor(opts?.session);
+        const list = getDocsIn(store, name);
+        const idx = list.findIndex((d) => matchesFilter(d, filter));
+        if (idx === -1) return { matchedCount: 0, modifiedCount: 0 };
+        const key = `${name}:${list[idx]!._id.toHexString()}`;
+        assertNoWriteConflict(tx, key);
+        const next = cloneDoc(list[idx]!);
+        for (const [k, v] of Object.entries(update.$set ?? {})) {
+          setByPath(next, k, cloneDoc(v));
+        }
+        for (const [k, delta] of Object.entries(update.$inc ?? {})) {
+          const cur = Number(getByPath(next, k) ?? 0);
+          setByPath(next, k, cur + delta);
+        }
+        list[idx] = next;
+        return { matchedCount: 1, modifiedCount: 1 };
+      },
+      deleteOne: async (
+        filter: Record<string, unknown>,
+        opts?: { session?: ClientSession },
+      ) => {
+        const tx = getTx(opts?.session);
+        const store = getStoreFor(opts?.session);
+        const list = getDocsIn(store, name);
+        const idx = list.findIndex((d) => matchesFilter(d, filter));
+        if (idx === -1) return { deletedCount: 0 };
+        const key = `${name}:${list[idx]!._id.toHexString()}`;
+        assertNoWriteConflict(tx, key);
+        list.splice(idx, 1);
+        return { deletedCount: 1 };
+      },
+    };
+  }
+
+  const db = {
+    databaseName: "website-staging",
+    collection: (name: string) => collectionHandle(name),
+  } as unknown as Db;
+
+  const deps: ContentServiceDeps = {
+    getContentDb: () => db,
+    withContentTransaction: async (fn) => {
+      const txId = ++nextTxId;
+      for (let attempt = 1; attempt <= 5; attempt += 1) {
+        const tx: TxContext = {
+          id: txId,
+          snapshotVersion: committedVersion,
+          store: cloneStoreMap(committedStore),
+          audit: committedAudit.map(cloneDoc),
+          writtenKeys: new Set(),
+          aborted: false,
+        };
+        const session = {
+          __tx: tx,
+          abortTransaction: async () => {
+            tx.aborted = true;
+          },
+        } as unknown as ClientSession;
+
+        try {
+          const res = await fn(session);
+          if (!tx.aborted) {
+            for (const key of tx.writtenKeys) {
+              if ((committedKeyVersion.get(key) ?? 0) > tx.snapshotVersion) {
+                throw createWriteConflictError(key);
+              }
+            }
+            committedVersion += 1;
+            // Apply only the collections/docs written by this tx onto committedStore
+            for (const key of tx.writtenKeys) {
+              const [colName, idHex] = key.split(":") as [string, string];
+              const targetCol = getDocsIn(committedStore, colName);
+              const srcDoc = getDocsIn(tx.store, colName).find(
+                (d) => d._id.toHexString() === idHex,
+              );
+              const existingIdx = targetCol.findIndex(
+                (d) => d._id.toHexString() === idHex,
+              );
+              if (!srcDoc) {
+                if (existingIdx !== -1) targetCol.splice(existingIdx, 1);
+              } else if (existingIdx === -1) {
+                targetCol.push(cloneDoc(srcDoc));
+              } else {
+                targetCol[existingIdx] = cloneDoc(srcDoc);
+              }
+              committedKeyVersion.set(key, committedVersion);
+            }
+            const addedAudit = tx.audit.slice(committedAudit.length);
+            committedAudit = [...committedAudit, ...addedAudit];
+          }
+          return res;
+        } catch (err) {
+          if (isSimulatedWriteConflict(err) && attempt < 5) {
+            retryCounts.set(txId, (retryCounts.get(txId) ?? 0) + 1);
+            continue;
+          }
+          throw err;
+        }
+      }
+      throw new Error("Exhausted transaction retries");
+    },
+    appendContentAuditEntry: async (entry, session) => {
+      const tx = getTx(session);
+      if (tx) {
+        tx.audit.push(cloneDoc(entry));
+      } else {
+        committedAudit.push(cloneDoc(entry));
+      }
+    },
+    revalidateWebsite: vi.fn().mockResolvedValue({ ok: true as const }),
+    isPublishEmailsEnabled: () => false,
+    ensureContentIndexes: vi.fn().mockResolvedValue(undefined),
+    now: () => {
+      clock += 1_000;
+      return new Date(clock);
+    },
+  };
+
+  return {
+    deps,
+    getDocs: (name: string) => committedStore.get(name) ?? [],
+    getTotalRetries: () =>
+      [...retryCounts.values()].reduce((sum, n) => sum + n, 0),
+  };
+}
+
+describe("Reference write/delete serialization (write-skew guard)", () => {
+  it("rejects createContent and saveDraft referencing non-existent targets and only bumps _refGuardRev on newly added refs", async () => {
+    const h = createTestHarness();
+    const missingAuthorId = new ObjectId().toHexString();
+
+    // Creating a post referencing a missing/deleted author fails closed
+    const badCreate = await postService.create(
+      writer,
+      { title: { "es-AR": "Post huérfano" }, authorId: missingAuthorId },
+      h.deps,
+    );
+    expect(badCreate.ok).toBe(false);
+    if (!badCreate.ok) {
+      expect(badCreate.reason).toBe("invalid");
+      if (badCreate.reason === "invalid") {
+        expect(badCreate.fieldErrors.authors).toBeDefined();
+      }
+    }
+    expect(h.getDocs("posts")).toHaveLength(0);
+    expect(h.getAudit()).toHaveLength(0);
+
+    // Valid author + post without authorId initially
+    const author = await authorService.create(writer, { name: "Autor Real" }, h.deps);
+    const post = await postService.create(
+      writer,
+      { title: { "es-AR": "Post sin autor" } },
+      h.deps,
+    );
+    if (!author.ok || !post.ok) throw new Error("setup failed");
+
+    // Saving draft referencing missing author fails closed without modifying post
+    const badSave = await postService.saveDraft(
+      writer,
+      {
+        docId: post.doc._id,
+        patch: { authorId: missingAuthorId },
+        expectedRevision: 1,
+      },
+      h.deps,
+    );
+    expect(badSave.ok).toBe(false);
+    if (!badSave.ok) expect(badSave.reason).toBe("invalid");
+
+    // Introducing valid authorId bumps _refGuardRev on author WITHOUT changing author revision
+    const linked = await postService.saveDraft(
+      writer,
+      {
+        docId: post.doc._id,
+        patch: { authorId: author.doc._id },
+        expectedRevision: 1,
+      },
+      h.deps,
+    );
+    expect(linked.ok).toBe(true);
+    const authorAfterLink = h.getDocs("authors")[0]!;
+    expect(authorAfterLink.revision).toBe(1);
+    expect(authorAfterLink._refGuardRev).toBe(1);
+
+    // Subsequent unrelated title edit does NOT touch author._refGuardRev again
+    const titleOnly = await postService.saveDraft(
+      writer,
+      {
+        docId: post.doc._id,
+        patch: { title: { "es-AR": "Post con autor" } },
+        expectedRevision: 2,
+      },
+      h.deps,
+    );
+    expect(titleOnly.ok).toBe(true);
+    expect(h.getDocs("authors")[0]!._refGuardRev).toBe(1);
+  });
+
+  it("serializes concurrent deleteContent(author) and saveDraft(post -> author) when saveDraft commits first (delete retries and returns in-use)", async () => {
+    let releaseDelete!: () => void;
+    let deletePaused!: () => void;
+    const deleteAtBarrier = new Promise<void>((resolve) => {
+      deletePaused = resolve;
+    });
+    const deleteMayProceed = new Promise<void>((resolve) => {
+      releaseDelete = resolve;
+    });
+    let pausedOnce = false;
+
+    const h = createSnapshotIsolationHarness({
+      onBeforeUpdateOne: async (collection, _txId, attempt) => {
+        // Pause the first attempt of deleteContent right before its target guard write
+        if (collection === "authors" && attempt === 1 && !pausedOnce) {
+          pausedOnce = true;
+          deletePaused();
+          await deleteMayProceed;
+        }
+      },
+    });
+
+    const author = await authorService.create(writer, { name: "Autor Carrera" }, h.deps);
+    const post = await postService.create(
+      writer,
+      { title: { "es-AR": "Post Carrera" } },
+      h.deps,
+    );
+    if (!author.ok || !post.ok) throw new Error("setup failed");
+
+    // Start deleteContent on snapshot before post references author
+    const deletePromise = authorService.delete(
+      writer,
+      { docId: author.doc._id, expectedRevision: 1 },
+      h.deps,
+    );
+    await deleteAtBarrier;
+
+    // While deleteContent is open on the stale snapshot, saveDraft links author and commits
+    const saveRes = await postService.saveDraft(
+      writer,
+      {
+        docId: post.doc._id,
+        patch: { authorId: author.doc._id },
+        expectedRevision: 1,
+      },
+      h.deps,
+    );
+    expect(saveRes.ok).toBe(true);
+
+    // Now let deleteContent resume: it hits WriteConflict on authors:<id>, retries, and sees the usage!
+    releaseDelete();
+    const deleteRes = await deletePromise;
+
+    expect(deleteRes.ok).toBe(false);
+    if (!deleteRes.ok) {
+      expect(deleteRes.reason).toBe("in-use");
+      if (deleteRes.reason === "in-use") {
+        expect(deleteRes.usedBy[0]?.docId).toBe(post.doc._id);
+      }
+    }
+    expect(h.getDocs("authors")).toHaveLength(1);
+    expect(h.getTotalRetries()).toBeGreaterThanOrEqual(1);
+  });
+
+  it("serializes concurrent deleteContent(author) and saveDraft(post -> author) when deleteContent commits first (saveDraft retries and fails closed)", async () => {
+    let releaseSave!: () => void;
+    let savePaused!: () => void;
+    const saveAtBarrier = new Promise<void>((resolve) => {
+      savePaused = resolve;
+    });
+    const saveMayProceed = new Promise<void>((resolve) => {
+      releaseSave = resolve;
+    });
+    let pausedOnce = false;
+
+    const h = createSnapshotIsolationHarness({
+      onBeforeUpdateOne: async (collection, _txId, attempt) => {
+        // Pause the first attempt of saveDraft right before locking the referenced author
+        if (collection === "authors" && attempt === 1 && !pausedOnce) {
+          pausedOnce = true;
+          savePaused();
+          await saveMayProceed;
+        }
+      },
+    });
+
+    const author = await authorService.create(writer, { name: "Autor Borrado" }, h.deps);
+    const post = await postService.create(
+      writer,
+      { title: { "es-AR": "Post Sin Dangling" } },
+      h.deps,
+    );
+    if (!author.ok || !post.ok) throw new Error("setup failed");
+
+    // Start saveDraft referencing author on snapshot where author still exists
+    const savePromise = postService.saveDraft(
+      writer,
+      {
+        docId: post.doc._id,
+        patch: { authorId: author.doc._id },
+        expectedRevision: 1,
+      },
+      h.deps,
+    );
+    await saveAtBarrier;
+
+    // While saveDraft is open on the stale snapshot, deleteContent deletes the unused author and commits
+    const deleteRes = await authorService.delete(
+      writer,
+      { docId: author.doc._id, expectedRevision: 1 },
+      h.deps,
+    );
+    expect(deleteRes.ok).toBe(true);
+
+    // Resume saveDraft: hits WriteConflict on authors:<id>, retries, observes missing author -> invalid!
+    releaseSave();
+    const saveRes = await savePromise;
+
+    expect(saveRes.ok).toBe(false);
+    if (!saveRes.ok) {
+      expect(saveRes.reason).toBe("invalid");
+      if (saveRes.reason === "invalid") {
+        expect(saveRes.fieldErrors.authors).toBeDefined();
+      }
+    }
+    expect(h.getDocs("authors")).toHaveLength(0);
+    // Post never committed a dangling authorId
+    const postDoc = h.getDocs("posts")[0]!;
+    expect((postDoc.draft as Record<string, unknown>).authorId).toBeUndefined();
+    expect(h.getTotalRetries()).toBeGreaterThanOrEqual(1);
+  });
+
+  it("serializes concurrent unpublishContent(postA) and publishContent(postB -> relatedPostIds: [postA])", async () => {
+    let releaseUnpub!: () => void;
+    let unpubPaused!: () => void;
+    const unpubAtBarrier = new Promise<void>((resolve) => {
+      unpubPaused = resolve;
+    });
+    const unpubMayProceed = new Promise<void>((resolve) => {
+      releaseUnpub = resolve;
+    });
+    let armed = false;
+    let pausedOnce = false;
+
+    const h = createSnapshotIsolationHarness({
+      onBeforeUpdateOne: async (collection, _txId, attempt) => {
+        if (armed && collection === "posts" && attempt === 1 && !pausedOnce) {
+          pausedOnce = true;
+          unpubPaused();
+          await unpubMayProceed;
+        }
+      },
+    });
+
+    const author = await authorService.create(writer, { name: "Autor" }, h.deps);
+    if (!author.ok) throw new Error("setup failed");
+
+    const postA = await postService.create(
+      writer,
+      {
+        title: { "es-AR": "Post A" },
+        slug: "race-post-a",
+        authorId: author.doc._id,
+        featuredImageId: "m1",
+        content: { "es-AR": sampleDoc("A") },
+        publishedDate: "2026-11-20",
+        seoTitle: { "es-AR": "A" },
+        seoDescription: { "es-AR": "A" },
+      },
+      h.deps,
+    );
+    if (!postA.ok) throw new Error("setup failed");
+    const pubA = await postService.publish(
+      publisher,
+      { docId: postA.doc._id, expectedRevision: 1 },
+      h.deps,
+    );
+    if (!pubA.ok) throw new Error("setup failed");
+
+    const postB = await postService.create(
+      writer,
+      {
+        title: { "es-AR": "Post B" },
+        slug: "race-post-b",
+        authorId: author.doc._id,
+        featuredImageId: "m1",
+        content: { "es-AR": sampleDoc("B") },
+        publishedDate: "2026-11-21",
+        seoTitle: { "es-AR": "B" },
+        seoDescription: { "es-AR": "B" },
+        relatedPostIds: [postA.doc._id],
+      },
+      h.deps,
+    );
+    if (!postB.ok) throw new Error("setup failed");
+
+    // Arm barrier for unpublishContent(postA)
+    armed = true;
+    const unpubPromise = postService.unpublish(
+      publisher,
+      { docId: postA.doc._id, expectedRevision: pubA.doc.revision },
+      h.deps,
+    );
+    await unpubAtBarrier;
+
+    // While unpublishContent(postA) is open on stale snapshot, publishContent(postB) locks postA and commits
+    const pubB = await postService.publish(
+      publisher,
+      { docId: postB.doc._id, expectedRevision: 1 },
+      h.deps,
+    );
+    expect(pubB.ok).toBe(true);
+
+    // Resume unpublishContent(postA): hits WriteConflict on posts:<postA>, retries, and returns in-use!
+    releaseUnpub();
+    const unpubRes = await unpubPromise;
+
+    expect(unpubRes.ok).toBe(false);
+    if (!unpubRes.ok) {
+      expect(unpubRes.reason).toBe("in-use");
+      if (unpubRes.reason === "in-use") {
+        expect(unpubRes.usedBy[0]?.docId).toBe(postB.doc._id);
+      }
+    }
+    expect(h.getTotalRetries()).toBeGreaterThanOrEqual(1);
   });
 });
