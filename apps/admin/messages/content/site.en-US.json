@@ -130,7 +130,7 @@
   "contactForm": {
     "title": "Title",
     "description": "Description",
-    "descriptionHint": "Plain text. Any <highlight>…</highlight> tags are highlighted on the site.",
+    "descriptionHint": "Plain text. Any existing highlight tags in the copy are preserved on the site.",
     "ctaText": "Submit button label",
     "image": "Image",
     "bibleVerse": "Bible verse",

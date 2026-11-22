@@ -130,7 +130,7 @@
   "contactForm": {
     "title": "Título",
     "description": "Descripción",
-    "descriptionHint": "Texto plano. Si el texto incluye etiquetas <highlight>…</highlight>, se resaltan en el sitio.",
+    "descriptionHint": "Texto plano. Las etiquetas de resaltado existentes en el texto se conservan en el sitio.",
     "ctaText": "Texto del botón de envío",
     "image": "Imagen",
     "bibleVerse": "Cita bíblica",
