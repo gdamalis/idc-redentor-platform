@@ -89,6 +89,8 @@ describe("permissions.*, roles.*, users.*, rbac.* (ICR-128)", () => {
     "calendar",
     "users",
     "roles",
+    "content",
+    "media",
   ].sort();
 
   it.each([

@@ -34,5 +34,14 @@ declare namespace NodeJS {
     // Email — invite + password-reset flows (server-only)
     RESEND_API_KEY: string;
     FROM_EMAIL: string;
+
+    // Content platform — post-commit site revalidation & publish-email gate (ICR-195)
+    // Server-only, NO fallback (never reads NEXT_PUBLIC_WEBSITE_URL).
+    WEBSITE_REVALIDATE_URL?: string;
+    WEBSITE_REVALIDATE_SECRET?: string;
+    // Global publish-email switch: off unless explicitly "true".
+    CONTENT_PUBLISH_EMAILS?: string;
+    // Injected by Vercel ("production" | "preview" | "staging" | "development").
+    VERCEL_TARGET_ENV?: string;
   }
 }

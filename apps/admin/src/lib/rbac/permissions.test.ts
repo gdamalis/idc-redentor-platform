@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { PERMISSIONS, PERMISSION_KEYS, isPermissionKey } from "./permissions";
 
 describe("PERMISSIONS registry", () => {
-  it("contains exactly the 15 M1b keys", () => {
-    expect(PERMISSION_KEYS).toHaveLength(15);
+  it("contains exactly the 20 registered keys", () => {
+    expect(PERMISSION_KEYS).toHaveLength(20);
     expect([...PERMISSION_KEYS].sort()).toEqual(
       [
         "activities:delete",
@@ -11,8 +11,13 @@ describe("PERMISSIONS registry", () => {
         "activities:write",
         "calendar:print",
         "calendar:read",
+        "content:publish",
+        "content:publish-protected",
+        "content:read",
+        "content:write",
         "families:read",
         "families:write",
+        "media:manage",
         "people:delete",
         "people:pii",
         "people:read",
@@ -25,8 +30,9 @@ describe("PERMISSIONS registry", () => {
     );
   });
 
-  it("every key is resource:action shaped", () => {
-    for (const key of PERMISSION_KEYS) expect(key).toMatch(/^[a-z]+:[a-z]+$/);
+  it("every key is resource:action shaped (kebab-case actions allowed)", () => {
+    for (const key of PERMISSION_KEYS)
+      expect(key).toMatch(/^[a-z]+:[a-z]+(?:-[a-z]+)*$/);
   });
 
   it("isPermissionKey accepts registry keys and rejects everything else", () => {
