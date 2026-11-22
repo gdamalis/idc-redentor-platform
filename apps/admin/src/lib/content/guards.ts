@@ -410,6 +410,26 @@ export function diffChangedFields(
 }
 
 /**
+ * Compares two full snapshots (e.g. `existing.published` vs `nextPublished`, or
+ * `existing.draft` vs `existing.published`) over the UNION of their keys so
+ * removed/`$unset` optional fields are always recorded in `content_audit.changedFields`.
+ */
+export function diffSnapshotFields(
+  prev: Record<string, unknown>,
+  next: Record<string, unknown>,
+): string[] {
+  const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+  const changed: string[] = [];
+  for (const key of keys) {
+    if (!canonicalEqual(prev[key], next[key])) {
+      changed.push(key);
+    }
+  }
+  changed.sort();
+  return changed;
+}
+
+/**
  * Recursively strips keys whose value is `undefined` so MongoDB's default
  * `ignoreUndefined: false` never serializes them to BSON `null` (which would
  * break Zod `.optional()` on read-back — see `role.service.ts`).

@@ -4,6 +4,7 @@ import {
   REFERENCING_COLLECTIONS_BY_TARGET,
   computeNaturalKey,
   diffChangedFields,
+  diffSnapshotFields,
   findImmutableFieldViolation,
   isEntryProtected,
   isProtectedFlagToggled,
@@ -185,6 +186,14 @@ describe("content guards", () => {
       setPatch: { title: { "es-AR": "Hola 2" } },
       unsetFields: ["subtitle"],
     });
+
+    // Full snapshot diff captures keys present in prev only ($unset) AND keys present in next only
+    expect(
+      diffSnapshotFields(
+        { title: { "es-AR": "A" }, subtitle: { "es-AR": "Removed" } },
+        { title: { "es-AR": "A" }, category: "Events" },
+      ),
+    ).toEqual(["category", "subtitle"]);
   });
 
   it("strips undefined deeply and resolves concrete global kinds and natural keys", () => {

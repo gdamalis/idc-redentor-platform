@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 import type { ClientSession } from "mongodb";
 import {
   CONTENT_SCHEMAS,
+  LOCALES,
   bibleVerseKey,
   canonicalEqual,
   deriveStatus,
@@ -41,6 +42,7 @@ import {
   REFERENCING_COLLECTIONS_BY_TARGET,
   computeNaturalKey,
   diffChangedFields,
+  diffSnapshotFields,
   extractEntryLabel,
   findImmutableFieldViolation,
   isEntryProtected,
@@ -216,7 +218,12 @@ export async function getContentByNaturalKey<TFields>(
       if (key.trim() === "") return { ok: false, reason: "not-found" };
       filter = { "draft.slug.es-AR": key };
     } else if ("locale" in key && "slug" in key) {
-      if (key.slug.trim() === "") return { ok: false, reason: "not-found" };
+      if (
+        !(LOCALES as readonly string[]).includes(key.locale) ||
+        key.slug.trim() === ""
+      ) {
+        return { ok: false, reason: "not-found" };
+      }
       filter = { [`draft.slug.${key.locale}`]: key.slug };
     } else {
       return { ok: false, reason: "not-found" };
@@ -1155,8 +1162,7 @@ export async function publishContent<TFields>(
       });
 
       const changedFields = existingPublishedRecord
-        ? diffChangedFields(existingPublishedRecord, publishableRecord)
-            .changedFields
+        ? diffSnapshotFields(existingPublishedRecord, publishableRecord)
         : Object.keys(publishableRecord).sort();
 
       const parentNaturalKey = computeNaturalKey(
@@ -1541,15 +1547,34 @@ export async function discardChanges<TFields>(
       return { ok: false, reason: "nothing-to-discard" };
     }
 
+    const existingDraftRecord = asRecord(existing.draft);
+    const publishedRecord = asRecord(existing.published);
+
+    // AC6: Discarding changes that would flip a topic's `protected` flag in either
+    // direction (including when `published.protected` is absent vs `draft.protected: true`)
+    // requires `content:publish-protected`.
+    if (
+      isProtectedFlagToggled(input.collection, existingDraftRecord, {
+        protected: publishedRecord.protected,
+      }) &&
+      !hasPermission(caller, "content:publish-protected")
+    ) {
+      await session.abortTransaction();
+      return {
+        ok: false,
+        reason: "forbidden",
+        requiredPermission: "content:publish-protected",
+      };
+    }
+
     if (canonicalEqual(existing.draft, existing.published)) {
       return { ok: true, ...toContentDocView(existing), noOp: true };
     }
 
-    const publishedRecord = asRecord(existing.published);
-    const changedFields = diffChangedFields(
-      asRecord(existing.draft),
+    const changedFields = diffSnapshotFields(
+      existingDraftRecord,
       publishedRecord,
-    ).changedFields;
+    );
 
     const concreteType = resolveConcreteType(input.collection, publishedRecord);
     const refs = extractReferences(

@@ -1506,4 +1506,163 @@ describe("listContent pagination & status filter", () => {
     expect(after.ok && after.status).toBe("published");
     expect(after.ok && after.doc.revision).toBe(pub.doc.revision);
   });
+
+  it("records removed/$unset optional fields in content.publish and content.discard audit changedFields (C1)", async () => {
+    const h = createTestHarness();
+    const author = await authorService.create(writer, { name: "A" }, h.deps);
+    if (!author.ok) throw new Error("setup failed");
+
+    const post = await postService.create(
+      writer,
+      {
+        title: { "es-AR": "Post" },
+        subtitle: { "es-AR": "Sub" },
+        slug: "post-unset-audit",
+        authorId: author.doc._id,
+        featuredImageId: "m1",
+        content: { "es-AR": sampleDoc("Body") },
+        publishedDate: "2026-11-21",
+        seoTitle: { "es-AR": "SEO" },
+        seoDescription: { "es-AR": "SEO" },
+      },
+      h.deps,
+    );
+    if (!post.ok) throw new Error("setup failed");
+
+    const pub1 = await postService.publish(
+      publisher,
+      { docId: post.doc._id, expectedRevision: 1 },
+      h.deps,
+    );
+    if (!pub1.ok) throw new Error("pub1 failed");
+
+    // Remove optional `subtitle` in draft, then publish -> `subtitle` MUST appear in publish audit
+    const unsetSave = await postService.saveDraft(
+      writer,
+      {
+        docId: post.doc._id,
+        patch: { subtitle: undefined },
+        expectedRevision: pub1.doc.revision,
+      },
+      h.deps,
+    );
+    if (!unsetSave.ok) throw new Error("save failed");
+
+    const pub2 = await postService.publish(
+      publisher,
+      { docId: post.doc._id, expectedRevision: unsetSave.doc.revision },
+      h.deps,
+    );
+    expect(pub2.ok).toBe(true);
+    if (!pub2.ok) return;
+    expect(h.getAudit().at(-1)).toMatchObject({
+      action: "content.publish",
+      changedFields: ["subtitle"],
+    });
+
+    // Add optional `subtitle` in draft (absent in published), then discard -> `subtitle` MUST appear in discard audit
+    const addSave = await postService.saveDraft(
+      writer,
+      {
+        docId: post.doc._id,
+        patch: { subtitle: { "es-AR": "Temporal" } },
+        expectedRevision: pub2.doc.revision,
+      },
+      h.deps,
+    );
+    if (!addSave.ok) throw new Error("addSave failed");
+
+    const disc = await postService.discardChanges(
+      writer,
+      { docId: post.doc._id, expectedRevision: addSave.doc.revision },
+      h.deps,
+    );
+    expect(disc.ok).toBe(true);
+    expect(h.getAudit().at(-1)).toMatchObject({
+      action: "content.discard",
+      changedFields: ["subtitle"],
+    });
+  });
+
+  it("refuses discardChanges without content:publish-protected when draft.protected differs from published.protected (C2)", async () => {
+    const h = createTestHarness();
+    const topic = await topicService.create(
+      writer,
+      {
+        name: { "es-AR": "Legal", "en-US": "Legal" },
+        slug: { "es-AR": "legal", "en-US": "legal" },
+        body: { "es-AR": sampleDoc("ES"), "en-US": sampleDoc("EN") },
+      },
+      h.deps,
+    );
+    if (!topic.ok) throw new Error("setup failed");
+
+    // Publish unprotected (`published.protected` is absent)
+    const pub = await topicService.publish(
+      publisher,
+      { docId: topic.doc._id, expectedRevision: 1 },
+      h.deps,
+    );
+    if (!pub.ok) throw new Error("pub failed");
+
+    // Authorized admin flips `draft.protected = true` in preparation
+    const flagged = await topicService.saveDraft(
+      protectedPublisher,
+      {
+        docId: topic.doc._id,
+        patch: { protected: true },
+        expectedRevision: pub.doc.revision,
+      },
+      h.deps,
+    );
+    if (!flagged.ok) throw new Error("flagged failed");
+
+    // Writer without `content:publish-protected` CANNOT revert `draft.protected` via discardChanges
+    const refused = await topicService.discardChanges(
+      writer,
+      { docId: topic.doc._id, expectedRevision: flagged.doc.revision },
+      h.deps,
+    );
+    expect(refused).toEqual({
+      ok: false,
+      reason: "forbidden",
+      requiredPermission: "content:publish-protected",
+    });
+
+    // Authorized protectedPublisher CAN discard it
+    const allowed = await topicService.discardChanges(
+      protectedPublisher,
+      { docId: topic.doc._id, expectedRevision: flagged.doc.revision },
+      h.deps,
+    );
+    expect(allowed.ok && allowed.status).toBe("published");
+  });
+
+  it("rejects untrusted runtime locale values in topics getContentByNaturalKey (C3)", async () => {
+    const h = createTestHarness();
+    await topicService.create(
+      writer,
+      {
+        name: { "es-AR": "Info" },
+        slug: { "es-AR": "info" },
+      },
+      h.deps,
+    );
+
+    const badLocale = await getContentByNaturalKey(
+      reader,
+      "topics",
+      { locale: "fr-FR" as "es-AR", slug: "info" },
+      h.deps,
+    );
+    expect(badLocale).toEqual({ ok: false, reason: "not-found" });
+
+    const dottedLocale = await getContentByNaturalKey(
+      reader,
+      "topics",
+      { locale: "es-AR.$ne" as "es-AR", slug: "info" },
+      h.deps,
+    );
+    expect(dottedLocale).toEqual({ ok: false, reason: "not-found" });
+  });
 });
