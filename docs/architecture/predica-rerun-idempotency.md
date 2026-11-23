@@ -1,97 +1,68 @@
 # /predica — re-run idempotency (detect → ask → regenerate in place)
 
-How re-running `/predica` on a sermon that was already processed stays **safe and intentional** instead of
-piling up duplicates. This is the sermon-entry + transcript + asset layer; the **verse** side (one shared
-`bibleVerse` per passage) is documented separately in [`predica-bibleverse-reuse.md`](./predica-bibleverse-reuse.md).
+How re-running `/predica` on a sermon that was already processed stays **safe and intentional** instead of piling up
+duplicates. This is the sermon-draft + transcript + media layer; the **verse** side (one shared `bible_verses` doc per
+passage) is documented in [`predica-bibleverse-reuse.md`](./predica-bibleverse-reuse.md).
 
-## The problem it fixes
+## Four layers of idempotency
 
-A naive re-run used to: re-transcribe the audio (clobbering the human-corrected transcript), create a **second**
-sermon entry at `<slug>-2`, upload **duplicate** assets (audio + 2 PDFs + featured image) every time, and never
-ask. Nothing was ever cleaned up.
+1. **Transcript reuse — pre-flight, by audio hash.** The orchestrator computes `sha256` of the incoming audio and scans
+   `tasks/predicas/*/` (comparing `links.json.sourceSha256`, else hashing each `source.*`). On a match with a non-empty
+   `transcript.txt`, it **reuses that corrected transcript and skips transcription + Gate 1**. A different recording
+   for the same Sunday will not match and runs fresh. `predica-transcriber` also refuses to overwrite an existing
+   `transcript.txt`.
+2. **Media deduplication — by SHA-256.** Before uploading any file to Vercel Blob, `predica-ingest-client.mjs` computes
+   a streaming SHA-256 and calls `POST /api/predica/media/prepare`. If an identical file is already registered in
+   `website*.media`, the server returns `{ status: "duplicate", media }` and the file is reused immediately with zero
+   re-upload.
+3. **Sermon detection — ★ Gate 0, after the writer.** With the canonical slug known, the orchestrator calls
+   `GET /api/predica/sermons/lookup?slug=<slug>&sermonDate=<YYYY-MM-DD>` (read-only). It returns:
+   - `exactMatch` (status, `revision`, `updatedByLabel`, `updatedAt`, `isHumanEdited`, `featuredImage.isHumanReplaced`,
+     and `editUrl`);
+   - `sameDateMatches` (any other sermons on that date or historical `<slug>-N` suffixes);
+   - `slugDateConflict` (`true` when the exact slug exists on a **different** `sermonDate`).
+4. **Optimistic concurrency & human-edit guard.** On `mode: "update"`, the client sends the `docId` and
+   `expectedRevision` read at Gate 0. If the revision moved OR a human edited the draft since predica last wrote it
+   (`!isServiceIdentity(updatedBy)`), `POST /api/predica/sermons` refuses with **`409 conflict`** (naming who edited it
+   and when) unless the caller passes `overwrite: true` (`--overwrite`) after explicit human confirmation.
 
-## Two detection points
+## Gate 0 — protecting human edits
 
-The canonical slug only exists **after the writer runs** (it is derived from the title, not the filename), so
-detection happens in two places:
+Regenerating replaces the draft fields `/predica` owns (leaving `published` and non-owned fields like `relatedSermonIds`
+untouched):
 
-1. **Transcript reuse — pre-flight, by audio hash.** The orchestrator computes `sha256` of the incoming audio
-   and scans `tasks/predicas/*/` (comparing `links.json.sourceSha256`, else hashing each `source.*`). On a
-   match with a non-empty `transcript.txt`, it **reuses that corrected transcript and skips transcription +
-   Gate 1**, regenerating only the downstream content. A _different_ recording for the same Sunday won't match
-   and is treated as fresh (re-transcribe + Gate 1). The transcriber also refuses to overwrite an existing
-   `transcript.txt` as a backstop.
-2. **Sermon detection — ★ Gate 0, after the writer.** With the canonical slug known, the orchestrator looks the
-   sermon up in Contentful `production` by `fields.slug` (+ `sermonDate`, and scans for earlier `-N`
-   duplicates). If found, it **stops and asks the human** before any write.
+- If the sermon was **already published**, the live copy stays online unchanged (`status` becomes `"changed"` /
+  **"Cambios sin publicar"**) until a person publishes again in Admin.
+- If a human replaced the **featured image** (`featuredImage.isHumanReplaced === true`), Gate 0 notes this explicitly
+  and defaults to keeping it (`--keep-featured`).
+- On decline, nothing is written and local artifacts in `slugDir` stay intact.
 
-## Gate 0 — the approval (it protects human edits)
+## Superseded media — no client-side deletes
 
-Regenerating overwrites whatever a human did at Gate 2 — corrected text in either locale, a featured image they
-swapped for a real photo, the publish itself. So Gate 0 names that consequence and asks to proceed, plus whether
-to **regenerate or keep** the current featured image. If the entry is already **published**, update-in-place
-keeps it live (no 404 gap) but the new content lands as a draft change the human must **Publish again**. On
-decline, nothing is written.
+`predica-publisher` **never deletes files or verses**. Every draft save recomputes `_refs.mediaIds` over **both**
+`draft` and `published` snapshots inside `ICR-195`'s transaction:
 
-## Regenerate = update in place (never delete the entry)
-
-On approval the publisher runs in `mode: "update"`:
-
-- **Sermon entry:** `create-contentful-entry.mjs --id <entryId>` — GET the current version, PUT the full
-  regenerated `fields`. Same entry id (the `editUrl` bookmark stays valid), no `-2` duplicate, no live-page-down
-  window. No publish call.
-- **Owned assets** (audio, both PDFs, and the featured image **iff** the human chose to regenerate it): upload
-  new → relink on the entry → delete the superseded old ones (resolved from the entry's prior links, not just
-  `links.json`).
-- **Verses:** never deleted as part of sermon cleanup — they are shared site-wide. Legacy per-sermon verses that
-  the new version-scoped keys orphan are removed **only** when proven unreferenced (see below).
-
-## The only delete path — `delete-contentful.mjs`
-
-The publisher's MCP allowlist is read-only; all deletes go through this one committed script:
-
-- Hard-refuses the `master` alias (same guard as the create/upload scripts).
-- Deletes only **explicit ids** (`--entry-id` / `--asset-id`, comma-separated) — never by slug/query.
-- **Unpublish-then-delete** (a bare `DELETE` on a published object errors).
-- `--guard-referenced` + `--except <id>`: before deleting, it refuses any id still linked by another entry
-  (`links_to_entry` / `links_to_asset`). This is what keeps a **shared** verse (cited by another sermon or the
-  Creed) safe — guarded ids are skipped, not fatal.
+- On an unpublished draft, any file replaced by a re-run immediately drops out of `_refs.mediaIds` and appears under
+  the **"Sin usar"** filter in `/content/media` (where an admin can safely delete it if desired).
+- On a published sermon, files still referenced by `published` stay protected in `_refs.mediaIds` until a human
+  publishes the updated draft.
 
 ## The manifest — `tasks/predicas/<sermonDate>_<slug>/links.json`
 
-> The per-sermon dir is date-prefixed (`<sermonDate>_<slug>`, e.g. `2026-06-07_el-deseo-mas-profundo-de-dios`)
-> so `tasks/predicas/` self-sorts chronologically; the public slug/URL stays bare. Re-run detection matches by
-> `sourceSha256`, not by folder name, so the prefix never affects idempotency.
-
-Records `preacherId`, `scriptureRefIds[]`, `pdfAssetIds{es-AR,en-US}`, `audioAssetId`, `featuredImageAssetId`,
-plus the re-run fields `sermonEntryId` and `sourceSha256`. Cleanup treats it as a **hint** — when fields are
-absent (e.g. a manifest written before a feature landed), ids are re-resolved from the Contentful entry itself.
+The per-sermon folder is date-prefixed (`YYYY-MM-DD_slug`) for chronological sorting; the public slug/URL stays bare.
+`links.json` records `audioMediaId`, `featuredImageId`, `pdfSummaryMediaId`, `sourceSha256`, and (after ingest)
+`sermonDocId`, `revision`, and `editUrl`.
 
 ## Touch points
 
-- `.claude/commands/predica.md` — pre-flight transcript reuse; **Gate 0**; threads `mode`/`entryId`/`replaceFeatured` to the publisher.
-- `.claude/agents/predica-publisher.md` — mode routing; update-in-place; conditional featured upload; step-8 cleanup.
-- `.claude/agents/predica-transcriber.md` — never-overwrite guard; emits `sourceSha256`.
-- `.claude/scripts/predica/create-contentful-entry.mjs` — `--id` update-in-place path.
-- `.claude/scripts/predica/delete-contentful.mjs` — the guarded delete path (new).
+- `.claude/commands/predica.md` — pre-flight transcript reuse; **Gate 0** lookup; threads `mode`/`docId`/`expectedRevision`/`overwrite`/`replaceFeatured`.
+- `.claude/agents/predica-publisher.md` — media upload + `predica-ingest-client.mjs ingest` (zero delete path).
+- `.claude/scripts/predica/predica-ingest-client.mjs` — `health`, `lookup`, `upload-media`, `ingest` (exit `4` on `409 conflict`).
+- `apps/admin/src/service/predica/ingest.service.ts` — `lookupSermonsForGate0`, `ingestSermonDraft`, conflict & slug guards.
 
-## Why next.config.ts pins the file-tracing root (ICR-143)
+## Serverless Chromium file tracing (`ICR-143`, `ICR-200`)
 
-The cron route renders PDFs with Chromium via `playwright-core`. That package reads its
-`browsers.json` through a **runtime-computed** require —
-`require(path.join(packageRoot, "browsers.json"))` in `lib/coreBundle.js` — which `@vercel/nft`'s
-static analysis cannot see. The file therefore never entered the Lambda, and the every-minute cron
-failed forever with `Cannot find module …/browsers.json` while the job stayed renderable.
-
-`apps/web/next.config.ts` fixes this with two settings:
-
-- `outputFileTracingRoot: path.join(__dirname, "../../")` — `playwright-core` resolves to the
-  **repo-root** pnpm store, outside `apps/web`. Pinning the root also silences Next's
-  "inferred your workspace root, but it may not be correct" multi-lockfile warning; the deployment
-  must not depend on that heuristic.
-- `outputFileTracingIncludes` — one file, keyed to `/api/predica/regenerate-pdf/cron` only. The
-  webhook route never launches Chromium and must not get the include.
-
-`pnpm --filter @idcr/web verify:trace` (CI job `trace-guard` in `.github/workflows/pr.yml`) asserts
-the asset is still traced, so a `playwright-core` upgrade that moves the file fails the build instead
-of silently breaking production. Do not "tidy away" either setting.
+Admin's PDF rebuild worker (`/api/content/pdf-worker`) renders PDFs with `@sparticuz/chromium` + `playwright-core`.
+Because `playwright-core` loads `browsers.json` via a runtime-computed `require()`, `apps/admin/next.config.ts` pins
+`outputFileTracingRoot` and `outputFileTracingIncludes` for `/api/content/pdf-worker`, verified by
+`pnpm --filter @idcr/admin verify:trace`. Do not remove either setting.

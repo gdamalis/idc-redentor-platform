@@ -194,7 +194,7 @@ transcribe → ★ Gate 1 (human corrects transcript) ★ → [2.5 voice-coach] 
 - **Non-blocking.** If the coach fails or the transcript is too thin, the orchestrator prints a warning and
   continues; the writer falls back to today's transcript-only behavior. The feature is purely additive and
   can never break publishing.
-- **Dry-run safe.** It runs under `--dry-run` too (local-only, no Contentful, no send).
+- **Dry-run safe.** It runs under `--dry-run` too (local-only, no admin ingest, no send).
 
 ## Curation workflow (your part)
 

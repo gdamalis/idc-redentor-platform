@@ -61,5 +61,9 @@ declare namespace NodeJS {
     // Sermon PDF background worker (ICR-200, server-only — never NEXT_PUBLIC_*)
     // Bearer secret guarding GET /api/content/pdf-worker (scheduled by ICR-205).
     CRON_SECRET?: string;
+
+    // Predica local-skill draft ingest (ICR-204, server-only — never NEXT_PUBLIC_*)
+    // Distinct 32-byte random Bearer secret per environment (Production vs Preview/staging/Dev).
+    PREDICA_INGEST_TOKEN?: string;
   }
 }

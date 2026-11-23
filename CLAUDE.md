@@ -16,20 +16,20 @@ The **public website** (`apps/web`) is a **content-managed informational site**,
 
 > Run everything with **pnpm**. Note `type-check` is **hyphenated** (unlike some sibling projects' `typecheck`). The verifier and QA agents call `pnpm type-check`.
 
-| Command              | Purpose                                                                                       |
-| -------------------- | --------------------------------------------------------------------------------------------- |
-| `pnpm dev`           | Dev server (Turbopack)                                                                        |
-| `pnpm build`         | Production build                                                                              |
-| `pnpm start`         | Serve the production build                                                                    |
-| `pnpm lint`          | ESLint (`eslint .`)                                                                           |
-| `pnpm type-check`    | TypeScript check (`tsc --noEmit`)                                                             |
-| `pnpm test`          | Vitest, single run (`vitest run`)                                                             |
-| `pnpm test:watch`    | Vitest in watch mode                                                                          |
-| `pnpm e2e`           | Playwright (`playwright test`) — config present, no specs in Phase 1                          |
-| `pnpm predica:smoke` | Smoke-check the /predica harness scripts (PDF + featured image) against the committed fixture |
-| `pnpm format`        | Prettier write                                                                                |
-| `pnpm format:check`  | Prettier check                                                                                |
-| `pnpm prepare`       | Husky install (runs automatically on `pnpm install`)                                          |
+| Command              | Purpose                                                                                                                       |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`           | Dev server (Turbopack)                                                                                                        |
+| `pnpm build`         | Production build                                                                                                              |
+| `pnpm start`         | Serve the production build                                                                                                    |
+| `pnpm lint`          | ESLint (`eslint .`)                                                                                                           |
+| `pnpm type-check`    | TypeScript check (`tsc --noEmit`)                                                                                             |
+| `pnpm test`          | Vitest, single run (`vitest run`)                                                                                             |
+| `pnpm test:watch`    | Vitest in watch mode                                                                                                          |
+| `pnpm e2e`           | Playwright (`playwright test`) — config present, no specs in Phase 1                                                          |
+| `pnpm predica:smoke` | Smoke-check the /predica harness scripts (PDF + featured image + TipTap ingest payload builder) against the committed fixture |
+| `pnpm format`        | Prettier write                                                                                                                |
+| `pnpm format:check`  | Prettier check                                                                                                                |
+| `pnpm prepare`       | Husky install (runs automatically on `pnpm install`)                                                                          |
 
 ## graphify (query the graph before you read)
 
@@ -241,7 +241,7 @@ The implementer writes to the `staging` work env only — **never** the `master`
 
 ### `/predica` (domain command — stays local)
 
-`/predica` and its `predica-*` agents are the local sermon pipeline (recording → transcript → bilingual `sermon.json` → branded PDFs → a Contentful **draft** → a WhatsApp text), with two human gates (transcript correction; promote/publish). It is draft-only + send-only and is **not** part of the yoke plugin. See `tasks/specs/sermon-pipeline.md` and the `docs/predica-*` docs.
+`/predica` and its `predica-*` agents are the local sermon pipeline (recording → transcript → bilingual `sermon.json` → branded PDFs + featured image → a `"Para revisar"` **draft** sent to the Ministry Admin Panel via `/api/predica/*` using a narrow service token — production by default, staging with `--test` → a WhatsApp text), with human gates (transcript correction, Gate 0 existing-sermon check, and review/publish in Admin at Gate 2). It is draft-only + send-only, holds no DB URI or Blob key locally, and is **not** part of the yoke plugin. See `docs/architecture/predica-usage.md` and the `docs/architecture/predica-*` docs (historical V1 spec: `tasks/specs/sermon-pipeline.md`).
 
 A human always merges the PR and closes the issue (transitions it to **Done**). Scratchpads live in `tasks/{todo.md,lessons.md}` (gitignored); specs in `tasks/specs/`.
 
@@ -270,8 +270,8 @@ A human always merges the PR and closes the issue (transitions it to **Done**). 
   - `observability-sentry.md` — `@sentry/nextjs` across server/edge/client, the `options.ts` single source of truth, the `/monitoring` tunnel vs. CSP/proxy-matcher traps, and the locked PII posture.
   - `agent-harness.md` — how to use the agents and commands; the human-gated tracker automation.
   - `deployments.md` — production deploys: `production-hold` and why `main` reaches staging only, one release shipping both apps from one commit, the `git archive` deploy script (`scripts/deploy-prod.sh`), per-app rollback, production actions a merge does not perform. Never deploy production or push `production-hold` outside an owner-approved release.
-  - `predica-bibleverse-reuse.md` — how `/predica` dedups scripture: the derived, version-scoped `bibleVerse` `internalName` (`"Joel 2:13 (NVI)"`) + the `--upsert-by-internal-name` CMA flag; cross-sermon reuse + sermon re-run safety.
-  - `predica-rerun-idempotency.md` — re-running `/predica` safely: pre-flight transcript reuse by audio hash, **Gate 0** existing-sermon detection, regenerate by **update-in-place** (`--id`) instead of duplicating, and the guarded `delete-contentful.mjs` cleanup of superseded assets + orphaned legacy verses.
+  - `predica-bibleverse-reuse.md` — how `/predica` dedups scripture: server-side upsert in `POST /api/predica/sermons` keyed by `@idcr/content`'s version-scoped `bibleVerseKey` (`book|chapter|from|to|version`); cross-sermon reuse + sermon re-run safety.
+  - `predica-rerun-idempotency.md` — re-running `/predica` safely: pre-flight transcript reuse by audio hash, SHA-256 media dedupe, **Gate 0** lookup (`/api/predica/sermons/lookup`), optimistic-revision update-in-place (`POST /api/predica/sermons` `mode: "update"`, `409` human-edit conflict guard), and automatic Media Library usage tracking (no client-side delete).
   - `predica-voice-profiles.md` — the per-preacher voice-coach learning loop: `predica-voice-coach` (step 2.5) learns the preacher's style from the **corrected transcript only** and maintains a local-only (gitignored), human-curatable two-zone profile (`tasks/predicas/_voices/<preacher-slug>.md`: Zone A human-curated + Zone B append-only log) that the writer reads to compound voice quality. Idempotent, non-blocking, style-only.
   - `contributing.md` — branch/commit/PR conventions, releases (Changesets), husky/CI gates, the worktree flow.
   - `versioning.md` — the Changesets per-app versioning model: independent lines, cascading internal packages, frozen root, the bump mapping, the direct-push release flow.
