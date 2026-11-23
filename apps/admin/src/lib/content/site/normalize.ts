@@ -177,11 +177,10 @@ export function lockContactFormFields(
   if (!baselineFields) return undefined;
   return baselineFields.map((base, idx) => {
     const edited = nextFields?.[idx];
-    const name = normalizeLocalizedText(edited?.name ?? base.name);
-    const placeholder = normalizeLocalizedText(
-      edited?.placeholder ?? base.placeholder,
-    );
-    const values = normalizeLocalizedStringList(edited?.values ?? base.values);
+    const source = edited ?? base;
+    const name = normalizeLocalizedText(source.name);
+    const placeholder = normalizeLocalizedText(source.placeholder);
+    const values = normalizeLocalizedStringList(source.values);
     return {
       inputId: base.inputId,
       type: base.type,

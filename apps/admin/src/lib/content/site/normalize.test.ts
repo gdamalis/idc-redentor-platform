@@ -178,6 +178,60 @@ describe("site content normalization helpers", () => {
     });
   });
 
+  it("preserves explicit removal of contact-form dropdown options and placeholders", () => {
+    const baseline: ContactFormFieldItem[] = [
+      {
+        inputId: "name",
+        type: "Short text",
+        required: true,
+        name: { "es-AR": "Nombre" },
+        placeholder: { "es-AR": "Tu nombre" },
+      },
+      {
+        inputId: "subject",
+        type: "Dropdown",
+        required: true,
+        name: { "es-AR": "Asunto" },
+        values: { "es-AR": ["Información", "Oración"] },
+      },
+    ];
+
+    const cleared: ContactFormFieldItem[] = [
+      {
+        inputId: "name",
+        type: "Short text",
+        required: true,
+        name: { "es-AR": "Nombre" },
+        placeholder: undefined,
+      },
+      {
+        inputId: "subject",
+        type: "Dropdown",
+        required: true,
+        name: { "es-AR": "Asunto" },
+        values: undefined,
+      },
+    ];
+
+    const locked = lockContactFormFields(baseline, cleared);
+    expect(locked?.[0]).toEqual({
+      inputId: "name",
+      type: "Short text",
+      required: true,
+      name: { "es-AR": "Nombre" },
+    });
+    expect(locked?.[1]).toEqual({
+      inputId: "subject",
+      type: "Dropdown",
+      required: true,
+      name: { "es-AR": "Asunto" },
+    });
+
+    // Missing edited entry still falls back to baseline editable properties
+    const partial = lockContactFormFields(baseline, [cleared[0]!]);
+    expect(partial?.[1]).toEqual(baseline[1]);
+  });
+
   it("produces payloads that pass every @idcr/content draft & publishable schema", () => {
     const hero = normalizeSectionDraft({
       machineName: "our-mission",
