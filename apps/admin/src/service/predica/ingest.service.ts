@@ -790,7 +790,11 @@ export async function ingestSermonDraft(
       input.queuePdfRebuild,
     );
     if (queuePdf) {
-      await deps.markSermonPdfDirty(docId, contentHash);
+      if (input.queuePdfRebuild === true) {
+        await deps.markSermonPdfDirty(docId, contentHash, { force: true });
+      } else {
+        await deps.markSermonPdfDirty(docId, contentHash);
+      }
     }
 
     return {
@@ -825,6 +829,13 @@ export async function ingestSermonDraft(
 
   const updatePatch: Partial<SermonFields> = {
     ...draftWithHash,
+    thesis: draftWithHash.thesis,
+    mainPoints: draftWithHash.mainPoints,
+    excerpt: draftWithHash.excerpt,
+    content: draftWithHash.content,
+    seoTitle: draftWithHash.seoTitle,
+    seoDescription: draftWithHash.seoDescription,
+    keywords: draftWithHash.keywords,
     additionalPreacherIds: draftWithHash.additionalPreacherIds,
     interpreterId: draftWithHash.interpreterId,
     scriptureRefIds: draftWithHash.scriptureRefIds,
@@ -853,7 +864,11 @@ export async function ingestSermonDraft(
     input.queuePdfRebuild,
   );
   if (queuePdf) {
-    await deps.markSermonPdfDirty(docId, contentHash);
+    if (input.queuePdfRebuild === true) {
+      await deps.markSermonPdfDirty(docId, contentHash, { force: true });
+    } else {
+      await deps.markSermonPdfDirty(docId, contentHash);
+    }
   } else {
     await deps.syncContentPdfJobOnDiscard(
       docId,

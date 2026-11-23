@@ -289,6 +289,110 @@ describe("ingestSermonDraft", () => {
     );
   });
 
+  it("explicitly clears omitted pipeline-owned optional text and SEO fields on update", async () => {
+    const now = new Date("2026-11-23T04:00:00.000Z");
+    const deps = makeDeps({
+      sermonService: {
+        ...makeDeps().sermonService,
+        getById: vi.fn().mockResolvedValue({
+          ok: true,
+          status: "draft",
+          doc: {
+            _id: SERMON_ID,
+            draft: {
+              slug: "amor-que-derriba-muros",
+              title: { "es-AR": "Amor" },
+              thesis: { "es-AR": "Tesis anterior" },
+              excerpt: { "es-AR": "Extracto anterior" },
+              keywords: { "es-AR": ["vieja"] },
+            },
+            revision: 1,
+            createdAt: now,
+            updatedAt: now,
+            updatedBy: PREDICA_INGEST_SERVICE_ID,
+          },
+        }),
+      },
+    });
+
+    const res = await ingestSermonDraft(
+      PREDICA_INGEST_CALLER,
+      makeBaseRequest({
+        mode: "update",
+        docId: SERMON_ID,
+        expectedRevision: 1,
+        sermon: {
+          slug: "amor-que-derriba-muros",
+          sermonDate: "2026-11-22",
+          title: { "es-AR": "Amor renovado" },
+        },
+      }),
+      { adminOrigin: "https://staging.ministerio.idcredentor.org" },
+      deps,
+    );
+
+    expect(res.ok).toBe(true);
+    const saveCall = vi.mocked(deps.sermonService.saveDraft).mock.calls[0]?.[1];
+    expect(saveCall).toBeDefined();
+    for (const key of [
+      "thesis",
+      "mainPoints",
+      "excerpt",
+      "content",
+      "seoTitle",
+      "seoDescription",
+      "keywords",
+    ] as const) {
+      expect(Object.hasOwn(saveCall!.patch, key)).toBe(true);
+      expect(saveCall!.patch[key]).toBeUndefined();
+    }
+  });
+
+  it("passes { force: true } to markSermonPdfDirty when queuePdfRebuild is explicitly requested on update", async () => {
+    const now = new Date("2026-11-23T04:00:00.000Z");
+    const deps = makeDeps({
+      sermonService: {
+        ...makeDeps().sermonService,
+        getById: vi.fn().mockResolvedValue({
+          ok: true,
+          status: "draft",
+          doc: {
+            _id: SERMON_ID,
+            draft: {
+              slug: "amor-que-derriba-muros",
+              title: { "es-AR": "Amor" },
+            },
+            revision: 1,
+            createdAt: now,
+            updatedAt: now,
+            updatedBy: PREDICA_INGEST_SERVICE_ID,
+          },
+        }),
+      },
+    });
+
+    const res = await ingestSermonDraft(
+      PREDICA_INGEST_CALLER,
+      makeBaseRequest({
+        mode: "update",
+        docId: SERMON_ID,
+        expectedRevision: 1,
+        queuePdfRebuild: true,
+      }),
+      { adminOrigin: "https://staging.ministerio.idcredentor.org" },
+      deps,
+    );
+
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.pdfJobQueued).toBe(true);
+    expect(deps.markSermonPdfDirty).toHaveBeenCalledWith(
+      SERMON_ID,
+      "a".repeat(64),
+      { force: true },
+    );
+  });
+
   it("links interpreter to interpreterId only (never additionalPreacherIds) and defaults audioLanguages to bilingual", async () => {
     const deps = makeDeps();
     const res = await ingestSermonDraft(
