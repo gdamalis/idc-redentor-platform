@@ -1,3 +1,4 @@
+import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -359,5 +360,60 @@ describe("RichTextEditor component & lossy-load detection", () => {
     };
 
     assertPlainObjects(emitted);
+  });
+
+  it("does not re-trigger false-positive lossy-load warnings when edited and re-rendered with an inline onLossyLoad callback", async () => {
+    const initialDoc: RichTextDoc = {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "Inicial" }] },
+      ],
+    };
+    const onLossyCalls: boolean[] = [];
+    let capturedEditor: Editor | null = null;
+
+    function ControlledHarness() {
+      const [doc, setDoc] = React.useState<RichTextDoc>(initialDoc);
+      return (
+        <RichTextEditor
+          profile="inline"
+          value={doc}
+          onChange={setDoc}
+          onLossyLoad={(lossy) => {
+            onLossyCalls.push(lossy);
+          }}
+          toolbarExtras={(ed) => {
+            capturedEditor = ed;
+            return null;
+          }}
+        />
+      );
+    }
+
+    renderWithIntl(<ControlledHarness />);
+
+    await waitFor(() => {
+      expect(capturedEditor).not.toBeNull();
+    });
+    expect(onLossyCalls).toEqual([false]);
+    expect(screen.queryByTestId("rich-text-lossy-notice")).toBeNull();
+
+    act(() => {
+      capturedEditor!.commands.setContent(
+        {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Inicial editado" }],
+            },
+          ],
+        },
+        { emitUpdate: true },
+      );
+    });
+
+    expect(onLossyCalls).toEqual([false]);
+    expect(screen.queryByTestId("rich-text-lossy-notice")).toBeNull();
   });
 });

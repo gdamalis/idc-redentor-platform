@@ -79,6 +79,10 @@ export function RichTextEditor({
   React.useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+  const onLossyLoadRef = React.useRef(onLossyLoad);
+  React.useEffect(() => {
+    onLossyLoadRef.current = onLossyLoad;
+  }, [onLossyLoad]);
 
   const allowLink = (
     RICH_TEXT_PROFILES[profile].marks as readonly string[]
@@ -163,7 +167,9 @@ export function RichTextEditor({
     editor.setEditable(!readOnly);
   }, [editor, readOnly]);
 
-  // Detect lossy parse on initial load (Edge case #11)
+  // Detect lossy parse on initial load only (Edge case #11); read callback via
+  // ref so parent re-renders with an inline `onLossyLoad` handler never re-run
+  // the check against edited content.
   React.useEffect(() => {
     if (!editor) return;
     const lossy = isLossyRichTextLoad(
@@ -172,8 +178,8 @@ export function RichTextEditor({
       profile,
     );
     setIsLossy(lossy);
-    onLossyLoad?.(lossy);
-  }, [editor, onLossyLoad, profile]);
+    onLossyLoadRef.current?.(lossy);
+  }, [editor, profile]);
 
   // Sync external value resets (e.g. "Copiar del español", Recovery restore, Discard)
   React.useEffect(() => {
