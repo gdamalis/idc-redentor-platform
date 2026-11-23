@@ -1190,9 +1190,16 @@ export function planContentImport(
   for (const item of activeTopLevel) {
     if (item.contentType === "sermon") continue;
     const draft = transformSnapshot(item.cmaEntry, item.contentType, "draft");
+    // Always transform `published` with published link resolution (never clone `draft`),
+    // so an independently `changed` embedded child (menuGroup, beliefItem, event, socialLink,
+    // formField) never leaks its unpublished CMA edits into a `published` parent.
     const published =
       item.state === "published"
-        ? structuredClone(draft)
+        ? transformSnapshot(
+            item.cdaEntry ?? item.cmaEntry,
+            item.contentType,
+            "published",
+          )
         : item.state === "changed" && item.cdaEntry
           ? transformSnapshot(item.cdaEntry, item.contentType, "published")
           : undefined;
@@ -1294,7 +1301,11 @@ export function planContentImport(
 
     let published: SermonFields | undefined;
     if (item.state === "published") {
-      published = structuredClone(draft);
+      published = transformSnapshot(
+        item.cdaEntry ?? item.cmaEntry,
+        item.contentType,
+        "published",
+      ) as unknown as SermonFields;
       published.contentHash = computeSermonHashForFields(published, "published");
     } else if (item.state === "changed" && item.cdaEntry) {
       published = transformSnapshot(

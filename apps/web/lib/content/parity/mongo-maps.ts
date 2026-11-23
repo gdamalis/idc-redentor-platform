@@ -14,6 +14,8 @@ export interface MongoParityContext {
   readonly entryIdByContentfulId: ReadonlyMap<string, string>;
   readonly postSlugs: readonly string[];
   readonly sermonSlugs: readonly string[];
+  readonly draftOnlyPostSlugs: readonly string[];
+  readonly draftOnlySermonSlugs: readonly string[];
   readonly topicSlugsByLocale: Readonly<Record<Locale, readonly string[]>>;
   readonly mediaCount: number;
   readonly collectionCounts: Readonly<Record<string, CollectionCountSummary>>;
@@ -155,11 +157,29 @@ export async function loadParityMapsFromMongo(
     if (en) enTopics.add(en);
   }
 
+  const draftOnlyPostSlugs = [
+    ...new Set(
+      postDocs
+        .filter((d) => !d.published && d.draft?.slug)
+        .map((d) => d.draft!.slug!),
+    ),
+  ].sort();
+
+  const draftOnlySermonSlugs = [
+    ...new Set(
+      sermonDocs
+        .filter((d) => !d.published && d.draft?.slug)
+        .map((d) => d.draft!.slug!),
+    ),
+  ].sort();
+
   return {
     mediaMap,
     entryIdByContentfulId,
     postSlugs,
     sermonSlugs,
+    draftOnlyPostSlugs,
+    draftOnlySermonSlugs,
     topicSlugsByLocale: {
       "es-AR": esTopics.size > 0 ? [...esTopics].sort() : ["privacidad"],
       "en-US": enTopics.size > 0 ? [...enTopics].sort() : ["privacy"],

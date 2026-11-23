@@ -774,4 +774,79 @@ describe("runPageParity against local HTTP server (AC8)", () => {
     },
     30_000,
   );
+
+  it("refuses redirects to production hosts and rejects matching HTTP 500 / unexpected 404 responses (Codex P1 & P2)", async () => {
+    const server = http.createServer((req, res) => {
+      if (req.url === "/redirect-to-prod") {
+        res.writeHead(307, { Location: "https://www.idcredentor.org/es-AR" });
+        res.end();
+        return;
+      }
+      if (req.url === "/safe-redirect") {
+        res.writeHead(307, { Location: "/es-AR" });
+        res.end();
+        return;
+      }
+      if (req.url === "/boom") {
+        res.writeHead(500, { "Content-Type": "text/html; charset=utf-8" });
+        res.end("<html><body>Internal Error</body></html>");
+        return;
+      }
+      if (req.url === "/missing" || req.url === "/es-AR/predicas/draft-only") {
+        res.writeHead(404, { "Content-Type": "text/html; charset=utf-8" });
+        res.end("<html><body>Not Found</body></html>");
+        return;
+      }
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end("<html><body><main>OK</main></body></html>");
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const { port } = server.address() as AddressInfo;
+    const baseUrl = `http://127.0.0.1:${port}`;
+
+    try {
+      // Redirect targeting a production host MUST throw BEFORE following
+      await expect(
+        runPageParity({
+          baseUrlA: baseUrl,
+          baseUrlB: baseUrl,
+          routes: ["/redirect-to-prod"],
+        }),
+      ).rejects.toThrow(/production host/i);
+
+      // Safe local redirect follows cleanly
+      const safeRedirectReport = await runPageParity({
+        baseUrlA: baseUrl,
+        baseUrlB: baseUrl,
+        routes: ["/safe-redirect"],
+      });
+      expect(safeRedirectReport.ok).toBe(true);
+      expect(safeRedirectReport.routes[0]?.statusA).toBe(200);
+
+      // Identical HTTP 500 responses on both sides MUST fail
+      const error500Report = await runPageParity({
+        baseUrlA: baseUrl,
+        baseUrlB: baseUrl,
+        routes: ["/boom"],
+      });
+      expect(error500Report.ok).toBe(false);
+      expect(error500Report.failedRoutes).toBe(1);
+      expect(error500Report.routes[0]?.reason).toMatch(/Unexpected HTTP error status 500/i);
+
+      // Unexpected identical 404 fails, while explicitly allowedNotFoundRoutes 404 passes
+      const notFoundReport = await runPageParity({
+        baseUrlA: baseUrl,
+        baseUrlB: baseUrl,
+        routes: ["/missing", "/es-AR/predicas/draft-only"],
+        allowedNotFoundRoutes: ["/es-AR/predicas/draft-only"],
+      });
+      expect(notFoundReport.ok).toBe(false);
+      expect(notFoundReport.routes[0]?.ok).toBe(false);
+      expect(notFoundReport.routes[0]?.reason).toMatch(/Unexpected HTTP error status 404/i);
+      expect(notFoundReport.routes[1]?.ok).toBe(true);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
 });

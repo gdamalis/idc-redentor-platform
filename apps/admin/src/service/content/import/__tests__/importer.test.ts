@@ -900,4 +900,84 @@ describe("runContentfulImport end-to-end (AC1–AC6)", () => {
     expect(prodBlobReport.errors[0]).not.toContain("fakeSecretValue");
     expect(staging.getWriteCount()).toBe(0);
   });
+
+  it("keeps published parent snapshots on CDA embedded children when a child is independently changed (Codex P1)", async () => {
+    const base = buildFullSyntheticSnapshot();
+    const modifiedCma = base.manifest.cmaEntries.map((entry) => {
+      if (entry.sys.id !== "cf-menu-group-1") return entry;
+      return {
+        ...entry,
+        sys: {
+          ...entry.sys,
+          version: 3, // version > publishedVersion + 1 => `changed`
+          publishedVersion: 1,
+        },
+        fields: {
+          ...entry.fields,
+          groupName: { "es-AR": "Blog Borrador", "en-US": "Draft Blog" },
+        },
+      };
+    });
+
+    const snapshot: LoadedContentfulSnapshot = {
+      ...base,
+      manifest: {
+        ...base.manifest,
+        cmaEntries: modifiedCma,
+      },
+    };
+
+    const { db, store } = createInMemoryContentDb("website-staging");
+    const createServerMediaMock = vi.fn(async (_caller, input, deps) => {
+      const id = new ObjectId();
+      const sha256 = createHash("sha256").update(input.buffer).digest("hex");
+      const pathname = `media/${id.toHexString()}/${input.filename}`;
+      const stored = {
+        _id: id,
+        pathname,
+        url: `https://staging.public.blob.vercel-storage.com/${pathname}`,
+        filename: input.filename,
+        contentType: input.contentType,
+        size: input.buffer.byteLength,
+        sha256,
+        ...(input.width !== undefined && { width: input.width }),
+        ...(input.height !== undefined && { height: input.height }),
+        title: input.title,
+        ...(input.alt !== undefined && { alt: input.alt }),
+        createdBy: "service:contentful-import",
+        createdAt: deps?.now ? deps.now() : new Date(),
+      };
+      await db.collection(COLLECTIONS.media).insertOne(stored as never);
+      return {
+        ok: true as const,
+        status: "created" as const,
+        reused: false as const,
+        doc: { ...stored, _id: id.toHexString() },
+      };
+    });
+
+    const report = await runContentfulImport(
+      snapshot,
+      { apply: true },
+      {
+        getContentDb: () => db,
+        blobReadWriteToken: "vercel_blob_rw_KmIXa14hB4dGuVjF_fakeStagingSecret",
+        createServerMediaFn: createServerMediaMock as never,
+      },
+    );
+
+    expect(report.ok).toBe(true);
+    const navMenu = store
+      .get(COLLECTIONS.globals)
+      ?.find((d) => (d.draft as Record<string, unknown>)?.kind === "navigationMenu");
+    expect(navMenu).toBeDefined();
+    const draftItems = (navMenu?.draft as { menuItems?: Array<{ groupName?: Record<string, string> }> })
+      ?.menuItems;
+    const pubItems = (navMenu?.published as { menuItems?: Array<{ groupName?: Record<string, string> }> })
+      ?.menuItems;
+    // Parent `navigationMenu` is `published`, child `menuGroup` is `changed`:
+    // draft must pick up CMA child edit, while published MUST retain CDA child label.
+    expect(draftItems?.[0]?.groupName?.["es-AR"]).toBe("Blog Borrador");
+    expect(pubItems?.[0]?.groupName?.["es-AR"]).toBe("Blog");
+  });
 });

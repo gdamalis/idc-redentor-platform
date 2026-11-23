@@ -111,12 +111,24 @@ async function main(): Promise<void> {
       "en-US": ["privacy"],
     };
 
+  let allowedNotFoundRoutes: string[] = [];
+
   if (args.fromDb) {
     const ctx = await loadParityMapsFromMongo();
     mediaMap = ctx.mediaMap;
     if (postSlugs.length === 0) postSlugs = [...ctx.postSlugs];
     if (sermonSlugs.length === 0) sermonSlugs = [...ctx.sermonSlugs];
     topicSlugsByLocale = ctx.topicSlugsByLocale;
+    allowedNotFoundRoutes = [
+      ...ctx.draftOnlyPostSlugs.flatMap((slug) => [
+        `/es-AR/blog/${slug}`,
+        `/en-US/blog/${slug}`,
+      ]),
+      ...ctx.draftOnlySermonSlugs.flatMap((slug) => [
+        `/es-AR/predicas/${slug}`,
+        `/en-US/predicas/${slug}`,
+      ]),
+    ];
   } else if (args.mediaMapFile) {
     mediaMap = await loadMediaMapFromJsonFile(args.mediaMapFile);
   }
@@ -146,6 +158,7 @@ async function main(): Promise<void> {
     routes,
     mediaMap,
     screenshotRoutes,
+    allowedNotFoundRoutes,
   });
 
   const markdown = formatPageParityReportMarkdown(report);

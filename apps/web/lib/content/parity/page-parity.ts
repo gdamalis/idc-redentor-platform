@@ -1,6 +1,6 @@
 import { inflateSync } from "node:zlib";
 import type { Locale } from "@idcr/content";
-import { assertSafeParityBaseUrl } from "./host-guard";
+import { assertSafeParityBaseUrl, validateParityBaseUrl } from "./host-guard";
 import {
   normalizeHtmlForPageParity,
   type MediaIdentityMap,
@@ -103,6 +103,8 @@ export interface RunPageParityOptions {
   /** Optional Playwright screenshot comparison on key routes (default `false`). */
   readonly screenshotRoutes?: readonly string[];
   readonly screenshotDiffThreshold?: number;
+  /** Routes explicitly expected to return HTTP 404 on both sides (e.g. draft-only slugs in published mode). */
+  readonly allowedNotFoundRoutes?: readonly string[];
   /** Optional PNG capture override for unit tests (defaults to headless Playwright Chromium). */
   readonly screenshotCapture?: (
     url: string,
@@ -302,6 +304,43 @@ export function comparePngPixels(
   };
 }
 
+const MAX_PARITY_REDIRECTS = 5;
+
+async function fetchWithSafeRedirects(
+  initialUrl: string,
+  headers: Readonly<Record<string, string>> | undefined,
+  fetchImpl: typeof fetch,
+): Promise<Response> {
+  let currentUrl = initialUrl;
+  for (let hop = 0; hop <= MAX_PARITY_REDIRECTS; hop += 1) {
+    assertSafeParityBaseUrl(currentUrl);
+    const res = await fetchImpl(currentUrl, {
+      method: "GET",
+      headers,
+      redirect: "manual",
+    });
+
+    const isRedirect = res.status >= 300 && res.status < 400;
+    const location = isRedirect ? res.headers.get("location") : null;
+    if (!isRedirect || !location) {
+      return res;
+    }
+
+    if (hop === MAX_PARITY_REDIRECTS) {
+      throw new Error(
+        `Too many redirects (>${MAX_PARITY_REDIRECTS}) while fetching ${initialUrl}`,
+      );
+    }
+
+    const nextUrl = new URL(location, currentUrl).toString();
+    // Validate redirect destination BEFORE issuing any request (production host deny guard)
+    assertSafeParityBaseUrl(nextUrl);
+    currentUrl = nextUrl;
+  }
+
+  throw new Error(`Redirect loop exceeded while fetching ${initialUrl}`);
+}
+
 async function runPlaywrightScreenshots(
   baseUrlA: string,
   baseUrlB: string,
@@ -368,6 +407,18 @@ async function runPlaywrightScreenshots(
           // ignore storage errors on opaque origins
         }
       });
+      // Enforce production-host deny list on every browser request and navigation redirect
+      await ctx.route("**/*", async (route) => {
+        const reqUrl = route.request().url();
+        if (/^https?:/i.test(reqUrl)) {
+          const check = validateParityBaseUrl(reqUrl);
+          if (!check.ok) {
+            await route.abort("blockedbyclient");
+            return;
+          }
+        }
+        await route.continue();
+      });
       return ctx;
     };
 
@@ -383,6 +434,7 @@ async function runPlaywrightScreenshots(
       const page = await context.newPage();
       try {
         await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
+        assertSafeParityBaseUrl(page.url());
         // Fallback click if a consent banner still renders with localized copy
         const consentBtn = page
           .locator(
@@ -457,19 +509,26 @@ export async function runPageParity(
   const baseUrlB = assertSafeParityBaseUrl(options.baseUrlB);
   const fetchImpl = options.fetchImpl ?? fetch;
 
+  const allowedNotFoundSet = new Set(
+    (options.allowedNotFoundRoutes ?? []).map((r) =>
+      r.startsWith("/") ? r : `/${r}`,
+    ),
+  );
   const routes: RouteParityResult[] = [];
 
   for (const route of options.routes) {
     const normalizedRoute = route.startsWith("/") ? route : `/${route}`;
     const [resA, resB] = await Promise.all([
-      fetchImpl(`${baseUrlA}${normalizedRoute}`, {
-        method: "GET",
-        headers: options.headersA,
-      }),
-      fetchImpl(`${baseUrlB}${normalizedRoute}`, {
-        method: "GET",
-        headers: options.headersB,
-      }),
+      fetchWithSafeRedirects(
+        `${baseUrlA}${normalizedRoute}`,
+        options.headersA,
+        fetchImpl,
+      ),
+      fetchWithSafeRedirects(
+        `${baseUrlB}${normalizedRoute}`,
+        options.headersB,
+        fetchImpl,
+      ),
     ]);
 
     if (resA.status !== resB.status) {
@@ -479,6 +538,19 @@ export async function runPageParity(
         statusB: resB.status,
         ok: false,
         reason: `HTTP status mismatch: A=${resA.status}, B=${resB.status}`,
+      });
+      continue;
+    }
+
+    const isAllowedNotFound =
+      resA.status === 404 && allowedNotFoundSet.has(normalizedRoute);
+    if (resA.status >= 400 && !isAllowedNotFound) {
+      routes.push({
+        route: normalizedRoute,
+        statusA: resA.status,
+        statusB: resB.status,
+        ok: false,
+        reason: `Unexpected HTTP error status ${resA.status} on both A and B`,
       });
       continue;
     }
