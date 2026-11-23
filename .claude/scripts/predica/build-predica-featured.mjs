@@ -3,7 +3,7 @@
  * build-predica-featured.mjs — Branded sermon FEATURED-IMAGE generator (title card).
  *
  * Reads a structured sermon.json and renders ONE 1200×630 PNG card showing the
- * sermon title + date in the website's visual style, for use as the Contentful
+ * sermon title + date in the website's visual style, for use as the sermon's
  * `featuredImage` (also the Open Graph / social card). The card is:
  *
  *   1. An AI-generated, non-figurative, atmospheric BACKGROUND (Google Gemini),

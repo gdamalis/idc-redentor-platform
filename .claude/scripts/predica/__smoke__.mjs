@@ -1,23 +1,24 @@
 #!/usr/bin/env node
 /**
- * Regression smoke check for the root-invoked /predica harness scripts (ICR-145, ICR-116).
+ * Regression smoke check for the root-invoked /predica harness scripts (ICR-145, ICR-116, ICR-204).
  *
- * Runs the render scripts (PDF + featured image) and the Contentful-entry schema
- * validator against the committed fixture, asserting each exits 0 AND produces a
- * positive signal — a non-empty output file for the renderers, an explicit stdout
- * marker for the validator.
+ * Runs the render scripts (PDF + featured image) and the admin-ingest payload
+ * builder against the committed fixture, asserting each exits 0 AND produces a
+ * positive signal — a non-empty output file for the renderers, explicit stdout
+ * markers for the validator and TipTap payload builder.
  *
  * Two things are guarded:
  *   1. Bare-specifier resolution of "@playwright/test" from the repo root (ICR-145):
  *      before that fix these scripts died with ERR_MODULE_NOT_FOUND, because
  *      @playwright/test was installed only into apps/web/node_modules and Node's
  *      resolution walk never reaches it.
- *   2. Fixture/schema drift (ICR-116): the committed fixture must satisfy BOTH
- *      validateSermon (renderers) and validateSermonForEntry (publisher). It
- *      previously satisfied only the first, silently.
+ *   2. Fixture/schema drift (ICR-116, ICR-204): the committed fixture must satisfy
+ *      BOTH validateSermon (renderers) and validateSermonJson + buildPredicaIngestPayload
+ *      (admin ingest publisher).
  *
- * Hermetic by construction: the featured script runs with --no-ai and the entry
- * builder runs as a dry run, so there is no network call and no API key is required.
+ * Hermetic by construction: the featured script runs with --no-ai and the payload
+ * builder runs offline (summary + --payload), so there is no network call and no
+ * API key or service token is required.
  *
  * Usage: pnpm predica:smoke
  */
@@ -47,19 +48,36 @@ const CASES = [
     outputs: ["featured.png"],
   },
   {
-    // Schema gate (ICR-116). The committed fixture must stay valid for the
-    // Contentful ENTRY builder, not just the renderers — the two validators are
-    // different, and the fixture used to satisfy only the first.
-    //
+    // Schema gate (ICR-116 / ICR-204). The committed fixture must stay valid for
+    // the admin-ingest payload builder, not just the renderers.
     // Hermetic: invoked with no flags this script is a pure validate-and-summarise
-    // dry run (see build-sermon-entry.mjs:18) — no network, no credentials, no
-    // writes — so it is safe in CI. If that ever stops being true, this case has to
-    // be reconsidered rather than quietly dropped.
-    script: "build-sermon-entry.mjs",
+    // dry run — no network, no credentials, no writes.
+    script: "build-sermon-payload.mjs",
     args: [],
     usesOutDir: false,
     outputs: [],
     stdoutIncludes: "sermon.json: VALID",
+  },
+  {
+    // Payload-shaping gate (ICR-204): verify --payload emits valid TipTap JSON
+    // for POST /api/predica/sermons with zero network or credentials.
+    script: "build-sermon-payload.mjs",
+    args: ["--payload"],
+    usesOutDir: false,
+    outputs: [],
+    assertJson: (parsed) => {
+      if (parsed?.mode !== "create") return "expected mode='create'";
+      if (parsed?.sermon?.content?.["es-AR"]?.type !== "doc") {
+        return "expected TipTap doc in sermon.content['es-AR']";
+      }
+      if (parsed?.sermon?.content?.["en-US"]?.type !== "doc") {
+        return "expected TipTap doc in sermon.content['en-US']";
+      }
+      if ("published" in parsed || "published" in (parsed.sermon ?? {})) {
+        return "payload must never include published state";
+      }
+      return null;
+    },
   },
 ];
 
@@ -83,8 +101,10 @@ try {
       usesOutDir,
       outputs,
       stdoutIncludes,
+      assertJson,
     } of CASES) {
       const scriptPath = path.join(HERE, script);
+      const label = args.length > 0 ? `${script} ${args.join(" ")}` : script;
       const res = spawnSync(
         process.execPath,
         [
@@ -97,46 +117,58 @@ try {
       );
 
       if (res.error) {
-        fail(`${script}: could not spawn — ${res.error.message}`);
+        fail(`${label}: could not spawn — ${res.error.message}`);
         continue;
       }
       if (res.status !== 0) {
         fail(
-          `${script}: exited ${res.status}\n` +
+          `${label}: exited ${res.status}\n` +
             `--- stdout ---\n${res.stdout}\n--- stderr ---\n${res.stderr}`,
         );
         continue;
       }
 
-      // Assert positively, same discipline as the byte-size check below: a validator
-      // that printed nothing is indistinguishable from one that never ran.
       if (stdoutIncludes) {
         if (!res.stdout.includes(stdoutIncludes)) {
           fail(
-            `${script}: stdout did not contain ${JSON.stringify(stdoutIncludes)}\n` +
+            `${label}: stdout did not contain ${JSON.stringify(stdoutIncludes)}\n` +
               `--- stdout ---\n${res.stdout}\n--- stderr ---\n${res.stderr}`,
           );
           continue;
         }
-        process.stdout.write(`✓ ${script} → ${stdoutIncludes}\n`);
+        process.stdout.write(`✓ ${label} → ${stdoutIncludes}\n`);
       }
 
-      // Assert positively: the artifact must exist AND be non-empty. A check that
-      // passes when nothing ran is worse than no check at all.
+      if (assertJson) {
+        let parsed;
+        try {
+          parsed = JSON.parse(res.stdout);
+        } catch (err) {
+          fail(`${label}: stdout was not valid JSON (${err.message})`);
+          continue;
+        }
+        const errMsg = assertJson(parsed);
+        if (errMsg) {
+          fail(`${label}: ${errMsg}`);
+          continue;
+        }
+        process.stdout.write(`✓ ${label} → valid TipTap ingest payload\n`);
+      }
+
       for (const name of outputs) {
         const outPath = path.join(outDir, name);
         if (!existsSync(outPath)) {
-          fail(`${script}: expected output missing: ${name}`);
+          fail(`${label}: expected output missing: ${name}`);
           continue;
         }
         const { size } = statSync(outPath);
         if (size < MIN_BYTES) {
           fail(
-            `${script}: ${name} is only ${size} bytes (expected >= ${MIN_BYTES})`,
+            `${label}: ${name} is only ${size} bytes (expected >= ${MIN_BYTES})`,
           );
           continue;
         }
-        process.stdout.write(`✓ ${script} → ${name} (${size} bytes)\n`);
+        process.stdout.write(`✓ ${label} → ${name} (${size} bytes)\n`);
       }
     }
   }
@@ -150,5 +182,5 @@ if (failures > 0) {
 }
 
 process.stdout.write(
-  "\n✓ predica smoke passed — scripts resolved @playwright/test and rendered\n",
+  "\n✓ predica smoke passed — scripts resolved @playwright/test, rendered PDFs/card, and built TipTap payload\n",
 );

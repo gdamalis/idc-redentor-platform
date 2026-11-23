@@ -22,8 +22,8 @@
  *
  * The PDF renders the SAME body the reader/preacher sees and edits on the website
  * (the localized rich-text `content[]`) plus the structured `scriptureReferences`.
- * There is no separately-authored PDF summary — the post body IS the PDF body, so a
- * Contentful edit can regenerate the PDF. `thesis`/`mainPoints`/SEO live on the entry
+ * There is no separately-authored PDF summary — the post body IS the PDF body, so an
+ * admin editor save can regenerate the PDF automatically. `thesis`/`mainPoints`/SEO live on the entry
  * as metadata. See docs/architecture/predica-pdf-mirrors-post.md.
  *
  * ── sermon.json contract (PDF-facing subset) ──────────────────────────────────
