@@ -1,4 +1,4 @@
-import type { Browser } from "playwright-core";
+import type { Browser, Page } from "playwright-core";
 import type { Locale, SermonFields } from "@idcr/content";
 import { LOGO_PNG_DATA_URI } from "./pdf-assets";
 import {
@@ -126,23 +126,18 @@ async function launchBrowser(): Promise<Browser> {
   return devChromium.launch();
 }
 
-async function renderLocalePdf(
-  browser: Browser,
+async function renderLocalePdfOnPage(
+  page: Page,
   localeData: SermonPdfLocaleData,
   common: SermonPdfCommon,
   locale: Locale,
   version: number,
 ): Promise<Buffer> {
   const html = buildSelfContainedPdfHtml(localeData, common, locale, version);
-  const page = await browser.newPage();
-  try {
-    await page.setContent(html, { waitUntil: "load" });
-    await page.evaluate(() => document.fonts.ready);
-    await page.emulateMedia({ media: "print" });
-    return await page.pdf(PDF_OPTIONS);
-  } finally {
-    await page.close();
-  }
+  await page.setContent(html, { waitUntil: "load" });
+  await page.evaluate(() => document.fonts.ready);
+  await page.emulateMedia({ media: "print" });
+  return await page.pdf(PDF_OPTIONS);
 }
 
 export interface RenderedSermonPdfs {
@@ -152,8 +147,10 @@ export interface RenderedSermonPdfs {
 
 /**
  * Renders branded sermon PDF buffer(s) for one sermon snapshot in a single
- * Chromium instance (always `"es-AR"`, plus `"en-US"` when English content
- * exists).
+ * Chromium instance & single reused Page (always `"es-AR"`, plus `"en-US"`
+ * when English content exists). Reusing one Page prevents `--single-process`
+ * + `--no-startup-window` serverless Chromium from exiting when the first page
+ * closes before the second locale renders.
  */
 export async function renderSermonPdfs(
   snapshot: SermonFields,
@@ -167,27 +164,29 @@ export async function renderSermonPdfs(
 
   const browser = await browserFactory();
   try {
-    // Render sequentially (close es-AR page before opening en-US) so
-    // --single-process serverless Chromium never runs two concurrent page.pdf()
-    // jobs in the same process or exceeds Lambda memory limits.
-    const pdfEsAR = await renderLocalePdf(
-      browser,
-      esData,
-      common,
-      "es-AR",
-      version,
-    );
-    if (enData) {
-      const pdfEnUS = await renderLocalePdf(
-        browser,
-        enData,
+    const page = await browser.newPage();
+    try {
+      const pdfEsAR = await renderLocalePdfOnPage(
+        page,
+        esData,
         common,
-        "en-US",
+        "es-AR",
         version,
       );
-      return { "es-AR": pdfEsAR, "en-US": pdfEnUS };
+      if (enData) {
+        const pdfEnUS = await renderLocalePdfOnPage(
+          page,
+          enData,
+          common,
+          "en-US",
+          version,
+        );
+        return { "es-AR": pdfEsAR, "en-US": pdfEnUS };
+      }
+      return { "es-AR": pdfEsAR };
+    } finally {
+      await page.close().catch(() => undefined);
     }
-    return { "es-AR": pdfEsAR };
   } finally {
     await browser.close();
   }

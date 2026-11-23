@@ -98,7 +98,7 @@ describe("render-sermon-pdf", () => {
     expect(browserClose).toHaveBeenCalledTimes(1);
   });
 
-  it("renders both es-AR and en-US PDFs and always closes browser", async () => {
+  it("renders both es-AR and en-US PDFs on one reused Page and always closes browser", async () => {
     const { browser, htmls, pageClose, browserClose } = makeFakeBrowser();
     const out = await renderSermonPdfs(
       BILINGUAL_SERMON,
@@ -110,7 +110,8 @@ describe("render-sermon-pdf", () => {
     expect(out["es-AR"]).toBeInstanceOf(Buffer);
     expect(out["en-US"]).toBeInstanceOf(Buffer);
     expect(htmls).toHaveLength(2);
-    expect(pageClose).toHaveBeenCalledTimes(2);
+    expect(browser.newPage).toHaveBeenCalledTimes(1);
+    expect(pageClose).toHaveBeenCalledTimes(1);
     expect(browserClose).toHaveBeenCalledTimes(1);
   });
 });
