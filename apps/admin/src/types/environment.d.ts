@@ -57,5 +57,9 @@ declare namespace NodeJS {
     BLOB_READ_WRITE_TOKEN?: string;
     // Reserved for ICR-177 private finance invoice attachments store.
     FINANCE_BLOB_READ_WRITE_TOKEN?: string;
+
+    // Sermon PDF background worker (ICR-200, server-only — never NEXT_PUBLIC_*)
+    // Bearer secret guarding GET /api/content/pdf-worker (scheduled by ICR-205).
+    CRON_SECRET?: string;
   }
 }
