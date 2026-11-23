@@ -22,6 +22,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/content/pdf-worker": [
       "../../node_modules/.pnpm/playwright-core@*/node_modules/playwright-core/browsers.json",
+      "../../node_modules/.pnpm/@sparticuz+chromium@*/node_modules/@sparticuz/chromium/bin/**",
     ],
   },
   images: {

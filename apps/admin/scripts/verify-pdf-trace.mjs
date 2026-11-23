@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 const MANIFEST = ".next/server/app/api/content/pdf-worker/route.js.nft.json";
-const REQUIRED_ASSET = "browsers.json";
+const REQUIRED_ASSETS = ["browsers.json", "chromium.br"];
 
 /** True when some traced path is exactly, or ends with a path segment equal to, `basename`. */
 export function hasTracedAsset(files, basename) {
@@ -28,18 +28,20 @@ function main() {
   }
 
   const files = manifest.files ?? [];
-  if (!hasTracedAsset(files, REQUIRED_ASSET)) {
-    console.error(
-      `[verify:trace] ${REQUIRED_ASSET} is NOT traced into the admin sermon PDF worker function.\n` +
-        `The Chromium render will fail in production with "Cannot find module …/${REQUIRED_ASSET}".\n` +
-        `Fix: restore the outputFileTracingIncludes entry for ` +
-        `"/api/content/pdf-worker" in apps/admin/next.config.ts (ICR-200).`,
-    );
-    process.exit(1);
-  }
+  for (const asset of REQUIRED_ASSETS) {
+    if (!hasTracedAsset(files, asset)) {
+      console.error(
+        `[verify:trace] ${asset} is NOT traced into the admin sermon PDF worker function.\n` +
+          `The Chromium render will fail in production without "${asset}".\n` +
+          `Fix: restore the outputFileTracingIncludes entry for ` +
+          `"/api/content/pdf-worker" in apps/admin/next.config.ts (ICR-200).`,
+      );
+      process.exit(1);
+    }
 
-  const match = files.find((file) => file.endsWith(`/${REQUIRED_ASSET}`));
-  console.log(`[verify:trace] OK — ${REQUIRED_ASSET} is traced: ${match}`);
+    const match = files.find((file) => file.endsWith(`/${asset}`));
+    console.log(`[verify:trace] OK — ${asset} is traced: ${match}`);
+  }
 }
 
 if (
