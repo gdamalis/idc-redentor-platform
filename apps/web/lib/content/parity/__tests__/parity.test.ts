@@ -77,6 +77,8 @@ describe("normalizeHtmlForPageParity & media identity mapping (F-C3)", () => {
       <!doctype html>
       <html>
         <head>
+          <meta name="sentry-trace" content="42cfd6ebfdf1405c90c4126f7deb2f72-b93b91c275f67565-1" />
+          <meta name="baggage" content="sentry-environment=development,sentry-trace_id=42cfd6eb" />
           <meta property="og:image" content="https://images.ctfassets.net/vg9le24yw8hb/cfAssetHero/abc/hero.jpg" />
           <link rel="stylesheet" href="/_next/static/css/aaa111.css?dpl=dpl_A" />
           <script type="application/ld+json">{"image":"https://images.ctfassets.net/vg9le24yw8hb/cfAssetHero/abc/hero.jpg","@type":"Article"}</script>
@@ -96,6 +98,8 @@ describe("normalizeHtmlForPageParity & media identity mapping (F-C3)", () => {
       <!doctype html>
       <html>
         <head>
+          <meta name="sentry-trace" content="b1a8db8dea4b452e8fc470638c0ff14b-b5f2325d3fe60043-1" />
+          <meta name="baggage" content="sentry-environment=development,sentry-trace_id=b1a8db8d" />
           <meta property="og:image" content="https://store1.public.blob.vercel-storage.com/media/670000000000000000000001/hero.jpg" />
           <link rel="stylesheet" href="/_next/static/css/bbb222.css?dpl=dpl_B" />
           <script type="application/ld+json">{"@type":"Article","image":"https://store1.public.blob.vercel-storage.com/media/670000000000000000000001/hero.jpg"}</script>

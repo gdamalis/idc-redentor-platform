@@ -250,6 +250,12 @@ export function normalizeHtmlForPageParity(
     )
     .replace(/[?&]dpl=[a-zA-Z0-9_-]+/g, "");
 
+  // 3b. Strip per-request Sentry trace / baggage meta tags (`@sentry/nextjs` clientTraceMetadata)
+  out = out.replace(
+    /<meta\s+name="(?:sentry-trace|baggage)"\s+content="[^"]*"\s*\/?>/gi,
+    "",
+  );
+
   // 4. Normalize media URLs in src / href / content / poster / srcset attributes
   out = out.replace(
     /\b(src|href|content|poster)\s*=\s*"([^"]*)"/gi,
