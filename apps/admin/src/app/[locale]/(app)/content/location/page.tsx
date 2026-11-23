@@ -1,22 +1,41 @@
-import { renderShellEditPage } from "../shell-helpers";
+import { notFound } from "next/navigation";
+import type { GlobalFields, LocationFields } from "@idcr/content";
+import type { SerializedContentDoc } from "@src/app/[locale]/(app)/content/actions";
+import { PermissionDenied } from "@src/components/rbac/permission-denied";
+import { LocationEditor } from "@src/components/content/site/location-editor";
+import { loadFixedEditorPageData } from "@src/service/content/site/page-loader";
 
-/** Direct-to-editor singleton global. Replaced exclusively by Wave 4 (`ICR-198`). */
 export default async function LocationGlobalPage({
   params,
 }: {
   readonly params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  return renderShellEditPage({
+  const data = await loadFixedEditorPageData<GlobalFields>({
     locale,
     collection: "globals",
-    fixedMachineName: "location",
+    machineName: "location",
     backHref: "/content",
     backLabelKey: "header.backToHub",
-    editableField: {
-      kind: "plainText",
-      key: "addressLine1",
-      labelKey: "lists.columns.slug",
-    },
   });
+
+  if (data.forbidden) return <PermissionDenied />;
+  if (data.initialValues.kind !== "location") notFound();
+
+  return (
+    <LocationEditor
+      initialDoc={data.initialDoc as SerializedContentDoc<LocationFields>}
+      initialStatus={data.initialStatus}
+      initialValues={data.initialValues}
+      backHref={data.backHref}
+      backLabel={data.backLabel}
+      friendlyTitle={data.friendlyTitle}
+      machineName={data.machineName}
+      appearsOn={data.appearsOn}
+      liveUrl={data.liveUrl}
+      permissions={data.permissions}
+      isTrialMode={data.isTrialMode}
+      isPublishEmailsEnabled={data.isPublishEmailsEnabled}
+    />
+  );
 }

@@ -1,5 +1,6 @@
+import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { Editor } from "@tiptap/react";
@@ -264,5 +265,155 @@ describe("RichTextEditor component & lossy-load detection", () => {
 
     // Unsupported node in inline profile triggers lossy-load detection
     expect(isLossyRichTextLoad(validArticle, roundTripped, "inline")).toBe(true);
+  });
+
+  it("emits only plain Object.prototype objects (never Object.create(null) attrs) for React 19 Flight Server Actions", async () => {
+    const onChange = vi.fn<(doc: RichTextDoc) => void>();
+    let capturedEditor: Editor | null = null;
+
+    renderWithIntl(
+      <RichTextEditor
+        profile="sermon"
+        onChange={onChange}
+        toolbarExtras={(ed) => {
+          capturedEditor = ed;
+          return null;
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(capturedEditor).not.toBeNull();
+    });
+
+    onChange.mockClear();
+
+    act(() => {
+      capturedEditor!.commands.setContent(
+        {
+          type: "doc",
+          content: [
+            {
+              type: "heading",
+              attrs: { level: 2 },
+              content: [{ type: "text", text: "Título" }],
+            },
+            {
+              type: "orderedList",
+              attrs: { start: 1 },
+              content: [
+                {
+                  type: "listItem",
+                  content: [
+                    {
+                      type: "paragraph",
+                      content: [
+                        {
+                          type: "text",
+                          text: "Enlace",
+                          marks: [
+                            { type: "link", attrs: { href: "/comunidad" } },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              type: "embeddedMedia",
+              attrs: {
+                mediaId: "000000000000000000000001",
+                display: "image",
+              },
+            },
+          ],
+        },
+        { emitUpdate: true },
+      );
+    });
+
+    expect(onChange).toHaveBeenCalled();
+    const emitted = onChange.mock.calls.at(-1)?.[0];
+    expect(emitted).toBeDefined();
+    expect(validateRichText(emitted!, "sermon")).toEqual([]);
+    expect(emitted!.content.map((node) => node.type)).toEqual(
+      expect.arrayContaining(["heading", "orderedList", "embeddedMedia"]),
+    );
+
+    const assertPlainObjects = (value: unknown, path = "$"): void => {
+      if (value === null || typeof value !== "object") return;
+      if (Array.isArray(value)) {
+        value.forEach((item, index) =>
+          assertPlainObjects(item, `${path}[${index}]`),
+        );
+        return;
+      }
+      expect(
+        Object.getPrototypeOf(value),
+        `Expected Object.prototype at ${path}`,
+      ).toBe(Object.prototype);
+      for (const [key, nested] of Object.entries(value)) {
+        assertPlainObjects(nested, `${path}.${key}`);
+      }
+    };
+
+    assertPlainObjects(emitted);
+  });
+
+  it("does not re-trigger false-positive lossy-load warnings when edited and re-rendered with an inline onLossyLoad callback", async () => {
+    const initialDoc: RichTextDoc = {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "Inicial" }] },
+      ],
+    };
+    const onLossyCalls: boolean[] = [];
+    let capturedEditor: Editor | null = null;
+
+    function ControlledHarness() {
+      const [doc, setDoc] = React.useState<RichTextDoc>(initialDoc);
+      return (
+        <RichTextEditor
+          profile="inline"
+          value={doc}
+          onChange={setDoc}
+          onLossyLoad={(lossy) => {
+            onLossyCalls.push(lossy);
+          }}
+          toolbarExtras={(ed) => {
+            capturedEditor = ed;
+            return null;
+          }}
+        />
+      );
+    }
+
+    renderWithIntl(<ControlledHarness />);
+
+    await waitFor(() => {
+      expect(capturedEditor).not.toBeNull();
+    });
+    expect(onLossyCalls).toEqual([false]);
+    expect(screen.queryByTestId("rich-text-lossy-notice")).toBeNull();
+
+    act(() => {
+      capturedEditor!.commands.setContent(
+        {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Inicial editado" }],
+            },
+          ],
+        },
+        { emitUpdate: true },
+      );
+    });
+
+    expect(onLossyCalls).toEqual([false]);
+    expect(screen.queryByTestId("rich-text-lossy-notice")).toBeNull();
   });
 });
