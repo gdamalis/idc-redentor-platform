@@ -1,22 +1,32 @@
-import { renderShellEditPage } from "../../shell-helpers";
+import { PermissionDenied } from "@src/components/rbac/permission-denied";
+import { AuthorEditor } from "@src/components/content/editorial/author-editor";
+import { isContentTrialMode } from "@src/lib/content/trial-mode";
+import {
+  extractPermissions,
+  requireContentPageAuth,
+} from "../../shell-helpers";
 
-/** Replaced exclusively by Wave 4 (`ICR-199`). */
 export default async function NewAuthorPage({
   params,
 }: {
   readonly params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  return renderShellEditPage({
-    locale,
-    collection: "authors",
-    backHref: "/content/authors",
-    backLabelKey: "types.authors",
-    editableField: {
-      kind: "plainText",
-      key: "name",
-      labelKey: "lists.columns.name",
-    },
-    defaultDraft: { name: "" },
-  });
+  const authz = await requireContentPageAuth(locale);
+  if (!authz) return <PermissionDenied />;
+
+  return (
+    <AuthorEditor
+      initialStatus="draft"
+      initialValues={{ name: "" }}
+      initialAvatar={null}
+      initialLinkedUser={null}
+      permissions={{
+        ...extractPermissions(authz),
+        canManageMedia: authz.permissions.has("media:manage"),
+        canReadUsers: authz.permissions.has("users:read"),
+      }}
+      isTrialMode={isContentTrialMode()}
+    />
+  );
 }

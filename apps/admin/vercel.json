@@ -3,5 +3,10 @@
   "framework": "nextjs",
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "next build",
-  "outputDirectory": ".next"
+  "outputDirectory": ".next",
+  "functions": {
+    "src/app/api/content/pdf-worker/route.ts": {
+      "maxDuration": 60
+    }
+  }
 }

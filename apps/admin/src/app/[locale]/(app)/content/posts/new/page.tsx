@@ -1,22 +1,34 @@
-import { renderShellEditPage } from "../../shell-helpers";
+import { PermissionDenied } from "@src/components/rbac/permission-denied";
+import { PostEditor } from "@src/components/content/editorial/post-editor";
+import { isPublishEmailsEnabled } from "@src/lib/content/revalidate";
+import { isContentTrialMode } from "@src/lib/content/trial-mode";
+import {
+  extractPermissions,
+  requireContentPageAuth,
+} from "../../shell-helpers";
 
-/** Replaced exclusively by Wave 4 (`ICR-199`). */
 export default async function NewPostPage({
   params,
 }: {
   readonly params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  return renderShellEditPage({
-    locale,
-    collection: "posts",
-    backHref: "/content/posts",
-    backLabelKey: "types.posts",
-    editableField: {
-      kind: "localizedText",
-      key: "title",
-      labelKey: "lists.columns.title",
-    },
-    defaultDraft: { title: { "es-AR": "" } },
-  });
+  const authz = await requireContentPageAuth(locale);
+  if (!authz) return <PermissionDenied />;
+
+  return (
+    <PostEditor
+      initialStatus="draft"
+      initialValues={{ title: { "es-AR": "" } }}
+      initialFeaturedImage={null}
+      initialAuthor={null}
+      initialRelatedPosts={[]}
+      permissions={{
+        ...extractPermissions(authz),
+        canManageMedia: authz.permissions.has("media:manage"),
+      }}
+      isTrialMode={isContentTrialMode()}
+      isPublishEmailsEnabled={isPublishEmailsEnabled()}
+    />
+  );
 }
