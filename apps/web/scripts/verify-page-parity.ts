@@ -164,9 +164,8 @@ async function main(): Promise<void> {
   }
 
   console.log(markdown);
-  if (!report.ok) {
-    process.exit(1);
-  }
+  // Close cleanly — `--from-db` opens the shared MongoDB connection pool.
+  process.exit(report.ok ? 0 : 1);
 }
 
 main().catch((err) => {

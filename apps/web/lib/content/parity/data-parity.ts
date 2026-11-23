@@ -430,8 +430,41 @@ function compareValues(
     return;
   }
 
+  // Contentful GraphQL returns Symbol verse coordinates as strings ("8"), while `lib/content/getSermons.ts`
+  // parses them to numbers (8) matching `apps/web/src/types/Sermon.ts` (`ICR-201` `lib/content/types.ts:45`).
+  if (
+    path.includes("scriptureReferences[") &&
+    (leaf === "chapter" || leaf === "fromVerse" || leaf === "toVerse") &&
+    ((typeof cfValue === "string" && typeof mongoValue === "number") ||
+      (typeof cfValue === "number" && typeof mongoValue === "string")) &&
+    String(cfValue).trim() === String(mongoValue)
+  ) {
+    return;
+  }
+
   // Normalize URLs
   if (typeof cfValue === "string" && typeof mongoValue === "string") {
+    if (path.endsWith(".platform") && path.includes("socialLinks")) {
+      if (cfValue.trim().toLowerCase() === mongoValue.trim().toLowerCase()) {
+        return;
+      }
+    }
+    // Contentful GraphQL appends `T00:00:00.000Z` to date-only fields; `@idcr/content` stores `YYYY-MM-DD`.
+    if (leaf === "sermonDate" || leaf === "publishedDate") {
+      const stripMidnight = (s: string) => s.replace(/T00:00:00(?:\.000)?Z$/, "");
+      if (stripMidnight(cfValue) === stripMidnight(mongoValue)) {
+        return;
+      }
+    }
+    // `ICR-196` `createServerMedia` trims leading/trailing whitespace on asset titles.
+    if (
+      leaf === "title" &&
+      /(featuredImage|image|logo|avatar|audio|pdfSummary)\.title$/.test(path)
+    ) {
+      if (cfValue.trim() === mongoValue.trim()) {
+        return;
+      }
+    }
     if (path.endsWith(".url") || path === "url") {
       const a = normalizeMediaUrl(cfValue, ctx.mediaMap);
       const b = normalizeMediaUrl(mongoValue, ctx.mediaMap);
@@ -572,7 +605,26 @@ export async function runDataParity(
   ) => {
     const beforeCount = diffs.length;
     try {
-      const [cfVal, mgVal] = await fetchPair();
+      let pair: readonly [unknown, unknown] | undefined;
+      let lastErr: unknown;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          pair = await fetchPair();
+          lastErr = undefined;
+          break;
+        } catch (err) {
+          lastErr = err;
+          const msg = err instanceof Error ? err.message : String(err);
+          const isTransient =
+            /Unexpected end of JSON|fetch failed|ECONNRESET|ETIMEDOUT|429/i.test(
+              msg,
+            );
+          if (!isTransient || attempt === 2) throw err;
+          await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+        }
+      }
+      if (lastErr !== undefined || !pair) throw lastErr;
+      const [cfVal, mgVal] = pair;
       compareValues(cfVal, mgVal, "$", {
         check,
         mode,

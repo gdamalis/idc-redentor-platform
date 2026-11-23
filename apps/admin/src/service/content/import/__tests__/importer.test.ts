@@ -303,7 +303,6 @@ function buildFullSyntheticSnapshot(): LoadedContentfulSnapshot {
         machineName: { "es-AR": "event-sunday-meetings" },
         eventInfo: { "es-AR": link("Entry", "cf-event-1") },
         location: { "es-AR": link("Entry", "cf-location-1") },
-        image: { "es-AR": link("Asset", "cf-asset-img") },
       },
     },
 
@@ -325,7 +324,7 @@ function buildFullSyntheticSnapshot(): LoadedContentfulSnapshot {
     {
       sys: publishedSys("cf-social-1", "socialLink"),
       fields: {
-        platform: { "es-AR": "instagram" },
+        platform: { "es-AR": "Instagram" },
         url: { "es-AR": "https://instagram.com/example" },
       },
     },

@@ -102,9 +102,8 @@ async function main(): Promise<void> {
 
   console.log(markdown);
 
-  if (!report.ok) {
-    process.exit(1);
-  }
+  // Close cleanly — the shared MongoDB connection pool keeps the event loop alive otherwise.
+  process.exit(report.ok ? 0 : 1);
 }
 
 main().catch((err) => {

@@ -851,10 +851,10 @@ export function planContentImport(
             );
             continue;
           }
-          const platform = getDefaultField<SocialLinkFields["platform"]>(
-            socialEntry,
-            "platform",
-          );
+          const rawPlatform = getDefaultField<string>(socialEntry, "platform");
+          const platform = rawPlatform?.trim().toLowerCase() as
+            | SocialLinkFields["platform"]
+            | undefined;
           const url = getDefaultField<string>(socialEntry, "url");
           if (platform && url) {
             socialLinks.push({ platform, url });

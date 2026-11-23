@@ -248,17 +248,31 @@ export function planMediaImport(
   const mergedDuplicateAssets: MergedDuplicateAssetReport[] = [];
   const conflictingDuplicateAssets: ConflictingDuplicateAssetReport[] = [];
 
-  for (const [sha256, groupUnits] of unitsBySha.entries()) {
+  for (const [sha256, rawGroupUnits] of unitsBySha.entries()) {
+    // Deterministic canonical ordering: referenced assets first, then Contentful asset ID.
+    const groupUnits = [...rawGroupUnits].sort((a, b) => {
+      const aRef = referencedAssetIds.has(a.asset.sys.id) ? 0 : 1;
+      const bRef = referencedAssetIds.has(b.asset.sys.id) ? 0 : 1;
+      if (aRef !== bRef) return aRef - bRef;
+      return a.asset.sys.id.localeCompare(b.asset.sys.id);
+    });
     const first = groupUnits[0]!;
     const distinctAssetIds = [
       ...new Set(groupUnits.map((u) => u.asset.sys.id)),
-    ].sort();
+    ];
 
     if (distinctAssetIds.length > 1) {
+      const referencedInGroup = distinctAssetIds.filter((id) =>
+        referencedAssetIds.has(id),
+      );
       const titleSignatures = new Set(
         groupUnits.map((u) => normalizedTitleSignature(u.title)),
       );
-      if (titleSignatures.size > 1) {
+      // If strictly one asset is referenced and the rest are unreferenced duplicates,
+      // the referenced asset's title/metadata wins deterministically without a blocking conflict.
+      const isAmbiguousTitleConflict =
+        titleSignatures.size > 1 && referencedInGroup.length !== 1;
+      if (isAmbiguousTitleConflict) {
         const titlesByAsset: Record<
           string,
           Readonly<Record<string, string | undefined>>
@@ -271,14 +285,16 @@ export function planMediaImport(
         }
         conflictingDuplicateAssets.push({
           sha256,
-          assetIds: distinctAssetIds,
+          assetIds: [...distinctAssetIds].sort(),
           titlesByAsset,
         });
       } else {
         mergedDuplicateAssets.push({
           sha256,
-          canonicalAssetId: distinctAssetIds[0]!,
-          mergedAssetIds: distinctAssetIds.slice(1),
+          canonicalAssetId: first.asset.sys.id,
+          mergedAssetIds: distinctAssetIds.filter(
+            (id) => id !== first.asset.sys.id,
+          ),
           filename: first.file.fileName,
         });
       }

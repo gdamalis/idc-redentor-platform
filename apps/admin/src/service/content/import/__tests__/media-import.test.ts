@@ -422,6 +422,21 @@ describe("planMediaImport & executeMediaImport (AC2, AC3, AC4)", () => {
       "asset-logo-1",
       "asset-logo-dup",
     ]);
+
+    // When strictly one duplicate is referenced and the other is unreferenced,
+    // the referenced asset's title wins deterministically and merges without conflict.
+    const resolvedPlan = planMediaImport(
+      conflictingManifest,
+      new Set(["asset-logo-dup"]),
+    );
+    expect(resolvedPlan.conflictingDuplicateAssets).toHaveLength(0);
+    expect(resolvedPlan.mergedDuplicateAssets).toEqual([
+      expect.objectContaining({
+        canonicalAssetId: "asset-logo-dup",
+        mergedAssetIds: ["asset-logo-1"],
+      }),
+    ]);
+    expect(resolvedPlan.groups[0]?.title["es-AR"]).toBe("Otro Título Distinto");
   });
 
   it("skips archived fileless CMA assets without reporting missingAssetFiles (C2)", () => {

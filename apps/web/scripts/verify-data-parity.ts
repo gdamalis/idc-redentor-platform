@@ -11,13 +11,40 @@
  *     [--mode published|draft|both] [--report-dir /path/to/reports]
  */
 import { mkdir, writeFile } from "node:fs/promises";
+import Module from "node:module";
 import path from "node:path";
-import {
-  formatDataParityReportMarkdown,
-  loadParityMapsFromMongo,
-  runDataParity,
-  type ParityMode,
-} from "../lib/content/parity";
+import type { ParityMode } from "../lib/content/parity";
+
+/**
+ * Standalone Node CLI shim for `next/cache`: `apps/web/lib/content/cache.ts` wraps
+ * published readers in Next's `unstable_cache`, which requires Next's runtime
+ * `incrementalCache` AsyncLocalStorage store. Pass through directly when running
+ * the offline CLI against live MongoDB + Contentful.
+ */
+function installCliNextCacheShim(): void {
+  const nextCacheShim = {
+    unstable_cache: <T extends (...args: never[]) => unknown>(fn: T): T => fn,
+    revalidateTag: () => undefined,
+    revalidatePath: () => undefined,
+  };
+
+  const mod = Module as unknown as {
+    _load?: (request: string, parent: unknown, isMain: boolean) => unknown;
+  };
+  if (typeof mod._load === "function") {
+    const origLoad = mod._load;
+    mod._load = function patchedLoad(
+      request: string,
+      parent: unknown,
+      isMain: boolean,
+    ) {
+      if (request === "next/cache") {
+        return nextCacheShim;
+      }
+      return origLoad.call(this, request, parent, isMain);
+    };
+  }
+}
 
 function parseArgs(argv: readonly string[]): {
   readonly modes: readonly ParityMode[];
@@ -48,6 +75,13 @@ function parseArgs(argv: readonly string[]): {
 }
 
 async function main(): Promise<void> {
+  installCliNextCacheShim();
+  const {
+    formatDataParityReportMarkdown,
+    loadParityMapsFromMongo,
+    runDataParity,
+  } = await import("../lib/content/parity");
+
   const { modes, reportDir } = parseArgs(process.argv.slice(2));
   const ctx = await loadParityMapsFromMongo();
 
@@ -78,9 +112,8 @@ async function main(): Promise<void> {
   }
 
   console.log(markdown);
-  if (!report.ok) {
-    process.exit(1);
-  }
+  // Close cleanly — the shared MongoDB connection pool keeps the event loop alive otherwise.
+  process.exit(report.ok ? 0 : 1);
 }
 
 main().catch((err) => {
