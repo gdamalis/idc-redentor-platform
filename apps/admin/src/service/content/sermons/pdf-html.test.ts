@@ -78,7 +78,48 @@ describe("pdf-html", () => {
     expect(html).not.toContain("fonts.googleapis.com");
     expect(html).toContain("Iglesia de Cristo Redentor · v3");
     expect(html).toContain("Juan Pérez · María Gómez");
-    expect(html).toContain("Efesios 2:8-9 (NVI)");
+    expect(html).toContain("Efesios 2:8-9 (RVR1960)");
     expect(renderScriptureReferences(undefined, "en-US")).toBe("");
+  });
+
+  it("prints each scripture reference's actual stored Bible version per locale and falls back only when absent", () => {
+    const refs = [
+      {
+        chapter: "1",
+        fromVerse: "24",
+        "es-AR": {
+          book: "Judas",
+          verseContent: "Al único Dios",
+          bibleVersion: " RVR1960 ",
+        },
+        "en-US": {
+          book: "Jude",
+          verseContent: "Now unto him",
+          bibleVersion: "KJV",
+        },
+      },
+      {
+        chapter: "3",
+        fromVerse: "16",
+        "es-AR": {
+          book: "Juan",
+          verseContent: "Porque de tal manera",
+          bibleVersion: "   ",
+        },
+        "en-US": {
+          book: "John",
+          verseContent: "For God so loved",
+          bibleVersion: "",
+        },
+      },
+    ] as const;
+
+    const esHtml = renderScriptureReferences(refs, "es-AR");
+    expect(esHtml).toContain("Judas 1:24 (RVR1960)");
+    expect(esHtml).toContain("Juan 3:16 (NVI)");
+
+    const enHtml = renderScriptureReferences(refs, "en-US");
+    expect(enHtml).toContain("Jude 1:24 (KJV)");
+    expect(enHtml).toContain("John 3:16 (NIV)");
   });
 });

@@ -135,10 +135,18 @@ async function processClaimedJob(
     }
 
     const draft = loaded.doc.draft;
-    const { contentHash: renderedHash, resolved } = await deps.computeHash(
+    const { contentHash: computedHash, resolved } = await deps.computeHash(
       PDF_WORKER_CALLER,
       draft,
     );
+    // Use the sermon's persisted `draft.contentHash` as the optimistic swap
+    // guard when present: if a referenced author's name or Bible verse was
+    // edited after the sermon was saved, `computedHash` diverges from the
+    // persisted hash even though the sermon draft itself did not change.
+    // Swapping and completing against `expectedHash` renders the latest
+    // dependency text without looping, while genuine mid-render sermon edits
+    // (which advance `draft.contentHash` in MongoDB) are still caught as stale.
+    const expectedHash = draft.contentHash ?? computedHash;
     const version = nextContentPdfVersion(claimed);
     const renderedBuffers = await deps.renderPdfs(draft, resolved, version);
 
@@ -179,14 +187,14 @@ async function processClaimedJob(
     const swapResult = await deps.updateSermonPdfMedia(PDF_WORKER_CALLER, {
       docId: sermonId,
       pdfSummaryMediaId: nextPdfMap,
-      expectedContentHash: renderedHash,
+      expectedContentHash: expectedHash,
     });
     if (!swapResult.ok) {
       throw new Error(`updateSermonPdfMedia failed: ${swapResult.reason}`);
     }
 
     // Stale render: an editor saved newer text mid-render, so neither draft
-    // nor published matched `renderedHash`. Delete the unattached uploads and
+    // nor published matched `expectedHash`. Delete the unattached uploads and
     // release the lock so the next tick renders the newer draft immediately.
     if (!swapResult.updatedDraft && !swapResult.updatedPublished) {
       await bestEffortDeleteMediaIds(
@@ -214,7 +222,7 @@ async function processClaimedJob(
 
     await deps.completeJob(
       sermonId,
-      renderedHash,
+      expectedHash,
       claimed.forceGeneration ?? 0,
       version,
       now,

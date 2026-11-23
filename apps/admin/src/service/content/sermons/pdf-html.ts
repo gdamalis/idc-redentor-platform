@@ -142,7 +142,8 @@ export function renderScriptureReferences(
       const verseRange = ref.toVerse
         ? `${ref.fromVerse}-${ref.toVerse}`
         : ref.fromVerse;
-      const refLine = `${lv.book} ${ref.chapter}:${verseRange} (${L.bibleVersion})`;
+      const version = lv.bibleVersion.trim() || L.bibleVersion;
+      const refLine = `${lv.book} ${ref.chapter}:${verseRange} (${version})`;
       const verse = lv.verseContent
         ? `\n          <blockquote class="verse">${e(lv.verseContent)}</blockquote>`
         : "";

@@ -176,6 +176,37 @@ describe("pdf-worker.service", () => {
     expect(deps.deleteMedia).toHaveBeenCalledWith(PDF_WORKER_CALLER, "pub-old-en");
   });
 
+  it("reconciles dependency-driven hash drift using persisted draft.contentHash instead of looping", async () => {
+    const deps = createDeps({
+      getSermonById: vi.fn(async () => ({
+        ok: true as const,
+        doc: makeSermonDoc({ contentHash: "hash-persisted" }),
+        status: "draft" as const,
+      })),
+      computeHash: vi.fn(async () => ({
+        contentHash: "hash-after-author-edit",
+        resolved: { authorsById: new Map(), versesById: new Map() },
+      })),
+    });
+
+    const summary = await runPdfWorkerTick(deps);
+    expect(summary.rendered).toEqual(["65f000000000000000000001"]);
+    expect(summary.skipped).toEqual([]);
+    expect(deps.updateSermonPdfMedia).toHaveBeenCalledWith(PDF_WORKER_CALLER, {
+      docId: "65f000000000000000000001",
+      pdfSummaryMediaId: { "es-AR": "new-media-1", "en-US": "new-media-2" },
+      expectedContentHash: "hash-persisted",
+    });
+    expect(deps.completeJob).toHaveBeenCalledWith(
+      "65f000000000000000000001",
+      "hash-persisted",
+      0,
+      2,
+      expect.any(Date),
+    );
+    expect(deps.releaseStaleClaim).not.toHaveBeenCalled();
+  });
+
   it("cleans up unattached uploads and releases claim on stale mid-render edit (Edge Case #2)", async () => {
     const deps = createDeps({
       updateSermonPdfMedia: vi.fn(async () => ({

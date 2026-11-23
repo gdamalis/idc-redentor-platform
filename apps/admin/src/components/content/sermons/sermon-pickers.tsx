@@ -14,6 +14,7 @@ import { SortableList } from "@src/components/content/sortable-list";
 import { StatusChip } from "@src/components/content/status-chip";
 
 const MAX_RELATED_SERMONS = 3;
+const EMPTY_IDS: readonly string[] = [];
 
 export interface SermonAuthorFieldProps {
   readonly label: string;
@@ -33,7 +34,7 @@ export function SermonAuthorField({
   fieldPath,
   value,
   initialOption = null,
-  excludeIds = [],
+  excludeIds = EMPTY_IDS,
   requiredToPublish = false,
   readOnly,
   error,
@@ -84,6 +85,8 @@ export function SermonAuthorField({
     setDraftSelection(value ? [value] : []);
   }, [open, value]);
 
+  const excludeKey = excludeIds.join("\u0000");
+
   React.useEffect(() => {
     if (!open) return;
     let active = true;
@@ -93,7 +96,7 @@ export function SermonAuthorField({
         if (!active) return;
         setIsLoading(false);
         if (res.ok) {
-          const excluded = new Set(excludeIds);
+          const excluded = new Set(excludeKey ? excludeKey.split("\u0000") : []);
           setItems(res.items.filter((item) => !excluded.has(item.id)));
         }
       },
@@ -101,7 +104,7 @@ export function SermonAuthorField({
     return () => {
       active = false;
     };
-  }, [excludeIds, open, query]);
+  }, [excludeKey, open, query]);
 
   return (
     <>
