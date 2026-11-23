@@ -1,22 +1,41 @@
-import { renderShellEditPage } from "../shell-helpers";
+import { notFound } from "next/navigation";
+import type { GlobalFields, SingleEmailFormFields } from "@idcr/content";
+import type { SerializedContentDoc } from "@src/app/[locale]/(app)/content/actions";
+import { PermissionDenied } from "@src/components/rbac/permission-denied";
+import { SingleEmailFormEditor } from "@src/components/content/site/single-email-form-editor";
+import { loadFixedEditorPageData } from "@src/service/content/site/page-loader";
 
-/** Direct-to-editor singleton global. Replaced exclusively by Wave 4 (`ICR-198`). */
 export default async function SubscribeFormGlobalPage({
   params,
 }: {
   readonly params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  return renderShellEditPage({
+  const data = await loadFixedEditorPageData<GlobalFields>({
     locale,
     collection: "globals",
-    fixedMachineName: "single-email-subscribe",
+    machineName: "single-email-subscribe",
     backHref: "/content",
     backLabelKey: "header.backToHub",
-    editableField: {
-      kind: "localizedText",
-      key: "title",
-      labelKey: "lists.columns.title",
-    },
   });
+
+  if (data.forbidden) return <PermissionDenied />;
+  if (data.initialValues.kind !== "singleEmailForm") notFound();
+
+  return (
+    <SingleEmailFormEditor
+      initialDoc={data.initialDoc as SerializedContentDoc<SingleEmailFormFields>}
+      initialStatus={data.initialStatus}
+      initialValues={data.initialValues}
+      backHref={data.backHref}
+      backLabel={data.backLabel}
+      friendlyTitle={data.friendlyTitle}
+      machineName={data.machineName}
+      appearsOn={data.appearsOn}
+      liveUrl={data.liveUrl}
+      permissions={data.permissions}
+      isTrialMode={data.isTrialMode}
+      isPublishEmailsEnabled={data.isPublishEmailsEnabled}
+    />
+  );
 }

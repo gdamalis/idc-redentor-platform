@@ -13,6 +13,10 @@ import {
 } from "@src/lib/content/status-helpers";
 import { authorService, postService } from "@src/service/content/collections";
 import {
+  POST_CATEGORY_MESSAGE_KEYS,
+  isAllowedPostCategory,
+} from "@src/service/content/editorial/editorial-rules";
+import {
   LIST_PAGE_SIZE,
   parseListSearchParams,
   requireContentPageAuth,
@@ -35,13 +39,18 @@ export default async function PostsListPage({
 
   const sp = parseListSearchParams(await searchParams);
   const caller = callerFromAuthorized(authz);
-  const t = await getTranslations("content");
+  const [t, tEd] = await Promise.all([
+    getTranslations("content"),
+    getTranslations("contentEditorial"),
+  ]);
 
   const [listed, authors] = await Promise.all([
     postService.list(caller, {
       page: 1,
       pageSize: 500,
-      ...(sp.status ? { status: sp.status as "draft" | "changed" | "published" } : {}),
+      ...(sp.status
+        ? { status: sp.status as "draft" | "changed" | "published" }
+        : {}),
     }),
     authorService.list(caller, { page: 1, pageSize: 500 }),
   ]);
@@ -80,7 +89,11 @@ export default async function PostsListPage({
     const date = formatShortDate(d.publishedDate, locale);
     const author =
       (d.authorId ? authorMap.get(d.authorId) : undefined) ?? "—";
-    const category = d.category ?? "—";
+    const category = d.category
+      ? isAllowedPostCategory(d.category)
+        ? tEd(`categories.${POST_CATEGORY_MESSAGE_KEYS[d.category]}`)
+        : d.category
+      : "—";
     const updated = `${formatAdminTimestamp(item.doc.updatedAt, locale)} · ${item.updatedByLabel || item.doc.updatedBy}`;
     const missingEnglish = countMissingEnglishInDraft(d) > 0;
     return {
