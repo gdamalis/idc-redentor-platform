@@ -704,6 +704,7 @@
       "globals",
       "media",
       "content_audit",
+      "content_pdf_jobs",
       "pdf_jobs",
       "likes",
       "contact",
