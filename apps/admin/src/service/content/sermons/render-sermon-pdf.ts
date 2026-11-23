@@ -112,6 +112,9 @@ async function launchBrowser(): Promise<Browser> {
         import("@sparticuz/chromium"),
         import("playwright-core"),
       ]);
+    // Disable SwiftShader/WebGL for HTML-to-PDF rendering: avoids GPU thread
+    // crashes and cuts peak RAM inside --single-process serverless Chromium.
+    chromium.setGraphicsMode = false;
     return playwrightChromium.launch({
       args: chromium.args,
       executablePath: await chromium.executablePath(),
@@ -164,13 +167,9 @@ export async function renderSermonPdfs(
 
   const browser = await browserFactory();
   try {
-    if (enData) {
-      const [pdfEsAR, pdfEnUS] = await Promise.all([
-        renderLocalePdf(browser, esData, common, "es-AR", version),
-        renderLocalePdf(browser, enData, common, "en-US", version),
-      ]);
-      return { "es-AR": pdfEsAR, "en-US": pdfEnUS };
-    }
+    // Render sequentially (close es-AR page before opening en-US) so
+    // --single-process serverless Chromium never runs two concurrent page.pdf()
+    // jobs in the same process or exceeds Lambda memory limits.
     const pdfEsAR = await renderLocalePdf(
       browser,
       esData,
@@ -178,6 +177,16 @@ export async function renderSermonPdfs(
       "es-AR",
       version,
     );
+    if (enData) {
+      const pdfEnUS = await renderLocalePdf(
+        browser,
+        enData,
+        common,
+        "en-US",
+        version,
+      );
+      return { "es-AR": pdfEsAR, "en-US": pdfEnUS };
+    }
     return { "es-AR": pdfEsAR };
   } finally {
     await browser.close();

@@ -229,6 +229,7 @@ async function processClaimedJob(
       );
     }
     const message = error instanceof Error ? error.message : String(error);
+    console.error(`[pdf-worker] failed for sermon ${sermonId}: ${message}`);
     await deps.failJob(sermonId, message, now);
     summary.failed.push(sermonId);
   }
