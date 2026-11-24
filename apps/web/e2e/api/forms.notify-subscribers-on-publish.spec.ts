@@ -109,7 +109,7 @@ test.describe("/api/revalidate auth boundary", () => {
     request,
   }) => {
     const res = await request.post(`${BASE}/api/revalidate`, {
-      data: { sys: { id: "qa-test-entry", contentType: { sys: { id: "blogPostPage" } } } },
+      data: { type: "post", id: "507f1f77bcf86cd799439011", notify: true },
       headers: { "Content-Type": "application/json" },
     });
     expect(res.status()).toBe(401);
@@ -121,7 +121,7 @@ test.describe("/api/revalidate auth boundary", () => {
     request,
   }) => {
     const res = await request.post(`${BASE}/api/revalidate`, {
-      data: { sys: { id: "qa-test-entry", contentType: { sys: { id: "blogPostPage" } } } },
+      data: { type: "post", id: "507f1f77bcf86cd799439011", notify: true },
       headers: {
         "Content-Type": "application/json",
         "x-vercel-reval-key": "intentionally-wrong-secret-icr44-qa",

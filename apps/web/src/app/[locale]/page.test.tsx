@@ -37,14 +37,14 @@ vi.mock("next-intl/server", () => ({ setRequestLocale }));
 vi.mock("@src/i18n/routing", () => ({
   routing: { locales: ["es-AR", "en-US"] },
 }));
-vi.mock("@lib/contentful/draftMode", () => ({ shouldUseDraftMode }));
-vi.mock("@lib/contentful/getBlogPostPages", () => ({ getLatestBlogPostPages }));
-vi.mock("@lib/contentful/getContentCollection", () => ({ getContentCollection }));
-vi.mock("@lib/contentful/getCtaComponent", () => ({ getCtaComponent }));
-vi.mock("@lib/contentful/getHeroBannerComponent", () => ({
+vi.mock("@lib/content/draft-mode", () => ({ shouldUseDraftMode }));
+vi.mock("@lib/content/getBlogPostPages", () => ({ getLatestBlogPostPages }));
+vi.mock("@lib/content/getContentCollection", () => ({ getContentCollection }));
+vi.mock("@lib/content/getCtaComponent", () => ({ getCtaComponent }));
+vi.mock("@lib/content/getHeroBannerComponent", () => ({
   getHeroBannerComponent,
 }));
-vi.mock("@lib/contentful/mapContentCollection", () => ({ mapContentCollection }));
+vi.mock("@lib/content/mapContentCollection", () => ({ mapContentCollection }));
 vi.mock("@lib/metadata", () => ({ buildPageMetadata }));
 
 import Home, { generateMetadata } from "./page";

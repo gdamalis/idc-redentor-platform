@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { Sermon } from "@src/types/Sermon";
+import type { SermonView } from "@lib/content/types";
 
 // Mock next/server and next-intl so they don't blow up in jsdom
 vi.mock("next-intl/server", () => ({
@@ -10,7 +10,7 @@ vi.mock("@src/i18n/config", () => ({
   buildLocaleAlternates: vi.fn().mockReturnValue({ "es-AR": "/es-AR/predicas/slug", "en-US": "/en-US/predicas/slug" }),
 }));
 
-vi.mock("./contentful/draftMode", () => ({
+vi.mock("./content/draft-mode", () => ({
   shouldUseDraftMode: vi.fn().mockResolvedValue(false),
 }));
 
@@ -23,7 +23,7 @@ beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_BASE_URL", BASE_URL);
 });
 
-const FULL_SERMON: Sermon = {
+const FULL_SERMON: SermonView = {
   title: "La gracia de Dios",
   slug: "la-gracia-de-dios",
   sermonDate: "2025-03-16",
@@ -32,6 +32,7 @@ const FULL_SERMON: Sermon = {
     avatar: { url: "https://images.ctfassets.net/avatar.jpg", title: "Juan García" },
     email: "juan@example.com",
   },
+  additionalPreachers: [],
   audioLanguages: ["es-AR"],
   scriptureReferences: [
     { book: "Efesios", chapter: 2, fromVerse: 8, toVerse: 9, verseContent: "...", bibleVersion: "RVR60" },
@@ -40,7 +41,7 @@ const FULL_SERMON: Sermon = {
   thesis: "Somos salvos por gracia.",
   mainPoints: ["Gracia definida", "Gracia vivida"],
   excerpt: "Un mensaje sobre la gracia.",
-  content: { json: { nodeType: "document", content: [] }, links: { assets: { block: [] } } },
+  content: { doc: { type: "doc", content: [] }, media: {} },
   featuredImage: { url: "https://images.ctfassets.net/hero.jpg", title: "Hero image" },
   audio: {
     url: "https://assets.ctfassets.net/sermon.mp3",
@@ -50,7 +51,13 @@ const FULL_SERMON: Sermon = {
     size: 45000000,
   },
   durationSeconds: 2730,
-  pdfSummary: { url: "https://assets.ctfassets.net/resumen.pdf", title: "Resumen PDF" },
+  pdfSummary: {
+    url: "https://assets.ctfassets.net/resumen.pdf",
+    title: "Resumen PDF",
+    contentType: "application/pdf",
+    fileName: "resumen.pdf",
+    size: 1024,
+  },
   seoTitle: "La gracia de Dios | IDC Redentor",
   seoDescription: "Un mensaje sobre la gracia de Dios.",
   keywords: ["gracia", "fe", "salvación"],
@@ -58,16 +65,15 @@ const FULL_SERMON: Sermon = {
   sys: { id: "sermon-id-1", publishedAt: "2025-03-17T10:00:00Z" },
 };
 
-const SERMON_NO_AUDIO: Sermon = {
+const SERMON_NO_AUDIO: SermonView = {
   ...FULL_SERMON,
   audio: undefined,
   durationSeconds: undefined,
-  scriptureReferences: undefined,
+  scriptureReferences: [],
 };
 
 // A draft sermon where the editor has not yet uploaded a featured image.
-// This is the exact shape that crashed the live preview (featuredImage: null).
-const SERMON_NO_IMAGE: Sermon = {
+const SERMON_NO_IMAGE: SermonView = {
   ...FULL_SERMON,
   featuredImage: undefined,
 };
@@ -122,7 +128,7 @@ describe("buildSermonMetadata", () => {
   });
 
   it("falls back modifiedTime to sermonDate when sys.publishedAt is absent", () => {
-    const sermon: Sermon = { ...FULL_SERMON, sys: { id: "x" } };
+    const sermon: SermonView = { ...FULL_SERMON, sys: { id: "x" } };
     const meta = buildSermonMetadata({ sermon, locale: "es-AR", path: "predicas/la-gracia-de-dios" });
     expect((meta.openGraph as Record<string, unknown>)?.modifiedTime).toBe("2025-03-16");
   });
@@ -204,7 +210,7 @@ describe("buildSermonJsonLd", () => {
   });
 
   it("falls back dateModified to sermonDate when sys.publishedAt absent", () => {
-    const sermon: Sermon = { ...FULL_SERMON, sys: { id: "x" } };
+    const sermon: SermonView = { ...FULL_SERMON, sys: { id: "x" } };
     const ld = buildSermonJsonLd(sermon, "es-AR");
     expect(ld.dateModified).toBe("2025-03-16");
   });
@@ -231,7 +237,7 @@ describe("buildSermonJsonLd", () => {
   });
 
   it("includes AudioObject without duration when durationSeconds absent", () => {
-    const sermon: Sermon = { ...FULL_SERMON, durationSeconds: undefined };
+    const sermon: SermonView = { ...FULL_SERMON, durationSeconds: undefined };
     const ld = buildSermonJsonLd(sermon, "es-AR");
     expect(ld.audio).toMatchObject({
       "@type": "AudioObject",
@@ -271,5 +277,18 @@ describe("buildSermonJsonLd", () => {
       ld = buildSermonJsonLd(SERMON_NO_IMAGE, "es-AR");
     }).not.toThrow();
     expect(ld?.image).toBe(`${BASE_URL}/assets/img/og_default.jpeg`);
+  });
+
+  it("handles missing preacher gracefully on incomplete drafts", () => {
+    const noPreacher: SermonView = { ...FULL_SERMON, preacher: undefined };
+    const meta = buildSermonMetadata({
+      sermon: noPreacher,
+      locale: "es-AR",
+      path: "predicas/la-gracia-de-dios",
+    });
+    expect((meta.openGraph as Record<string, unknown>)?.authors).toBeUndefined();
+
+    const ld = buildSermonJsonLd(noPreacher, "es-AR");
+    expect(ld.author).toBeUndefined();
   });
 });

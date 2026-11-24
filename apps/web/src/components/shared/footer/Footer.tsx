@@ -1,5 +1,6 @@
 import { Typography } from "@src/components/ui/typography";
 import { Link } from "@src/i18n/routing";
+import type { FooterView } from "@lib/content/types";
 import { useLocale, useTranslations } from "next-intl";
 import Image from "next/image";
 import { Mail, MapPin } from "lucide-react";
@@ -8,20 +9,9 @@ import { Container } from "@src/components/ui/container";
 import SocialLinks from "../social-links/SocialLinks";
 import packageJson from "../../../../package.json";
 
-type FooterProps = {
-  content: {
-    logo: { url: string; title: string };
-    shortDescription: string;
-    socialLinks: { url: string; platform: string }[];
-    location?: {
-      addressLine1: string;
-      neighborhood: string;
-      city: string;
-      country: string;
-      googleMapsUrl: string;
-    };
-  };
-};
+interface FooterProps {
+  readonly content: FooterView;
+}
 
 export const Footer = ({ content }: FooterProps) => {
   const t = useTranslations();
@@ -38,6 +28,17 @@ export const Footer = ({ content }: FooterProps) => {
     { href: privacySlug, label: t("footer.privacy-policy") },
   ];
 
+  const locationContent = content.location ? (
+    <>
+      {content.location.addressLine1}
+      <br />
+      {content.location.neighborhood && content.location.neighborhood + ", "}
+      {content.location.city}
+      <br />
+      {content.location.country}
+    </>
+  ) : null;
+
   return (
     <footer className="bg-slate-900 text-white pt-16 pb-8">
       <Container>
@@ -45,13 +46,15 @@ export const Footer = ({ content }: FooterProps) => {
           {/* Brand */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <Image
-                src={content.logo.url}
-                alt={content.logo.title}
-                width={192}
-                height={128}
-                className="h-16 w-auto"
-              />
+              {content.logo && (
+                <Image
+                  src={content.logo.url}
+                  alt={content.logo.title}
+                  width={192}
+                  height={128}
+                  className="h-16 w-auto"
+                />
+              )}
               <div className="flex flex-col">
                 <span className="font-serif font-bold text-xl leading-none">
                   {t("navbar.church-name")}
@@ -98,20 +101,18 @@ export const Footer = ({ content }: FooterProps) => {
               {content.location && (
                 <li className="flex items-start gap-3">
                   <MapPin className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                  <a
-                    href={content.location.googleMapsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:text-primary transition-colors"
-                  >
-                    {content.location.addressLine1}
-                    <br />
-                    {content.location.neighborhood &&
-                      content.location.neighborhood + ", "}
-                    {content.location.city}
-                    <br />
-                    {content.location.country}
-                  </a>
+                  {content.location.googleMapsUrl ? (
+                    <a
+                      href={content.location.googleMapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-primary transition-colors"
+                    >
+                      {locationContent}
+                    </a>
+                  ) : (
+                    <span>{locationContent}</span>
+                  )}
                 </li>
               )}
               <li className="flex items-center gap-3">
@@ -131,10 +132,7 @@ export const Footer = ({ content }: FooterProps) => {
             <h3 className="font-serif font-bold text-lg mb-6">
               {t("footer.follow-us")}
             </h3>
-            <SocialLinks 
-              links={content.socialLinks} 
-              variant="footer"
-            />
+            <SocialLinks links={content.socialLinks} variant="footer" />
           </div>
         </div>
 

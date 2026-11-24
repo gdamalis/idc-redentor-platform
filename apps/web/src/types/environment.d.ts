@@ -7,8 +7,10 @@ declare namespace NodeJS {
     VERCEL_ENV?: 'production' | 'preview' | 'development';
     VERCEL_TARGET_ENV?: string;
 
-    // Content platform preview (HMAC signing secret shared with admin, ICR-201 / ICR-197)
+    // Content platform preview & revalidation (ICR-201 / ICR-197 / ICR-205)
     CONTENT_PREVIEW_SECRET?: string;
+    WEBSITE_REVALIDATE_SECRET?: string;
+    CONTENT_PUBLISH_EMAILS?: string;
     
     // Contentful CMS
     CONTENTFUL_SPACE_ID: string;

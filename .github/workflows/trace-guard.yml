@@ -1,16 +1,18 @@
 name: trace-guard
 
 # Extracted from pr.yml so it can be path-scoped. It runs a full production build of
-# @idcr/web, which is by far the most expensive check in the repo — there is no reason to
-# pay for it on a PR that only touches docs, tasks/, or .claude/.
+# @idcr/admin and verifies @vercel/nft traces Playwright/Chromium assets into the
+# scheduled sermon-PDF worker function (`/api/content/pdf-worker`, moved from @idcr/web
+# in ICR-205).
 #
 # Scope = anything that can change what @vercel/nft traces into the sermon-PDF cron
-# function: the app itself (incl. next.config.ts and the route), workspace packages, and
-# the dependency graph (playwright-core's version decides where browsers.json lives).
+# function: the admin app itself (incl. next.config.ts and the route), workspace
+# packages, and the dependency graph (playwright-core's version decides where
+# browsers.json lives).
 on:
   pull_request:
     paths:
-      - "apps/web/**"
+      - "apps/admin/**"
       - "packages/**"
       - "package.json"
       - "pnpm-lock.yaml"
@@ -41,26 +43,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # The build needs a real read-only Contentful DELIVERY token (ICR-210). ICR-123 made
-      # getAllBlogPostSlugs fail closed (throw instead of reporting an empty post list), and
-      # /sitemap.xml is prerendered at build, so an invalid token exits the build during static
-      # generation, BEFORE Next.js collects build traces, and verify:trace has nothing to check.
-      # That throw is deliberate production behaviour; do not weaken it or add a CI-only bypass.
-      #
-      # CONTENTFUL_ACCESS_TOKEN must be a read-only Delivery (CDA) token. This is less
-      # privileged than CONTENTFUL_MANAGEMENT_ACCESS_TOKEN, which contentful-drift.yml already
-      # uses. CONTENTFUL_PREVIEW_ACCESS_TOKEN is only read for draft-mode requests, which do
-      # not happen at build time, so it stays a dummy here.
-      #
-      # Secrets are not exposed to Dependabot-triggered runs, so this job fails on Dependabot
-      # PRs that touch the paths above.
-      - name: Build
-        run: pnpm --filter @idcr/web build
-        env:
-          NEXT_PUBLIC_BASE_URL: https://example.com
-          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
-          CONTENTFUL_ACCESS_TOKEN: ${{ secrets.CONTENTFUL_ACCESS_TOKEN }}
-          CONTENTFUL_PREVIEW_ACCESS_TOKEN: dummypreview
+      - name: Build @idcr/admin
+        run: pnpm --filter @idcr/admin build
 
-      - name: Verify the PDF cron function traces browsers.json
-        run: pnpm --filter @idcr/web verify:trace
+      - name: Verify the admin PDF worker traces browsers.json and chromium.br
+        run: pnpm --filter @idcr/admin verify:trace

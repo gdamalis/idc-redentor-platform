@@ -3,20 +3,14 @@ import { BLOCKS } from "@contentful/rich-text-types";
 import type { CommonNode, Options } from "@contentful/rich-text-react-renderer";
 import { articleRichTextOptions } from "@lib/contentful/rich-text-options";
 import type { Sermon } from "@src/types/Sermon";
-import { SermonAudioPlayer } from "./SermonAudioPlayer";
-import { PdfDownloadButton } from "./PdfDownloadButton";
+import { SermonAudioPlayer } from "@src/components/features/sermon-details/SermonAudioPlayer";
+import { PdfDownloadButton } from "@src/components/features/sermon-details/PdfDownloadButton";
 
 type AssetBlock = NonNullable<Sermon["content"]>["links"]["assets"]["block"][number];
 
 /**
- * Rich-text options for a sermon body that may interleave embedded media
- * (multi-preacher services: per-segment audio player + PDF download inside the body).
- *
- * It reuses the base article renderers (paragraph / headings / lists / blockquote)
- * and adds a `BLOCKS.EMBEDDED_ASSET` handler that resolves the asset from the
- * GraphQL-fetched `content.links.assets.block` set by `node.data.target.sys.id`,
- * then renders by contentType: `audio/*` → player, `application/pdf` → download,
- * `image/*` → image. Blog posts keep using the static `articleRichTextOptions`.
+ * Legacy Contentful sermon rich-text options kept test-only for `ICR-202` rich-text
+ * parity specs until `ICR-207` removes `@contentful/*` and `lib/contentful/`.
  */
 export function buildSermonRichTextOptions(
   assetBlocks: AssetBlock[],

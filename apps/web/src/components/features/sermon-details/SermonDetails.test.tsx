@@ -35,14 +35,16 @@ vi.mock("@src/components/features/blog-post-details/PostActions", () => ({
 }));
 
 import SermonDetails from "./SermonDetails";
-import type { Sermon } from "@src/types/Sermon";
+import type { SermonView } from "@lib/content/types";
 
-const baseSermon: Sermon = {
+const baseSermon: SermonView = {
   title: "La gracia de Dios",
   slug: "la-gracia-de-dios",
   sermonDate: "2025-06-01",
   preacher: { name: "Pastor Juan", email: "juan@example.com" },
+  additionalPreachers: [],
   audioLanguages: ["es-AR"],
+  scriptureReferences: [],
   thesis: "La gracia es suficiente",
   mainPoints: [],
   excerpt: "Un mensaje sobre la gracia.",
@@ -56,6 +58,7 @@ const baseSermon: Sermon = {
   seoTitle: "La gracia de Dios",
   seoDescription: "Un mensaje sobre la gracia.",
   keywords: [],
+  relatedSermons: [],
   sys: { id: "abc123" },
 };
 
@@ -85,7 +88,7 @@ describe("SermonDetails — audio-language notice (ICR-146)", () => {
   });
 
   it("announces a bilingual recording on the es-AR page (AC1)", async () => {
-    const bilingualSermon: Sermon = {
+    const bilingualSermon: SermonView = {
       ...baseSermon,
       audioLanguages: ["es-AR", "en-US"],
     };
@@ -100,7 +103,7 @@ describe("SermonDetails — audio-language notice (ICR-146)", () => {
   });
 
   it("announces a bilingual recording on the en-US page too (AC1)", async () => {
-    const bilingualSermon: Sermon = {
+    const bilingualSermon: SermonView = {
       ...baseSermon,
       audioLanguages: ["es-AR", "en-US"],
     };
@@ -115,7 +118,7 @@ describe("SermonDetails — audio-language notice (ICR-146)", () => {
   });
 
   it("never renders a notice when there is no audio, even if languages differ from the page locale", async () => {
-    const noAudioSermon: Sermon = {
+    const noAudioSermon: SermonView = {
       ...baseSermon,
       audio: undefined,
       audioLanguages: ["es-AR"],

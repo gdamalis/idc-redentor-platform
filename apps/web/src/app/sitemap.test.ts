@@ -9,8 +9,8 @@ const { getAllBlogPostSlugs, getAllSermonSlugs } = vi.hoisted(() => ({
   getAllSermonSlugs: vi.fn(),
 }));
 
-vi.mock("@lib/contentful/getBlogPostPages", () => ({ getAllBlogPostSlugs }));
-vi.mock("@lib/contentful/getSermons", () => ({ getAllSermonSlugs }));
+vi.mock("@lib/content/getBlogPostPages", () => ({ getAllBlogPostSlugs }));
+vi.mock("@lib/content/getSermons", () => ({ getAllSermonSlugs }));
 
 const BASE_URL = "https://www.example.org";
 
@@ -28,25 +28,13 @@ describe("sitemap", () => {
   });
 
   /**
-   * ICR-123 regression guard.
-   *
-   * `sitemap.ts` is "a special Route Handler that is cached by default unless it uses a
-   * Request-time API or dynamic config option" (Next.js 16 docs). Without an explicit opt-out it is
-   * baked at build time, so sermons and posts published AFTER the last deploy never enter
-   * sitemap.xml — verified in production on 2026-07-29, where the live sitemap was still the
-   * 2026-07-17 build and omitted two sermons published on 2026-07-19.
-   *
-   * The exported `revalidate` IS that opt-out. It is invisible at runtime until SEO quietly decays,
-   * so it is asserted here rather than left to review.
+   * ICR-123 + ICR-205 AC8 regression guard:
+   * `dynamic = "force-dynamic"` prevents build-time prerendering (so CI builds succeed with
+   * zero database credentials) while runtime reads remain cached via the `"site-content"` tag.
    */
-  it("opts out of build-time-only caching with a bounded revalidate window", async () => {
-    const { revalidate } = await importSitemap();
-
-    expect(typeof revalidate).toBe("number");
-    expect(Number.isFinite(revalidate)).toBe(true);
-    expect(revalidate).toBeGreaterThan(0);
-    // A window longer than a day would reintroduce the staleness this guards against.
-    expect(revalidate).toBeLessThanOrEqual(86_400);
+  it("opts out of build-time prerendering with dynamic = 'force-dynamic'", async () => {
+    const { dynamic } = await importSitemap();
+    expect(dynamic).toBe("force-dynamic");
   });
 
   it("emits every sermon once per locale", async () => {
@@ -64,24 +52,28 @@ describe("sitemap", () => {
     }
   });
 
-  it("emits blog posts on the default locale with alternates for the others", async () => {
-    getAllBlogPostSlugs.mockResolvedValue([
-      { slug: "el-perdon-de-jesus", updatedAt: "2026-06-01T00:00:00.000Z" },
-    ]);
+  it("emits blog posts on the default locale with alternates for the others (no 100-post cap)", async () => {
+    const slugs = Array.from({ length: 105 }, (_, idx) => ({
+      slug: `post-${idx + 1}`,
+      updatedAt: "2026-06-01T00:00:00.000Z",
+    }));
+    getAllBlogPostSlugs.mockResolvedValue(slugs);
 
     const { default: sitemap } = await importSitemap();
     const entries = await sitemap();
-    const post = entries.find((entry) => entry.url.includes("/blog/el-perdon-de-jesus"));
+    const blogEntries = entries.filter((entry) => entry.url.includes("/blog/"));
 
-    expect(post?.url).toBe(`${BASE_URL}/${i18n.defaultLocale}/blog/el-perdon-de-jesus`);
+    expect(blogEntries).toHaveLength(105);
+    const post = entries.find((entry) => entry.url.includes("/blog/post-105"));
+    expect(post?.url).toBe(`${BASE_URL}/${i18n.defaultLocale}/blog/post-105`);
     for (const locale of i18n.locales) {
       expect(post?.alternates?.languages?.[locale]).toBe(
-        `${BASE_URL}/${locale}/blog/el-perdon-de-jesus`,
+        `${BASE_URL}/${locale}/blog/post-105`,
       );
     }
   });
 
-  it("always includes the static pages, even when Contentful returns nothing", async () => {
+  it("always includes the static pages, even when the database returns nothing", async () => {
     const { default: sitemap } = await importSitemap();
     const urls = (await sitemap()).map((entry) => entry.url);
 
@@ -90,16 +82,9 @@ describe("sitemap", () => {
     expect(urls).toContain(`${BASE_URL}/${i18n.defaultLocale}/blog`);
   });
 
-  /**
-   * ICR-123 review follow-up. Because this route is ISR, a regeneration that *succeeds* with a
-   * degraded result caches that degraded result for the next hour. Propagating the failure is what
-   * makes Next.js keep serving the previous complete sitemap: "If an error is thrown while
-   * attempting to revalidate data, the last successfully generated data will continue to be served
-   * from the cache."
-   */
   it.each([
-    ["sermons", () => getAllSermonSlugs.mockRejectedValue(new Error("Contentful error"))],
-    ["blog posts", () => getAllBlogPostSlugs.mockRejectedValue(new Error("Contentful error"))],
+    ["sermons", () => getAllSermonSlugs.mockRejectedValue(new Error("Database error"))],
+    ["blog posts", () => getAllBlogPostSlugs.mockRejectedValue(new Error("Database error"))],
   ])("fails regeneration rather than emitting a sitemap missing all %s", async (_label, arrange) => {
     arrange();
 
@@ -108,13 +93,7 @@ describe("sitemap", () => {
     await expect(sitemap()).rejects.toThrow();
   });
 
-  /**
-   * `lastModified: new Date()` on a hard-coded route is not a modification time — it is "now". Once
-   * the route regenerates hourly it would claim all six static pages changed every hour, which is
-   * exactly the kind of untrustworthy signal crawlers learn to discount. Contentful-backed entries
-   * keep their real timestamps; these have none to report, so they report none.
-   */
-  it("omits lastModified on static pages, but keeps it on Contentful-backed entries", async () => {
+  it("omits lastModified on static pages, but keeps it on database-backed entries", async () => {
     getAllBlogPostSlugs.mockResolvedValue([
       { slug: "el-perdon-de-jesus", updatedAt: "2026-06-01T00:00:00.000Z" },
     ]);

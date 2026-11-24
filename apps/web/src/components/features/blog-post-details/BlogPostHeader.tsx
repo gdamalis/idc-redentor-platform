@@ -3,19 +3,23 @@
 import { Typography } from "@src/components/ui/typography";
 import { Divider } from "@src/components/ui/divider";
 import { AuthorInfo } from "./AuthorInfo";
-import { BlogPost } from "@src/types/BlogPost";
+import type { BlogPostView } from "@lib/content/types";
 import { useTranslations } from "next-intl";
 
 type BlogPostHeaderProps = Readonly<{
-  post: Pick<BlogPost, "title" | "subtitle" | "author" | "publishedDate" | "category">;
+  post: Pick<
+    BlogPostView,
+    "title" | "subtitle" | "author" | "publishedDate" | "category"
+  >;
 }>;
 
 export function BlogPostHeader({ post }: BlogPostHeaderProps) {
   const t = useTranslations("BlogPost.categories");
 
   // Translate the category if it exists, otherwise fallback to "Blog"
-  const displayCategory = post.category 
-    ? (t(post.category as "Events" | "Spiritual Growth" | "Community") || post.category)
+  const displayCategory = post.category
+    ? t(post.category as "Events" | "Spiritual Growth" | "Community") ||
+      post.category
     : "Blog";
 
   return (
@@ -27,29 +31,24 @@ export function BlogPostHeader({ post }: BlogPostHeaderProps) {
       >
         {displayCategory}
       </Typography>
-      <Typography
-        component="h1"
-        variant="h1"
-        className="leading-tight"
-      >
+      <Typography component="h1" variant="h1" className="leading-tight">
         {post.title}
       </Typography>
 
       {post.subtitle && (
-        <Typography
-          component="p"
-          variant="body"
-        >
+        <Typography component="p" variant="body">
           {post.subtitle}
         </Typography>
       )}
 
-      <AuthorInfo
-        authorDetails={post.author}
-        publishedDate={post.publishedDate}
-      />
+      {post.author && (
+        <AuthorInfo
+          authorDetails={post.author}
+          publishedDate={post.publishedDate}
+        />
+      )}
 
       <Divider className="my-6" />
     </div>
   );
-} 
+}

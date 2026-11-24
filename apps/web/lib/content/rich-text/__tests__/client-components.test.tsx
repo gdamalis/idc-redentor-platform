@@ -130,25 +130,27 @@ describe("Client-component safety & parity (AC5)", () => {
     expect(converted.ok).toBe(true);
     if (!converted.ok) return;
 
-    const legacy = render(
+    const rendered = render(
       <NextIntlClientProvider locale="es-AR" messages={MESSAGES}>
         <OurMissionCta
           content={{
             headline: "Iglesia",
             subHeadline: "Redentor",
-            body: { json: cfBody },
+            body: { doc: converted.doc, media: {} },
             ctaText: "Conocenos",
             targetPage: { slug: "community" },
             image: { title: "Hero", url: "https://example.org/hero.jpg" },
+            imagesCollection: { items: [] },
             sys: { id: "sec-1" },
+            __typename: "Section",
           }}
         />
       </NextIntlClientProvider>,
     );
-    const legacyParagraph = legacy.container.querySelector(
+    const renderedParagraph = rendered.container.querySelector(
       "p.text-lg.md\\:text-xl",
     );
-    expect(legacyParagraph).not.toBeNull();
+    expect(renderedParagraph).not.toBeNull();
 
     const next = render(
       <ClientMissionCtaSlot body={{ doc: converted.doc, media: {} }} />,
@@ -156,7 +158,7 @@ describe("Client-component safety & parity (AC5)", () => {
     const nextWrapper = next.getByTestId("new-mission-body");
 
     expect(normalizeHtmlForParity(nextWrapper.innerHTML)).toBe(
-      normalizeHtmlForParity(legacyParagraph!.outerHTML),
+      normalizeHtmlForParity(renderedParagraph!.outerHTML),
     );
   });
 
@@ -199,7 +201,7 @@ describe("Client-component safety & parity (AC5)", () => {
     expect(converted.ok).toBe(true);
     if (!converted.ok) return;
 
-    const legacy = render(
+    const rendered = render(
       <NextIntlClientProvider locale="es-AR" messages={MESSAGES}>
         <ContactForm
           content={{
@@ -207,12 +209,12 @@ describe("Client-component safety & parity (AC5)", () => {
             description: "Escribinos",
             ctaText: "Enviar",
             image: { url: "https://example.org/img.jpg", title: "Img" },
-            agreementNote: { json: cfAgreement },
+            agreementNote: { doc: converted.doc, media: {} },
             bibleVerse: {
               book: "Salmos",
-              chapter: 23,
-              fromVerse: 1,
-              toVerse: 1,
+              chapter: "23",
+              fromVerse: "1",
+              toVerse: "1",
               verseContent: "El Señor es mi pastor.",
               bibleVersion: "NVI",
             },
@@ -221,8 +223,8 @@ describe("Client-component safety & parity (AC5)", () => {
         />
       </NextIntlClientProvider>,
     );
-    const legacyAgreement = legacy.container.querySelector("form > p");
-    expect(legacyAgreement).not.toBeNull();
+    const renderedAgreement = rendered.container.querySelector("form > p");
+    expect(renderedAgreement).not.toBeNull();
 
     const next = render(
       <NextIntlClientProvider locale="es-AR" messages={MESSAGES}>
@@ -234,7 +236,7 @@ describe("Client-component safety & parity (AC5)", () => {
     const nextWrapper = next.getByTestId("new-agreement-note");
 
     expect(normalizeHtmlForParity(nextWrapper.innerHTML)).toBe(
-      normalizeHtmlForParity(legacyAgreement!.outerHTML),
+      normalizeHtmlForParity(renderedAgreement!.outerHTML),
     );
   });
 });

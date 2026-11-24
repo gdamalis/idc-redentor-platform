@@ -1,21 +1,20 @@
 import { Typography } from "@src/components/ui/typography";
-import { BlogPost } from "@src/types/BlogPost";
+import type { BlogPostView } from "@lib/content/types";
+import { articlePreset, renderRichText } from "@lib/content/rich-text";
 import { FeaturedImage } from "./FeaturedImage";
-import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
-import { articleRichTextOptions } from "@lib/contentful/rich-text-options";
 
 type BlogPostContentProps = Readonly<{
-  post: Pick<BlogPost, "content" | "featuredImage" | "seoDescription" | "keywords">;
+  post: Pick<
+    BlogPostView,
+    "content" | "featuredImage" | "seoDescription" | "keywords"
+  >;
 }>;
 
 export function BlogPostContent({ post }: BlogPostContentProps) {
   let richTextContent = null;
-  if (post.content?.json) {
+  if (post.content) {
     try {
-      richTextContent = documentToReactComponents(
-        post.content.json,
-        articleRichTextOptions,
-      );
+      richTextContent = renderRichText(post.content, articlePreset);
     } catch (error) {
       console.error("Error rendering rich text:", error);
     }
@@ -23,10 +22,12 @@ export function BlogPostContent({ post }: BlogPostContentProps) {
 
   return (
     <div className="flex flex-col gap-y-4">
-      <FeaturedImage
-        url={post.featuredImage.url}
-        title={post.featuredImage.title}
-      />
+      {post.featuredImage && (
+        <FeaturedImage
+          url={post.featuredImage.url}
+          title={post.featuredImage.title}
+        />
+      )}
 
       <div className="rich-text-content">
         {richTextContent || (
@@ -35,10 +36,6 @@ export function BlogPostContent({ post }: BlogPostContentProps) {
           </Typography>
         )}
       </div>
-
-      {/* {post.keywords && post.keywords.length > 0 && (
-        <KeywordTags keywords={post.keywords} />
-      )} */}
     </div>
   );
 }

@@ -7,11 +7,11 @@ import { AuthorInfo } from "@src/components/features/blog-post-details/AuthorInf
 import { SermonByline } from "./SermonByline";
 import { SermonInterpreter } from "./SermonInterpreter";
 import { formatDateLong } from "@src/utils/formatDate";
-import type { Sermon } from "@src/types/Sermon";
+import type { AuthorView, SermonView } from "@lib/content/types";
 
 interface SermonHeaderProps {
   readonly sermon: Pick<
-    Sermon,
+    SermonView,
     | "title"
     | "thesis"
     | "preacher"
@@ -28,7 +28,10 @@ export function SermonHeader({ sermon }: SermonHeaderProps) {
 
   // A multi-preacher service (e.g. four short messages) lists every preacher;
   // a normal sermon keeps the single-author card unchanged.
-  const preachers = [sermon.preacher, ...(sermon.additionalPreachers ?? [])];
+  const preachers: AuthorView[] = [
+    ...(sermon.preacher ? [sermon.preacher] : []),
+    ...(sermon.additionalPreachers ?? []),
+  ];
 
   return (
     <div className="flex flex-col gap-y-3">
@@ -54,23 +57,28 @@ export function SermonHeader({ sermon }: SermonHeaderProps) {
       )}
 
       {/* Preacher */}
-      <div className="flex flex-col gap-1">
-        <Typography
-          component="p"
-          variant="overline"
-          className="text-xs text-muted-foreground uppercase tracking-wide"
-        >
-          {t("preached-by")}
-        </Typography>
-        {preachers.length > 1 ? (
-          <SermonByline preachers={preachers} publishedDate={sermon.sermonDate} />
-        ) : (
-          <AuthorInfo
-            authorDetails={sermon.preacher}
-            publishedDate={sermon.sermonDate}
-          />
-        )}
-      </div>
+      {preachers.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <Typography
+            component="p"
+            variant="overline"
+            className="text-xs text-muted-foreground uppercase tracking-wide"
+          >
+            {t("preached-by")}
+          </Typography>
+          {preachers.length > 1 ? (
+            <SermonByline
+              preachers={preachers}
+              publishedDate={sermon.sermonDate}
+            />
+          ) : (
+            <AuthorInfo
+              authorDetails={preachers[0]}
+              publishedDate={sermon.sermonDate}
+            />
+          )}
+        </div>
+      )}
 
       {/* Interpreter — a distinct, labeled block. NEVER folded into `preachers`:
           an interpreter did not preach (ICR-146 AC3). */}

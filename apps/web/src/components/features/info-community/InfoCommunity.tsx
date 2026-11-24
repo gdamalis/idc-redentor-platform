@@ -1,50 +1,21 @@
-import {
-  CommonNode,
-  documentToReactComponents,
-} from "@contentful/rich-text-react-renderer";
-import { BLOCKS, Document } from "@contentful/rich-text-types";
+import { infoCommunityPreset, renderRichText } from "@lib/content/rich-text";
+import type { SectionView } from "@lib/content/types";
 import { Container } from "@src/components/ui/container";
-import { Typography } from "@src/components/ui/typography";
-import type { InspectorProps } from "@src/components/shared/contentful-preview/useLivePreview";
-import { ReactNode } from "react";
 
-const options = {
-  renderNode: {
-    [BLOCKS.PARAGRAPH]: (node: CommonNode, children: ReactNode) => (
-      <Typography
-        component="p"
-        variant="body1"
-        className="text-xl md:text-2xl dark:text-white"
-      >
-        {children}
-      </Typography>
-    ),
-  },
-};
+interface InfoCommunityProps {
+  readonly content: SectionView;
+}
 
-type InfoCommunityProps = {
-  content: {
-    headline: string;
-    body: {
-      json: Document;
-    };
-    sys: { id: string };
-  };
-  inspectorProps?: InspectorProps;
-};
-
-export default function InfoCommunity({
-  content,
-  inspectorProps,
-}: Readonly<InfoCommunityProps>) {
-  const bodyText = documentToReactComponents(content?.body.json, options);
+export default function InfoCommunity({ content }: InfoCommunityProps) {
+  const bodyText = content?.body
+    ? renderRichText(content.body, infoCommunityPreset)
+    : null;
 
   return (
     <div className="bg-muted/50">
       <Container
         size="md"
         className="py-16 text-center md:space-y-6 sm:py-24"
-        {...inspectorProps?.({ entryId: content.sys.id, fieldId: "body" })}
       >
         {bodyText}
       </Container>

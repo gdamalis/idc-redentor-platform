@@ -3,10 +3,10 @@ import { Typography } from "@src/components/ui/typography";
 import { Divider } from "@src/components/ui/divider";
 import { Link } from "@src/i18n/routing";
 import { formatDate } from "@src/utils/formatDate";
-import type { Sermon } from "@src/types/Sermon";
+import type { RelatedSermonView } from "@lib/content/types";
 
 interface RelatedSermonsProps {
-  readonly sermons: NonNullable<Sermon["relatedSermons"]>;
+  readonly sermons: RelatedSermonView[];
   readonly locale: string;
 }
 

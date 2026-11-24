@@ -3,8 +3,7 @@
 import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
 import { motion } from "framer-motion";
-import { Calendar, User } from "lucide-react";
-import { PlayCircle } from "lucide-react";
+import { Calendar, User, PlayCircle } from "lucide-react";
 
 import { Typography } from "@src/components/ui/typography";
 import { Button } from "@src/components/ui/button";
@@ -12,14 +11,14 @@ import { Link } from "@src/i18n/routing";
 import { Card, CardContent } from "@src/components/ui/card";
 import { formatDate } from "@src/utils/formatDate";
 import { cn } from "@idcr/ui";
-import type { Sermon } from "@src/types/Sermon";
+import type { SermonView } from "@lib/content/types";
 
 interface SermonCardProps {
-  sermon: Sermon;
-  index?: number;
+  readonly sermon: SermonView;
+  readonly index?: number;
 }
 
-export function SermonCard({ sermon, index = 0 }: Readonly<SermonCardProps>) {
+export function SermonCard({ sermon, index = 0 }: SermonCardProps) {
   const locale = useLocale();
   const t = useTranslations("Sermons");
   const formattedDate = formatDate(sermon.sermonDate, locale);
@@ -67,9 +66,11 @@ export function SermonCard({ sermon, index = 0 }: Readonly<SermonCardProps>) {
               <span className="flex items-center gap-1">
                 <Calendar className="w-3 h-3" /> {formattedDate}
               </span>
-              <span className="flex items-center gap-1">
-                <User className="w-3 h-3" /> {sermon.preacher.name}
-              </span>
+              {sermon.preacher && (
+                <span className="flex items-center gap-1">
+                  <User className="w-3 h-3" /> {sermon.preacher.name}
+                </span>
+              )}
             </div>
 
             <Typography
@@ -90,12 +91,14 @@ export function SermonCard({ sermon, index = 0 }: Readonly<SermonCardProps>) {
               </Typography>
             )}
 
-            <Button
-              variant="ghost"
-              className="w-full justify-between group-hover:bg-primary/5"
-            >
-              {t("preached-by")} {sermon.preacher.name}
-            </Button>
+            {sermon.preacher && (
+              <Button
+                variant="ghost"
+                className="w-full justify-between group-hover:bg-primary/5"
+              >
+                {t("preached-by")} {sermon.preacher.name}
+              </Button>
+            )}
           </CardContent>
         </Card>
       </Link>

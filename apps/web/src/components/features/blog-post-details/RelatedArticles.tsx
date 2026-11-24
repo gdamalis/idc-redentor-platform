@@ -1,21 +1,21 @@
 import { Typography } from "@src/components/ui/typography";
-import { BlogPost } from "@src/types/BlogPost";
+import type { BlogPostView } from "@lib/content/types";
 import Image from "next/image";
 import { Divider } from "@src/components/ui/divider";
 import { formatDate } from "@src/utils/formatDate";
 import { RelatedArticleLink } from "./RelatedArticleLink";
 
-type RelatedArticlesProps = {
-  posts: BlogPost[];
-  locale: string;
-  sourceSlug: string;
-};
+interface RelatedArticlesProps {
+  readonly posts: BlogPostView[];
+  readonly locale: string;
+  readonly sourceSlug: string;
+}
 
 export function RelatedArticles({
   posts,
   locale,
   sourceSlug,
-}: Readonly<RelatedArticlesProps>) {
+}: RelatedArticlesProps) {
   if (!posts || posts.length === 0) {
     return null;
   }
@@ -38,9 +38,11 @@ export function RelatedArticles({
                     <Typography component="p" variant="h4">
                       {post.title}
                     </Typography>
-                    <Typography component="p" variant="body2">
-                      {post.subtitle}
-                    </Typography>
+                    {post.subtitle && (
+                      <Typography component="p" variant="body2">
+                        {post.subtitle}
+                      </Typography>
+                    )}
                     <div className="flex flex-wrap items-center gap-y-1 gap-x-2 overflow-hidden text-sm leading-6 text-gray-500 dark:text-gray-300">
                       <time
                         dateTime={post.publishedDate}
@@ -69,15 +71,17 @@ export function RelatedArticles({
                       )}
                     </div>
                   </div>
-                  <div>
-                    <Image
-                      alt={post.featuredImage.title}
-                      src={post.featuredImage.url}
-                      width={780}
-                      height={780}
-                      className="h-auto md:h-full md:w-full rounded-md"
-                    />
-                  </div>
+                  {post.featuredImage && (
+                    <div>
+                      <Image
+                        alt={post.featuredImage.title}
+                        src={post.featuredImage.url}
+                        width={780}
+                        height={780}
+                        className="h-auto md:h-full md:w-full rounded-md"
+                      />
+                    </div>
+                  )}
                 </article>
               </RelatedArticleLink>
             </div>

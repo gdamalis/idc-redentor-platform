@@ -1,13 +1,13 @@
 import { LOGO } from "@idcr/ui";
 import type { Metadata } from "next";
-import type { Sermon } from "@src/types/Sermon";
+import type { SermonView } from "@lib/content/types";
 import { buildLocaleAlternates } from "@src/i18n/config";
 import { DEFAULT_OG_IMAGE } from "./metadata";
 
 interface BuildSermonMetadataOptions {
-  sermon: Sermon;
-  locale: string;
-  path: string;
+  readonly sermon: SermonView;
+  readonly locale: string;
+  readonly path: string;
 }
 
 /**
@@ -33,9 +33,8 @@ export function buildSermonMetadata({
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
   const pageUrl = `${baseUrl}/${locale}/${path}`;
 
-  // featuredImage is optional in Contentful and is often empty on drafts, so
-  // fall back to the site-wide default OG image rather than dereferencing a
-  // missing asset (which previously 500'd the live preview).
+  // featuredImage is optional and often empty on drafts, so fall back to the
+  // site-wide default OG image rather than dereferencing a missing asset.
   const ogImage = sermon.featuredImage
     ? {
         url: sermon.featuredImage.url,
@@ -62,7 +61,7 @@ export function buildSermonMetadata({
       locale: locale.replace("-", "_"),
       publishedTime: sermon.sermonDate,
       modifiedTime: sermon.sys.publishedAt ?? sermon.sermonDate,
-      authors: [sermon.preacher.name],
+      ...(sermon.preacher ? { authors: [sermon.preacher.name] } : {}),
       tags: sermon.keywords,
       ...(audioEntry ? { audio: audioEntry } : {}),
     },
@@ -79,7 +78,7 @@ export function buildSermonMetadata({
   };
 }
 
-export function buildSermonJsonLd(sermon: Sermon, locale: string) {
+export function buildSermonJsonLd(sermon: SermonView, locale: string) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   const audioObject = sermon.audio
@@ -109,10 +108,14 @@ export function buildSermonJsonLd(sermon: Sermon, locale: string) {
     image: sermon.featuredImage?.url ?? `${baseUrl}${DEFAULT_OG_IMAGE.url}`,
     datePublished: sermon.sermonDate,
     dateModified: sermon.sys.publishedAt ?? sermon.sermonDate,
-    author: {
-      "@type": "Person" as const,
-      name: sermon.preacher.name,
-    },
+    ...(sermon.preacher
+      ? {
+          author: {
+            "@type": "Person" as const,
+            name: sermon.preacher.name,
+          },
+        }
+      : {}),
     publisher: {
       "@type": "Organization" as const,
       name: "Iglesia de Cristo Redentor",

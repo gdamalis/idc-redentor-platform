@@ -1,7 +1,7 @@
 import { Container } from "@src/components/ui/container";
 import { getTranslations } from "next-intl/server";
 import { PostActions } from "@src/components/features/blog-post-details/PostActions";
-import type { Sermon } from "@src/types/Sermon";
+import type { SermonView } from "@lib/content/types";
 import type { Likes } from "@src/service/like.service";
 import {
   getAudioLanguageNotice,
@@ -16,8 +16,8 @@ import { ScriptureReferences } from "./ScriptureReferences";
 import { RelatedSermons } from "./RelatedSermons";
 
 interface SermonDetailsProps {
-  readonly sermon: Sermon;
-  readonly relatedSermons: Sermon[];
+  readonly sermon: SermonView;
+  readonly relatedSermons: SermonView[];
   readonly locale: string;
   readonly likes?: Likes;
 }
@@ -58,11 +58,7 @@ export default async function SermonDetails({
           />
         )}
 
-        {/* 3. Audio-language notice — driven ENTIRELY by `audioLanguages`.
-            Renders only when the audio's language differs from the page's, so a
-            Spanish sermon on the Spanish page stays clean. This SUPERSEDES the old
-            hardcoded `audio-in-spanish` note, which told every en-US reader the
-            audio was Spanish even when it was not (ICR-146 AC4). */}
+        {/* 3. Audio-language notice — driven ENTIRELY by `audioLanguages`. */}
         {sermon.audio && audioLanguageNotice && (
           <p className="text-sm text-muted-foreground">
             {t(AUDIO_LANGUAGE_KEYS[audioLanguageNotice])}
@@ -76,7 +72,10 @@ export default async function SermonDetails({
 
         {/* 5. Rich-text body (may embed per-preacher audio/PDF for multi-preacher services) */}
         {sermon.content && (
-          <SermonContent content={sermon.content} audioTitleFallback={sermon.title} />
+          <SermonContent
+            content={sermon.content}
+            audioTitleFallback={sermon.title}
+          />
         )}
 
         {/* 6. Scripture references */}
@@ -96,7 +95,7 @@ export default async function SermonDetails({
 
         {/* 8. Related sermons */}
         {relatedSermons.length > 0 && (
-          <RelatedSermons sermons={relatedSermons as NonNullable<Sermon["relatedSermons"]>} locale={locale} />
+          <RelatedSermons sermons={relatedSermons} locale={locale} />
         )}
       </div>
     </Container>

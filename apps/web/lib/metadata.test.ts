@@ -11,14 +11,20 @@ vi.mock("@src/i18n/config", () => ({
     .mockReturnValue({ "es-AR": "/es-AR/blog/slug", "en-US": "/en-US/blog/slug" }),
 }));
 
-vi.mock("./contentful/draftMode", () => ({
+vi.mock("./content/draft-mode", () => ({
   shouldUseDraftMode: vi.fn().mockResolvedValue(false),
+}));
+
+vi.mock("./content/getSeo", () => ({
+  getSeo: vi.fn().mockResolvedValue(undefined),
 }));
 
 import {
   buildArticleJsonLd,
+  buildArticleMetadata,
   buildOrganizationJsonLd,
   buildEventJsonLd,
+  buildPageMetadata,
 } from "./metadata";
 
 const BASE_URL = "https://www.idcredentor.org";
@@ -88,6 +94,39 @@ describe("buildArticleJsonLd", () => {
   it("sets headline from seoTitle", () => {
     const ld = buildArticleJsonLd(FAKE_POST, "es-AR");
     expect(ld.headline).toBe("Test Post");
+  });
+
+  it("handles missing featuredImage and missing author gracefully for incomplete drafts", () => {
+    const draftPost = {
+      ...FAKE_POST,
+      featuredImage: undefined,
+      author: undefined,
+    };
+    const ld = buildArticleJsonLd(draftPost, "es-AR");
+    expect(ld.image).toBe(`${BASE_URL}/assets/img/og_default.jpeg`);
+    expect(ld.author).toBeUndefined();
+
+    const meta = buildArticleMetadata({
+      post: draftPost,
+      locale: "es-AR",
+      path: "blog/test-post",
+    });
+    const ogImages = (meta.openGraph as Record<string, unknown>)?.images as Array<{
+      url: string;
+    }>;
+    expect(ogImages?.[0]?.url).toContain("og_default.jpeg");
+    expect((meta.openGraph as Record<string, unknown>)?.authors).toBeUndefined();
+  });
+});
+
+describe("buildPageMetadata", () => {
+  it("falls back safely when no SEO document is found", async () => {
+    const meta = await buildPageMetadata({
+      machineName: "seo-home",
+      locale: "es-AR",
+      path: "",
+    });
+    expect(meta.title).toBe("site-name");
   });
 });
 
@@ -236,36 +275,36 @@ describe("buildEventJsonLd", () => {
     expect(ld.eventSchedule.repeatFrequency).toBe("P1W");
   });
 
-  it('sets location @type to "Place"', () => {
+  it("sets location @type to \"Place\"", () => {
     const ld = buildEventJsonLd(FAKE_EVENT_BANNER, "es-AR");
-    expect(ld.location["@type"]).toBe("Place");
+    expect(ld.location?.["@type"]).toBe("Place");
   });
 
   it("sets location address @type to PostalAddress", () => {
     const ld = buildEventJsonLd(FAKE_EVENT_BANNER, "es-AR");
-    expect(ld.location.address["@type"]).toBe("PostalAddress");
+    expect(ld.location?.address["@type"]).toBe("PostalAddress");
   });
 
   it("sets location address streetAddress", () => {
     const ld = buildEventJsonLd(FAKE_EVENT_BANNER, "es-AR");
-    expect(ld.location.address.streetAddress).toBe(
+    expect(ld.location?.address.streetAddress).toBe(
       "Tte. Gral. Juan Domingo Perón 4385",
     );
   });
 
   it("sets location address addressLocality from city", () => {
     const ld = buildEventJsonLd(FAKE_EVENT_BANNER, "es-AR");
-    expect(ld.location.address.addressLocality).toBe("Buenos Aires");
+    expect(ld.location?.address.addressLocality).toBe("Buenos Aires");
   });
 
   it("sets location address addressCountry from country", () => {
     const ld = buildEventJsonLd(FAKE_EVENT_BANNER, "es-AR");
-    expect(ld.location.address.addressCountry).toBe("AR");
+    expect(ld.location?.address.addressCountry).toBe("AR");
   });
 
   it("sets location geo when location.location is present", () => {
     const ld = buildEventJsonLd(FAKE_EVENT_BANNER, "es-AR");
-    expect(ld.location.geo).toMatchObject({
+    expect(ld.location?.geo).toMatchObject({
       "@type": "GeoCoordinates",
       latitude: -34.6058,
       longitude: -58.4287,
@@ -277,12 +316,17 @@ describe("buildEventJsonLd", () => {
       buildEventJsonLd(FAKE_EVENT_BANNER_NO_GEO, "es-AR"),
     ).not.toThrow();
     const ld = buildEventJsonLd(FAKE_EVENT_BANNER_NO_GEO, "es-AR");
-    expect(ld.location.geo).toBeUndefined();
+    expect(ld.location?.geo).toBeUndefined();
+  });
+
+  it("omits location when location is null — no throw", () => {
+    const ld = buildEventJsonLd({ ...FAKE_EVENT_BANNER, location: null }, "es-AR");
+    expect(ld.location).toBeUndefined();
   });
 
   it("sets location hasMap from googleMapsUrl", () => {
     const ld = buildEventJsonLd(FAKE_EVENT_BANNER, "es-AR");
-    expect(ld.location.hasMap).toBe("https://maps.google.com/?q=...");
+    expect(ld.location?.hasMap).toBe("https://maps.google.com/?q=...");
   });
 
   it('sets organizer @type to "Church"', () => {

@@ -22,7 +22,7 @@ import {
   cardDescriptionOptions,
   sectionDescriptionOptions,
 } from "@lib/contentful/rich-text-options";
-import { buildSermonRichTextOptions } from "@src/components/features/sermon-details/sermonRichTextOptions";
+import { buildSermonRichTextOptions } from "./legacy-sermon-options";
 import { Typography } from "@src/components/ui/typography";
 import { Link } from "@src/i18n/routing";
 import {

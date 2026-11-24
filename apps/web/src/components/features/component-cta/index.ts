@@ -1,2 +1,1 @@
-export { ComponentCta } from './ComponentCta';
-export { ComponentCtaLive } from './ComponentCtaLive';
+export { ComponentCta } from "./ComponentCta";

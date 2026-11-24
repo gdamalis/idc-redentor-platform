@@ -1,6 +1,6 @@
-import { shouldUseDraftMode } from "@lib/contentful/draftMode";
-import { getSermon, getLatestSermons } from "@lib/contentful/getSermons";
-import { getCtaComponent } from "@lib/contentful/getCtaComponent";
+import { shouldUseDraftMode } from "@lib/content/draft-mode";
+import { getSermon, getLatestSermons } from "@lib/content/getSermons";
+import { getCtaComponent } from "@lib/content/getCtaComponent";
 import { buildSermonMetadata, buildSermonJsonLd } from "@lib/sermonMetadata";
 import { SermonDetails } from "@src/components/features/sermon-details";
 import { ComponentCta } from "@src/components/features/component-cta";
@@ -79,7 +79,7 @@ export default async function SermonDetailsPage({
         locale={locale}
         likes={likes}
       />
-      <ComponentCta content={contactCta} />
+      {contactCta && <ComponentCta content={contactCta} />}
     </>
   );
 }
