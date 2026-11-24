@@ -112,7 +112,10 @@ export default async function LocaleLayout({
             {isEnabled && (
               <PreviewBanner isAlwaysDraftEnv={isAlwaysDraftEnv} />
             )}
-            <NavbarWrapper menuItems={navMenu ?? []} />
+            <NavbarWrapper
+              menuItems={navMenu ?? []}
+              hasPreviewBanner={isEnabled}
+            />
             {children}
             {subscribeContent && <SubscribeBanner content={subscribeContent} />}
             <Footer content={footerContent} />
