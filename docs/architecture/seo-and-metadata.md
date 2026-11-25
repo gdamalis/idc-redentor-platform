@@ -1,16 +1,16 @@
 # SEO & Metadata
 
-> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+> **Monorepo note:** the site lives under **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `next.config.ts`, `tsconfig.json`, …) live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
 
-> **Purpose:** How per-page metadata is built — `lib/metadata.ts`, the Contentful `Seo` content type, OpenGraph/Twitter cards, the default OG image, locale alternates (hreflang), and the JSON-LD structured-data story (current + roadmap). This matters as much for AI assistants as for classic search; see also `docs/product/ai-era-strategy.md`.
-> **Last reviewed:** 2026-06-21
+> **Purpose:** How per-page metadata is built — `lib/metadata.ts`, the MongoDB `seo_entries` collection (`getSeo`), OpenGraph/Twitter cards, the default OG image, locale alternates (hreflang), dynamic `sitemap.xml`, and the JSON-LD structured-data story (current + roadmap). This matters as much for AI assistants as for classic search; see also `docs/product/ai-era-strategy.md`.
+> **Last reviewed:** 2026-11-25
 
 ## Where metadata comes from
 
 Two sources feed page metadata:
 
-1. **A Contentful `Seo` entry** for content pages — fetched by `lib/contentful/getSeo.ts` and consumed by `buildPageMetadata`.
-2. **The `BlogPost` fields** for articles — `seoTitle`, `seoDescription`, `keywords`, `featuredImage`, `author`, `publishedDate` — consumed by `buildArticleMetadata`.
+1. **A MongoDB `seo_entries` document** (authored in `apps/admin`, defined in `@idcr/content`) for content pages — fetched by `lib/content/getSeo.ts` and consumed by `buildPageMetadata`.
+2. **The `posts` / `sermons` document fields** for articles and sermons — `seoTitle`, `seoDescription`, `keywords`, `featuredImage`, `author`/`preacher`, `publishedDate`/`sermonDate` — consumed by `buildArticleMetadata` (`lib/metadata.ts`) and `buildSermonMetadata` (`lib/sermonMetadata.ts`).
 
 Both produce a Next.js `Metadata` object that a page's `generateMetadata` returns, plus (for articles) a JSON-LD object.
 
@@ -53,9 +53,9 @@ The filename uses an underscore (`og_default.jpeg`) to match the asset on disk �
 
 `buildOgImage(seoContent)` returns the `Seo` entry's `image` (with its width/height/title, defaulting to 1200×630) when present, otherwise the default. Blog posts always use their `featuredImage` at 1200×630. **1200×630 is the canonical OG size** — author images to that aspect ratio. Editorial guidance for this lives in `docs/product/editorial-and-content-rules.md`.
 
-## The Contentful `Seo` content type
+## The `seo_entries` collection (`SeoView`)
 
-Fetched by `getSeo.ts`; typed as `SeoContent` in `src/types/Seo.ts`:
+Fetched by `lib/content/getSeo.ts`; stored in `website*.seo_entries` (`@idcr/content` `COLLECTIONS.seoEntries`):
 
 | Field         | Type                            | Use                                                                                                                    |
 | ------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
@@ -76,7 +76,7 @@ Fetched by `getSeo.ts`; typed as `SeoContent` in `src/types/Seo.ts`:
 
 **Working today:**
 
-- Per-page title/description/keywords from Contentful `Seo` (pages) or `BlogPost` fields (articles).
+- Per-page title/description/keywords from `seo_entries` (pages) or `posts`/`sermons` fields (articles & sermons).
 - OG + Twitter `summary_large_image` cards with a sensible default image.
 - Canonical URLs and es-AR/en-US hreflang alternates on every page.
 - `Article` JSON-LD available for blog posts via `buildArticleJsonLd`.
@@ -89,73 +89,50 @@ Fetched by `getSeo.ts`; typed as `SeoContent` in `src/types/Seo.ts`:
 3. **`llms.txt`** describing the church, beliefs, service info, and contact for AI assistants.
 4. **Consistent NAP / local discovery** (name, address, phone) tied to a Google Business listing.
 
-## `sitemap.xml` — and why it carries an explicit `revalidate`
+## `sitemap.xml` — dynamic rendering + tag-cached MongoDB reads
 
 `src/app/sitemap.ts` emits the six static pages on the default locale (each with hreflang
-alternates), every blog post on the default locale, and every sermon **once per locale**.
+alternates), every published blog post on the default locale, and every published sermon **once per
+locale**.
 
-It also exports `revalidate = 3600`, and that line is load-bearing. Next.js treats `sitemap.ts` as
-"a special Route Handler that is **cached by default** unless it uses a Request-time API or dynamic
-config option". Every _page_ escapes that cache by accident — `shouldUseDraftMode()` awaits
-`draftMode()`, a Request-time API — but the sitemap calls no such thing, so without an explicit
-opt-out it is baked at build time and only changes on deploy.
+It exports **`export const dynamic = "force-dynamic"`** so the sitemap renders on demand at runtime
+rather than baking at build time:
 
-That is not theoretical. On 2026-07-29 the production sitemap was still the 2026-07-17 build
-(`x-vercel-cache: HIT`, `last-modified: Fri, 17 Jul 2026`) and omitted two sermons published on
-2026-07-19, while the `/predicas` page listed them correctly. The failure is invisible from the
-site itself — only crawlers see it.
-
-Why an hour, rather than `dynamic = "force-dynamic"`:
-
-- It does **not** depend on the publish webhook. That webhook does not currently fire in production
-  (see `contentful-data-layer.md` § "KNOWN GAP"), so a purely tag-driven sitemap would be inert.
-  The getters are still tagged `site-content`, so a repaired webhook purges this route immediately —
-  the hour is a floor, not a ceiling.
-- A cached copy still serves if Contentful is briefly unavailable, and crawlers never pay for a cold
-  round-trip — but only because of the failure rule below.
+- Keeps `pnpm --filter @idcr/web build` completely independent of MongoDB credentials in CI while
+  ensuring newly published posts and sermons enter `/sitemap.xml` immediately without needing a
+  redeploy.
+- Both slug getters (`getAllBlogPostSlugs` and `getAllSermonSlugs` in `@lib/content/*`) wrap their
+  MongoDB reads in `createCachedReader()` (`unstable_cache` tagged `"site-content"`), so runtime
+  requests stay cached and are immediately expired (`revalidateSiteContent()` with `{ expire: 0 }`)
+  whenever an editor publishes in `apps/admin`.
 
 ### A failed read must throw, not return empty
 
-ISR's safety net is conditional: _"If an error is thrown while attempting to revalidate data, the
-last successfully generated data will continue to be served from the cache."_ It protects you from a
-regeneration that **fails**, not from one that **succeeds with nothing**.
+Both sitemap slug getters acquire MongoDB through `requireContentDb()` and **throw on database
+errors** rather than returning `[]`, distinguishing _"we could not read MongoDB"_ from _"there are
+zero published entries"_:
 
-That distinction matters here because the data layer swallows errors by default. `fetchGraphQL` never
-checks `response.ok`, and the getters coalesce a missing payload to `[]`. Left alone, a Contentful
-blip during an hourly regeneration would produce a perfectly "successful" sitemap containing only the
-six static pages — and cache it for the next hour. Strictly worse than a stale sitemap.
+| Getter                | On MongoDB error | Why                                                                  |
+| --------------------- | ---------------- | -------------------------------------------------------------------- |
+| `getAllBlogPostSlugs` | throws           | sitemap-only; an empty result would drop every post from the sitemap |
+| `getAllSermonSlugs`   | throws           | sitemap-only; same                                                   |
+| `getAllSermons`       | degrades safely  | renders the public `/predicas` page — must not 500 on a blip         |
 
-So the sitemap's two data sources distinguish _"we could not read"_ from _"there is nothing"_ and
-throw on the former:
-
-| Getter                | On Contentful error | Why                                                                    |
-| --------------------- | ------------------- | ---------------------------------------------------------------------- |
-| `getAllBlogPostSlugs` | throws              | sitemap-only; an empty result would be cached as a post-less sitemap   |
-| `getAllSermonSlugs`   | throws              | sitemap-only; same                                                     |
-| `getAllSermons`       | returns `[]`        | renders the public `/predicas` page — must not 500 on a blip (ICR-111) |
-
-`fetchAllSermonItems` is shared by the last two, so it **reports** failure (`{ items, hasFailed }`)
-rather than deciding: the page degrades, the sitemap refuses. An empty `items` on a _present_
-collection is a legitimately empty archive and does not throw.
-
-One consequence to know: the route is still prerendered at build, so a Contentful outage **during a
-deploy** now fails the build rather than shipping an empty sitemap. That is the intended trade —
-loud beats silent — but it does mean a deploy can be blocked by Contentful being down.
+An empty result on a healthy query against an empty collection is a legitimately empty archive and
+does not throw.
 
 ### `lastModified`
 
-Only Contentful-backed entries carry one, taken from `sys.publishedAt`. The six static pages
-deliberately omit it: they are hard-coded routes with no content timestamp, and the previous
-`lastModified: new Date()` would — once regeneration became hourly — assert that all six changed
-every hour. Crawlers discount timestamps they learn to distrust, which would devalue the real ones
-alongside the fake.
+Only database-backed entries carry `lastModified` (from `updatedAt`). The six static pages
+deliberately omit it: they are hard-coded routes with no content timestamp, and emitting a synthetic
+`new Date()` on every render would signal false freshness to crawlers and devalue the real
+timestamps.
 
 ### Guarding it
 
-`apps/web/src/app/sitemap.test.ts` asserts the exported `revalidate`, that a failed getter propagates
-rather than yielding a partial sitemap, and that static entries carry no `lastModified` — all three
-are silent at runtime and surface only as slow SEO decay. To confirm the caching contract by hand,
-look for `Revalidate 1h` next to `/sitemap.xml` in `pnpm build` output.
+`apps/web/src/app/sitemap.test.ts` asserts the `dynamic = "force-dynamic"` export, that a failed
+getter propagates rather than yielding a partial sitemap, and that static entries carry no
+`lastModified` — all three are silent at runtime and surface only as slow SEO decay.
 
 ## Pitfalls
 

@@ -2,7 +2,7 @@
  * ICR-103: dates must render the AUTHORED calendar day regardless of the visitor's
  * browser time zone.
  *
- * Contentful stores `publishedDate` / `sermonDate` as date-only values ("2026-02-16"),
+ * The content database stores `publishedDate` / `sermonDate` as date-only values ("2026-02-16"),
  * which `new Date()` parses as UTC midnight. Formatting without a pinned `timeZone`
  * therefore rendered the PREVIOUS day for any visitor west of UTC (e.g. Buenos Aires,
  * UTC-3) — wrong dates sitewide, plus React #418 hydration mismatches in the client
@@ -13,7 +13,7 @@
  * require identical, authored-day output from both. A regression would show the
  * PREVIOUS day under Buenos Aires while UTC still showed the correct one.
  *
- * Ground truth (verified live in Contentful, master environment):
+ * Ground truth (verified live in the production content database):
  *   - blog "retiro-idc-redentor-2026"          publishedDate = 2026-02-16
  *   - sermon "el-deseo-mas-profundo-de-dios"   sermonDate    = 2026-06-07
  */

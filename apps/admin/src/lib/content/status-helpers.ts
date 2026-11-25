@@ -6,7 +6,7 @@ import {
 
 /**
  * True when `updatedBy` belongs to an automated service identity (e.g.
- * `service:predica-ingest`, `service:contentful-import`, `system:*`) rather
+ * `service:predica-ingest`, `service:pdf-worker`, `system:*`) rather
  * than a human admin user `_id`.
  */
 export function isServiceIdentity(updatedBy: string): boolean {

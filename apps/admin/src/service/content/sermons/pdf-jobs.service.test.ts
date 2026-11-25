@@ -316,9 +316,9 @@ describe("pdf-jobs.service", () => {
     await markSermonPdfDirty("65f000000000000000000001", "new-hash-1", {}, deps);
     await markSermonPdfDirty("65f000000000000000000002", "new-hash-2", {}, deps);
 
-    // Seed one legacy Contentful job in pdf_jobs
-    legacyJobs.set("ctfEntry123", {
-      entryId: "ctfEntry123",
+    // Seed one legacy job in pdf_jobs
+    legacyJobs.set("legacyEntry123", {
+      entryId: "legacyEntry123",
       dirtyAt: new Date(now.getTime() - 120_000),
       contentHash: "ctf-hash",
       version: 1,
@@ -329,11 +329,11 @@ describe("pdf-jobs.service", () => {
     const legacyCandidates = await db.collection("pdf_jobs").find({}).toArray();
     expect(legacyCandidates).toHaveLength(1);
     expect((legacyCandidates[0] as unknown as LegacyPdfJob).entryId).toBe(
-      "ctfEntry123",
+      "legacyEntry123",
     );
 
-    // Simulate legacy cron dropping a vanished Contentful entry — new jobs stay intact
-    await legacyCollection.deleteOne({ entryId: "ctfEntry123" });
+    // Simulate dropping a vanished legacy entry — content_pdf_jobs stays intact
+    await legacyCollection.deleteOne({ entryId: "legacyEntry123" });
     expect(contentJobs.size).toBe(2);
     expect(await selectRenderableContentPdfJobs(now, deps)).toHaveLength(2);
   });

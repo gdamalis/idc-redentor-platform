@@ -8,7 +8,7 @@
 
 ## What the site is (in one paragraph)
 
-The IDC Redentor website is the official, bilingual (es-AR primary, en-US secondary) home of **Iglesia de Cristo Redentor** on the web. It is a welcoming, informational site that explains who Jesus is, what the church believes (the Creed/Credo), what the community is about (its mission and values), when and where the church gathers, and how to get in touch — plus a blog for teaching and news, and a newsletter signup to stay connected. It is built on **Next.js + Contentful**, so non-technical editors can keep it current without code changes. It is **not** an application: there are no user accounts, no payments, and no public user-generated content. Its job is to be warm, trustworthy, fast, accessible, and easy for both people and AI assistants to discover and understand.
+The IDC Redentor website is the official, bilingual (es-AR primary, en-US secondary) home of **Iglesia de Cristo Redentor** on the web. It is a welcoming, informational site that explains who Jesus is, what the church believes (the Creed/Credo), what the community is about (its mission and values), when and where the church gathers, and how to get in touch — plus a blog and sermon archive for teaching and news, and a newsletter signup to stay connected. It is built on **Next.js + MongoDB + Vercel Blob** and authored through the church's **Ministry Admin Panel (`apps/admin`)**, so non-technical editors can keep it current without code changes. It is **not** a public application: there are no visitor accounts, no payments, and no public user-generated content. Its job is to be warm, trustworthy, fast, accessible, and easy for both people and AI assistants to discover and understand.
 
 ## Who it serves
 
@@ -23,15 +23,15 @@ The center of gravity is **Argentina and the Spanish-speaking community**: es-AR
 
 > **DRAFT — for church leadership to confirm/refine. Do not treat as official doctrine until confirmed.**
 
-A church-appropriate working statement, to be refined with leadership and aligned to the mission text the church already maintains in Contentful:
+A church-appropriate working statement, to be refined with leadership and aligned to the mission text the church maintains in the Ministry Admin Panel (`apps/admin` / MongoDB `website*`):
 
 > **To proclaim Jesus Christ, gather and build a loving community of disciples, welcome the newcomer, and serve our neighborhood — in Buenos Aires and online.**
 
-This is a placeholder that captures the recurring themes of a local church website (proclaim, gather, welcome, serve). The authoritative mission wording is **leadership-owned**; once confirmed, mirror it here and in the Contentful mission/community content.
+This is a placeholder that captures the recurring themes of a local church website (proclaim, gather, welcome, serve). The authoritative mission wording is **leadership-owned**; once confirmed, mirror it here and in the mission/community content in `apps/admin`.
 
 ## Values
 
-> **DRAFT — for church leadership to confirm/refine.** These are common, non-controversial church values offered as a starting frame; the church's own **Creed/Credo and "ValueItem" entries in Contentful are the real, authoritative source.** Agents must not invent or alter doctrine — see [editorial-and-content-rules.md](./editorial-and-content-rules.md).
+> **DRAFT — for church leadership to confirm/refine.** These are common, non-controversial church values offered as a starting frame; the church's own **Creed/Credo and ValueItem entries in MongoDB (`belief_collections`, authored in `apps/admin`) are the real, authoritative source.** Agents must not invent or alter doctrine — see [editorial-and-content-rules.md](./editorial-and-content-rules.md).
 
 Candidate values to anchor copy and tone (confirm/replace with leadership):
 
@@ -57,21 +57,22 @@ The voice is **warm, hospitable, reverent-but-accessible, and Spanish-first**:
 
 ## Audience surfaces (mapped to routes)
 
-The site is a small set of well-defined surfaces. Each maps to a route and to Contentful content:
+The site is a small set of well-defined surfaces. Each maps to a route and to MongoDB content (`website*`, authored in `apps/admin`):
 
-| Surface                             | Route (under `[locale]`)        | What it does                                                                                                                                          | Primary Contentful content                                                                |
-| ----------------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| **Home**                            | `/`                             | Welcome + overview; routes people to who-is-Jesus, community, come-meet-us, blog                                                                      | `Page` (hero, CTA, duplex, text blocks) + an `EventBanner`                                |
-| **¿Quién es Jesús? / Who is Jesus** | `/who-is-jesus`                 | Explains the gospel for seekers and newcomers                                                                                                         | `Page` + text/duplex sections                                                             |
-| **Community**                       | `/community`                    | Mission, values, and the **Creed/Credo**                                                                                                              | `Page` + `ContentCollection` (Credo + ValueItem) + `EventBanner` (e.g. ladies conference) |
-| **Come meet us**                    | `/come-meet-us`                 | Service day/time, address, neighborhood, and an embedded map                                                                                          | `Page` + `EventBanner` → `Event` + `LocationComponent`                                    |
-| **Blog**                            | `/blog`, `/blog/[slug]`         | Teaching and news articles; anonymous "like"                                                                                                          | `BlogPostPage`                                                                            |
-| **Sermons (Prédicas)**              | `/predicas`, `/predicas/[slug]` | Sermon archive: thesis, main points, scripture, rich-text body, downloadable PDF summary, and an inline self-hosted audio recording; anonymous "like" | `Sermon` → `Author` (preacher), `BibleVerse`                                              |
-| **Newsletter signup**               | (component, e.g. footer/CTA)    | Email capture to a per-locale Resend audience                                                                                                         | UI + `/api/subscribe`                                                                     |
-| **Contact**                         | (form, e.g. on a page/footer)   | Message capture (saved + emailed to the church)                                                                                                       | UI + `contactFormAction.ts` (a **Server Action** — there is no `/api` contact route)      |
-| **Footer / nav (site chrome)**      | global                          | Logo, short description, social links, address; menu                                                                                                  | `Footer` → `SocialLink`, `NavigationMenu` → `MenuGroup`                                   |
+| Surface                             | Route (under `[locale]`)        | What it does                                                                                                                                          | Primary content (`@idcr/content`)                                                           |
+| ----------------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| **Home**                            | `/`                             | Welcome + overview; routes people to who-is-Jesus, community, come-meet-us, blog                                                                      | `sections` (hero, CTA, duplex, text blocks) + `event_banners`                               |
+| **¿Quién es Jesús? / Who is Jesus** | `/who-is-jesus`                 | Explains the gospel for seekers and newcomers                                                                                                         | `sections` (text/duplex)                                                                    |
+| **Community**                       | `/community`                    | Mission, values, and the **Creed/Credo**                                                                                                              | `sections` + `belief_collections` (Credo + ValueItem) + `event_banners`                     |
+| **Come meet us**                    | `/come-meet-us`                 | Service day/time, address, neighborhood, and an embedded map                                                                                          | `sections` + `event_banners` (event + location)                                             |
+| **Blog**                            | `/blog`, `/blog/[slug]`         | Teaching and news articles; anonymous "like"                                                                                                          | `posts` → `authors`, `media`                                                                |
+| **Sermons (Prédicas)**              | `/predicas`, `/predicas/[slug]` | Sermon archive: thesis, main points, scripture, rich-text body, downloadable PDF summary, and an inline self-hosted audio recording; anonymous "like" | `sermons` → `authors` (preacher), `bible_verses`, `media`                                   |
+| **Church info topics**              | `/[topic]`                      | Evergreen informational pages (e.g. privacy policy)                                                                                                   | `topics`                                                                                    |
+| **Newsletter signup**               | (component, e.g. footer/CTA)    | Email capture to a per-locale Resend audience                                                                                                         | `globals` + `/api/subscribe`                                                                |
+| **Contact**                         | (form, e.g. on a page/footer)   | Message capture (saved + emailed to the church)                                                                                                       | `globals` + `contactFormAction.ts` (a **Server Action** — there is no `/api` contact route) |
+| **Footer / nav (site chrome)**      | global                          | Logo, short description, social links, address; menu                                                                                                  | `globals` (footer, navigation menu)                                                         |
 
-See [content-types.md](./content-types.md) for the exact fields and getters behind each surface.
+See [content-types.md](./content-types.md) for the exact collections, fields, and getters behind each surface.
 
 ---
 
@@ -80,6 +81,6 @@ See [content-types.md](./content-types.md) for the exact fields and getters behi
 This file is the entry point. The rest:
 
 - **[scope-and-boundaries.md](./scope-and-boundaries.md)** — what's IN, what's deliberately OUT, and what's DEFERRED. _The hard filter._
-- **[content-types.md](./content-types.md)** — the real Contentful content types and how they're read and rendered.
+- **[content-types.md](./content-types.md)** — the MongoDB content collections (`@idcr/content`) and how they're read and rendered.
 - **[editorial-and-content-rules.md](./editorial-and-content-rules.md)** — bilingual rule, voice, the doctrinal guardrail, images, SEO copy, publish/preview.
 - **[ai-era-strategy.md](./ai-era-strategy.md)** — the discoverability thesis (structured data + clean metadata) and KPIs.

@@ -1,16 +1,15 @@
 /**
- * Size caps. Anchored on Contentful's own hard field limits (Symbol 256, Text 50,000), so no value
- * stored today can exceed them; caps are raised, never used to truncate. See the ICR-194 plan.
+ * Size caps for content fields and rich-text documents.
  */
 export const LIMITS = {
-  /** Contentful Symbol max. */
+  /** Max length for slugs and machine names. */
   slugMax: 256,
   machineNameMax: 256,
-  /** Titles, names, labels, CTA text, book, version, URLs (> Symbol max 256). */
+  /** Titles, names, labels, CTA text, book, version, URLs. */
   shortTextMax: 500,
-  /** Descriptions, thesis, excerpt, SEO, verse text (= Contentful Text max). */
+  /** Descriptions, thesis, excerpt, SEO, verse text. */
   longTextMax: 50_000,
-  /** Characters in one rich-text text node (= Contentful Text max). */
+  /** Characters in one rich-text text node. */
   maxTextNodeLength: 50_000,
   /** Nodes in one rich-text document. */
   maxNodes: 20_000,

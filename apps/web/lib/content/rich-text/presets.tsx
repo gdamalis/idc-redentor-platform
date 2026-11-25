@@ -4,8 +4,7 @@ import type { RichTextPreset } from "./types";
 
 /**
  * Article preset for blog posts (`BlogPostContent.tsx`) and church info topics
- * (`[locale]/[topic]/page.tsx`). Mirrors `articleRichTextOptions` in
- * `apps/web/lib/contentful/rich-text-options.tsx` plus Contentful's bare `<a href>`.
+ * (`[locale]/[topic]/page.tsx`).
  */
 export const articlePreset: RichTextPreset = {
   profile: "article",
@@ -59,7 +58,7 @@ export const articlePreset: RichTextPreset = {
 
 /**
  * Section description preset (`CreedSection.tsx`, `OurMissionSection.tsx`).
- * Mirrors `sectionDescriptionOptions` + Contentful default `<b>`/`<i>` marks.
+ * Uses default `<b>`/`<i>` inline marks.
  */
 export const sectionDescriptionPreset: RichTextPreset = {
   profile: "inline",
@@ -74,7 +73,7 @@ export const sectionDescriptionPreset: RichTextPreset = {
 
 /**
  * Card description preset (`CreedSection.tsx`, `OurMissionSection.tsx`).
- * Mirrors `cardDescriptionOptions` + Contentful default `<b>`/`<i>` marks.
+ * Uses default `<b>`/`<i>` inline marks.
  */
 export const cardDescriptionPreset: RichTextPreset = {
   profile: "inline",

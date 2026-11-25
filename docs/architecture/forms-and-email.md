@@ -1,6 +1,6 @@
 # Forms & Email
 
-> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+> **Monorepo note:** the site lives under **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `next.config.ts`, `tsconfig.json`, …) live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
 
 > **Purpose:** End-to-end map of the two public form flows — the **contact form** (persist + notify by
 > email) and the **newsletter subscribe** (Resend — locale-aware since ICR-44) — plus the
@@ -34,7 +34,7 @@ src/components/features/contact-form/contactFormAction.ts   "use server"
 - Caller passes `requiredFields`; the action rejects with the `error-required-fields` messageKey if any are empty (localized client-side).
 - Email is checked against a regex; bad addresses get the `error-invalid-email` messageKey.
 - The form content shape is `ContactDetails = { name, email, subject, message }` (`src/types/ContactDetails.ts`).
-- **Note:** validation here is a hand-rolled regex, not a Zod schema. The project convention is Zod at boundaries — when extending this form, prefer migrating to a Zod schema shared between client and the action. (The form _fields_ themselves are content-driven: `getContactForm` reads a `ContactForm` Contentful entry whose `fieldsCollection` defines `FormField` name/type/required/validation/placeholder.)
+- **Note:** validation here is a hand-rolled regex, not a Zod schema. The project convention is Zod at boundaries — when extending this form, prefer migrating to a Zod schema shared between client and the action. (The form _fields_ themselves are content-driven: `getContactForm` reads the contact-form document from MongoDB `globals` via `@lib/content/getContactForm.ts`, whose `fields` define each field's name/type/required/validation/placeholder.)
 
 ### Persistence (`contact.service.ts`)
 
@@ -77,7 +77,7 @@ src/app/api/subscribe/route.ts
    ├── addSubscriber(email, locale)    → src/service/subscribe.service.ts
    │   ├── resolveAudienceId(locale)  → RESEND_AUDIENCE_ID_ES_AR | RESEND_AUDIENCE_ID_EN_US
    │   └── new Resend(RESEND_API_KEY).contacts.create({ audienceId, email, unsubscribed: false })
-   ├── ok                  → { success: true }  200  (banner shows Contentful successMessage)
+   ├── ok                  → { success: true }  200  (banner shows CMS successMessage from globals)
    ├── already-subscribed  → { messageKey: "SubscribeBanner.error-already-subscribed" } 409
    └── other failures      → { messageKey: "SubscribeBanner.error-unexpected" } 400/500
 ```
@@ -229,44 +229,43 @@ returned by `sendBroadcast` are non-secret tokens (`already-sent`, `invalid-inpu
 
 ## Publish → subscriber broadcast (ICR-44)
 
-When a Contentful editor publishes a **blog post** or a **sermon**, the site automatically emails
-newsletter subscribers an announcement in their own locale — exactly once per post+locale — reusing
-the ICR-29 broadcast engine. This section covers the webhook extension, content routing, and
-audience resolution that wire it together.
+When an editor publishes a **blog post** or a **sermon** from the Ministry Admin Panel (`apps/admin`),
+`apps/admin` calls `POST /api/revalidate` on `apps/web`. When `CONTENT_PUBLISH_EMAILS === "true"` and
+the request carries `notify: true`, the site automatically emails newsletter subscribers an
+announcement in their own locale — exactly once per entry+locale — reusing the ICR-29 broadcast
+engine. This section covers the revalidation endpoint extension, content routing, and audience
+resolution that wire it together.
 
-### Webhook extension (`/api/revalidate`)
+### Revalidation endpoint (`/api/revalidate`)
 
-`POST /api/revalidate` now performs two steps after authentication:
+`POST /api/revalidate` performs two steps after authenticating header `x-vercel-reval-key` against
+`WEBSITE_REVALIDATE_SECRET`:
 
-1. **Revalidate first, unconditionally.** `revalidateTag("site-content", "max")` runs immediately
-   after auth, before any body parsing. Notification is an isolated side-effect and can never
-   prevent revalidation.
+1. **Revalidate first, unconditionally.** `revalidateSiteContent()` (`revalidateTag("site-content", { expire: 0 })`)
+   runs immediately after auth, before any body parsing. Notification is an isolated side-effect and
+   can never prevent revalidation.
 2. **Notify as a side-effect.** Inside a `try/catch` (errors logged with `error.message` only —
-   no PII, no secrets — never rethrown), the handler parses the Contentful publish payload
-   defensively (body may be absent, empty, or non-JSON) and, when it finds
-   `body.sys.contentType.sys.id` + `body.sys.id`, calls
-   `notifyOnPublish({ contentTypeId, entryId })`. The response stays `{ revalidated: true, now }`
-   in all cases; an optional `notified` field carries the per-locale summary.
-
-The Contentful webhook must send the **default entry payload** (which includes `sys.contentType.sys.id`
-
-- `sys.id` natively). A customized minimal payload without those fields causes notify to skip silently —
-  revalidation is unaffected.
+   no PII, no secrets — never rethrown), the handler parses the JSON body defensively (body may be
+   absent, empty, or non-JSON) and, when `process.env.CONTENT_PUBLISH_EMAILS === "true"`,
+   `body.notify === true`, `body.type` is `"post"` or `"sermon"`, and `body.id` is a valid 24-hex
+   MongoDB ObjectId string, calls `notifyOnPublish({ type, id })`. The response stays
+   `{ revalidated: true, now }` in all cases; an optional `notified` field carries the per-locale
+   summary.
 
 ### Content-type routing (`post-notification.service.ts`)
 
-`notifyOnPublish` routes by `contentTypeId`:
+`notifyOnPublish` routes by `event.type`:
 
-| `sys.contentType.sys.id` | Content getter                         | URL segment | `broadcastId` prefix |
-| ------------------------ | -------------------------------------- | ----------- | -------------------- |
-| `blogPostPage`           | `getBlogPostPageById(entryId, locale)` | `blog`      | `blog`               |
-| `sermon`                 | `getSermonById(entryId, locale)`       | `predicas`  | `sermon`             |
-| any other type           | —                                      | —           | no-op; no email sent |
+| `body.type`    | Content getter (`@lib/content/*`)      | URL segment | `broadcastId` prefix |
+| -------------- | -------------------------------------- | ----------- | -------------------- |
+| `post`         | `getBlogPostPageById(entryId, locale)` | `blog`      | `blog`               |
+| `sermon`       | `getSermonById(entryId, locale)`       | `predicas`  | `sermon`             |
+| any other type | —                                      | —           | no-op; no email sent |
 
 For each matched type the orchestrator iterates `BROADCAST_LOCALES = ["es-AR","en-US"]` and, per
 locale: skips if the audience is not configured → fetches content (skips if entry has no title in
 that locale) → builds the post-notification email → calls `sendBroadcast` with
-`broadcastId = "${kind}:${slug}:${locale}"` (e.g. `blog:mi-articulo:es-AR`). All per-locale steps
+`broadcastId = "${kind}:${entryId}:${locale}"` (e.g. `blog:<objectId>:es-AR`). All per-locale steps
 are individually error-isolated: a getter exception in one locale does not abort the other.
 
 ### Per-locale audience resolution (`resendAudience.ts`)

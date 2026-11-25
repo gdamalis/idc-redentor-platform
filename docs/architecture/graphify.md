@@ -45,8 +45,8 @@ Examples that work today:
 
 ```bash
 graphify query "trace the /api/contact request flow"
-graphify explain "getPage()"                       # shows `<-- page.tsx [imports]` etc.
-graphify path "fetchGraphQL()" "ContactForm()"     # → fetchGraphQL → getTextBlockComponent → page.tsx → ContactForm
+graphify explain "getSection()"                    # shows `<-- page.tsx [imports]` etc.
+graphify path "requireContentDb()" "ContactForm()" # → requireContentDb → getSection → page.tsx → ContactForm
 ```
 
 ### Directed vs undirected

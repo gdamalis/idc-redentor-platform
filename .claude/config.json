@@ -1,5 +1,5 @@
 {
-  "_monorepoNote": "pnpm + Turborepo workspace: the site lives under apps/web/. App paths in any descriptive note below (src/..., lib/..., public/..., config/..., scripts/contentful/..., .env.local) resolve under apps/web/ (e.g. apps/web/src/utils/predica/sermonEntry.ts, apps/web/.env.local). Only .claude/, docs/, and tasks/ stay at the repo root. The script/output/dir paths actually executed by the harness (commands.*, predica.*.script, predica.*.logo, predica.voices.dir, etc.) are already correct as written; this note only governs the prose references.",
+  "_monorepoNote": "pnpm + Turborepo workspace: the site lives under apps/web/ and the ministry admin app lives under apps/admin/. App paths in any descriptive note below (src/..., lib/..., public/..., config/..., .env.local) resolve under apps/web/ (e.g. apps/web/src/utils/predica/helpers.ts, apps/web/.env.local). Only .claude/, docs/, and tasks/ stay at the repo root. The script/output/dir paths actually executed by the harness (commands.*, predica.*.script, predica.*.logo, predica.voices.dir, etc.) are already correct as written; this note only governs the prose references.",
   "project": {
     "name": "idc-redentor-platform",
     "ticketPrefix": "ICR",
@@ -265,7 +265,7 @@
           "ministerio.idcredentor.org"
         ],
         "requirePreviewEnvironment": false,
-        "requirePreviewEnvironmentNote": "Staging is NOT a PER-PR Vercel preview deployment — it has its OWN host allowlist (^staging\\.idcredentor\\.org$), not a *.vercel.app host. It MUST NOT inherit the preview's 'must be a Vercel preview deployment (target!==production)' check. But it MUST still hard-deny every productionHostDeny host. Net: the only sanctioned non-per-PR-preview QA target is exactly staging.idcredentor.org. CAUTION — this is a statement about the QA HOST GATE, not about the build env: staging IS a Vercel BRANCH deployment, so it is built with VERCEL_ENV=preview, which makes previewLike true there (draft content + Contentful-framable CSP, X-Frame-Options omitted). Do not read 'staging is not a preview' as 'VERCEL_ENV !== preview' — verified live: staging.idcredentor.org returns frame-ancestors including app.contentful.com and no X-Frame-Options. This is what makes staging the standing Contentful Live Preview target (docs/architecture/contentful-data-layer.md § Live Preview). The admin app is a SEPARATE Vercel project (`idc-redentor-admin`) with its own production host (idc-redentor-admin.vercel.app) and custom domain (ministerio.idcredentor.org) — both hard-denied here too. IMPORTANT: this env serves the WEBSITE ONLY. Admin has its own staging host and its own env block (qa.env.stagingAdmin); do not point admin QA here, it would exercise none of an apps/admin change.",
+        "requirePreviewEnvironmentNote": "Staging is NOT a PER-PR Vercel preview deployment — it has its OWN host allowlist (^staging\\.idcredentor\\.org$), not a *.vercel.app host. It MUST NOT inherit the preview's 'must be a Vercel preview deployment (target!==production)' check. But it MUST still hard-deny every productionHostDeny host. Net: the only sanctioned non-per-PR-preview QA target is exactly staging.idcredentor.org. CAUTION — this is a statement about the QA HOST GATE, not about the build env: staging IS a Vercel BRANCH deployment, so it is built with VERCEL_ENV=preview (always-draft preview banner active on staging/preview, X-Frame-Options: SAMEORIGIN and frame-ancestors 'self' enforced identically across all envs). The admin app is a SEPARATE Vercel project (`idc-redentor-admin`) with its own production host (idc-redentor-admin.vercel.app) and custom domain (ministerio.idcredentor.org) — both hard-denied here too. IMPORTANT: this env serves the WEBSITE ONLY. Admin has its own staging host and its own env block (qa.env.stagingAdmin); do not point admin QA here, it would exercise none of an apps/admin change.",
         "liveIntegrationPolicy": "no-POST",
         "liveIntegrationNote": "Staging has its OWN 'website-staging' Mongo DB (created + wired in Vercel), so Mongo reads/writes against website-staging are allowed. BUT SendGrid/Resend are presumed LIVE on staging unless sandbox creds exist — so QA must NOT happy-path POST /api/subscribe or submit the contact form (a Server Action — contactFormAction.ts; there is no /api/contact route) (it would email a real recipient / hit the live audience). Form submit/validation can be exercised up to the network boundary; full end-to-end form POST is DEFERRED until staging has sandbox mail creds or a test recipient.",
         "dbNameAllow": "^(website|ministry-admin)-(staging|test|qa|e2e)$",
@@ -367,7 +367,7 @@
         "apps/web/src/app/api/**",
         "apps/web/src/proxy.ts",
         "apps/web/src/i18n/**",
-        "apps/web/lib/contentful/fetch.ts",
+        "apps/web/lib/content/**",
         "apps/web/config/headers.js",
         "apps/web/config/**",
         "apps/web/next.config.*",
@@ -469,50 +469,6 @@
     "e2e": "pnpm e2e"
   },
   "commandsNote": "typecheck maps to ICR's actual 'type-check' script (hyphen). 'test' = vitest run (single-pass; package.json 'test' is 'vitest run', never watch). 'e2e' = playwright test (config present, no specs in Phase 1). lint = eslint . If a script is absent at runtime, verifier/qa-runner reports it rather than inventing one.",
-  "contentful": {
-    "_note": "TWO LANES (docs/architecture/contentful-environments.md). CONTENT edits happen live in production (the `master` alias env) with no workflow. MODEL changes (new/changed/deleted content type or field, or an entry remap) use a work env: DEFAULT = a permanent `staging` env (granted on the Delivery+Preview API keys ONCE), promoted to prod at cutover via Contentful Merge and/or the committed scripts/contentful/ migrations (rollback = reverse migration). HEAVY = for big BREAKING changes (type deletions, field renames, merges), build in `staging`, then a HUMAN performs the stable-name alias-swap cutover: re-point master→staging, delete the old production env, clone staging→a fresh `production`, re-point master→production (see docs/architecture/contentful-environments.md §Heavy alias-swap runbook). The single free-tier work-env slot is shared, so only one lane runs at a time. Cutover is HUMAN-ONLY, like merge/Done. Write path + safety: docs/architecture/contentful-mcp.md. Read path: docs/architecture/contentful-data-layer.md.",
-    "defaultWorkEnv": "staging",
-    "defaultWorkEnvNote": "The standing model-change work env (permanent; set up on the API keys + MCP/.env.local/preview ONCE). For big breaking changes that need an alias-flip rollback, see the `heavyCutover` key below and docs/architecture/contentful-environments.md §Heavy alias-swap runbook — stable names (`production` + `staging`) are used throughout; semver work-env names are not.",
-    "mcpNamespace": "mcp__contentful__",
-    "spaceId": "vg9le24yw8hb",
-    "productionAlias": "master",
-    "aliasTarget": "production",
-    "freeTierWorkEnvLimit": 1,
-    "freeTierNote": "Free tier allows production (the master alias target) + exactly ONE other environment. The API enforces a quota of 1 environment beyond the alias target (creating a second fails: 'Quota reached ... 1 out of 1 allotted'). The two slots are permanently occupied by `production` (the alias target) + `staging` (the permanent work env); no per-cycle create/delete is needed. A heavy alias-swap cutover temporarily re-points the alias and swaps envs (see `heavyCutover`) but never requires a 3rd env. You can only ever delete the NON-aliased env (Contentful blocks deleting the alias target).",
-    "appEnvVar": "CONTENTFUL_ENVIRONMENT",
-    "appEnvVarNote": "Read by lib/contentful/fetch.ts. Unset/absent => the app targets the `master` alias (production) — production config NEVER sets it. Set it to the current work env (e.g. staging) in .env.local AND the branch-scoped Vercel Preview to test model changes before cutover.",
-    "heavyCutover": {
-      "_note": "Big BREAKING model changes (type deletions, field renames, merges) use a stable-name alias-swap, NOT semver work-env names. Runbook: docs/architecture/contentful-environments.md §5.",
-      "steps": [
-        "Cold-backup old production (npx contentful space export -> scripts/contentful/backups/).",
-        "Re-point master alias -> staging (live now reads the tested staging env).",
-        "Delete the old production env (frees the free-tier slot).",
-        "Clone staging -> a fresh env named `production`.",
-        "Re-point master alias -> production; refresh staging from production for the next cycle."
-      ],
-      "tradeoff": "Free tier holds 2 envs, so steps 1-4 have no separate rollback env; the alias serves the known-good staging the whole window, and the cold backup is the last resort."
-    },
-    "writePath": {
-      "via": "Contentful MCP (@contentful/mcp-server) + committed contentful-migration scripts under scripts/contentful/",
-      "targetEnv": "the current WORK env (e.g. staging) — NEVER the master alias",
-      "protectedEnvironments": "master,production",
-      "protectedNote": "PROTECTED_ENVIRONMENTS=master,production blocks MCP WRITE tools against the live alias AND the live env. Model changes go to `staging` only; production is changed by a human cutover (Merge / committed scripts / alias-swap), never by an agent via the MCP. Reads work against any env (environmentId is a required per-call arg)."
-    },
-    "cutover": {
-      "owner": "human",
-      "action": "DEFAULT lane: apply the tested migration to production (Contentful Merge for the model and/or run the committed scripts/contentful/ migrations against the prod env). HEAVY lane: 5-step stable-name alias-swap — cold-backup old production → re-point master→staging → delete old production → clone staging→`production` → re-point master→production (see docs/architecture/contentful-environments.md §5). Either way, done at PR-merge time.",
-      "humanGate": true,
-      "humanGateNote": "HUMAN-ONLY, like merge and Done. NO agent or command ever re-points the `master` alias. Agents propose changes in the work env; a human promotes at PR-merge time.",
-      "rollback": "DEFAULT lane: reverse migration or fix-forward. HEAVY lane: during the alias-swap window the alias serves the known-good, fully-tested `staging` env (never deleted); the §0 JSON cold backup (scripts/contentful/backups/) is the last-resort restore. No separate rollback env exists — that is the documented free-tier tradeoff (docs/architecture/contentful-environments.md §Heavy alias-swap runbook)."
-    },
-    "apiKeyEnvAccess": "Contentful Delivery (CDA) + Preview (CPA) API keys are ENVIRONMENT-SCOPED. The app's existing tokens allow the `master` alias ONLY, so a freshly created work env returns UNKNOWN_ENVIRONMENT until it is added to BOTH keys (Contentful -> Settings -> API keys -> [key] -> Environments). Do this FIRST each cycle, before local/preview testing. After cutover the alias covers the new env automatically, so production never needs a key change. (No MCP tool manages API keys -> human action in the Contentful UI.)",
-    "oneTimeConfigTouch": [
-      "Delivery (CDA) + Preview (CPA) API keys -> add `staging` (Settings -> API keys -> Environments) [human-only, once]",
-      "MCP ENVIRONMENT_ID -> staging (default; reads override per-call)",
-      ".env.local CONTENTFUL_ENVIRONMENT -> staging (for local model-change testing)",
-      "Vercel Preview CONTENTFUL_ENVIRONMENT (branch-scoped) -> staging (model-change PRs only)"
-    ]
-  },
   "playwrightProjectMap": {
     "_note": "Monorepo: the public site is at apps/web. ICR uses apps/web/src/app/[locale]/<segment> (NO route groups) plus apps/web/src/app/api/<route>. Phase 1 has NO e2e suite — qa-runner authors specs per-ticket on heavy depth. This map tells qa-runner which e2e project/tag to target for a given changed path.",
     "apps/web/src/app/[locale]/page.tsx": ["e2ePublic"],
@@ -524,13 +480,13 @@
     "apps/web/src/app/api/subscribe": ["apiForms"],
     "apps/web/src/app/api/likes": ["apiLikes"],
     "apps/web/src/app/api/revalidate": ["apiForms"],
-    "apps/web/src/app/api/draft": ["apiForms"],
+    "apps/web/src/app/api/preview": ["apiForms"],
     "apps/web/src/service": ["apiForms", "apiLikes", "e2ePublic"],
     "apps/web/src/components": ["e2ePublic"],
     "apps/web/src/i18n": ["e2ePublic", "e2eBlog"],
     "apps/web/src/proxy.ts": ["e2ePublic"],
     "apps/web/public/locales": ["e2ePublic", "e2eBlog"],
-    "apps/web/lib/contentful": ["e2ePublic", "e2eBlog"],
+    "apps/web/lib/content": ["e2ePublic", "e2eBlog"],
     "apps/web/config/headers.js": ["e2ePublic"],
     "apps/admin/src/app/api": ["apiAdmin"],
     "apps/admin/src/app": ["e2eAdmin"],

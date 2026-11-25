@@ -38,7 +38,7 @@ function buildAdminCsp() {
 /**
  * Baseline security headers for `apps/admin` (`ICR-196` AC8, cross-referenced with `ICR-188`).
  * Stricter than `apps/web` (never framed: `X-Frame-Options: DENY` + `frame-ancestors 'none'`;
- * no Contentful/GTM/Unsplash allowlist) while allowing Vercel Blob uploads/previews and Firebase Auth.
+ * no GTM/Unsplash allowlist) while allowing Vercel Blob uploads/previews and Firebase Auth.
  */
 function buildAdminSecurityHeaders() {
   return [

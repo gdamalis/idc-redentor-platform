@@ -6,22 +6,26 @@ const find = (hs: Array<{ key: string; value: string }>, k: string) =>
   hs.find((h) => h.key.toLowerCase() === k.toLowerCase());
 
 describe("buildSecurityHeaders", () => {
-  it("production: strict clickjacking with SAMEORIGIN and no Contentful frame-ancestors", () => {
+  it("production: strict clickjacking with SAMEORIGIN and self-only frame-ancestors", () => {
     const hs = buildSecurityHeaders({ previewLike: false });
     expect(find(hs, "X-Frame-Options")?.value).toBe("SAMEORIGIN");
     const csp = find(hs, "Content-Security-Policy")!.value;
-    expect(csp).toContain("frame-ancestors 'self';");
-    expect(csp).not.toContain("app.contentful.com");
-    expect(csp).not.toContain("app.eu.contentful.com");
+    const frameAncestors = csp
+      .split(";")
+      .find((s) => s.trim().startsWith("frame-ancestors"))
+      ?.trim();
+    expect(frameAncestors).toBe("frame-ancestors 'self'");
   });
 
-  it("preview/dev: restores X-Frame-Options: SAMEORIGIN and drops Contentful frame-ancestors (ICR-205 AC8)", () => {
+  it("preview/dev: keeps X-Frame-Options: SAMEORIGIN and self-only frame-ancestors", () => {
     const hs = buildSecurityHeaders({ previewLike: true });
     expect(find(hs, "X-Frame-Options")?.value).toBe("SAMEORIGIN");
     const csp = find(hs, "Content-Security-Policy")!.value;
-    expect(csp).toContain("frame-ancestors 'self';");
-    expect(csp).not.toContain("app.contentful.com");
-    expect(csp).not.toContain("app.eu.contentful.com");
+    const frameAncestors = csp
+      .split(";")
+      .find((s) => s.trim().startsWith("frame-ancestors"))
+      ?.trim();
+    expect(frameAncestors).toBe("frame-ancestors 'self'");
   });
 
   it("keeps all headers and CSP directives identical across envs", () => {
@@ -30,7 +34,7 @@ describe("buildSecurityHeaders", () => {
     expect(prev).toEqual(prod);
   });
 
-  it("allows Vercel Blob public media host in img-src and media-src while keeping ctfassets until ICR-207 and read-only connect-src", () => {
+  it("restricts img-src and media-src to exact allowed hosts (Vercel Blob + analytics/Unsplash) and read-only connect-src", () => {
     const csp = find(
       buildSecurityHeaders({ previewLike: false }),
       "Content-Security-Policy",
@@ -41,15 +45,13 @@ describe("buildSecurityHeaders", () => {
         .find((s) => s.trim().startsWith(d))
         ?.trim() ?? "";
 
-    expect(grab("img-src")).toContain("https://*.public.blob.vercel-storage.com");
-    expect(grab("img-src")).toContain("https://images.ctfassets.net");
-    expect(grab("img-src")).toContain("https://images.eu.ctfassets.net");
-    expect(grab("img-src")).toContain("https://images.unsplash.com");
+    expect(grab("img-src")).toBe(
+      "img-src 'self' data: https://www.google-analytics.com https://*.google-analytics.com https://*.googletagmanager.com https://images.unsplash.com https://*.public.blob.vercel-storage.com",
+    );
 
-    expect(grab("media-src")).toContain("https://*.public.blob.vercel-storage.com");
-    expect(grab("media-src")).toContain("https://assets.ctfassets.net");
-    expect(grab("media-src")).toContain("https://assets.eu.ctfassets.net");
-    expect(grab("media-src")).toContain("https://downloads.ctfassets.net");
+    expect(grab("media-src")).toBe(
+      "media-src 'self' https://*.public.blob.vercel-storage.com",
+    );
 
     expect(grab("connect-src")).not.toContain("blob.vercel-storage.com");
   });

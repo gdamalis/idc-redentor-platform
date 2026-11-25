@@ -7,24 +7,10 @@ declare namespace NodeJS {
     VERCEL_ENV?: 'production' | 'preview' | 'development';
     VERCEL_TARGET_ENV?: string;
 
-    // Content platform preview & revalidation (ICR-201 / ICR-197 / ICR-205)
+    // Content platform preview & revalidation
     CONTENT_PREVIEW_SECRET?: string;
     WEBSITE_REVALIDATE_SECRET?: string;
     CONTENT_PUBLISH_EMAILS?: string;
-    
-    // Contentful CMS
-    CONTENTFUL_SPACE_ID: string;
-    CONTENTFUL_ACCESS_TOKEN: string;
-    CONTENTFUL_PREVIEW_ACCESS_TOKEN: string;
-    CONTENTFUL_PREVIEW_SECRET: string;
-    CONTENTFUL_REVALIDATE_SECRET: string;
-    CONTENTFUL_ENVIRONMENT?: string;
-    CONTENTFUL_MANAGEMENT_ACCESS_TOKEN: string;
-
-    // Predica PDF regeneration webhook + cron
-    PREDICA_REGEN_SECRET: string;
-    CRON_SECRET: string;
-    PDF_REGEN_QUIET_WINDOW_SECONDS?: string;
 
     // Resend Broadcasts
     RESEND_AUDIENCE_ID: string;

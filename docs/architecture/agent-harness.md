@@ -1,6 +1,6 @@
 # Agent Harness
 
-> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+> **Monorepo note:** the site lives under **`apps/web/`**, the Ministry Admin Panel under **`apps/admin/`**, and shared packages under **`packages/`** (`@idcr/config`, `@idcr/ui`, `@idcr/content`). Unqualified app paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `next.config.ts`, `tsconfig.json`, …) live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope with `pnpm --filter @idcr/web <task>` / `pnpm --filter @idcr/admin <task>`.
 
 > **Purpose:** How to use the Claude Code agent harness on this repo — the agents and slash commands, the
 > human-gated Linear automation (Backlog → Todo → In Progress → In Review → **In Testing** → Done, with
@@ -31,18 +31,18 @@ in `.claude/config.json` (canon-schema, validated by the plugin's `yoke:canon` s
 > is not "humans do it by hand" — the human _triggers_ `/yoke:merge`, which performs the squash. `autoMerge`
 > stays `false`; nothing merges autonomously. The generic harness now lives in the reusable **yoke plugin**
 > (shared across the Divine Lab projects); this repo supplies only the ICR-specific facts (`.claude/config.json`)
-> and the `/predica` domain pipeline, wiring the plugin to its `apps/web` monorepo, its Contentful-backed
-> no-auth site, and its Vercel staging/prod split.
+> and the `/predica` domain pipeline, wiring the plugin to its `apps/web` + `apps/admin` monorepo, its MongoDB-backed
+> content platform, and its Vercel staging/prod split.
 
 ## Commands
 
-| Command                                 | Backed by                                                                                                                                | Does                                                                                                                                                                                                                                                                                                                                       | Issue transitions                                                                                |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
-| **`/yoke:pm`**                     | `yoke:product-manager`                                                                                                              | Intake a raw idea → Todo issue; refine a thin issue to ready; groom the Backlog + Todo statuses. Enforces `docs/product/scope-and-boundaries.md`. **Never implements.**                                                                                                                                                                  | Creates/updates issues up to **Todo**; never past it                                            |
-| **`/yoke:work [ICR-N]`**           | yoke:explorer → yoke:implementer → yoke:verifier → yoke:qa-runner → yoke:acceptance-judge → yoke:pr-author | Pick up a ready issue, refine-gate it, create a worktree + branch, (conditionally) brainstorm + spec, implement ↔ verify, open a draft PR, run always-on type-aware pre-merge QA on the preview, mark ready, then run the detached post-PR review + CI loop. Hands off to `/yoke:merge` on an explicit in-session "merge".            | **Todo → In Progress** (step 3), **In Progress → In Review** (step 14, via yoke:pr-author) |
-| **`/yoke:merge ICR-N`**            | `/yoke:work` hand-off or standalone                                                                                                 | **User-triggered ONLY.** Squash-merge the PR (refuse on red/pending CI), delete the worktree + branch, transition the issue → In Testing, then run post-merge **staging** QA against the env serving the app that changed (`staging` for `apps/web`, `stagingAdmin` for `apps/admin`). **Never merges autonomously; never moves to Done.** | **In Review → In Testing** (after a verified squash-merge)                                       |
-| **`/yoke:qa [ICR-N] [--preview]`** | `yoke:qa-acceptance` (tester) → `yoke:acceptance-judge` (verdict)                                                              | Acceptance QA against the **staging** deployment by default; `--preview` re-targets the PR's Vercel preview. Posts the QA evidence as one Linear comment with inline screenshots. **Phase 1: report-only.**                                                                                                                                            | May move Todo/In Progress → In Review on the **preview** path only; **never Done**        |
-| **`/yoke:verify`**                 | yoke:verifier (+ yoke:security-reviewer)                                                                                       | Run `pnpm type-check && pnpm lint && pnpm test && pnpm build` and security checks. Local-only.                                                                                                                                                                                                                                             | none                                                                                             |
+| Command                            | Backed by                                                                                                  | Does                                                                                                                                                                                                                                                                                                                                       | Issue transitions                                                                          |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| **`/yoke:pm`**                     | `yoke:product-manager`                                                                                     | Intake a raw idea → Todo issue; refine a thin issue to ready; groom the Backlog + Todo statuses. Enforces `docs/product/scope-and-boundaries.md`. **Never implements.**                                                                                                                                                                    | Creates/updates issues up to **Todo**; never past it                                       |
+| **`/yoke:work [ICR-N]`**           | yoke:explorer → yoke:implementer → yoke:verifier → yoke:qa-runner → yoke:acceptance-judge → yoke:pr-author | Pick up a ready issue, refine-gate it, create a worktree + branch, (conditionally) brainstorm + spec, implement ↔ verify, open a draft PR, run always-on type-aware pre-merge QA on the preview, mark ready, then run the detached post-PR review + CI loop. Hands off to `/yoke:merge` on an explicit in-session "merge".                 | **Todo → In Progress** (step 3), **In Progress → In Review** (step 14, via yoke:pr-author) |
+| **`/yoke:merge ICR-N`**            | `/yoke:work` hand-off or standalone                                                                        | **User-triggered ONLY.** Squash-merge the PR (refuse on red/pending CI), delete the worktree + branch, transition the issue → In Testing, then run post-merge **staging** QA against the env serving the app that changed (`staging` for `apps/web`, `stagingAdmin` for `apps/admin`). **Never merges autonomously; never moves to Done.** | **In Review → In Testing** (after a verified squash-merge)                                 |
+| **`/yoke:qa [ICR-N] [--preview]`** | `yoke:qa-acceptance` (tester) → `yoke:acceptance-judge` (verdict)                                          | Acceptance QA against the **staging** deployment by default; `--preview` re-targets the PR's Vercel preview. Posts the QA evidence as one Linear comment with inline screenshots. **Phase 1: report-only.**                                                                                                                                | May move Todo/In Progress → In Review on the **preview** path only; **never Done**         |
+| **`/yoke:verify`**                 | yoke:verifier (+ yoke:security-reviewer)                                                                   | Run `pnpm type-check && pnpm lint && pnpm test && pnpm build` and security checks. Local-only.                                                                                                                                                                                                                                             | none                                                                                       |
 
 ## The agents
 
@@ -89,7 +89,7 @@ The roster ships in the **yoke plugin** (dispatched as `yoke:<name>` via the Tas
   _whether that meets the issue_ (product). Never fused — the judge's verdict supersedes any provisional
   result the tester emitted.
 - **`yoke:security-reviewer`** — fresh, diff-only security + performance review. Scans a PR/branch diff against the
-  sensitive paths (services, API routes, `proxy.ts`, `lib/contentful/fetch.ts`, `config/headers.js`, env
+  sensitive paths (services, API routes, `proxy.ts`, `apps/web/lib/content/**`, `config/headers.js`, env
   files) and returns a structured gating verdict. Used by `/yoke:qa` and `/yoke:verify`; can run ad hoc.
 
 ## Linear: keys, team, and the human gates
@@ -184,29 +184,23 @@ false` (a trivial copy/refactor), **both are skipped** and `/yoke:work` auto-pil
 6. **Implement ↔ verify loop.** The implementer executes each plan checkpoint TDD-first and commits; the
    verifier runs the gate stack per depth. A **3-attempt cap** (with prior-error diff) guards the loop; on
    cap it triggers the Failure handler.
-7. **Contentful model-change gate ★ (project gate).** After the plan is written, if it changes the Contentful
-   **content model** (a content-type/field create/update/delete, or an entry remap — not just a read fragment
-   in `lib/contentful/*`), `/yoke:work` **STOPS** and confirms **which lane** before implementing (see
-   "Contentful model-change workflow" below). The `implementer` then writes to the chosen **work env** only,
-   never the `master` alias/production; cutover is deferred to the human. Pure read-side / code-only changes
-   skip this gate.
-8. **Open a draft PR early (yoke:pr-author).** `git push -u`, `gh pr create --draft` with a conventional title,
+7. **Open a draft PR early (yoke:pr-author).** `git push -u`, `gh pr create --draft` with a conventional title,
    fills the template, posts the PR-link Linear comment. **Issue stays In Progress.** Every later checkpoint
    commits-and-pushes to this open PR so cloud review agents can review iteratively.
-9. **Always-on pre-merge QA on the PREVIEW (step 13).** **Unconditional for every testable ticket** — no
+8. **Always-on pre-merge QA on the PREVIEW (step 13).** **Unconditional for every testable ticket** — no
    `light = skip`. Type-aware: `ui` → browser walk + screenshots; `api` → API/request-level checks;
    `chore` → vitest/local only. The **tester (`yoke:qa-runner`) → `yoke:acceptance-judge` (verdict)** split applies;
    the loop's pass/fail decision keys off the **judge's** verdict. Evidence is **dual-posted to BOTH the PR
    and the Linear issue** (screenshots are uploaded inline on the Linear issue; the PR carries the written report +
    per-AC verdict table + a link to the Linear issue). A 3-attempt QA cap mirrors the verify loop; it auto-remediates but
    **never auto-merges**.
-10. **Docs evaluation (step 13.5)** then **mark ready (step 14, yoke:pr-author).** `gh pr ready`, a final Linear
-    comment, and **In Progress → In Review** (automated transition #2). This is `/yoke:work`'s last automated transition.
-11. **Detached post-PR review + CI loop (step 14.5).** See the next section.
-12. **In-session merge hand-off (step 14.6).** After the loop reaches its CLEAN/CAP exit and the human has
+9. **Docs evaluation (step 13.5)** then **mark ready (step 14, yoke:pr-author).** `gh pr ready`, a final Linear
+   comment, and **In Progress → In Review** (automated transition #2). This is `/yoke:work`'s last automated transition.
+10. **Detached post-PR review + CI loop (step 14.5).** See the next section.
+11. **In-session merge hand-off (step 14.6).** After the loop reaches its CLEAN/CAP exit and the human has
     reviewed, the human may say **"merge"** in the same conversation; only then does `/yoke:work` route the live
     session into the **`/yoke:merge ICR-N`** logic (it does **not** reimplement merge). Merge is never autonomous.
-13. **Triage stray observations (step 15)** and **lessons (step 16)**, then stop. `/yoke:work` deletes its state
+12. **Triage stray observations (step 15)** and **lessons (step 16)**, then stop. `/yoke:work` deletes its state
     file on success. **It never merges and never moves an issue to Done.**
 
 `/yoke:work` persists progress to a state file (`tasks/specs/ICR-N-<slug>.state.json`) so an aborted run (Ctrl-C,
@@ -269,8 +263,8 @@ stays `false`). It is invoked standalone or via the `/yoke:work` step-14.6 hand-
    prod hosts hard-denied in both; **skip** the must-be-a-Vercel-preview check —
    staging is not a **per-PR** preview deployment, so it has no `*.vercel.app` host to match. Note this
    is a statement about the QA _host_ gate only: staging **is** a Vercel branch deployment and so is
-   built with `VERCEL_ENV=preview`, which is exactly what makes it draft-serving and Contentful-framable
-   — see `contentful-data-layer.md` § Live Preview). Then **tester (`yoke:qa-acceptance`) → `yoke:acceptance-judge`** → post the result to
+   built with `VERCEL_ENV=preview`, which is why `shouldUseDraftMode()` serves draft content from
+   `website-staging` automatically). Then **tester (`yoke:qa-acceptance`) → `yoke:acceptance-judge`** → post the result to
    the Linear issue (`postedBy: "/yoke:merge"`, `envName:` the env resolved above). A `no-POST` happy-path AC the tester correctly
    skipped is **BLOCKED/deferred**, not FAIL.
 7. **Stop.** Report the merge + cleanup + the staging verdict, and remind the user that **Done is human-only**
@@ -343,36 +337,11 @@ guardrails:
 - **Auto-merge is disabled** (`config.qa.autoMerge.enabled` stays `false`, a kill switch). Even when
   `fix`/`auto` land later, nothing merges autonomously — the human triggers `/yoke:merge`, which performs the
   squash. Sensitive paths (`apps/web/src/service/**`, `apps/web/src/templates/**`, `apps/web/src/app/api/**`,
-  `apps/web/src/proxy.ts`, `apps/web/src/i18n/**`, `apps/web/lib/contentful/fetch.ts`, `apps/web/config/**`,
+  `apps/web/src/proxy.ts`, `apps/web/src/i18n/**`, `apps/web/lib/content/**`, `apps/web/config/**`,
   `apps/web/next.config.*`, `package.json`, `.env*`, `.github/**`) raise the bar further.
 - **QA depth** (`light`/`standard`/`heavy`, default `standard`) is the **effort dial within a type**, resolved
   from a `qa-<depth>` label or a `QA: <depth>` description token. **There is no `light = skip` tier** —
   every testable ticket runs its TYPE's baseline.
-
-## Contentful model-change workflow (two lanes)
-
-When an issue changes the Contentful **content model** — a new/changed/deleted content type or field, or an
-entry remap (**not** just a new read fragment in `lib/contentful/*`) — the harness routes it through one of
-two lanes, wired in `.claude/config.json` → `contentful` and documented in full in
-[`contentful-environments.md`](./contentful-environments.md). (Plain **content** edits — new posts, text
-fixes, a sermon — happen live in production and need none of this.)
-
-- **`master` is an alias → production**; the app reads the alias and production config never changes. Agents
-  make model + entry changes in a **work env** via the Contentful MCP + committed `scripts/contentful/`
-  migrations — **never** against the alias.
-- **Default lane — permanent `staging`:** one stable work env (granted on the Delivery + Preview API keys
-  **once**); at cutover a human applies the tested migration to production (Contentful **Merge** and/or the
-  scripts). Rollback = reverse migration. Use for everyday model changes.
-- **Heavy lane — versioned env + alias re-point:** for a big **breaking** change (type deletions, field
-  renames, merges), clone prod into `master-<major>.<minor>.<patch>` (semver by change class: major =
-  breaking, minor = additive, patch = fix) and a human **re-points the `master` alias** at cutover — atomic,
-  with instant flip-back rollback. The single free-tier work-env slot is shared, so only one lane runs at a
-  time. (Epic ICR-76 uses this lane → `master-1.0.0`.)
-- **`/yoke:work` Contentful gate (step 7 / former step 8.2):** if the plan touches the model, `/yoke:work` stops, asks
-  **which lane**, requires the spec's "Data Model Changes" section to carry the cutover plan, and defers the
-  cutover to the human. The `yoke:implementer` operates the MCP against the chosen **work env**, never the alias.
-- **The cutover is HUMAN-ONLY** — agents never apply to production or re-point the `master` alias (like
-  merge/Done).
 
 ## Commands map (what the agents actually run)
 
@@ -443,9 +412,5 @@ Grep/Read on an empty/stale/absent graph and notes it. Full guide: [`graphify.md
    verdict is authoritative.
 6. **Respect the product scope** (`docs/product/scope-and-boundaries.md`) — the PM rejects/reframes
    out-of-scope ideas.
-7. **Treat the sensitive paths as sensitive** — email, PII, API routes, CSP, env, middleware, the Contentful
-   transport; they always gate the design discussion and raise the QA bar. **Staging is `no-POST`.**
-8. **Never apply Contentful model changes to production or re-point the `master` alias** — that's a human
-   promotion, like merge/Done. Agents make changes in a **work env** (the permanent `staging`, or a versioned
-   env for big breaking changes) via the MCP + `scripts/contentful/` and propose; the human cuts over. See
-   `docs/architecture/contentful-environments.md` (the `/yoke:work` Contentful gate enforces this).
+7. **Treat the sensitive paths as sensitive** — email, PII, API routes, CSP, env, middleware, and the MongoDB
+   content/data layer; they always gate the design discussion and raise the QA bar. **Staging is `no-POST`.**

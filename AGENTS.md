@@ -6,11 +6,11 @@
 
 IDC Redentor is the official bilingual (es-AR / en-US) website of Iglesia de Cristo Redentor: a content-managed informational church site with a blog, community/Creed content, a worship-service location page, a newsletter signup, and a contact form. It is the church's first custom website.
 
-- Stack: **Next.js 16** (App Router) + **React 19** + **Contentful** (CMS) + **Tailwind CSS 4** + **next-intl**
+- Stack: **Next.js 16** (App Router) + **React 19** + **MongoDB** + **Vercel Blob** + **Ministry Admin (`apps/admin`)** + **Tailwind CSS 4** + **next-intl**
 - Versioning: **independent per-app via Changesets** — read each app's version from its own `package.json` (`@idcr/web` = `apps/web`, `@idcr/admin` = `apps/admin`); the root version is frozen. Never hardcode a version. See `docs/architecture/versioning.md`.
 - Node: 22.14.0 (`.nvmrc`) · Package manager: **pnpm** · Host: **Vercel** (production + per-PR preview deploys)
 
-> **Monorepo layout:** this repo is a **pnpm + Turborepo** workspace. The website lives entirely under **`apps/web/`** — every app path in this guide (`src/`, `lib/`, `public/`, `config/`, `next.config.ts`, `tsconfig.json`, `vitest.config.ts`, `playwright.config.ts`, …) resolves **under `apps/web/`** unless stated otherwise. The repo root holds the workspace files (`pnpm-workspace.yaml`, `turbo.json`, root `package.json` (version frozen; per-app versions live in each app) + Turbo-proxy scripts), the `.claude/` harness, `docs/`, and `tasks/`. Workspace members also include two shared packages `apps/web` consumes — **`packages/config`** (`@idcr/config`: base tsconfig/eslint/postcss/prettier) and **`packages/ui`** (`@idcr/ui`: `cn()`, `LOGO` path constants, `tokens.css`) — see `docs/architecture/monorepo-packages.md`. Bare `pnpm <task>` at root proxies through Turbo across the workspace; scope to the site with `pnpm --filter @idcr/web <task>`. Vercel builds with **Root Directory = `apps/web`**.
+> **Monorepo layout:** this repo is a **pnpm + Turborepo** workspace. The website lives under **`apps/web/`** and the Ministry Admin Panel under **`apps/admin/`** — every unqualified app path in this guide (`src/`, `lib/`, `public/`, `config/`, `next.config.ts`, `tsconfig.json`, `vitest.config.ts`, `playwright.config.ts`, …) resolves **under `apps/web/`** unless stated otherwise. The repo root holds the workspace files (`pnpm-workspace.yaml`, `turbo.json`, root `package.json` (version frozen; per-app versions live in each app) + Turbo-proxy scripts), the `.claude/` harness, `docs/`, and `tasks/`. Shared workspace packages include **`packages/config`** (`@idcr/config`: base tsconfig/eslint/postcss/prettier), **`packages/ui`** (`@idcr/ui`: `cn()`, `LOGO` path constants, `tokens.css`), and **`packages/content`** (`@idcr/content`: MongoDB collection names, Zod schemas, TipTap rich-text spec/validation, natural keys, and signed preview helpers) — see `docs/architecture/monorepo-packages.md`. Bare `pnpm <task>` at root proxies through Turbo across the workspace; scope with `pnpm --filter @idcr/web <task>` / `pnpm --filter @idcr/admin <task>`. Vercel builds with **Root Directory = `apps/web`** (website) and **Root Directory = `apps/admin`** (admin).
 
 ## No Auth / No AI / No Payments — public website (`apps/web`)
 
@@ -36,13 +36,13 @@ IDC Redentor is the official bilingual (es-AR / en-US) website of Iglesia de Cri
 
 ## Architecture
 
-- **App Router**: pages under `src/app/[locale]/{page,who-is-jesus,community,come-meet-us,blog/[slug]}`; route handlers under `src/app/api/{likes,subscribe,revalidate,draft/{enable,disable}}`. No route groups; the contact form is a Server Action (`src/components/features/contact-form/contactFormAction.ts`).
-- **Contentful data layer (hand-written GraphQL, not an SDK)**: `lib/contentful/fetch.ts` (`fetchGraphQL`) → `lib/contentful/get*.ts` → RSC pages/components. Every request is tagged `next: { tags: ["site-content"] }`. **There is no codegen or generated client — it's all hand-written** (the unused `codegen.ts` + `@graphql-codegen/*` deps were removed).
-- **MongoDB** backs only two collections in db `website`: `likes` and `contact` (`src/service/database.service.ts` caches the client).
+- **App Router**: pages under `src/app/[locale]/{page,who-is-jesus,community,come-meet-us,blog/[slug],predicas/[slug],[topic]}`; route handlers under `src/app/api/{likes,subscribe,revalidate,preview,preview/exit}`. No route groups; the contact form is a Server Action (`src/components/features/contact-form/contactFormAction.ts`).
+- **Content platform (MongoDB + Vercel Blob + Ministry Admin)**: content lives in the MongoDB `website*` database (`@idcr/content` `COLLECTIONS`: `sections`, `belief_collections`, `event_banners`, `posts`, `sermons`, `bible_verses`, `authors`, `topics`, `seo_entries`, `globals`, `media`), authored in **`apps/admin`** (which also owns Vercel Blob media uploads via `BLOB_READ_WRITE_TOKEN` and the sermon PDF rebuild worker at `apps/admin/src/app/api/content/pdf-worker/`). `apps/web` reads content via **`apps/web/lib/content/*`** (`requireContentDb()` + `createCachedReader()` tagged `"site-content"` for published reads, `React.cache`-only for draft mode) and renders TipTap rich text via **`apps/web/lib/content/rich-text/`**. Full platform architecture documentation lives in Linear project documents.
+- **Public writes (MongoDB)**: `src/service/database.service.ts` shares the cached MongoDB client against `website*` for `likes`, `contact`, and `broadcast_log`.
 - **Email**: adapter pattern (`src/service/mailing.service.ts` selects `mailing/{sendgrid,resend}.adapter.ts` by `MAIL_PROVIDER`); templates in `src/templates/`. **Newsletter** = **Resend** contacts with **per-locale audiences** (`/api/subscribe` → `src/service/subscribe.service.ts` → `resendAudience.ts`).
 - **i18n**: next-intl, default `es-AR`, secondary `en-US`. Middleware in **`src/proxy.ts`** (exports `proxy`). UI strings in `public/locales/{es-AR,en-US}.json`.
-- **Revalidation**: `POST /api/revalidate` with header `x-vercel-reval-key === CONTENTFUL_REVALIDATE_SECRET` → `revalidateTag("site-content")`.
-- **Security/CSP**: `config/headers.js` (HSTS, X-Frame-Options, CSP allowlisting GTM/GA, Vercel, and Contentful image CDNs).
+- **Revalidation & Preview**: `POST /api/revalidate` with header `x-vercel-reval-key === WEBSITE_REVALIDATE_SECRET` → `revalidateSiteContent()` (`revalidateTag("site-content", { expire: 0 })`) + optional isolated publish broadcast when `CONTENT_PUBLISH_EMAILS === "true"`. Signed Draft Mode preview: `apps/admin` mints an HMAC-SHA256 link (`CONTENT_PREVIEW_SECRET`) → `GET /api/preview` enables Draft Mode (`POST /api/preview/exit` disables it).
+- **Security/CSP**: `config/headers.js` / `config/securityHeaders.js` (HSTS, `X-Frame-Options: SAMEORIGIN`, `frame-ancestors 'self'`, CSP allowlisting GTM/GA, Vercel scripts, `*.public.blob.vercel-storage.com` for images/audio, and `images.unsplash.com`).
 - **Path aliases**: `@src/*`, `@lib/*`, `@public/*`, `@icons/*`.
 - **Design system**: shared UI for `apps/web` + `apps/admin` — token contract, derived tokens, the primitives-shared/features-local boundary, and the shadcn→`@idcr/ui` migration table. See `docs/architecture/design-system.md`.
 
@@ -76,13 +76,13 @@ See `docs/architecture/architecture.md` and the domain docs in `docs/` for detai
 > "missing". Do not re-duplicate the full list here; it only drifts. **Never put real secret values
 > in docs/commits — reference variable names only.**
 
-Required at runtime (all present in `.env.example`):
+Required at runtime on `apps/web` (all present in `apps/web/.env.example`):
 
 ```text
 NEXT_PUBLIC_BASE_URL
-CONTENTFUL_SPACE_ID, CONTENTFUL_ACCESS_TOKEN, CONTENTFUL_PREVIEW_ACCESS_TOKEN, CONTENTFUL_PREVIEW_SECRET
-CONTENTFUL_REVALIDATE_SECRET     # x-vercel-reval-key for POST /api/revalidate
-MONGODB_URI                      # likes + contact (+ the predica pdf-regen job queue)
+MONGODB_URI                      # website* DB (path required) — content, likes, contact, broadcasts
+WEBSITE_REVALIDATE_SECRET        # x-vercel-reval-key for POST /api/revalidate
+CONTENT_PREVIEW_SECRET           # HMAC-SHA256 secret for GET /api/preview (matches apps/admin)
 MAIL_PROVIDER (sendgrid|resend)  # selects the transactional-email adapter
 CONTACT_FORM_RECIPIENT_EMAIL
 FROM_EMAIL
@@ -91,13 +91,16 @@ RESEND_AUDIENCE_ID_ES_AR         # newsletter audience, es-AR
 RESEND_AUDIENCE_ID_EN_US         # newsletter audience, en-US
 ```
 
-Production-only, for the predica PDF-regen webhook + cron (ICR-114; cutover runbook = ICR-133):
+Content-platform authoring & worker vars live on **`apps/admin`** (`apps/admin/.env.example`, never on `apps/web`):
 
 ```text
-CONTENTFUL_MANAGEMENT_ACCESS_TOKEN   # CMA write token — DRAFT-only, never the `master` alias
-PREDICA_REGEN_SECRET                 # x-predica-regen-key for POST /api/predica/regenerate-pdf
-CRON_SECRET                          # Bearer secret Vercel Cron sends to the regen cron
-PDF_REGEN_QUIET_WINDOW_SECONDS       # optional; debounce window, defaults to 90
+WEBSITE_MONGODB_URI              # website* DB (admin content authoring)
+BLOB_READ_WRITE_TOKEN            # Vercel Blob public media store (admin ONLY — absent on apps/web)
+WEBSITE_REVALIDATE_URL           # target website origin for POST /api/revalidate
+WEBSITE_REVALIDATE_SECRET        # shared with apps/web
+CONTENT_PREVIEW_SECRET           # shared with apps/web
+CRON_SECRET                      # Bearer secret for GET /api/content/pdf-worker
+PREDICA_INGEST_TOKEN             # Bearer secret for /api/predica/* sermon draft ingest
 ```
 
 > `RESEND_AUDIENCE_ID` (no locale suffix) is a legacy single-audience fallback, used only for the
@@ -113,8 +116,10 @@ RESEND_API_KEY          # when MAIL_PROVIDER=resend (also required above, by the
 Optional / injected:
 
 ```text
+BROADCAST_POSTAL_ADDRESS # CAN-SPAM postal address for newsletter broadcasts
+CONTENT_PUBLISH_EMAILS   # set "true" to enable publish-triggered broadcasts
 ENVIRONMENT_NAME
-VERCEL_ENV              # injected by Vercel; drives draft mode
+VERCEL_ENV               # injected by Vercel; drives draft mode
 ```
 
 ## Tracker (Linear)
@@ -140,6 +145,6 @@ VERCEL_ENV              # injected by Vercel; drives draft mode
 - **Setup is just `pnpm install`** at the repo root (Node 22.14.0 + pnpm 10.33.0 are already provisioned; `corepack` pins pnpm from root `package.json`). The `prepare` script runs husky automatically. This is the whole update script.
 - **Per-app env files are not committed.** Before running either app, create them once: `cp apps/web/.env.example apps/web/.env.local` and `cp apps/admin/.env.example apps/admin/.env.local`. The examples ship with **blank** secret values.
 - **Both apps default to port 3000.** Run them on separate ports when both are needed — the reliable way is `PORT=3001 pnpm dev` (the script hard-codes `next dev --turbopack`, so `pnpm dev -- -p 3001` is mis-parsed by Next as a project dir and fails). Scope commands with `pnpm --filter @idcr/web <task>` / `pnpm --filter @idcr/admin <task>`.
-- **`apps/web` needs external SaaS credentials to render anything.** It is 100% Contentful-driven, so with blank tokens **every** `[locale]` content route returns **HTTP 500** (RSC components crash on empty CMS data) and `/api/likes` returns **HTTP 503** (no `MONGODB_URI`). This is expected without secrets — it is **not** a dev-env failure. The toolchain still fully works: middleware/locale redirect (`/` → `/es-AR`), RSC execution, and compilation all run; only the remote data is missing. To exercise content pages you must supply real `CONTENTFUL_*` (+ `MONGODB_URI` for likes/contact, + `MAIL_PROVIDER`/`RESEND_API_KEY` or `SENDGRID_API_KEY` for the contact/newsletter flows) in `apps/web/.env.local`.
-- **`apps/admin` (v0.0.0) is early scaffolding.** Its routes render placeholder "Próximamente" (coming soon) pages and the root locale route redirects to `/[locale]/login`. Firebase + MongoDB are read **lazily** (never at import), so the app boots and serves pages without credentials, but any real auth/data feature needs the `NEXT_PUBLIC_FIREBASE_*` / `FIREBASE_*` and `MONGODB_URI` / `WEBSITE_MONGODB_URI` values.
+- **`apps/web` needs MongoDB credentials to render content pages.** All website content is stored in MongoDB (`website*`), so with a blank `MONGODB_URI` content routes fail to load data and `/api/likes` returns **HTTP 503**. This is expected without secrets — it is **not** a dev-env failure. The toolchain still fully works: middleware/locale redirect (`/` → `/es-AR`), RSC execution, and compilation all run; only the remote data is missing. To exercise content pages supply a real `MONGODB_URI` (plus `MAIL_PROVIDER`/`RESEND_API_KEY` or `SENDGRID_API_KEY` for contact/newsletter flows) in `apps/web/.env.local`.
+- **`apps/admin`** is the authenticated Ministry Admin Panel (Firebase Auth + RBAC + congregant management + content/media authoring). Firebase + MongoDB are read **lazily** (never at import), so the app boots without credentials, while auth, content authoring, and media uploads require the `NEXT_PUBLIC_FIREBASE_*` / `FIREBASE_*`, `MONGODB_URI` / `WEBSITE_MONGODB_URI`, and `BLOB_READ_WRITE_TOKEN` values in `apps/admin/.env.local`.
 - Standard lint/test/build/run commands live in the **Commands** table above (root proxies through Turbo). `pnpm lint`, `pnpm type-check`, and `pnpm test` (Vitest, 618 tests across the workspace) all pass offline with no secrets.

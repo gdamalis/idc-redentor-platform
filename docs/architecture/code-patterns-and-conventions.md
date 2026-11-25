@@ -1,14 +1,15 @@
 # Code Patterns & Conventions (observed)
 
-> **Monorepo note:** the site now lives under **`apps/web/`**. All source paths in this doc
-> (`src/…`, `lib/contentful/…`) are under `apps/web/` unless stated otherwise. In the monorepo
+> **Monorepo note:** the site lives under **`apps/web/`**. All source paths in this doc
+> (`src/…`, `lib/content/…`) are under `apps/web/` unless stated otherwise. In the monorepo
 > migration `cn()`, the `LOGO` path constants, and the design tokens moved to the shared
-> **`packages/ui`** package (`@idcr/ui`); `src/utils/cn.ts` no longer exists. See
-> `docs/architecture/monorepo-packages.md`.
+> **`packages/ui`** package (`@idcr/ui`); `src/utils/cn.ts` no longer exists. Content schemas,
+> collection names, TipTap specs, and signed preview helpers live in **`packages/content`**
+> (`@idcr/content`). See `docs/architecture/monorepo-packages.md`.
 
 > **Purpose:** A code-reviewer's read of _how this codebase is actually written_ — the strategy, the recurring patterns, the naming/styling idioms, and the places where the code disagrees with itself. This is an **observed** analysis (read from the source, not from the style guide), produced as input for deciding **which patterns to promote into harness memory / `CLAUDE.md`** and which to clean up first. It complements `architecture.md` (the _what_ and _where_) and `contributing.md` (the _rules_); this doc is the _how_.
-> **Last reviewed:** 2026-06-22 (original analysis) · **Validated:** 2026-07-20 (see next section)
-> **Scope read:** every file under `src/app/**`, `src/components/**`, `src/service/**`, `src/utils/**`, `src/types/**`, `src/templates/**`, `src/i18n/**`, and all of `lib/contentful/**`.
+> **Last reviewed:** 2026-06-22 (original analysis) · **Validated:** 2026-07-20 (updated for the MongoDB + Vercel Blob + Ministry Admin content platform)
+> **Scope read:** every file under `src/app/**`, `src/components/**`, `src/service/**`, `src/utils/**`, `src/types/**`, `src/templates/**`, `src/i18n/**`, and `lib/content/**`.
 
 > **⚠️ Snapshot + validation layer — read this first.** The body (§1–§11 + Appendix) is the
 > **original 2026-06-22 code-review**, preserved verbatim because its section numbering is cited by
@@ -36,7 +37,7 @@ hold**, and a few **changed shape**.
 | §6.4 "no structured logger / Sentry"                                   | `@sentry/nextjs` fully wired — `instrumentation.ts`, `instrumentation-client.ts`, `sentry.{server,edge}.config.ts`, `captureException` in `global-error.tsx` + `database.service.ts` | ICR-117             |
 | §5.5 "no `error.tsx`", "`notFound()` used in exactly one place"        | `app/global-error.tsx` + `app/[locale]/error.tsx` exist; `notFound()` now guards 4 sites (`[locale]/layout.tsx`, `[locale]/page.tsx` render + metadata, `[locale]/[topic]/page.tsx`) | ICR-111 / ICR-117   |
 | §2.3 `component-resolver` `switch(__typename)` + eslint-disabled `any` | **Deleted entirely** — `ComponentCta` is now rendered directly by pages; the resolver indirection is gone (superseded pending the Landing Page model, ICR-96 / ICR-20)               | removed             |
-| §7 / §5.4 "Zod installed but used in zero files"                       | Zod `safeParse` schemas now guard `/api/subscribe` and `/api/predica/regenerate-pdf`, plus `service/broadcast/types.ts`                                                              | (subscribe/predica) |
+| §7 / §5.4 "Zod installed but used in zero files"                       | Zod `safeParse` schemas now guard `/api/subscribe`, `packages/content` schemas, and `service/broadcast/types.ts`                                                                     | (subscribe/content) |
 | §8.3 "`satisfies` appears in zero files"                               | Now in 7 files (`as const satisfies Record<…>`), mostly in `/predica` + i18n message-key modules                                                                                     | (new code)          |
 | §6.3 `connect()` pings `admin` on every call                           | Per-call `admin` ping removed; relies on the driver's connect de-dup (+ `Sentry.captureException` on failure)                                                                        | ICR-113             |
 | §11.9 `next/router` import + dead `FormatDate.tsx`                     | Both removed — no `next/router` import anywhere; only the `formatDate.ts` util remains                                                                                               | removed             |
@@ -45,22 +46,22 @@ hold**, and a few **changed shape**.
 
 ### 🔴 Still open — each already has a ticket
 
-| Finding (doc §)                                                                                                                                                                                            | Current reality                                                                   | Ticket                           |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------- |
-| Dead `classNames.ts`; commented-out `KeywordTags` render; `Content.tsx` `${className}` → literal `"undefined"` (§3.1, §11.9)                                                                               | All still present                                                                 | **ICR-30**                       |
-| `blog/[slug]` **and** `predicas/[slug]` soft-fail a missing entry with `<div>…not found</div>` at **HTTP 200** instead of `notFound()`; still no `loading.tsx`/Suspense (§5.5, §11.4)                      | Holds (worse — the anti-pattern was copied to sermons)                            | **ICR-32**                       |
-| `fetchGraphQL` untyped, no `response.ok`/GraphQL-`errors` check; error contracts **diverged further** — `like.service` returns a result-union, `contact.service` still throws (§6.2, §6.4, §11.5)          | Holds; contract count went up, not down                                           | **ICR-34**                       |
-| Route handlers inconsistent (now **7** routes: `NextRequest` vs `Request`, `NextResponse.json` vs raw `Response`, uneven try/catch) (§5.4, §11.6)                                                          | Holds & broader                                                                   | **ICR-35** (+ ICR-152)           |
-| Locale list duplicated (`i18n/routing.ts` + `i18n/config.ts`); magic strings uncentralized (`constants.ts` holds only `revalidateDuration`); DB name `"website"` hardcoded across services (§11.8, §11.10) | Holds                                                                             | **ICR-36** (+ **ICR-153**, High) |
-| Zod not at **all** boundaries (contact action + `/api/likes` still hand-roll); email template `{{placeholder}}` still **unescaped** (HTML-injection surface) (§7, §11.2)                                   | Partial — Zod adopted at 2 of the 3 boundaries; escaping untouched                | **ICR-33**                       |
-| shadcn ↔ hand-rolled **seam** unconverged; two color systems; three variant strategies; `buildOgImage` still uses logical-or instead of `??` (§3, §9, §11.1)                                               | Holds — target spec now in [`design-system.md`](design-system.md)                 | **ICR-37** / ICR-23              |
-| Pages/layout still fetch Contentful **sequentially** (home = 4, layout = 3 serial round-trips) (§5.6, §11.3)                                                                                               | Holds — `Promise.all` exists in the predica pipeline only, never in a page/layout | **ICR-31** (+ ICR-42)            |
+| Finding (doc §)                                                                                                                                                                                            | Current reality                                                    | Ticket                           |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | -------------------------------- |
+| Dead `classNames.ts`; commented-out `KeywordTags` render; `Content.tsx` `${className}` → literal `"undefined"` (§3.1, §11.9)                                                                               | All still present                                                  | **ICR-30**                       |
+| `blog/[slug]` **and** `predicas/[slug]` soft-fail a missing entry with `<div>…not found</div>` at **HTTP 200** instead of `notFound()`; still no `loading.tsx`/Suspense (§5.5, §11.4)                      | Holds (worse — the anti-pattern was copied to sermons)             | **ICR-32**                       |
+| `apps/web/lib/content/*` reader error contracts vs `contact.service` / `like.service` (`like.service` returns a result-union, `contact.service` still throws) (§6.2, §6.4, §11.5)                          | Holds; contract count went up, not down                            | **ICR-34**                       |
+| Route handlers inconsistent (now **7** routes: `NextRequest` vs `Request`, `NextResponse.json` vs raw `Response`, uneven try/catch) (§5.4, §11.6)                                                          | Holds & broader                                                    | **ICR-35** (+ ICR-152)           |
+| Locale list duplicated (`i18n/routing.ts` + `i18n/config.ts`); magic strings uncentralized (`constants.ts` holds only `revalidateDuration`); DB name `"website"` hardcoded across services (§11.8, §11.10) | Holds                                                              | **ICR-36** (+ **ICR-153**, High) |
+| Zod not at **all** boundaries (contact action + `/api/likes` still hand-roll); email template `{{placeholder}}` still **unescaped** (HTML-injection surface) (§7, §11.2)                                   | Partial — Zod adopted at 2 of the 3 boundaries; escaping untouched | **ICR-33**                       |
+| shadcn ↔ hand-rolled **seam** unconverged; two color systems; three variant strategies; `buildOgImage` still uses logical-or instead of `??` (§3, §9, §11.1)                                               | Holds — target spec now in [`design-system.md`](design-system.md)  | **ICR-37** / ICR-23              |
+| Pages/layout still fetch CMS getters **sequentially** (home = 4, layout = 3 serial round-trips) (§5.6, §11.3)                                                                                              | Holds — pages/layout still await getters sequentially              | **ICR-31** (+ ICR-42)            |
 
 ### 🆕 New findings (not in the original body)
 
 1. **Animation drift (§3.5).** The framer-motion stagger delay is no longer uniform `index * 0.1` — `BlogPostCard` uses `0.1`, `IconCard` `0.15`, `OurMissionSection` `0.2`. Separately, the `animate-in` / `slide-in-from-*` utilities in markup have **no backing plugin** (no `tailwindcss-animate` under Tailwind v4) and are likely **inert** — worth confirming those transitions still render.
 2. **Inline-metadata regression (§5.2).** `[locale]/[topic]/page.tsx` and `predicas/page.tsx` build `Metadata` **inline** again instead of delegating to `lib/metadata.ts`; a parallel `lib/sermonMetadata.ts` was added. The "pages contain zero inline metadata objects" claim no longer holds.
-3. **Contentful Live Preview architecture.** A family of `*Live` client siblings (`ComponentCtaLive`, `CreedSectionLive`, `InfoCommunityLive`, `OurMissionCtaLive`, `OurMissionSectionLive`) + `inspectorProps` threaded from `shared/contentful-preview/useLivePreview` now exists. This reframes the §2.1 note that `CreedSection`'s `'use client'` is behavior-free — it now carries inspector props.
+3. **Signed Draft Mode preview.** Editor preview uses signed Next.js Draft Mode links (`GET /api/preview` + `POST /api/preview/exit`, using `@idcr/content/preview` and `CONTENT_PREVIEW_SECRET`), replacing iframe-based client preview wrappers.
 4. **`who-is-jesus/page.tsx` is a non-async placeholder** (a bare `<div>`, no `params`/`setRequestLocale`) — an exception to the §5.1 page signature.
 5. **`like.service` migrated to a discriminated-union `LikesOutcome`** (no longer throws) — a _good_ evolution that matches the repo's "functional-first, model failures as return values" rule; but `contact.service` still throws, which is exactly the §6.4 contract-divergence to unify under ICR-34.
 
@@ -73,7 +74,7 @@ hold**, and a few **changed shape**.
 | §11.2 — Zod at boundaries + escape email HTML         | ICR-33                                                                                                           |
 | §11.3 — parallelize getters with `Promise.all`        | ICR-31 (+ ICR-42 request-cache)                                                                                  |
 | §11.4 — real 404s + error/loading boundaries          | ICR-32                                                                                                           |
-| §11.5 — harden `fetchGraphQL` + unify error handling  | ICR-34                                                                                                           |
+| §11.5 — unify error-handling contracts                | ICR-34                                                                                                           |
 | §11.6 — standardize route-handler skeleton            | ICR-35 (+ ICR-152)                                                                                               |
 | §11.7 — typed component-resolver                      | ICR-36 (resolver itself removed; see ICR-20 for the future Landing Page resolver)                                |
 | §11.8 — single locale source of truth                 | ICR-36                                                                                                           |
@@ -95,23 +96,23 @@ Patterns are tagged so you can triage them at a glance:
 
 ## 1. The mental model (the strategy)
 
-The whole codebase is organized around one idea: **content lives in Contentful, the page is the only place that fetches it, and everything below the page is a pure presentational sink.** State and interactivity are pushed to the smallest possible leaf.
+The whole codebase is organized around one idea: **content lives in MongoDB (`website*`, authored in `apps/admin`), the page is the only place that fetches it, and everything below the page is a pure presentational sink.** State and interactivity are pushed to the smallest possible leaf.
 
 ```
-Contentful ──(GraphQL)──> lib/contentful/get*.ts ──> RSC page ──(typed props)──> presentational component
-                                                          │
-                                                          └─ a few "use client" leaves (LikeButton, ShareButton, forms, menus)
+MongoDB (website*) ──> apps/web/lib/content/get*.ts ──> RSC page ──(typed props)──> presentational component
+                                                           │
+                                                           └─ a few "use client" leaves (LikeButton, ShareButton, forms, menus)
 
-MongoDB ──> src/service/*.service.ts ──> API route handler / Server Action   (the only writes: likes + contact)
+MongoDB (website*) ──> src/service/*.service.ts ──> API route handler / Server Action   (public writes: likes + contact)
 ```
 
 Five load-bearing conventions fall out of this and recur everywhere:
 
 1. ✅ **Fetch-in-page, render-in-component.** Components never fetch. An `async` page (or the locale layout, for chrome) calls `get*` getters and threads the result down as a single `content={...}` (or `posts={...}`) prop. The _only_ exception is a client-side **write** (`LikeButton` POSTs to `/api/likes`), and even there the _initial_ state arrives as server props.
 2. ✅ **RSC-by-default; `'use client'` only to buy a hook or a browser API.** No directive unless the file needs `useState`/`useActionState`/`useTranslations`/`framer-motion`/`navigator.*`.
-3. ✅ **Two data paths stay separate** (Contentful read vs. Mongo write) and only meet on one route (`blog/[slug]`).
-4. ✅ **On-demand revalidation, not time-based.** Every Contentful fetch is tagged `next: { tags: ["site-content"] }`; a Contentful publish webhook hits `/api/revalidate` → `revalidateTag("site-content")`.
-5. ✅ **Folder-per-thing + barrel.** Each component/feature is a lowercase-dash folder with `PascalCase.tsx` + an `index.ts` re-export; each Contentful type has its own `get*.ts`.
+3. ✅ **Read and write paths stay separate** (`lib/content/*` read-only CMS readers vs. `src/service/*` public writes) and only meet on article/sermon detail routes (`blog/[slug]`, `predicas/[slug]`).
+4. ✅ **On-demand revalidation, not time-based.** Every published content read uses `createCachedReader()` (`unstable_cache` tagged `"site-content"`); `apps/admin` calls `POST /api/revalidate` on publish → `revalidateSiteContent()` (`revalidateTag("site-content", { expire: 0 })`).
+5. ✅ **Folder-per-thing + barrel.** Each component/feature is a lowercase-dash folder with `PascalCase.tsx` + an `index.ts` re-export; each content domain has its own `get*.ts` in `apps/web/lib/content/`.
 
 > **The single most important meta-observation:** the component/UI layer is **two systems wearing one coat** — a _shadcn/ui-derived_ primitive layer and a _hand-rolled bespoke_ layer. Almost every inconsistency in this document is the seam between them (see §9). Knowing which half a file belongs to predicts its variant strategy, its file layout, its color system, and its `type`-vs-`interface` choice. Decide which half is canonical before standardizing anything in the UI layer.
 
@@ -139,7 +140,7 @@ BlogPostDetails (RSC)            ← receives all data as props, distributes it
 
 🔴 The boundary is sometimes drawn too high: `CreedSection` is marked `'use client'` but has _no_ client behavior; `BlogPostHeader`/`AuthorInfo` are client only to read `useTranslations`/`useLocale`, which an RSC could do with `getTranslations`. Standardize "client only when you need a hook/browser API; i18n alone is not a reason on the server side."
 
-> **Status 2026-07-20:** blog split HOLDS. `CreedSection` is still `'use client'`, but it now carries Contentful Live-Preview `inspectorProps` (and has a `CreedSectionLive` sibling), so the "no client behavior" observation is now nuanced rather than a dead directive. `AuthorInfo` is still client only for `useLocale`. Relocating `ShareButton`/`LikeButton`/`PostActions` out of `blog-post-details/` is tracked in **ICR-102**.
+> **Status 2026-07-20:** blog split HOLDS. `AuthorInfo` is still client only for `useLocale`. Relocating `ShareButton`/`LikeButton`/`PostActions` out of `blog-post-details/` is tracked in **ICR-102**.
 
 ### 2.2 The server-wrapper / variant-selector
 
@@ -147,25 +148,13 @@ BlogPostDetails (RSC)            ← receives all data as props, distributes it
 
 ### 2.3 CMS-driven rendering — the component resolver
 
-🔴 `features/component-resolver/component-resolver.tsx` is the codebase's "Contentful sections array → React" engine. It's a `switch` on `__typename`:
-
-```tsx
-switch (component.__typename) {
-  case "ComponentCta":
-    return <ComponentCta content={component as any} />; // ← eslint-disabled `any`
-  default:
-    console.warn(`Component type '${component.__typename}' is not implemented`);
-    return null; // ← silently drops unknown content
-}
-```
-
-It currently maps exactly **one** type and is consumed by exactly one page (`blog/page.tsx`'s `extraSectionCollection`). Every other page composes components **by hand**. This is a half-built engine. The idiom is sound (a `__typename` dispatcher is the canonical Contentful pattern), but to standardize it should become a typed `Record<__typename, Component>` const-map (matches the project's own "const map over enum" rule and the existing `CREED_ICON_MAP`/`socialIcons` examples) and fail louder than `console.warn` + drop.
+🔴 `features/component-resolver/component-resolver.tsx` was previously a "CMS sections array → React" `switch` on `__typename`, mapping only `ComponentCta` on `blog/page.tsx`.
 
 > **Status 2026-07-20: STALE — the `component-resolver` was deleted.** There is no `features/component-resolver/` directory, no `__typename` switch, and no eslint-disabled `any` cast anywhere in components. `ComponentCta` is now imported and rendered **directly** by the pages that use it. The "promote to a typed const-map" recommendation is therefore moot for the deleted code; the general **Landing Page** resolver is future work under **ICR-20 / ICR-96** (and the constants/locale parts of the old §11.7 live on in **ICR-36**).
 
 ### 2.4 Prop shape
 
-🟡 CMS-backed components take a single `content` object; list components take a named array (`posts`, `images`, `links`, `menuItems`). The _type_ of `content` lives in three different homes depending on the file: inline in the component, in a local `types.ts`, or imported from `lib/contentful/types`. Pick one home (recommend: local `types.ts` per feature, or `lib/contentful/types` for shared CMS shapes).
+🟡 CMS-backed components take a single `content` object; list components take a named array (`posts`, `images`, `links`, `menuItems`). The _type_ of `content` lives in three different homes depending on the file: inline in the component, in a local `types.ts`, or imported from `lib/content/types`. Pick one home (recommend: local `types.ts` per feature, or `lib/content/types` for shared CMS view shapes).
 
 > **Status 2026-07-20:** HOLDS; **inline** is now the dominant of the three homes.
 
@@ -299,7 +288,7 @@ export default async function CommunityPage({
 
 The `revalidate` handler also passes a non-standard second arg: `revalidateTag("site-content", "max")` — verify against the installed Next 16 API. Pick one handler skeleton (recommend `NextRequest` + `NextResponse.json` + `try/catch` + Zod) and standardize it.
 
-> **Status 2026-07-20: CHANGED — two sub-claims now false.** There are now **7** route files (the predica pipeline added `regenerate-pdf` + its `cron`). The inconsistency HOLDS and is broader. But: (a) `/api/subscribe` (and the predica route) now validate with **Zod `safeParse`** — the blanket "no Zod / all manual" is false (`/api/likes` + the contact action still hand-roll). (b) `revalidateTag("site-content", "max")` is now a **required** Next.js 16 profile arg (documented in-code), not a non-standard accident. Standardizing the skeleton is still open: **ICR-35** (+ ICR-152 to type the subscribe response).
+> **Status 2026-07-20: CHANGED — two sub-claims now false.** `/api/subscribe` validates with **Zod `safeParse`** — the blanket "no Zod / all manual" is false (`/api/likes` + the contact action still hand-roll). `revalidateTag("site-content", { expire: 0 })` (in `lib/content/cache.ts#revalidateSiteContent`) handles immediate cache invalidation on publish. Standardizing the route-handler skeleton is still open: **ICR-35** (+ ICR-152 to type the subscribe response).
 
 ### 5.5 Error / not-found
 
@@ -309,53 +298,49 @@ The `revalidate` handler also passes a non-standard second arg: `revalidateTag("
 
 ### 5.6 Parallelization
 
-🔴 **No `Promise.all` anywhere.** Every page and the locale layout fetch Contentful **sequentially** (home = 4 serial round-trips; layout = 3 before any page renders). The getters are independent — this is the highest-impact perf finding and a clear anti-pattern to flag in harness memory ("parallelize independent getters with `Promise.all`").
-
-> **Status 2026-07-20: substance HOLDS.** `Promise.all` now exists in the repo, but **only** inside the `/predica` pipeline (`regenerate-pdf` route + `renderSermonPdf`) — **never** in a page or the locale layout. Home still runs 4 serial getters; the layout still runs 3. Tracked in **ICR-31** (with **ICR-42** for a request-cached loader).
+🔴 **No `Promise.all` in pages or layout.** Pages and the locale layout still fetch independent content getters **sequentially** (home = 4 serial calls; layout = 3 before any page renders). The getters are independent — parallelizing them with `Promise.all` remains a clear perf win. Tracked in **ICR-31** (with **ICR-42** for a request-cached loader).
 
 ---
 
 ## 6. Data layer patterns
 
-### 6.1 The Contentful getter convention
+### 6.1 The content getter convention (`apps/web/lib/content/`)
 
-✅ The dominant, highly repeatable pattern (13 getters, near-identical). Skeleton:
+✅ Content reads live under **`apps/web/lib/content/get*.ts`** and follow a consistent MongoDB reader pattern built on `@idcr/content`:
 
 ```ts
-const GRAPHQL_FIELDS = `…field selection… sys { id } __typename`; // SCREAMING_SNAKE module const
-
-export async function getCtaComponent(name, locale, isDraftMode = false) {
-  const data = await fetchGraphQL(
-    `query { componentCtaCollection(
-        locale: "${locale}", where:{ machineName: "${name}" }, limit: 1,
-        preview: ${isDraftMode ? "true" : "false"}
-      ) { items { ${GRAPHQL_FIELDS} } } }`,
-    isDraftMode,
-  );
-  return data?.data?.componentCtaCollection?.items[0]; // raw items[0], or a hand-mapped domain object
+async function fetchSection(
+  name: string,
+  locale: Locale,
+  isDraftMode: boolean,
+) {
+  const db = await requireContentDb();
+  const snap = snapshotKey(isDraftMode);
+  const doc = await db
+    .collection<StoredEnvelope<SectionFields>>(COLLECTIONS.sections)
+    .findOne({ [`${snap}.machineName`]: name });
+  const fields = resolveSnapshot(doc, isDraftMode);
+  if (!doc || !fields) return undefined;
+  // resolve localized fields + media via loadMediaMap()
 }
+
+const publishedSectionReader = createCachedReader(
+  "section",
+  (name: string, locale: Locale) => fetchSection(name, locale, false),
+);
+const draftSectionReader = createCachedReader(
+  "section-draft",
+  (name: string, locale: Locale) => fetchSection(name, locale, true),
+);
 ```
 
-Conventions: `machineName` (or `internalName`) as the entry selector, `limit: 1` for singletons, every selection ends `sys { id } __typename`, rich text selected as `{ json }`. Signature is always `(name, locale, isDraftMode = false)`.
+Conventions: `machineName` (or `slug` / `internalName`) as the lookup key, `requireContentDb()` for fail-closed DB acquisition, `resolveSnapshot(doc, isDraftMode)` + `resolveLocalized(field, locale)` for snapshot and locale extraction, `createCachedReader()` (`React.cache` + `unstable_cache` tagged `"site-content"` for published; `React.cache`-only for draft), and typed `*View` return shapes from `lib/content/types.ts`. Signature stays `(name, locale, isDraftMode = false)`.
 
-🔴 **Nullish handling is fragile and inconsistent.** The "hand-mapped" getters optional-chain the _collection_ but then dot-access `items[0].field` **unguarded**:
+### 6.2 Caching, draft mode, and TipTap rich text
 
-```ts
-pageName: data?.data?.pageCollection?.items[0].pageName,   // throws if items === []
-```
-
-The `?.` on the parent is theater once `items[0]` is `undefined`. This bug shape repeats in `getPage`, `getFooter`, `getContactForm`, `getContentCollection`. The well-guarded counter-example is `getBlogPostPages` (`?.map(...) ?? []`). Standardize the guarded form.
-
-> **Status 2026-07-20:** convention HOLDS (there are now more getters than the original 13 — `getSermons`, `getSection`, `getEventBanner`, `getHeroBannerComponent`, `getTextBlockComponent`, `getSingleEmailForm`, `getChurchInfoTopic`). The unguarded `items[0].field` throw-bug is **narrowed**: `getPage` was removed and `getContentCollection` was hardened to `items?.[0]`, so it now survives only in **`getFooter`** and **`getContactForm`**. Fold into **ICR-34**.
-
-### 6.2 `fetchGraphQL`, draft mode, rich text
-
-- 🔴 `fetchGraphQL(query, preview = false)` returns **untyped `any`** and has **no error handling** — no `response.ok` check, no GraphQL-`errors` check. Failures degrade silently into `undefined` deep inside a mapper. Preview state is passed **twice** (token selection _and_ query text) — easy to desync.
-- ✅ `shouldUseDraftMode()` is clean: early-return on `draftMode().isEnabled || NODE_ENV==='development' || VERCEL_ENV==='preview'`.
-- 🔴 Rich-text rendering is **split**: shared paragraph-styling options live in `lib/contentful/rich-text-options.tsx`, but the heavyweight embedded-asset/entry renderer is inlined in `BlogPostContent.tsx`. No single rich-text module.
-- ⚷ **Security note:** getters string-interpolate `locale`/`name` straight into the GraphQL query (injection-shaped surface). Fed only trusted/static values today — flag if any getter ever takes user input.
-
-> **Status 2026-07-20:** HOLDS. The rich-text split widened — sermons added a parallel `sermon-details/sermonRichTextOptions.tsx`. `fetchGraphQL` hardening is **ICR-34**.
+- ✅ **`createCachedReader()` (`lib/content/cache.ts`)** separates published (`React.cache` + `unstable_cache` tagged `SITE_CONTENT_CACHE_TAG = "site-content"`) from draft (`React.cache` only, never touching `unstable_cache`), and `revalidateSiteContent()` expires the tag immediately (`{ expire: 0 }`).
+- ✅ **`shouldUseDraftMode()` (`lib/content/draft-mode.ts`)** returns `true` when signed Draft Mode (`GET /api/preview`) is active or in always-draft environments (`NODE_ENV=development`, `VERCEL_ENV=preview`, staging).
+- ✅ **TipTap rich text is unified** under `apps/web/lib/content/rich-text/` (`render.tsx`, `presets.tsx`, `sermon-preset.tsx`), backed by `@idcr/content/rich-text` and `@idcr/content/tiptap`.
 
 ### 6.3 Services & the adapter pattern
 
@@ -393,13 +378,13 @@ function getEmailAdapter(): EmailAdapter {
 
 🔴 Five different contracts coexist — worth unifying before encoding:
 
-| Layer                               | Contract                                                                   |
-| ----------------------------------- | -------------------------------------------------------------------------- |
-| Contentful getters / `fetchGraphQL` | no try/catch; rely on `?.`, let mappers throw                              |
-| Mongo services                      | try/catch → `console.error` → **re-throw**                                 |
-| `connect()`                         | try/catch → `console.error` → **return `undefined`**                       |
-| Mail adapters                       | try/catch → `console.error` → **return `false`**                           |
-| API routes / Server Action          | try/catch → `console.error` → typed `NextResponse.json({error}, {status})` |
+| Layer                             | Contract                                                                            |
+| --------------------------------- | ----------------------------------------------------------------------------------- |
+| Content getters (`lib/content/*`) | fail closed on DB unavailability via `requireContentDb()`; `undefined` when missing |
+| Mongo services                    | `like.service` returns discriminated union; `contact.service` re-throws             |
+| `connect()`                       | try/catch → `console.error` + Sentry → **return `undefined`**                       |
+| Mail adapters                     | try/catch → `console.error` → **return `false`**                                    |
+| API routes / Server Action        | try/catch → `console.error` → typed `NextResponse.json({error}, {status})`          |
 
 Logging is uniformly `console.*` (no structured logger / Sentry, unlike sibling projects).
 
@@ -411,12 +396,12 @@ Logging is uniformly `console.*` (no structured logger / Sentry, unlike sibling 
 
 🟡 **Two form architectures**, both correctly using **`useActionState`** (not the deprecated `useFormState`) + `isPending` → `<LoadingSpinner>`:
 
-- **`ContactForm`** — config-driven Server Action. Contentful supplies `formFields[]`; the component switches on `field.type` to call factory helpers in `formFields.tsx`; `requiredFields` is derived from the same config and passed into the action. Clean, data-driven.
+- **`ContactForm`** — config-driven Server Action. MongoDB `globals` supplies `formFields[]` (via `lib/content/getContactForm.ts`); the component switches on `field.type` to call factory helpers in `formFields.tsx`; `requiredFields` is derived from the same config and passed into the action. Clean, data-driven.
 - **`SubscribeForm` / `SubscribeBanner`** — inline-closure actions calling the `subscribe()` service + analytics. 🔴 The two are near-duplicates with copy-pasted action bodies — hoist the shared action.
 
 🔴 **Validation is the biggest gap vs. the stated rules.** `zod` + `@hookform/resolvers` are installed but **used in zero files**. Every boundary hand-rolls validation: the contact action uses a manual required-loop + email regex; `/api/subscribe` does `if (!email)`; `/api/likes` does `typeof slug !== "string"`. The project rule "validate external input with Zod at boundaries" is currently aspirational. ⚷ The email template (`template-engine.ts`) also does **raw `{{placeholder}}` replacement with no HTML escaping** — user-supplied contact fields are injected unescaped into the notification email (HTML-injection surface).
 
-> **Status 2026-07-20: CHANGED.** `SubscribeForm` was removed — the newsletter UI is a single `SubscribeBanner`, so the "two copy-pasted near-duplicates" is obsolete. `zod` is now **used** (`/api/subscribe`, `/api/predica/regenerate-pdf`, `service/broadcast/types.ts`), so validation is now **mixed** — but the contact action + `/api/likes` still hand-roll, and `@hookform/resolvers` remains genuinely unused. The **unescaped `{{placeholder}}`** template engine still stands (still an HTML-injection surface). Both remaining gaps are **ICR-33**.
+> **Status 2026-07-20: CHANGED.** `SubscribeForm` was removed — the newsletter UI is a single `SubscribeBanner`, so the "two copy-pasted near-duplicates" is obsolete. `zod` is now **used** (`/api/subscribe`, `@idcr/content` schemas, `service/broadcast/types.ts`), so validation is now **mixed** — but the contact action + `/api/likes` still hand-roll, and `@hookform/resolvers` remains genuinely unused. The **unescaped `{{placeholder}}`** template engine still stands (still an HTML-injection surface). Both remaining gaps are **ICR-33**.
 
 ---
 
@@ -427,14 +412,14 @@ Logging is uniformly `console.*` (no structured logger / Sentry, unlike sibling 
 - **PascalCase** components; **lowercase-dash** directories (`icon-card`, `our-mission-cta`, `come-meet-us`).
 - **`handle*`** event handlers (`handleClick`, `handleCopyLink`, `handleContactFormSubmission`); **`on*`** callback props.
 - **Auxiliary-verb booleans** (`isLoading`, `isPending`, `hasLiked`, `isNewVisitor`, `isEnabled`, `canNativeShare`).
-- **File suffixes** are meaningful and consistent: `get*.ts` (Contentful readers), `*.service.ts`, `*.adapter.ts`, `*.template.ts`; cva fns are `*Variants`; module consts are `SCREAMING_SNAKE` (`GRAPHQL_FIELDS`, `MONGODB_OPTIONS`, `TEMPLATES`).
+- **File suffixes** are meaningful and consistent: `get*.ts` (content readers in `lib/content/`), `*.service.ts`, `*.adapter.ts`, `*.template.ts`; cva fns are `*Variants`; module consts are `SCREAMING_SNAKE` (`COLLECTIONS`, `MONGODB_OPTIONS`, `TEMPLATES`).
 - **`Readonly<>`** consistently wraps page/metadata prop shapes.
 
 > **Status 2026-07-20:** HOLDS.
 
 ### 8.2 `interface` vs `type` — 🔴 contradicts the stated rule
 
-`CLAUDE.md` says "prefer `interface` over `type`." Actual adherence is ~60%. The shadcn layer + `lib/contentful/types` + service docs use `interface`; the hand-rolled component layer and `ContactDetails`/`MenuItem`/`BlogPost` use `type`. Predictable by which half of the seam a file is in.
+`CLAUDE.md` says "prefer `interface` over `type`." Actual adherence is ~60%. The shadcn layer + `lib/content/types` + service docs use `interface`; the hand-rolled component layer and `ContactDetails`/`MenuItem`/`BlogPost` use `type`. Predictable by which half of the seam a file is in.
 
 > **Status 2026-07-20:** HOLDS. Folds into the seam-convergence work (**ICR-37**) and the encode-the-baseline task (**ICR-38**).
 
@@ -491,7 +476,7 @@ Promote these — they're already consistent and worth enforcing on new code:
 
 1. ✅ Fetch-in-page, render-in-component; components receive `content`/`posts` props and never fetch.
 2. ✅ RSC-by-default; `'use client'` only for a hook/browser API; push the boundary to the leaf.
-3. ✅ Contentful getter skeleton: `GRAPHQL_FIELDS` const + `get*(name, locale, isDraftMode=false)` + `fetchGraphQL` + `next:{tags:["site-content"]}` + guarded `?.… ?? []` mapping.
+3. ✅ Content getter skeleton (`apps/web/lib/content/`): `requireContentDb()` + `COLLECTIONS` (`@idcr/content`) + `get*(name, locale, isDraftMode=false)` + `createCachedReader()` (`SITE_CONTENT_CACHE_TAG = "site-content"`).
 4. ✅ SEO via `lib/metadata.ts` builders; no inline metadata in pages; hreflang via `buildLocaleAlternates`. _(Watch the §5.2 inline-metadata regression.)_
 5. ✅ Locale layout owns `<html>`/`<body>`/providers/chrome; root layout stays bare; chrome fetched once in the layout.
 6. ✅ Mailing-style factory+adapter+`interface`+env-switch for any pluggable integration.
@@ -508,28 +493,29 @@ Promote these — they're already consistent and worth enforcing on new code:
 2. 🔴 Make Zod real at the three boundaries (contact action, `/api/subscribe`, `/api/likes`); HTML-escape email template inputs. — **🟡 PARTIAL · ICR-33** (Zod at `/api/subscribe` done; contact action + `/api/likes` + email escaping open)
 3. 🔴 Add `Promise.all` to the parallelizable page/layout getters. — **🔴 OPEN · ICR-31** (+ ICR-42) — pages/layout still sequential
 4. 🔴 `notFound()` for missing blog posts; add `error.tsx` + `loading.tsx`/`<Suspense>`. — **🟡 PARTIAL · ICR-32** (`error.tsx`/`global-error.tsx` + `notFound()` guards done; `blog/[slug]` + `predicas/[slug]` soft-fail + `loading.tsx` open)
-5. 🔴 Unify the five error-handling contracts (§6.4); give `fetchGraphQL` a real failure path. — **🔴 OPEN · ICR-34** (contracts diverged further)
+5. 🔴 Unify the error-handling contracts (§6.4). — **🔴 OPEN · ICR-34**
 6. 🔴 Standardize the route-handler skeleton (`NextRequest` + `NextResponse.json` + `try/catch` + Zod). — **🔴 OPEN · ICR-35** (+ ICR-152)
 7. 🔴 Promote `component-resolver` to a typed const-map; handle unknown `__typename` loudly. — **⚪ MOOT · ICR-20 / ICR-96** (resolver deleted; future Landing Page resolver)
 8. 🔴 Single source of truth for locales (`routing.ts` vs `i18n/config.ts` duplicate the list). — **🔴 OPEN · ICR-36** (still duplicated)
 9. 🔴 Delete dead code: `src/utils/classNames.ts`; the Pages-Router `next/router` import in `format-date/FormatDate.tsx`; the commented-out `KeywordTags` render; fix `Content.tsx`'s unguarded `${className}`. — **🟡 PARTIAL · ICR-30** (`next/router`/`FormatDate` + `SubscribeForm` removed; `classNames.ts` + `KeywordTags` comment + `Content.tsx` bug open)
-10. 🔴 Centralize magic strings (Contentful machine-names, cache tag `"site-content"`, DB/collection names) into constants. — **🔴 OPEN · ICR-36** (+ **ICR-153** for the DB name)
+10. 🔴 Centralize magic strings (section machine-names, remaining literals) into constants. — **🟡 PARTIAL · ICR-36** (`COLLECTIONS`, `SITE_CONTENT_CACHE_TAG`, and `getWebsiteDb()` are now centralized)
 
 ---
 
 ## Appendix — quick reference
 
-| Concern               | Convention                                        | Where it lives                              |
-| --------------------- | ------------------------------------------------- | ------------------------------------------- |
-| Class merge           | `cn(base, className)`                             | `@idcr/ui` (`packages/ui/src/cn.ts`)        |
-| Data fetch            | `get*(name, locale, isDraftMode)` in pages        | `lib/contentful/get*.ts`                    |
-| Cache                 | tag `"site-content"`, on-demand `revalidateTag`   | `lib/contentful/fetch.ts`, `api/revalidate` |
-| Draft mode            | `shouldUseDraftMode()`                            | `lib/contentful/draftMode.ts`               |
-| SEO                   | `buildPageMetadata` / `buildArticleMetadata`      | `lib/metadata.ts`                           |
-| i18n locale           | `setRequestLocale(locale)` per page; `routing.ts` | `src/i18n/*`                                |
-| Forms                 | `useActionState` + Server Action                  | `features/contact-form/*`                   |
-| Pluggable integration | factory + adapter + `interface` + env switch      | `service/mailing/*`                         |
-| SSR-safe browser read | `useSyncExternalStore`                            | `ShareButton`, `ConsentBanner`              |
-| Component layout      | `feature-name/Component.tsx` + `index.ts`         | `src/components/**`                         |
+| Concern               | Convention                                        | Where it lives                             |
+| --------------------- | ------------------------------------------------- | ------------------------------------------ |
+| Class merge           | `cn(base, className)`                             | `@idcr/ui` (`packages/ui/src/cn.ts`)       |
+| Data fetch            | `get*(name, locale, isDraftMode)` in pages        | `lib/content/get*.ts`                      |
+| Cache                 | tag `"site-content"`, on-demand `revalidateTag`   | `lib/content/cache.ts`, `api/revalidate`   |
+| Draft mode            | `shouldUseDraftMode()`                            | `lib/content/draft-mode.ts`                |
+| Rich text             | TipTap JSON → React                               | `lib/content/rich-text/*`, `@idcr/content` |
+| SEO                   | `buildPageMetadata` / `buildArticleMetadata`      | `lib/metadata.ts`                          |
+| i18n locale           | `setRequestLocale(locale)` per page; `routing.ts` | `src/i18n/*`                               |
+| Forms                 | `useActionState` + Server Action                  | `features/contact-form/*`                  |
+| Pluggable integration | factory + adapter + `interface` + env switch      | `service/mailing/*`                        |
+| SSR-safe browser read | `useSyncExternalStore`                            | `ShareButton`, `ConsentBanner`             |
+| Component layout      | `feature-name/Component.tsx` + `index.ts`         | `src/components/**`                        |
 
 > _This is an observed snapshot (2026-06-22), validated 2026-07-20, not a ratified standard. Use §10/§11 to decide what graduates into `CLAUDE.md` / harness memory — and the [Validation status](#validation-status--ticket-map-2026-07-20) section to see what's already been done. All paths are under `apps/web/` post-migration._

@@ -66,8 +66,8 @@ interface LinkRun {
  *   whose `href` fails `isAllowedHref` (AC6 fail-closed boundary).
  * - Groups contiguous text runs sharing the same allowed `link` `href` into a single
  *   outermost link element, with `bold`/`italic` nested inside.
- * - Applies non-link marks in `node.marks` order (first mark innermost), matching
- *   `@contentful/rich-text-react-renderer`'s `marks.reduce(...)`.
+ * - Applies non-link marks in `node.marks` order (first mark innermost) via
+ *   `marks.reduce(...)`.
  */
 function renderInlineChildren(
   rawChildren: unknown,

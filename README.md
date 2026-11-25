@@ -1,17 +1,17 @@
-# Iglesia de Cristo Redentor Website
+# Iglesia de Cristo Redentor Platform
 
-🚀 **Built with Next.js, Tailwind CSS, and Contentful**  
-This is the first custom-made website for our church community, designed to be modern, easy to maintain, and welcoming to both members and visitors.
+🚀 **Built with Next.js, Tailwind CSS, MongoDB, and Vercel Blob**  
+This is the custom-made web platform for our church community — combining the public bilingual website (`apps/web`) and the internal Ministry Admin Panel (`apps/admin`) — designed to be modern, easy to maintain, and welcoming to both members and visitors.
 
 ## 📂 Project Overview
 
-This project serves as the official website for _Iglesia de Cristo Redentor_, providing essential information about our community, teachings, and events.
+This monorepo serves the official website (`apps/web`) and Ministry Admin Panel (`apps/admin`) for _Iglesia de Cristo Redentor_, providing essential information about our community, teachings, sermons, and events.
 
 ### 🌟 Features
 
-- **Multi-language support** using `next-intl`
-- **Headless CMS integration** with Contentful for dynamic content management
-- **Modern UI** using Tailwind CSS
+- **Multi-language support** using `next-intl` (`es-AR` primary, `en-US` secondary)
+- **Built-in content platform** backed by MongoDB + Vercel Blob and authored in the Ministry Admin Panel (`apps/admin`)
+- **Modern UI** using Tailwind CSS and shared `@idcr/ui` components
 - **SEO Optimized** for better discoverability
 
 ---
@@ -24,9 +24,9 @@ Pre-requisites:
 
 - [Node.js](https://nodejs.org/) `22.x` (see `.nvmrc` — 22.14.0)
 - [pnpm](https://pnpm.io/) `10.x` (`corepack enable` uses the version pinned in `package.json`)
-- A Contentful API Key and other details (ask @gdamalis)
+- MongoDB, Resend/SendGrid, and (for `apps/admin`) Firebase + Vercel Blob credentials (ask @gdamalis)
 
-> **Monorepo:** this repo is a **pnpm + Turborepo** workspace and the website lives under **`apps/web/`**. Run the commands below from the **repo root** — they proxy through Turbo to `apps/web`.
+> **Monorepo:** this repo is a **pnpm + Turborepo** workspace with **`apps/web/`** (public website), **`apps/admin/`** (Ministry Admin Panel), and shared packages under **`packages/`** (`@idcr/config`, `@idcr/ui`, `@idcr/content`). Run the commands below from the **repo root** — they proxy through Turbo.
 
 ### 🏃‍♂️ Running the Project Locally
 
@@ -36,13 +36,14 @@ Pre-requisites:
    cd idc-redentor-platform
    ```
 2. **Copy the Environment Variables**
-   Create a local env file from the example (it now lives under `apps/web/`):
+   Create local env files from the app examples:
 
    ```bash
    cp apps/web/.env.example apps/web/.env.local
+   cp apps/admin/.env.example apps/admin/.env.local
    ```
 
-   Edit `apps/web/.env.local` and enter the details provided to connect to Contentful
+   Edit `apps/web/.env.local` (and `apps/admin/.env.local` if running the admin panel) and enter the required credentials (see `CLAUDE.md` / `AGENTS.md`).
 
 3. **Install dependencies** (from the repo root)
 

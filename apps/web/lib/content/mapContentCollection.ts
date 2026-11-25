@@ -4,8 +4,7 @@ import type {
 } from "./types";
 
 /**
- * Pure mapper mirroring `lib/contentful/mapContentCollection.ts` so `getContentCollection`
- * keeps its raw shape and existing callers swap imports without structural rework.
+ * Pure mapper that partitions a `ContentCollection` into creed, mission, and value items.
  */
 export function mapContentCollection(
   raw: RawContentCollectionView,

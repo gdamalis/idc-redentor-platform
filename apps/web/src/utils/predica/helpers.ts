@@ -11,14 +11,40 @@
  * The PDF renders the SAME body the reader/preacher sees and edits on the website
  * (`SermonDetails.tsx`): the localized rich-text `content[]` plus the structured
  * `scriptureReferences`. There is no separately-authored PDF summary anymore — the
- * post body IS the PDF body, so the two can never drift and a Contentful edit can
+ * post body IS the PDF body, so the two can never drift and an Admin edit can
  * regenerate the PDF. `thesis`/`mainPoints`/SEO live on the entry as metadata, not
  * in the PDF. See docs/architecture/predica-pdf-mirrors-post.md.
  */
 
-import type { ContentBlock, SermonScriptureRef } from "./sermonEntry";
-
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+/** A single content block in the writer's simplified body representation. */
+export interface ContentBlock {
+  type: "h2" | "h3" | "p" | "blockquote" | "ul" | "ol" | "embeddedAsset";
+  /** Text for h2 / h3 / p / blockquote. */
+  text?: string;
+  /** Items for ul / ol. */
+  items?: string[];
+  /** Asset id for `embeddedAsset` blocks (skipped in PDF rendering). */
+  assetId?: string;
+}
+
+/** Per-locale values for one `bibleVerse` reference. */
+export interface ScriptureRefLocale {
+  book: string;
+  verseContent: string;
+  bibleVersion: string;
+}
+
+/** One structured scripture reference for the PDF's scripture section. */
+export interface SermonScriptureRef {
+  internalName?: string;
+  chapter: string;
+  fromVerse: string;
+  toVerse?: string;
+  "es-AR": ScriptureRefLocale;
+  "en-US": ScriptureRefLocale;
+}
 
 /** Per-locale content for a single sermon — the post body the PDF mirrors. */
 export interface SermonLocaleData {

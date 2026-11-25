@@ -189,7 +189,7 @@ describe("bibleVerseKey", () => {
     expect(bibleVerseKey(joel)).toBe("joel|2|13|13|nvi");
   });
 
-  it("accepts Contentful's string numbers the same as numbers", () => {
+  it("accepts string numbers the same as numbers", () => {
     expect(
       bibleVerseKey({
         ...joel,

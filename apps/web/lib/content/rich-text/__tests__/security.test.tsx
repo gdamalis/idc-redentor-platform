@@ -1,5 +1,6 @@
 import type { RichTextDoc } from "@idcr/content";
-import type { ReactNode } from "react";
+import { render } from "@testing-library/react";
+import { createElement, Fragment, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
   articlePreset,
@@ -9,7 +10,25 @@ import {
   renderRichText,
   sectionDescriptionPreset,
 } from "../index";
-import { renderToNormalizedHtml } from "./parity-helpers";
+
+function renderToNormalizedHtml(element: ReactNode): string {
+  const { container, unmount } = render(createElement(Fragment, null, element));
+  const detached = document.createElement("div");
+  detached.innerHTML = container.innerHTML;
+  const walk = (node: Node) => {
+    for (const child of Array.from(node.childNodes)) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        child.textContent = (child.textContent ?? "").replace(/[ \t\r\n]+/g, " ");
+      } else if (child.nodeType === Node.ELEMENT_NODE) {
+        walk(child);
+      }
+    }
+  };
+  walk(detached);
+  const normalized = detached.innerHTML.trim();
+  unmount();
+  return normalized;
+}
 
 vi.mock("@src/i18n/routing", () => ({
   Link: ({

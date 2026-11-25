@@ -184,7 +184,7 @@ scan only proves nothing is _missing_, not that a base is right.
               └──────────────┘             └──────────────┘
 ```
 
-`SermonCard`, `BlogPostCard`, `ContactForm` and `CreedSection` are coupled to Contentful types and
+`SermonCard`, `BlogPostCard`, `ContactForm` and `CreedSection` are coupled to `apps/web` content view types and
 `apps/web`-only next-intl namespaces — moving them into `@idcr/ui` would drag those dependencies into
 a package `apps/admin` also consumes. Only presentation-neutral primitives cross the boundary.
 

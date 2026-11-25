@@ -20,8 +20,6 @@ export interface ContentDoc<TFields> {
   updatedAt: Date;
   /** Admin user id, or a service identity for script-created drafts. */
   updatedBy: string;
-  /** Importer idempotency key; dropped at decommission. */
-  sourceContentfulId?: string;
 }
 
 /** The three derived statuses (F-editor-ux §2.2). Never stored. */

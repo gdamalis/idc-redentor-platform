@@ -6,19 +6,10 @@ import { isAuthorizedSecret } from "@src/utils/auth/secret";
 
 const NOTIFIABLE_TYPES = new Set(["post", "sermon"]);
 
-function isValidRevalidateSecret(provided: string | null): boolean {
-  // Accept WEBSITE_REVALIDATE_SECRET (new name) or CONTENTFUL_REVALIDATE_SECRET
-  // (transitional fallback for zero-downtime env rotation until ICR-207 drops it).
-  return (
-    isAuthorizedSecret(provided, process.env.WEBSITE_REVALIDATE_SECRET) ||
-    isAuthorizedSecret(provided, process.env.CONTENTFUL_REVALIDATE_SECRET)
-  );
-}
-
 export async function POST(request: Request) {
   const secret = request.headers.get("x-vercel-reval-key");
 
-  if (!isValidRevalidateSecret(secret)) {
+  if (!isAuthorizedSecret(secret, process.env.WEBSITE_REVALIDATE_SECRET)) {
     return NextResponse.json({ message: "Invalid secret" }, { status: 401 });
   }
 

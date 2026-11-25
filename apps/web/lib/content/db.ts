@@ -13,7 +13,6 @@ export interface StoredEnvelope<TFields> {
   createdAt: Date;
   updatedAt: Date;
   updatedBy: string;
-  sourceContentfulId?: string;
 }
 
 /** Stored media document shape in the `media` collection. */

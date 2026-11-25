@@ -31,7 +31,7 @@ export interface Sermon {
   additionalPreachers?: SermonAuthor[];
 
   /**
-   * Languages spoken in the audio recording. NON-LOCALIZED in Contentful: one
+   * Languages spoken in the audio recording. Non-localized: one
    * recording serves both locale pages, so both pages see the same value.
    * The mapper guarantees a non-empty array (absent/empty => ["es-AR"]), so
    * consumers never handle undefined.

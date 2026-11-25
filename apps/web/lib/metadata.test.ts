@@ -39,7 +39,7 @@ beforeEach(() => {
 const FAKE_POST = {
   seoTitle: "Test Post",
   seoDescription: "A test post description.",
-  featuredImage: { url: "https://images.ctfassets.net/hero.jpg", title: "Hero" },
+  featuredImage: { url: "https://media.public.blob.vercel-storage.com/hero.jpg", title: "Hero" },
   publishedDate: "2025-01-01",
   sys: { id: "post-1", publishedAt: "2025-01-02T00:00:00Z" },
   author: { name: "Ana López" },
@@ -68,7 +68,7 @@ const FAKE_EVENT_BANNER = {
     googleMapsUrl: "https://maps.google.com/?q=...",
     location: { lat: -34.6058, lon: -58.4287 },
   },
-  image: { url: "https://images.ctfassets.net/event.jpg", title: "Event" },
+  image: { url: "https://media.public.blob.vercel-storage.com/event.jpg", title: "Event" },
   sys: { id: "event-1" },
   __typename: "EventBanner",
 };

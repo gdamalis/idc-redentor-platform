@@ -10,8 +10,7 @@ import { runPdfWorkerTick } from "@src/service/content/sermons/pdf-worker.servic
  * path. Sits outside `src/proxy.ts` (`/api/*`), so constant-time fail-closed
  * `CRON_SECRET` Bearer verification is the sole gate.
  *
- * Deliberately NOT scheduled in `apps/admin/vercel.json` until `ICR-205`
- * switches the cron away from `apps/web`'s live Contentful PDF worker.
+ * Scheduled every minute in `apps/admin/vercel.json`.
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
