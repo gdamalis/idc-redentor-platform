@@ -35,6 +35,7 @@ describe("PreviewBanner", () => {
     expect(
       screen.getByText(esAR.preview.banner),
     ).toBeInTheDocument();
+    expect(screen.getByRole("region").className).toContain("z-[60]");
     const button = screen.getByRole("button", { name: esAR.preview.exit });
     expect(button).toHaveAttribute("type", "submit");
 

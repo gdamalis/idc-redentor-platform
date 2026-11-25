@@ -1,11 +1,11 @@
 import { useTranslations } from "next-intl";
 import { Container } from "@src/components/ui/container";
 import { Typography } from "@src/components/ui/typography";
-import type { Sermon } from "@src/types/Sermon";
+import type { SermonView } from "@lib/content/types";
 import { SermonCard } from "./SermonCard";
 
 interface SermonSectionProps {
-  readonly sermons: Sermon[];
+  readonly sermons: SermonView[];
 }
 
 export function SermonSection({ sermons }: SermonSectionProps) {

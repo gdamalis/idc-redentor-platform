@@ -4,6 +4,12 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "next build",
   "outputDirectory": ".next",
+  "crons": [
+    {
+      "path": "/api/content/pdf-worker",
+      "schedule": "* * * * *"
+    }
+  ],
   "functions": {
     "src/app/api/content/pdf-worker/route.ts": {
       "maxDuration": 60

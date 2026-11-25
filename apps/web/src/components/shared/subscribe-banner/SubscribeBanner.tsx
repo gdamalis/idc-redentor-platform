@@ -8,15 +8,18 @@ import { useLocale, useTranslations } from "next-intl";
 import { trackEvent } from "@src/lib/analytics";
 import { useActionState } from "react";
 
-type SubscribeBannerProps = {
-  content: {
-    title: string;
-    shortDescription: string;
-    inputPlaceholder: string;
-    ctaText: string;
-    successMessage: string;
-  };
-};
+import type { SingleEmailFormView } from "@lib/content/types";
+
+interface SubscribeBannerProps {
+  readonly content: Pick<
+    SingleEmailFormView,
+    | "title"
+    | "shortDescription"
+    | "inputPlaceholder"
+    | "ctaText"
+    | "successMessage"
+  >;
+}
 
 export const SubscribeBanner = ({ content }: SubscribeBannerProps) => {
   const t = useTranslations();

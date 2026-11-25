@@ -1,23 +1,14 @@
-import { shouldUseDraftMode } from "@lib/contentful/draftMode";
-import { getLatestBlogPostPages } from "@lib/contentful/getBlogPostPages";
-import { getContentCollection } from "@lib/contentful/getContentCollection";
-import { getCtaComponent } from "@lib/contentful/getCtaComponent";
-import { getHeroBannerComponent } from "@lib/contentful/getHeroBannerComponent";
-import { mapContentCollection } from "@lib/contentful/mapContentCollection";
+import { shouldUseDraftMode } from "@lib/content/draft-mode";
+import { getLatestBlogPostPages } from "@lib/content/getBlogPostPages";
+import { getContentCollection } from "@lib/content/getContentCollection";
+import { getCtaComponent } from "@lib/content/getCtaComponent";
+import { getHeroBannerComponent } from "@lib/content/getHeroBannerComponent";
+import { mapContentCollection } from "@lib/content/mapContentCollection";
 import { buildPageMetadata } from "@lib/metadata";
 import { BlogSection } from "@src/components/features/blog-section";
-import {
-  ComponentCta,
-  ComponentCtaLive,
-} from "@src/components/features/component-cta";
-import {
-  OurMissionCta,
-  OurMissionCtaLive,
-} from "@src/components/features/our-mission-cta";
-import {
-  OurMissionSection,
-  OurMissionSectionLive,
-} from "@src/components/features/our-mission-section";
+import { ComponentCta } from "@src/components/features/component-cta";
+import { OurMissionCta } from "@src/components/features/our-mission-cta";
+import { OurMissionSection } from "@src/components/features/our-mission-section";
 import { routing } from "@src/i18n/routing";
 import { type Metadata } from "next";
 import { hasLocale } from "next-intl";
@@ -80,24 +71,14 @@ export default async function Home({
 
   return (
     <main>
-      {isEnabled ? (
-        <OurMissionCtaLive raw={ourMission} locale={locale} />
-      ) : (
-        <OurMissionCta content={ourMission} />
-      )}
-      {isEnabled ? (
-        <OurMissionSectionLive raw={ourMissionCollection} locale={locale} />
-      ) : (
+      {ourMission && <OurMissionCta content={ourMission} />}
+      {ourMissionCollection && (
         <OurMissionSection
           content={mapContentCollection(ourMissionCollection)}
         />
       )}
       <BlogSection posts={latestPosts} />
-      {isEnabled ? (
-        <ComponentCtaLive raw={contactCta} locale={locale} />
-      ) : (
-        <ComponentCta content={contactCta} />
-      )}
+      {contactCta && <ComponentCta content={contactCta} />}
     </main>
   );
 }

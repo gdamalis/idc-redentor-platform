@@ -1,43 +1,25 @@
 import { LOGO } from "@idcr/ui";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import type { BlogPost } from "@src/types/BlogPost";
-import type { SeoContent } from "@src/types/Seo";
 import { buildLocaleAlternates } from "@src/i18n/config";
-import { shouldUseDraftMode } from "./contentful/draftMode";
-import { getSeo } from "./contentful/getSeo";
-
-interface EventBannerLocation {
-  addressLine1: string;
-  neighborhood?: string;
-  city: string;
-  country: string;
-  mapEmbedUrl?: string;
-  googleMapsUrl?: string;
-  location?: { lat: number; lon: number };
-}
-
-interface EventBannerData {
-  eventInfo: {
-    name: string;
-    dayOfWeek: string;
-    date?: string | null;
-    time: string;
-    note?: string | null;
-  };
-  location: EventBannerLocation;
-}
+import { shouldUseDraftMode } from "./content/draft-mode";
+import { getSeo } from "./content/getSeo";
+import type {
+  BlogPostView,
+  EventBannerView,
+  SeoView,
+} from "./content/types";
 
 interface BuildPageMetadataOptions {
-  machineName: string;
-  locale: string;
-  path: string;
+  readonly machineName: string;
+  readonly locale: string;
+  readonly path: string;
 }
 
 interface BuildArticleMetadataOptions {
-  post: BlogPost;
-  locale: string;
-  path: string;
+  readonly post: BlogPostView;
+  readonly locale: string;
+  readonly path: string;
 }
 
 /**
@@ -53,8 +35,8 @@ export const DEFAULT_OG_IMAGE = {
   alt: "Iglesia de Cristo Redentor",
 };
 
-function buildOgImage(seoContent: SeoContent) {
-  if (!seoContent.image?.url) {
+function buildOgImage(seoContent: SeoView | undefined) {
+  if (!seoContent?.image?.url) {
     return [DEFAULT_OG_IMAGE];
   }
 
@@ -79,25 +61,30 @@ export async function buildPageMetadata({
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
   const suffix = path ? `/${path}` : "";
   const pageUrl = `${baseUrl}/${locale}${suffix}`;
+  const siteName = t("site-name");
+  const title = seoContent?.title || siteName;
+  const description = seoContent?.description ?? "";
+  const keywords = seoContent?.keywords ?? [];
+  const images = buildOgImage(seoContent);
 
   return {
-    title: seoContent.title,
-    description: seoContent.description,
-    keywords: seoContent.keywords,
+    title,
+    description,
+    keywords,
     openGraph: {
-      title: seoContent.title,
-      description: seoContent.description,
-      images: buildOgImage(seoContent),
+      title,
+      description,
+      images,
       url: pageUrl,
-      siteName: t("site-name"),
+      siteName,
       type: "website",
       locale: locale.replace("-", "_"),
     },
     twitter: {
       card: "summary_large_image",
-      title: seoContent.title,
-      description: seoContent.description,
-      images: buildOgImage(seoContent),
+      title,
+      description,
+      images,
     },
     alternates: {
       canonical: pageUrl,
@@ -114,12 +101,14 @@ export function buildArticleMetadata({
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
   const pageUrl = `${baseUrl}/${locale}/${path}`;
 
-  const ogImage = {
-    url: post.featuredImage.url,
-    width: 1200,
-    height: 630,
-    alt: post.featuredImage.title,
-  };
+  const ogImage = post.featuredImage
+    ? {
+        url: post.featuredImage.url,
+        width: 1200,
+        height: 630,
+        alt: post.featuredImage.title,
+      }
+    : DEFAULT_OG_IMAGE;
 
   return {
     title: post.seoTitle,
@@ -134,7 +123,7 @@ export function buildArticleMetadata({
       locale: locale.replace("-", "_"),
       publishedTime: post.publishedDate,
       modifiedTime: post.sys.publishedAt,
-      authors: [post.author.name],
+      ...(post.author ? { authors: [post.author.name] } : {}),
       tags: post.keywords,
     },
     twitter: {
@@ -184,7 +173,10 @@ export function buildOrganizationJsonLd(locale: string) {
   };
 }
 
-export function buildEventJsonLd(eventBanner: EventBannerData, locale: string) {
+export function buildEventJsonLd(
+  eventBanner: Pick<EventBannerView, "eventInfo" | "location">,
+  locale: string,
+) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
   const { eventInfo, location } = eventBanner;
 
@@ -192,7 +184,7 @@ export function buildEventJsonLd(eventBanner: EventBannerData, locale: string) {
     locale === "en-US" ? "Redentor Church of Christ" : "Iglesia de Cristo Redentor";
 
   const geo =
-    location.location?.lat != null
+    location?.location?.lat != null
       ? {
           "@type": "GeoCoordinates" as const,
           latitude: location.location.lat,
@@ -213,19 +205,27 @@ export function buildEventJsonLd(eventBanner: EventBannerData, locale: string) {
       startTime: eventInfo.time,
       repeatFrequency: "P1W",
     },
-    location: {
-      "@type": "Place" as const,
-      name,
-      address: {
-        "@type": "PostalAddress" as const,
-        streetAddress: location.addressLine1,
-        addressLocality: location.city,
-        ...(location.neighborhood ? { addressRegion: location.neighborhood } : {}),
-        addressCountry: location.country,
-      },
-      ...(geo ? { geo } : {}),
-      ...(location.googleMapsUrl ? { hasMap: location.googleMapsUrl } : {}),
-    },
+    ...(location
+      ? {
+          location: {
+            "@type": "Place" as const,
+            name,
+            address: {
+              "@type": "PostalAddress" as const,
+              streetAddress: location.addressLine1,
+              addressLocality: location.city,
+              ...(location.neighborhood
+                ? { addressRegion: location.neighborhood }
+                : {}),
+              addressCountry: location.country,
+            },
+            ...(geo ? { geo } : {}),
+            ...(location.googleMapsUrl
+              ? { hasMap: location.googleMapsUrl }
+              : {}),
+          },
+        }
+      : {}),
     organizer: {
       "@type": "Church" as const,
       name,
@@ -234,7 +234,7 @@ export function buildEventJsonLd(eventBanner: EventBannerData, locale: string) {
   };
 }
 
-export function buildArticleJsonLd(post: BlogPost, locale: string) {
+export function buildArticleJsonLd(post: BlogPostView, locale: string) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
   return {
@@ -242,23 +242,27 @@ export function buildArticleJsonLd(post: BlogPost, locale: string) {
     "@type": "BlogPosting" as const,
     headline: post.seoTitle,
     description: post.seoDescription,
-    image: post.featuredImage.url,
+    image: post.featuredImage?.url ?? `${baseUrl}${DEFAULT_OG_IMAGE.url}`,
     datePublished: post.publishedDate,
     dateModified: post.sys.publishedAt ?? post.publishedDate,
-    author: {
-      "@type": "Person",
-      name: post.author.name,
-    },
+    ...(post.author
+      ? {
+          author: {
+            "@type": "Person" as const,
+            name: post.author.name,
+          },
+        }
+      : {}),
     publisher: {
-      "@type": "Organization",
+      "@type": "Organization" as const,
       name: "Iglesia de Cristo Redentor",
       logo: {
-        "@type": "ImageObject",
+        "@type": "ImageObject" as const,
         url: `${baseUrl}${DEFAULT_OG_IMAGE.url}`,
       },
     },
     mainEntityOfPage: {
-      "@type": "WebPage",
+      "@type": "WebPage" as const,
       "@id": `${baseUrl}/${locale}/blog/${post.slug}`,
     },
     keywords: post.keywords?.join(", "),

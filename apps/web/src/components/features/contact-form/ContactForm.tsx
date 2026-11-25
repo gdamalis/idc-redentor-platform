@@ -1,17 +1,15 @@
 "use client";
 
 import {
-  CommonNode,
-  documentToReactComponents,
-} from "@contentful/rich-text-react-renderer";
-import { BLOCKS } from "@contentful/rich-text-types";
+  contactFormAgreementPreset,
+  renderRichText,
+} from "@lib/content/rich-text";
 import BibleVerse from "@src/components/shared/bible-verse/BibleVerse";
 import { Container } from "@src/components/ui/container";
 import LoadingSpinner from "@src/components/ui/LoadingSpinner";
 import { Typography } from "@src/components/ui/typography";
-import { Link } from "@src/i18n/routing";
 import Image from "next/image";
-import { ReactNode, useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Card } from "@src/components/ui/card";
 import { Button } from "@src/components/ui/button";
 import { trackEvent } from "@src/lib/analytics";
@@ -29,40 +27,11 @@ import {
 import { getRequiredFields } from "./formUtils";
 import { ContactFormProps, ContactFormState } from "./types";
 
-/**
- * Rich text rendering options for the agreement note
- */
-const richTextOptions = {
-  renderNode: {
-    [BLOCKS.PARAGRAPH]: (node: CommonNode, children: ReactNode) => (
-      <Typography
-        component="p"
-        variant="body1"
-        className="mt-4 text-sm/6 text-muted-foreground"
-      >
-        {children}
-      </Typography>
-    ),
-    ["hyperlink"]: (node: CommonNode, children: ReactNode) => {
-      return (
-        <Link
-          href={node.data.uri}
-          className="font-semibold text-primary hover:underline"
-          target="_blank"
-        >
-          {children}
-        </Link>
-      );
-    },
-  },
-};
-
 export const ContactForm = ({ content }: ContactFormProps) => {
   const t = useTranslations();
-  const agreementNote = documentToReactComponents(
-    content.agreementNote.json,
-    richTextOptions,
-  );
+  const agreementNote = content.agreementNote
+    ? renderRichText(content.agreementNote, contactFormAgreementPreset)
+    : null;
 
   const requiredFields = getRequiredFields(content.formFields);
   const [formSubject, setFormSubject] = useState("");

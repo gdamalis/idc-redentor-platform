@@ -1,9 +1,8 @@
-import { shouldUseDraftMode } from "@lib/contentful/draftMode";
-import { getChurchInfoTopic } from "@lib/contentful/getChurchInfoTopic";
-import { articleRichTextOptions } from "@lib/contentful/rich-text-options";
+import { shouldUseDraftMode } from "@lib/content/draft-mode";
+import { getChurchInfoTopic } from "@lib/content/getChurchInfoTopic";
+import { articlePreset, renderRichText } from "@lib/content/rich-text";
 import { Container } from "@src/components/ui/container";
 import { Typography } from "@src/components/ui/typography";
-import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
@@ -52,12 +51,9 @@ export default async function TopicPage({ params }: TopicPageProps) {
   }
 
   let richTextContent = null;
-  if (topicData.body?.json) {
+  if (topicData.body) {
     try {
-      richTextContent = documentToReactComponents(
-        topicData.body.json,
-        articleRichTextOptions,
-      );
+      richTextContent = renderRichText(topicData.body, articlePreset);
     } catch (error) {
       console.error("Error rendering rich text for topic:", topic, error);
     }

@@ -1,27 +1,46 @@
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { revalidateSiteContent } from "@lib/content/cache";
+import { isValidObjectIdHex } from "@lib/content/db";
 import { notifyOnPublish } from "@src/service/post-notification.service";
 import { isAuthorizedSecret } from "@src/utils/auth/secret";
+
+const NOTIFIABLE_TYPES = new Set(["post", "sermon"]);
+
+function isValidRevalidateSecret(provided: string | null): boolean {
+  // Accept WEBSITE_REVALIDATE_SECRET (new name) or CONTENTFUL_REVALIDATE_SECRET
+  // (transitional fallback for zero-downtime env rotation until ICR-207 drops it).
+  return (
+    isAuthorizedSecret(provided, process.env.WEBSITE_REVALIDATE_SECRET) ||
+    isAuthorizedSecret(provided, process.env.CONTENTFUL_REVALIDATE_SECRET)
+  );
+}
 
 export async function POST(request: Request) {
   const secret = request.headers.get("x-vercel-reval-key");
 
-  if (!isAuthorizedSecret(secret, process.env.CONTENTFUL_REVALIDATE_SECRET)) {
+  if (!isValidRevalidateSecret(secret)) {
     return NextResponse.json({ message: "Invalid secret" }, { status: 401 });
   }
 
-  // Revalidate first and unconditionally — notification is an isolated side-effect.
-  // Next.js 16 revalidateTag requires a second profile arg; "max" matches the
-  // pre-existing on-demand purge behaviour (unchanged from before ICR-44).
-  revalidateTag("site-content", "max");
+  // Revalidate immediately (`{ expire: 0 }`) and unconditionally — notification
+  // is an isolated side-effect.
+  revalidateSiteContent();
 
   let notified;
   try {
     const body = await request.json().catch(() => null);
-    const contentTypeId = body?.sys?.contentType?.sys?.id;
-    const entryId = body?.sys?.id;
-    if (typeof contentTypeId === "string" && typeof entryId === "string") {
-      const summary = await notifyOnPublish({ contentTypeId, entryId });
+    const type = typeof body?.type === "string" ? body.type : undefined;
+    const id = typeof body?.id === "string" ? body.id : undefined;
+    const shouldNotify =
+      process.env.CONTENT_PUBLISH_EMAILS === "true" &&
+      body?.notify === true &&
+      type !== undefined &&
+      NOTIFIABLE_TYPES.has(type) &&
+      id !== undefined &&
+      isValidObjectIdHex(id);
+
+    if (shouldNotify) {
+      const summary = await notifyOnPublish({ type, id });
       notified = summary.perLocale;
     }
   } catch (error) {

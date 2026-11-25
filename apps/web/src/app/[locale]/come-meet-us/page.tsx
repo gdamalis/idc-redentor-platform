@@ -1,7 +1,7 @@
-import { shouldUseDraftMode } from "@lib/contentful/draftMode";
-import { getContactForm } from "@lib/contentful/getContactForm";
-import { getEventBanner } from "@lib/contentful/getEventBanner";
-import { getTextBlockComponent } from "@lib/contentful/getTextBlockComponent";
+import { shouldUseDraftMode } from "@lib/content/draft-mode";
+import { getContactForm } from "@lib/content/getContactForm";
+import { getEventBanner } from "@lib/content/getEventBanner";
+import { getTextBlockComponent } from "@lib/content/getTextBlockComponent";
 import { buildEventJsonLd, buildPageMetadata } from "@lib/metadata";
 import { CommunityEvent } from "@src/components/features/community-event";
 import { ContactForm } from "@src/components/features/contact-form";
@@ -58,9 +58,9 @@ export default async function ComeMeetUsPage({
         subtitle={t("header-subtitle")}
       />
 
-      <InfoConnect content={infoContact} />
+      {infoContact && <InfoConnect content={infoContact} />}
 
-      <CommunityEvent content={eventSundayMeetings} />
+      {eventSundayMeetings && <CommunityEvent content={eventSundayMeetings} />}
       <ContactForm content={contactForm} />
     </main>
   );

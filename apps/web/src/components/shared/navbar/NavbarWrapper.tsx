@@ -6,6 +6,7 @@ import type { MenuItem } from "@src/types/MenuItem";
 
 interface NavbarWrapperProps {
   menuItems: MenuItem[];
+  hasPreviewBanner?: boolean;
 }
 
 /**
@@ -13,13 +14,22 @@ interface NavbarWrapperProps {
  * - Uses "overlay" variant for home page only (has image background)
  * - Uses "solid" variant for all other pages (light backgrounds without images)
  */
-export const NavbarWrapper = ({ menuItems }: NavbarWrapperProps) => {
+export const NavbarWrapper = ({
+  menuItems,
+  hasPreviewBanner = false,
+}: NavbarWrapperProps) => {
   const pathname = usePathname();
   
   // Only the home page uses overlay variant (transparent with white text over images)
   // All other pages use solid variant (visible navbar with dark text)
   const isHomePage = pathname === "/";
   
-  return <Navbar menuItems={menuItems} variant={isHomePage ? "overlay" : "solid"} />;
+  return (
+    <Navbar
+      menuItems={menuItems}
+      variant={isHomePage ? "overlay" : "solid"}
+      hasPreviewBanner={hasPreviewBanner}
+    />
+  );
 };
 

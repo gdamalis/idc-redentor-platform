@@ -1,6 +1,6 @@
-import { shouldUseDraftMode } from "@lib/contentful/draftMode";
-import { getLatestBlogPostPages } from "@lib/contentful/getBlogPostPages";
-import { getCtaComponent } from "@lib/contentful/getCtaComponent";
+import { shouldUseDraftMode } from "@lib/content/draft-mode";
+import { getLatestBlogPostPages } from "@lib/content/getBlogPostPages";
+import { getCtaComponent } from "@lib/content/getCtaComponent";
 import { buildPageMetadata } from "@lib/metadata";
 import { BlogSection } from "@src/components/features/blog-section";
 import { ComponentCta } from "@src/components/features/component-cta";

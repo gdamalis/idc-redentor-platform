@@ -1,2 +1,1 @@
-export * from './OurMissionCta';
-export { OurMissionCtaLive } from './OurMissionCtaLive';
+export * from "./OurMissionCta";

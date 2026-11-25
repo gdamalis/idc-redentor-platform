@@ -3,10 +3,10 @@
 import Image from "next/image";
 import { Typography } from "@src/components/ui/typography";
 import { getInitials } from "@src/components/features/blog-post-details/AuthorInfo";
-import type { SermonAuthor } from "@src/types/Sermon";
+import type { AuthorView } from "@lib/content/types";
 
 interface SermonInterpreterProps {
-  readonly interpreter: SermonAuthor;
+  readonly interpreter: AuthorView;
 }
 
 /**

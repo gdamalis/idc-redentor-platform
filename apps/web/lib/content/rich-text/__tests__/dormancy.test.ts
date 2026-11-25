@@ -1,8 +1,18 @@
+// @vitest-environment node
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const WEB_ROOT = path.resolve(__dirname, "../../../..");
+
+const EXEMPT_PREFIXES = [
+  path.join(WEB_ROOT, "lib", "contentful") + path.sep,
+  path.join(WEB_ROOT, "lib", "content", "parity") + path.sep,
+  path.join(WEB_ROOT, "lib", "content", "rich-text", "__tests__") + path.sep,
+  path.join(WEB_ROOT, "src", "app", "api", "predica", "regenerate-pdf") + path.sep,
+  path.join(WEB_ROOT, "src", "service", "predica") + path.sep,
+  path.join(WEB_ROOT, "src", "utils", "predica") + path.sep,
+];
 
 function walkSourceFiles(dir: string): string[] {
   const results: string[] = [];
@@ -27,40 +37,29 @@ function walkSourceFiles(dir: string): string[] {
   return results;
 }
 
-describe("Dormancy check (AC8)", () => {
-  it("proves zero live pages, layouts, components, or routes import lib/content/rich-text or tiptapRegenContent", () => {
-    const richTextDir = path.join(WEB_ROOT, "lib", "content", "rich-text");
-    const tiptapRegenFile = path.join(
-      WEB_ROOT,
-      "src",
-      "utils",
-      "predica",
-      "tiptapRegenContent.ts",
-    );
-
+describe("ICR-205 cutover guard — rich-text renderer", () => {
+  it("proves zero live pages, layouts, components, or metadata modules import @contentful/* or @lib/contentful/*", () => {
     const filesToScan = [
       ...walkSourceFiles(path.join(WEB_ROOT, "src")),
-      ...walkSourceFiles(path.join(WEB_ROOT, "lib")),
+      path.join(WEB_ROOT, "lib", "metadata.ts"),
+      path.join(WEB_ROOT, "lib", "sermonMetadata.ts"),
     ].filter(
-      (file) =>
-        !file.startsWith(richTextDir + path.sep) && file !== tiptapRegenFile,
+      (file) => !EXEMPT_PREFIXES.some((prefix) => file.startsWith(prefix)),
     );
 
     expect(filesToScan.length).toBeGreaterThan(20);
 
-    const forbiddenImportPatterns = [
-      /(?:from|import)\s+["'][^"']*content\/rich-text(?:\/[^"']*)?["']/,
-      /import\s*\(\s*["'][^"']*content\/rich-text(?:\/[^"']*)?["']\s*\)/,
-      /(?:from|import)\s+["']\.\.?\/rich-text(?:\/[^"']*)?["']/,
-      /import\s*\(\s*["']\.\.?\/rich-text(?:\/[^"']*)?["']\s*\)/,
-      /(?:from|import)\s+["'][^"']*tiptapRegenContent["']/,
-      /import\s*\(\s*["'][^"']*tiptapRegenContent["']\s*\)/,
+    const forbiddenPatterns = [
+      /(?:from|import)\s+["']@contentful\/[^"']+["']/,
+      /import\s*\(\s*["']@contentful\/[^"']+["']\s*\)/,
+      /(?:from|import)\s+["']@lib\/contentful(?:\/[^"']*)?["']/,
+      /(?:from|import)\s+["']\.\/contentful(?:\/[^"']*)?["']/,
     ];
 
     const offenders: string[] = [];
     for (const file of filesToScan) {
       const content = readFileSync(file, "utf8");
-      for (const pattern of forbiddenImportPatterns) {
+      for (const pattern of forbiddenPatterns) {
         if (pattern.test(content)) {
           offenders.push(path.relative(WEB_ROOT, file));
           break;
@@ -69,5 +68,26 @@ describe("Dormancy check (AC8)", () => {
     }
 
     expect(offenders).toEqual([]);
+  });
+
+  it("confirms all 9 rich-text consumers import @lib/content/rich-text", () => {
+    const expectedConsumers = [
+      "src/app/[locale]/[topic]/page.tsx",
+      "src/components/features/blog-post-details/BlogPostContent.tsx",
+      "src/components/features/sermon-details/SermonContent.tsx",
+      "src/components/features/contact-form/ContactForm.tsx",
+      "src/components/features/creed-section/CreedSection.tsx",
+      "src/components/features/our-mission-section/OurMissionSection.tsx",
+      "src/components/features/our-mission-cta/OurMissionCta.tsx",
+      "src/components/features/info-community/InfoCommunity.tsx",
+      "src/components/features/info-connect/InfoConnect.tsx",
+    ];
+
+    for (const rel of expectedConsumers) {
+      const content = readFileSync(path.join(WEB_ROOT, rel), "utf8");
+      expect(content, `${rel} should import @lib/content/rich-text`).toContain(
+        "@lib/content/rich-text",
+      );
+    }
   });
 });

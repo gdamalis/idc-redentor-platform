@@ -3,13 +3,13 @@ import { Typography } from "@src/components/ui/typography";
 import { useTranslations } from "next-intl";
 import { cn } from "@idcr/ui";
 
-import { BlogPost } from "@src/types/BlogPost";
+import type { BlogPostView } from "@lib/content/types";
 import { BlogPostCard } from "./BlogPostCard";
 
-type BlogSectionProps = {
-  posts: BlogPost[];
-  showHeader?: boolean;
-};
+interface BlogSectionProps {
+  readonly posts: BlogPostView[];
+  readonly showHeader?: boolean;
+}
 
 export const BlogSection = ({ posts, showHeader = true }: BlogSectionProps) => {
   const t = useTranslations("Blog");
@@ -38,7 +38,7 @@ export const BlogSection = ({ posts, showHeader = true }: BlogSectionProps) => {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {posts
+          {[...posts]
             .sort(
               (a, b) =>
                 new Date(b.publishedDate).getTime() -

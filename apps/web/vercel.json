@@ -3,16 +3,5 @@
   "framework": "nextjs",
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "next build",
-  "outputDirectory": ".next",
-  "crons": [
-    {
-      "path": "/api/predica/regenerate-pdf/cron",
-      "schedule": "* * * * *"
-    }
-  ],
-  "functions": {
-    "src/app/api/predica/regenerate-pdf/cron/route.ts": {
-      "maxDuration": 60
-    }
-  }
+  "outputDirectory": ".next"
 }

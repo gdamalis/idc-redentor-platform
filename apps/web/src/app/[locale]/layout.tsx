@@ -1,16 +1,17 @@
-import { shouldUseDraftMode } from "@lib/contentful/draftMode";
-import { getFooter } from "@lib/contentful/getFooter";
-import { getNavigationMenu } from "@lib/contentful/getNavigationMenu";
-import { getSingleEmailForm } from "@lib/contentful/getSingleEmailForm";
+import { shouldUseDraftMode } from "@lib/content/draft-mode";
+import { getFooter } from "@lib/content/getFooter";
+import { getNavigationMenu } from "@lib/content/getNavigationMenu";
+import { getSingleEmailForm } from "@lib/content/getSingleEmailForm";
 import { buildOrganizationJsonLd, DEFAULT_OG_IMAGE } from "@lib/metadata";
 import { ConsentBanner } from "@src/components/shared/consent-banner/ConsentBanner";
-import { ContentfulPreviewProvider } from "@src/components/shared/contentful-preview";
 import { Footer } from "@src/components/shared/footer";
 import { JsonLd } from "@src/components/shared/json-ld";
 import { NavbarWrapper } from "@src/components/shared/navbar";
+import { PreviewBanner } from "@src/components/shared/preview-banner";
 import { SubscribeBanner } from "@src/components/shared/subscribe-banner";
 import { Toaster } from "@src/components/ui/toaster";
 import { routing } from "@src/i18n/routing";
+import { isAlwaysDraftEnvironment } from "@src/lib/draft-headers";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleTagManager } from "@next/third-parties/google";
@@ -49,8 +50,12 @@ const playfairDisplay = Playfair_Display({
   variable: "--font-playfair",
 });
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL!),
+  ...(process.env.NEXT_PUBLIC_BASE_URL
+    ? { metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL) }
+    : {}),
   title: {
     template: "%s | Iglesia de Cristo Redentor",
     default: "Iglesia de Cristo Redentor",
@@ -64,10 +69,6 @@ export const metadata: Metadata = {
     card: "summary_large_image",
   },
 };
-
-export function generateStaticParams() {
-  return routing.locales.map((locale) => ({ locale }));
-}
 
 export default async function LocaleLayout({
   children,
@@ -85,6 +86,7 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
 
   const isEnabled = await shouldUseDraftMode();
+  const isAlwaysDraftEnv = isAlwaysDraftEnvironment();
   const navMenu = await getNavigationMenu("main-menu", locale, isEnabled);
   const footerContent = await getFooter(locale, isEnabled);
   const subscribeContent = await getSingleEmailForm(
@@ -94,21 +96,6 @@ export default async function LocaleLayout({
   );
 
   const messages = await getMessages();
-
-  const content = (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-      <NextIntlClientProvider messages={messages}>
-        <NavbarWrapper menuItems={navMenu} />
-        {children}
-        <SubscribeBanner content={subscribeContent} />
-        <Footer content={footerContent} />
-        <ConsentBanner />
-        <Toaster />
-      </NextIntlClientProvider>
-      <SpeedInsights />
-      <Analytics />
-    </ThemeProvider>
-  );
 
   return (
     <html lang={locale} suppressHydrationWarning>
@@ -120,13 +107,24 @@ export default async function LocaleLayout({
         />
         <JsonLd data={buildOrganizationJsonLd(locale)} />
         <GoogleTagManager gtmId={process.env.NEXT_PUBLIC_GTM_ID!} />
-        {isEnabled ? (
-          <ContentfulPreviewProvider locale={locale}>
-            {content}
-          </ContentfulPreviewProvider>
-        ) : (
-          content
-        )}
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+          <NextIntlClientProvider messages={messages}>
+            {isEnabled && (
+              <PreviewBanner isAlwaysDraftEnv={isAlwaysDraftEnv} />
+            )}
+            <NavbarWrapper
+              menuItems={navMenu ?? []}
+              hasPreviewBanner={isEnabled}
+            />
+            {children}
+            {subscribeContent && <SubscribeBanner content={subscribeContent} />}
+            <Footer content={footerContent} />
+            <ConsentBanner />
+            <Toaster />
+          </NextIntlClientProvider>
+          <SpeedInsights />
+          <Analytics />
+        </ThemeProvider>
       </body>
     </html>
   );

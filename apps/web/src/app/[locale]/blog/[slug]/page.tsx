@@ -1,9 +1,9 @@
-import { shouldUseDraftMode } from "@lib/contentful/draftMode";
+import { shouldUseDraftMode } from "@lib/content/draft-mode";
 import {
   getBlogPostPage,
   getLatestBlogPostPages,
-} from "@lib/contentful/getBlogPostPages";
-import { getCtaComponent } from "@lib/contentful/getCtaComponent";
+} from "@lib/content/getBlogPostPages";
+import { getCtaComponent } from "@lib/content/getCtaComponent";
 import { buildArticleJsonLd, buildArticleMetadata } from "@lib/metadata";
 import BlogPostDetails from "@src/components/features/blog-post-details/BlogPostDetails";
 import { ComponentCta } from "@src/components/features/component-cta";
@@ -87,7 +87,7 @@ export default async function PostDetailsPage({
         locale={locale}
         likes={likes}
       />
-      <ComponentCta content={contactCta} />
+      {contactCta && <ComponentCta content={contactCta} />}
     </>
   );
 }

@@ -1,23 +1,13 @@
-import { shouldUseDraftMode } from "@lib/contentful/draftMode";
-import { getContentCollection } from "@lib/contentful/getContentCollection";
-import { getCtaComponent } from "@lib/contentful/getCtaComponent";
-import { getTextBlockComponent } from "@lib/contentful/getTextBlockComponent";
-import { mapContentCollection } from "@lib/contentful/mapContentCollection";
+import { shouldUseDraftMode } from "@lib/content/draft-mode";
+import { getContentCollection } from "@lib/content/getContentCollection";
+import { getCtaComponent } from "@lib/content/getCtaComponent";
+import { getTextBlockComponent } from "@lib/content/getTextBlockComponent";
+import { mapContentCollection } from "@lib/content/mapContentCollection";
 import { buildPageMetadata } from "@lib/metadata";
-import {
-  ComponentCta,
-  ComponentCtaLive,
-} from "@src/components/features/component-cta";
-import {
-  CreedSection,
-  CreedSectionLive,
-} from "@src/components/features/creed-section";
-import { InfoCommunityLive } from "@src/components/features/info-community";
+import { ComponentCta } from "@src/components/features/component-cta";
+import { CreedSection } from "@src/components/features/creed-section";
 import InfoCommunity from "@src/components/features/info-community/InfoCommunity";
-import {
-  OurMissionSection,
-  OurMissionSectionLive,
-} from "@src/components/features/our-mission-section";
+import { OurMissionSection } from "@src/components/features/our-mission-section";
 import { PhotoGrid } from "@src/components/features/photo-grid";
 import { Header } from "@src/components/shared/header";
 import { Metadata } from "next";
@@ -81,28 +71,16 @@ export default async function CommunityPage({
             caption={t("photo-grid-caption")}
           />
         )}
-      {isEnabled ? (
-        <InfoCommunityLive raw={infoCommunity} locale={locale} />
-      ) : (
-        <InfoCommunity content={infoCommunity} />
-      )}
-      {isEnabled ? (
-        <CreedSectionLive raw={ourCreedContent} locale={locale} />
-      ) : (
+      {infoCommunity && <InfoCommunity content={infoCommunity} />}
+      {ourCreedContent && (
         <CreedSection content={mapContentCollection(ourCreedContent)} />
       )}
-      {isEnabled ? (
-        <OurMissionSectionLive raw={ourMissionCollection} locale={locale} />
-      ) : (
+      {ourMissionCollection && (
         <OurMissionSection
           content={mapContentCollection(ourMissionCollection)}
         />
       )}
-      {isEnabled ? (
-        <ComponentCtaLive raw={contactCta} locale={locale} />
-      ) : (
-        <ComponentCta content={contactCta} />
-      )}
+      {contactCta && <ComponentCta content={contactCta} />}
     </main>
   );
 }

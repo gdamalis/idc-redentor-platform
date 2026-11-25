@@ -20,9 +20,15 @@ interface NavbarProps {
    * - "solid": Always uses scrolled appearance - for light/white backgrounds
    */
   variant?: "overlay" | "solid";
+  /** Offsets the fixed navbar below the sticky PreviewBanner while Draft Mode is active. */
+  hasPreviewBanner?: boolean;
 }
 
-export const Navbar = ({ menuItems = [], variant = "overlay" }: NavbarProps) => {
+export const Navbar = ({
+  menuItems = [],
+  variant = "overlay",
+  hasPreviewBanner = false,
+}: NavbarProps) => {
   const t = useTranslations();
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -41,7 +47,8 @@ export const Navbar = ({ menuItems = [], variant = "overlay" }: NavbarProps) => 
   return (
     <nav
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
+        "fixed left-0 right-0 z-50 transition-all duration-300",
+        hasPreviewBanner ? "top-10" : "top-0",
         useSolidAppearance
           ? "bg-background/80 backdrop-blur-md shadow-sm py-4"
           : "bg-transparent py-6",

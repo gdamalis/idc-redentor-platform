@@ -1,4 +1,5 @@
 export { revalidateSiteContent, SITE_CONTENT_CACHE_TAG } from "./cache";
+export { shouldUseDraftMode } from "./draft-mode";
 export {
   getAllBlogPostSlugs,
   getBlogPostPage,

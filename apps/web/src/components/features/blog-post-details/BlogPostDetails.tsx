@@ -1,5 +1,5 @@
 import { Container } from "@src/components/ui/container";
-import { BlogPost } from "@src/types/BlogPost";
+import type { BlogPostView } from "@lib/content/types";
 import type { Likes } from "@src/service/like.service";
 import { BlogPostHeader } from "./BlogPostHeader";
 import { BlogPostContent } from "./BlogPostContent";
@@ -7,8 +7,8 @@ import { PostActions } from "./PostActions";
 import { RelatedArticles } from "./RelatedArticles";
 
 type BlogPostDetailsProps = Readonly<{
-  post: BlogPost;
-  relatedPosts: BlogPost[];
+  post: BlogPostView;
+  relatedPosts: BlogPostView[];
   locale: string;
   likes?: Likes;
 }>;
@@ -33,10 +33,14 @@ export default function BlogPostDetails({
           basePath="blog"
           likeKey={post.slug}
           title={post.title}
-          featuredImageUrl={post.featuredImage.url}
+          featuredImageUrl={post.featuredImage?.url ?? ""}
           likes={likes}
         />
-        <RelatedArticles posts={relatedPosts} locale={locale} sourceSlug={post.slug} />
+        <RelatedArticles
+          posts={relatedPosts}
+          locale={locale}
+          sourceSlug={post.slug}
+        />
       </div>
     </Container>
   );

@@ -1,40 +1,16 @@
-import {
-  CommonNode,
-  documentToReactComponents,
-} from "@contentful/rich-text-react-renderer";
-import { BLOCKS, Document } from "@contentful/rich-text-types";
+import { infoConnectPreset, renderRichText } from "@lib/content/rich-text";
+import type { SectionView } from "@lib/content/types";
 import { Container } from "@src/components/ui/container";
-import { Typography } from "@src/components/ui/typography";
-import { ReactNode } from "react";
 
-const options = {
-  renderNode: {
-    [BLOCKS.PARAGRAPH]: (node: CommonNode, children: ReactNode) => (
-      <Typography
-        component="p"
-        variant="body1"
-        className="text-xl md:text-2xl text-gray-700 dark:text-gray-300"
-      >
-        {children}
-      </Typography>
-    ),
-  },
-};
+interface InfoConnectProps {
+  readonly content: SectionView;
+}
 
-type InfoConnectProps = {
-  content: {
-    headline: string;
-    body: {
-       
-      json: Document;
-    };
-  };
-};
+export function InfoConnect({ content }: InfoConnectProps) {
+  const bodyText = content?.body
+    ? renderRichText(content.body, infoConnectPreset)
+    : null;
 
-export function InfoConnect({
-  content,
-}: Readonly<InfoConnectProps>) {
-  const bodyText = documentToReactComponents(content?.body.json, options);
   return (
     <div className="bg-gray-50 dark:bg-slate-900/50 transition-colors">
       <Container size="md" className="py-16 text-center sm:py-24">

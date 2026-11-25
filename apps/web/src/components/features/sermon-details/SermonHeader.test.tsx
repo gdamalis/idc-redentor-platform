@@ -21,10 +21,10 @@ vi.mock("next/image", () => ({
 }));
 
 import { SermonHeader } from "./SermonHeader";
-import type { Sermon } from "@src/types/Sermon";
+import type { SermonView } from "@lib/content/types";
 
 type HeaderSermon = Pick<
-  Sermon,
+  SermonView,
   | "title"
   | "thesis"
   | "preacher"
@@ -38,6 +38,7 @@ const baseSermon: HeaderSermon = {
   thesis: "La gracia es suficiente",
   sermonDate: "2025-06-01",
   preacher: { name: "Pastor Juan", email: "juan@example.com" },
+  additionalPreachers: [],
 };
 
 describe("SermonHeader — interpreter credit (ICR-146)", () => {

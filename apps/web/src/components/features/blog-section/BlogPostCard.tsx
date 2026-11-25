@@ -8,14 +8,14 @@ import { Calendar, User, ArrowRight } from "lucide-react";
 import { Typography } from "@src/components/ui/typography";
 import { Button } from "@src/components/ui/button";
 import { Link } from "@src/i18n/routing";
-import { BlogPost } from "@src/types/BlogPost";
+import type { BlogPostView } from "@lib/content/types";
 import { formatDate } from "@src/utils/formatDate";
 import { Card, CardContent } from "@src/components/ui/card";
 
-type BlogPostCardProps = {
-  post: BlogPost;
-  index?: number;
-};
+interface BlogPostCardProps {
+  readonly post: BlogPostView;
+  readonly index?: number;
+}
 
 export const BlogPostCard = ({ post, index = 0 }: BlogPostCardProps) => {
   const locale = useLocale();
@@ -32,35 +32,42 @@ export const BlogPostCard = ({ post, index = 0 }: BlogPostCardProps) => {
     >
       <Link href={`/blog/${post.slug}`}>
         <Card className="group flex flex-col h-full overflow-hidden rounded-2xl border border-border shadow-sm hover:shadow-md transition-all hover:-translate-y-1 cursor-pointer">
-          <div className="relative h-48 overflow-hidden">
-            <Image
-              alt={post.featuredImage.title}
-              src={post.featuredImage.url}
-              width={780}
-              height={780}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
+          <div className="relative h-48 overflow-hidden bg-muted">
+            {post.featuredImage && (
+              <Image
+                alt={post.featuredImage.title}
+                src={post.featuredImage.url}
+                width={780}
+                height={780}
+                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+            )}
             {post.category && (
               <div className="absolute top-4 left-4">
                 <span className="bg-background/90 backdrop-blur text-foreground text-xs font-bold px-3 py-1 rounded-full shadow-sm">
                   {tCategory(
-                    post.category as "Events" | "Spiritual Growth" | "Community",
+                    post.category as
+                      | "Events"
+                      | "Spiritual Growth"
+                      | "Community",
                   ) || post.category}
                 </span>
               </div>
             )}
           </div>
-          
+
           <CardContent className="p-6 flex flex-col grow">
             <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
               <span className="flex items-center gap-1">
                 <Calendar className="w-3 h-3" /> {formattedDate}
               </span>
-              <span className="flex items-center gap-1">
-                <User className="w-3 h-3" /> {post.author.name}
-              </span>
+              {post.author && (
+                <span className="flex items-center gap-1">
+                  <User className="w-3 h-3" /> {post.author.name}
+                </span>
+              )}
             </div>
-            
+
             <Typography
               component="h3"
               variant="h3"
@@ -68,7 +75,7 @@ export const BlogPostCard = ({ post, index = 0 }: BlogPostCardProps) => {
             >
               {post.title}
             </Typography>
-            
+
             {post.subtitle && (
               <Typography
                 component="p"
@@ -79,8 +86,12 @@ export const BlogPostCard = ({ post, index = 0 }: BlogPostCardProps) => {
               </Typography>
             )}
 
-            <Button variant="ghost" className="w-full justify-between group-hover:bg-primary/5">
-              {t("read-more")} <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            <Button
+              variant="ghost"
+              className="w-full justify-between group-hover:bg-primary/5"
+            >
+              {t("read-more")}{" "}
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Button>
           </CardContent>
         </Card>

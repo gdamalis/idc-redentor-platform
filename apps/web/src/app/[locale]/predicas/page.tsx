@@ -1,5 +1,5 @@
-import { shouldUseDraftMode } from "@lib/contentful/draftMode";
-import { getAllSermons } from "@lib/contentful/getSermons";
+import { shouldUseDraftMode } from "@lib/content/draft-mode";
+import { getAllSermons } from "@lib/content/getSermons";
 import { buildLocaleAlternates } from "@src/i18n/config";
 import { SermonSection } from "@src/components/features/sermon-section";
 import { Header } from "@src/components/shared/header";
