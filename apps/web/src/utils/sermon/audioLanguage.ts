@@ -8,14 +8,12 @@ import { i18n, isValidLocale, type Locale } from "@src/i18n/config";
 export type AudioLanguageNotice = "es" | "en" | "bilingual" | null;
 
 /**
- * Sanitize Contentful's `audioLanguages` into a non-empty list of known locales.
+ * Sanitize a sermon's `audioLanguages` into a non-empty list of known locales.
  *
  * Absent / empty / all-unknown => `["es-AR"]`. Historically every sermon was
- * preached in Spanish, so "no data" means "Spanish" — that is what lets the 4
- * legacy sermons render correctly with the field entirely absent, WITHOUT a
- * required-field migration (ICR-146 AC2/AC7). The backfill sets explicit values,
- * but this default must survive it: a human authoring in the Contentful UI (or
- * /predica before ICR-147 lands) can still leave the field empty.
+ * preached in Spanish, so "no data" means "Spanish" — that lets older sermons
+ * render correctly with the field absent, and safely defaults when an editor
+ * leaves the field empty in the Ministry Admin UI.
  */
 export function normalizeAudioLanguages(
   value: readonly string[] | undefined | null,

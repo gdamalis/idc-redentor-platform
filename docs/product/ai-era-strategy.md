@@ -17,15 +17,15 @@ In other words: the AI-era job of a church website isn't to _talk_ to visitors w
 
 ## What we already have to work with
 
-The content needed for great structured data already exists in Contentful (see [content-types.md](./content-types.md)):
+The content needed for great structured data already lives in MongoDB (`website*`, defined in `@idcr/content` and authored in `apps/admin` — see [content-types.md](./content-types.md)):
 
-- **Beliefs** — the Creed/Credo and values (`ContentCollection`: Credo + ValueItem).
-- **Service times & events** — `EventBanner` → `Event` (`name`, `dayOfWeek`, `date`, `time`, `note`).
-- **Location & geo** — `LocationComponent` (`addressLine1`, `neighborhood`, `city`, `country`, `mapEmbedUrl`, `googleMapsUrl`, `location { lat, lon }`).
-- **Identity & socials** — `Footer` (logo, short description, social links).
-- **Articles** — `BlogPostPage` (title, author, dates, body).
-- **Sermons** — `Sermon` (title, `sermonDate`, thesis, main points, rich-text body, `durationSeconds`, a self-hosted `audio` asset, a `pdfSummary`, `preacher` → `Author`) with **structured** `BibleVerse` scripture references (`book`, `chapter`, `fromVerse`, `toVerse`, `bibleVersion`). _Already serialized: `lib/sermonMetadata.ts#buildSermonJsonLd` emits an `Article` with a nested `AudioObject` (contentUrl + duration) on `/predicas/[slug]`. Treat sermons as **done** for structured data._
-- **Per-page metadata** — inline `Page.seo` and the `Seo` content type.
+- **Beliefs** — the Creed/Credo and values (`belief_collections`: Credo + ValueItem).
+- **Service times & events** — `event_banners` (`name`, `dayOfWeek`, `date`, `time`, `note`, plus embedded location).
+- **Location & geo** — `location` (`addressLine1`, `neighborhood`, `city`, `country`, `mapEmbedUrl`, `googleMapsUrl`, `location { lat, lon }`).
+- **Identity & socials** — `globals` footer document (logo, short description, social links, location).
+- **Articles** — `posts` (title, author, dates, TipTap rich-text body).
+- **Sermons** — `sermons` (title, `sermonDate`, thesis, main points, TipTap rich-text body, `durationSeconds`, a self-hosted `audio` Vercel Blob asset, a `pdfSummary`, `preacher` → `authors`) with **structured** `bible_verses` scripture references (`book`, `chapter`, `fromVerse`, `toVerse`, `bibleVersion`). _Already serialized: `lib/sermonMetadata.ts#buildSermonJsonLd` emits an `Article` with a nested `AudioObject` (contentUrl + duration) on `/predicas/[slug]`. Treat sermons as **done** for structured data._
+- **Per-page metadata** — `seo_entries` collection (`getSeo`) and per-entry SEO fields on `posts`, `sermons`, and `topics`.
 
 **The serialization is DONE.** As of 2026-07-14 the JSON-LD this site needs already ships — `buildOrganizationJsonLd` (site-wide, from `[locale]/layout.tsx`), `buildEventJsonLd` (come-meet-us), `buildArticleJsonLd` → `BlogPosting` (blog detail), and `buildSermonJsonLd` → `Article` + `AudioObject` (sermon detail). **Of the originally-planned types, only `BreadcrumbList` remains.** Do not file "add JSON-LD" tickets — check `lib/metadata.ts` + `lib/sermonMetadata.ts` first, then rank the genuinely-remaining work below.
 

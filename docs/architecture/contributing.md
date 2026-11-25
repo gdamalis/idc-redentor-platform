@@ -1,6 +1,6 @@
 # Contributing
 
-> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+> **Monorepo note:** the site lives under **`apps/web/`**, the Ministry Admin Panel under **`apps/admin/`**, and shared packages under **`packages/`** (`@idcr/config`, `@idcr/ui`, `@idcr/content`). Unqualified app paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `next.config.ts`, `tsconfig.json`, …) live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope with `pnpm --filter @idcr/web <task>` / `pnpm --filter @idcr/admin <task>`.
 
 > **Purpose:** The day-to-day contributor flow — prerequisites, branch naming (`<type>/ICR-N-<slug>`), conventional commits, the PR-title rule and CI gates, Changesets release behavior, and the git-worktree workflow the agent harness uses.
 > **Last reviewed:** 2026-07-20
@@ -9,7 +9,7 @@
 
 - **Node 22.14.0** (`.nvmrc` — run `nvm use`).
 - **pnpm** as the package manager. Do not use `npm` or `yarn`.
-- A `.env` with the **required** variables — copy `apps/web/.env.example` to `apps/web/.env` and fill in the values, using `CLAUDE.md`'s env tables as the reference for what each var means. Ask @gdamalis for the Contentful / Mongo / mail-provider credentials.
+- A `.env.local` (or `.env`) with the **required** variables — copy `apps/web/.env.example` to `apps/web/.env.local` (and `apps/admin/.env.example` to `apps/admin/.env.local` if running the admin app) and fill in the values, using `CLAUDE.md`'s env tables as the reference for what each var means. Ask @gdamalis for the MongoDB / mail-provider / Firebase / Vercel Blob credentials.
 
 ```bash
 nvm use
@@ -58,7 +58,7 @@ fixture (`.claude/scripts/predica/__fixtures__/sample-sermon.json`):
 | `build-sermon-entry.mjs`                 | exit `0` + prints `sermon.json: VALID`           |
 
 The third case is the **schema gate** (ICR-116). The fixture has to satisfy two different validators —
-`validateSermon` for the renderers and `validateSermonForEntry` for the Contentful publisher — and for a
+`validateSermon` for the renderers and `validateSermonForEntry` for the sermon ingest payload builder — and for a
 while it satisfied only the first, silently. Because the fixture is the one committed example of the
 sermon contract, letting it drift means the next person to copy it inherits an invalid document. The
 entry builder is invoked with no flags, which is a pure validate-and-summarise dry run: no network, no

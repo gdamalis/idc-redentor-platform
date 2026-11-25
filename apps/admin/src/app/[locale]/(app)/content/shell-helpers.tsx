@@ -80,9 +80,6 @@ export function serializeDocView<TFields>(
     updatedAt: doc.updatedAt.toISOString(),
     updatedBy: doc.updatedBy,
     ...(updatedByLabel !== undefined && { updatedByLabel }),
-    ...(doc.sourceContentfulId !== undefined && {
-      sourceContentfulId: doc.sourceContentfulId,
-    }),
   };
 }
 

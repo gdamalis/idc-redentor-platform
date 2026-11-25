@@ -102,8 +102,8 @@ custom environment whose `NEXT_PUBLIC_VERCEL_ENV`/`VERCEL_ENV` resolve to `"prev
 any ordinary PR preview. Without the explicit override, staging would be indistinguishable from a PR
 preview in the Sentry UI. Setting `NEXT_PUBLIC_SENTRY_ENVIRONMENT=staging` **only** on that one
 deployment (see trap 2 above) is what makes staging show up as its own environment. See
-`docs/architecture/contentful-environments.md` and the project's `stagingUrl` in `.claude/config.json`
-for the same staging-is-not-a-native-Vercel-env fact in a different context (Contentful envs).
+`docs/architecture/deployments.md` and the project's `stagingUrl` in `.claude/config.json`
+for how the Vercel `staging` custom environment is wired.
 
 Resolution order, in full:
 
@@ -268,7 +268,7 @@ matters for local/CI builds and cache-key correctness, not for the Vercel build 
 
 - [`forms-and-email.md`](./forms-and-email.md) — the contact form and its PII discipline, which is
   the reason the Sentry PII posture is locked.
-- [`contentful-environments.md`](./contentful-environments.md) — another place staging's
-  not-a-native-Vercel-environment status matters.
+- [`deployments.md`](./deployments.md) — staging's Vercel custom-environment setup and the
+  batched production release flow.
 - [`architecture.md`](./architecture.md) — the overall App Router / request-lifecycle picture this
   feature hooks into (`src/instrumentation.ts`, `src/proxy.ts`).

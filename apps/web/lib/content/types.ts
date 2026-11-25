@@ -29,7 +29,7 @@ export interface SectionImageItemView {
 
 /**
  * Bible verse shape emitted by `getContactForm` and `getContentCollection`
- * (chapter/fromVerse/toVerse are strings, matching Contentful's Symbol fields today).
+ * (chapter/fromVerse/toVerse are strings for UI rendering).
  */
 export interface StructuredBibleVerseView {
   book: string;

@@ -21,7 +21,6 @@ const req = (body: unknown, secret: string | null = SECRET) =>
 
 beforeEach(() => {
   vi.stubEnv("WEBSITE_REVALIDATE_SECRET", SECRET);
-  vi.stubEnv("CONTENTFUL_REVALIDATE_SECRET", "");
   vi.stubEnv("CONTENT_PUBLISH_EMAILS", "false");
   vi.mocked(revalidateSiteContent).mockReset();
   vi.mocked(notifyOnPublish).mockReset();
@@ -44,21 +43,8 @@ describe("POST /api/revalidate", () => {
     expect(vi.mocked(notifyOnPublish)).not.toHaveBeenCalled();
   });
 
-  it("accepts CONTENTFUL_REVALIDATE_SECRET as transitional fallback during env rotation", async () => {
+  it("401s when WEBSITE_REVALIDATE_SECRET is unset", async () => {
     vi.stubEnv("WEBSITE_REVALIDATE_SECRET", "");
-    vi.stubEnv("CONTENTFUL_REVALIDATE_SECRET", "legacy-secret");
-
-    const res = await POST(
-      req({ type: "post", id: VALID_OBJECT_ID, notify: false }, "legacy-secret"),
-    );
-    expect(res.status).toBe(200);
-    expect(vi.mocked(revalidateSiteContent)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(notifyOnPublish)).not.toHaveBeenCalled();
-  });
-
-  it("401s when both WEBSITE_REVALIDATE_SECRET and CONTENTFUL_REVALIDATE_SECRET are unset", async () => {
-    vi.stubEnv("WEBSITE_REVALIDATE_SECRET", "");
-    vi.stubEnv("CONTENTFUL_REVALIDATE_SECRET", "");
 
     for (const secret of ["undefined", "", "anything", null]) {
       const res = await POST(req({}, secret));
@@ -114,13 +100,13 @@ describe("POST /api/revalidate", () => {
     expect(vi.mocked(notifyOnPublish)).not.toHaveBeenCalled();
   });
 
-  it("revalidates but ignores non-notifiable types, invalid ObjectIds, and legacy Contentful payloads", async () => {
+  it("revalidates but ignores non-notifiable types, invalid ObjectIds, and unknown payloads", async () => {
     vi.stubEnv("CONTENT_PUBLISH_EMAILS", "true");
 
     await POST(req({ type: "section", id: VALID_OBJECT_ID, notify: true }));
     await POST(req({ type: "post", id: "not-a-hex-id", notify: true }));
     await POST(
-      req({ sys: { id: "cf-entry-1", contentType: { sys: { id: "blogPostPage" } } } }),
+      req({ sys: { id: "legacy-entry-1", contentType: { sys: { id: "blogPostPage" } } } }),
     );
     await POST(req({ hello: "world" }));
 

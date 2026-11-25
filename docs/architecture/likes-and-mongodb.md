@@ -1,22 +1,25 @@
 # Likes & MongoDB
 
-> **Monorepo note:** the site moved to **`apps/web/`**. App paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `scripts/contentful/…`, `next.config.ts`, `tsconfig.json`, …) now live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope to the site with `pnpm --filter @idcr/web <task>` / `pnpm -C apps/web <cmd>`.
+> **Monorepo note:** the site lives under **`apps/web/`**, the Ministry Admin Panel under **`apps/admin/`**, and shared content schemas under **`packages/content/`** (`@idcr/content`). Unqualified app paths in this doc (`src/…`, `lib/…`, `public/…`, `config/…`, `next.config.ts`, `tsconfig.json`, …) live under `apps/web/`; only `.claude/`, `docs/`, and `tasks/` stay at the repo root. Run commands at the root (Turbo proxies them) or scope with `pnpm --filter @idcr/web <task>` / `pnpm --filter @idcr/admin <task>`.
 
-> **Purpose:** The only stateful part of the app. How the cached MongoDB client works, the four collections it backs (`likes`, `contact`, `broadcast_log`, `pdf_jobs`), the anonymous like toggle and its visitor de-dup, and the write-safety considerations.
-> **Last reviewed:** 2026-07-14
+> **Purpose:** How the cached MongoDB client works in `apps/web`, the `website*` database collections (11 CMS content collections authored by `apps/admin`, plus the 4 operational collections `likes`, `contact`, `broadcast_log`, `content_pdf_jobs`), the anonymous like toggle and its visitor de-dup, and the write-safety considerations.
+> **Last reviewed:** 2026-11-25
 
-## Scope: this is the whole database
+## Scope: the `website*` database
 
-MongoDB is **not** the content store — Contentful is. Mongo exists only for the things Contentful can't do: an anonymous, **slug-keyed** **like** counter (it serves **blog posts and sermons** alike — `/api/likes` is generic, not blog-specific), **saved contact-form messages**, **broadcast send tracking**, and (since ICR-114) a **dirty-queue for sermon PDF regeneration**. All four live in a database literally named **`website`**:
+The `website*` MongoDB database (`website` in production, `website-staging` on staging, etc.) backs **both** the public website's content platform (authored in `apps/admin`, read by `apps/web/lib/content/*` via `@idcr/content`) **and** the operational collections:
 
-| Collection      | Written by                                                                                      | Read by                                                   | Doc shape                                                                               |
-| --------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `likes`         | `POST /api/likes` → `like.service.ts#toggleLike`                                                | `GET /api/likes` → `getLikes`; the blog + sermon UI       | `{ slug, count, visitors: string[], updatedAt }`                                        |
-| `contact`       | contact Server Action → `contact.service.ts#sendContactForm`                                    | `getContactMessages` (internal, no public route)          | `{ name, email, subject, message, createdAt }`                                          |
-| `broadcast_log` | `sendBroadcast` → `broadcast/broadcastLog.ts#claimBroadcast`                                    | never read by the public site (dedupe guard only)         | `{ broadcastId (unique), status, campaignId?, reason?, createdAt, updatedAt, sentAt? }` |
-| `pdf_jobs`      | the regen webhook (`markDirty`) + the regen cron (`claimJob`/`completeJob`/`failJob`/`dropJob`) | never read by the public site (internal dirty-queue only) | see [`pdf_jobs` collection (ICR-114)](#pdf_jobs-collection-icr-114) below               |
+- **11 CMS content collections** (defined in `packages/content/src/model/collections.ts` → `COLLECTIONS`): `sections`, `belief_collections`, `event_banners`, `posts`, `sermons`, `bible_verses`, `authors`, `topics`, `seo_entries`, `globals`, and `media`. Written exclusively by `apps/admin` (via `WEBSITE_MONGODB_URI`); read-only from `apps/web` (via `apps/web/lib/content/*`). Full content-platform documentation lives in Linear project documents.
+- **4 operational collections** (detailed below):
 
-If a task mentions "the database" on this project, it means these four collections — nothing else.
+| Collection         | Written by                                                                                               | Read by                                                   | Doc shape                                                                               |
+| ------------------ | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `likes`            | `POST /api/likes` → `like.service.ts#toggleLike`                                                         | `GET /api/likes` → `getLikes`; the blog + sermon UI       | `{ slug, count, visitors: string[], updatedAt }`                                        |
+| `contact`          | contact Server Action → `contact.service.ts#sendContactForm`                                             | `getContactMessages` (internal, no public route)          | `{ name, email, subject, message, createdAt }`                                          |
+| `broadcast_log`    | `sendBroadcast` → `broadcast/broadcastLog.ts#claimBroadcast`                                             | never read by the public site (dedupe guard only)         | `{ broadcastId (unique), status, campaignId?, reason?, createdAt, updatedAt, sentAt? }` |
+| `content_pdf_jobs` | `apps/admin` sermon service + `GET apps/admin/src/app/api/content/pdf-worker` (guarded by `CRON_SECRET`) | never read by the public site (internal dirty-queue only) | see [`content_pdf_jobs` collection](#content_pdf_jobs-collection) below                 |
+
+`apps/admin` also maintains a separate `ministry-admin*` database (users, roles, invites, congregant PII, audit logs) on its own `MONGODB_URI` — see [`admin-database.md`](./admin-database.md).
 
 ### `broadcast_log` collection (ICR-29)
 
@@ -51,44 +54,9 @@ as `sending`. This guarantees at-most-one campaign per `broadcastId` even under 
 See [`forms-and-email.md`](./forms-and-email.md#broadcast-engine-icr-29) for the full engine
 description.
 
-### `pdf_jobs` collection (ICR-114)
+### `content_pdf_jobs` collection
 
-The `pdf_jobs` collection is the **dirty-queue** behind the Predica sermon-PDF regeneration webhook + cron
-(`apps/web/src/service/predica/pdfJobs.ts`). It is never read by the public site — it only coordinates the
-webhook (mark dirty) and the cron (claim → render → complete/fail). Full flow:
-[`predica-pdf-mirrors-post.md`](./predica-pdf-mirrors-post.md#part-b--automatic-regeneration-on-draft-edit-icr-114).
-
-**Document shape:**
-
-```ts
-type PdfJobStatus = "idle" | "rendering";
-
-interface PdfJob {
-  entryId: string; // Contentful sermon entry id — unique key
-  dirtyAt: Date; // last edit-webhook time (debounce window anchor)
-  contentHash: string; // hash of PDF-relevant fields at last webhook
-  lastRenderedHash?: string; // contentHash at last successful render (skip no-op re-renders)
-  version: number; // monotonic; rendered into the PDF footer + asset title. Starts 0.
-  status: PdfJobStatus;
-  lockedAt?: Date; // set while status === "rendering"; stale-lock recovery anchor
-  lastRenderedAt?: Date;
-  lastError?: string;
-}
-```
-
-**Unique index:** `{ entryId: 1 }` (created lazily on first call via `createIndex(..., { unique: true })`,
-mirroring `broadcast_log`'s pattern).
-
-**Written by two callers, never by the public site:**
-
-- The **webhook** (`POST /api/predica/regenerate-pdf`) only ever calls `markDirty(entryId, contentHash)` — an
-  upsert that bumps `dirtyAt`/`contentHash` and never touches `lastRenderedHash`.
-- The **cron** (`GET /api/predica/regenerate-pdf/cron`) calls `selectRenderableJobs` (quiet-window +
-  hash-diff + lock-state predicate), then per job: `claimJob` (atomic `findOneAndUpdate` lock, race-safe like
-  `broadcast_log#claimBroadcast`), then on success `completeJob` (advances `lastRenderedHash`/`version`,
-  releases the lock) or on failure `failJob` (releases the lock, records `lastError`, leaves
-  `lastRenderedHash` alone so the next tick retries). `dropJob` removes the doc if the underlying Contentful
-  entry vanished mid-flight.
+The `content_pdf_jobs` collection in `website*` is the **dirty-queue** behind sermon PDF rebuilding in **`apps/admin`** (`apps/admin/src/app/api/content/pdf-worker/route.ts`, guarded by `CRON_SECRET`). It is never read or written by `apps/web` — `apps/admin` owns the sole `BLOB_READ_WRITE_TOKEN` for uploading rebuilt PDFs to Vercel Blob and updating sermon media references transactionally. When a sermon's PDF-relevant fields change in Admin, the sermon service enqueues/updates a `content_pdf_jobs` entry, and the admin worker claims eligible jobs, renders updated PDFs, uploads them to Vercel Blob, attaches them to the sermon, and releases the job lock. Full flow: [`predica-pdf-mirrors-post.md`](./predica-pdf-mirrors-post.md).
 
 ## The cached client (`src/service/database.service.ts`)
 
@@ -120,7 +88,7 @@ Key points:
 
 - **Single cached client.** In development it's stashed on `globalThis._mongoClient` so Hot Module Reload doesn't open a new pool on every edit. In production it's a module-level singleton. This is the standard Next.js + MongoDB pattern and avoids connection-pool exhaustion.
 - **`MONGODB_OPTIONS`** pins the Stable API (`serverApi: { version: v1, strict: true, deprecationErrors: true }`) and caps the pool: `maxPoolSize: 10`, `maxIdleTimeMS: 60_000`. See [Connection pool cap](#connection-pool-cap-icr-157).
-- **`connect()` returns the client or `undefined` on failure** (it catches, logs at error level with a `[db]` prefix, and reports to Sentry via `Sentry.captureException`) — this contract is **unchanged**. **Most callers still null-check and throw**: `contact.service`, `predica/pdfJobs`, and `broadcast/broadcastLog` all do `if (!client) throw new Error("Failed to connect to database")` — a dropped contact message, a stuck PDF job, or a lost broadcast claim is a real bug that should be loud. **The likes path is the deliberate exception (ICR-111)** — it reacts to that same `!client` signal by failing soft instead of throwing. See [The fail-soft likes contract](#the-fail-soft-likes-contract-icr-111) below.
+- **`connect()` returns the client or `undefined` on failure** (it catches, logs at error level with a `[db]` prefix, and reports to Sentry via `Sentry.captureException`) — this contract is **unchanged**. **Most callers still null-check and throw**: `lib/content/db.ts#requireContentDb()`, `contact.service`, and `broadcast/broadcastLog` all throw when `!client` — a failed content read, a dropped contact message, or a lost broadcast claim is a real bug that should be loud. **The likes path is the deliberate exception (ICR-111)** — it reacts to that same `!client` signal by failing soft instead of throwing. See [The fail-soft likes contract](#the-fail-soft-likes-contract-icr-111) below.
 - **`MONGODB_URI` is required at runtime and is in `.env.example`.** Never commit a real URI.
 
 ## Connection pool cap (ICR-157)
@@ -359,4 +327,4 @@ The QA harness (`qa-runner`) may **read** Mongo against a **test database only**
 
 ## Adding a stateful feature — think twice
 
-Before adding a third collection, check `docs/product/scope-and-boundaries.md`. The product is intentionally an informational, read-mostly site (no accounts, no public UGC). New write paths expand the PII/abuse surface and usually have an in-scope reframe (curated Contentful content, or a contact-form handoff) that avoids new storage. If a new collection is genuinely warranted, follow the cached-client + null-check + `getWebsiteDb(client)` pattern above and document it in this file.
+Before adding a new public write collection, check `docs/product/scope-and-boundaries.md`. The public site (`apps/web`) is intentionally an informational, read-mostly site (no accounts, no public UGC). New write paths expand the PII/abuse surface and usually have an in-scope reframe (editor-curated content authored in `apps/admin`, or a contact-form handoff) that avoids new public storage. If a new collection is genuinely warranted, follow the cached-client + null-check + `getWebsiteDb(client)` pattern above and document it in this file.

@@ -11,8 +11,8 @@
 ## The bilingual rule (es-AR primary, en-US secondary)
 
 - **es-AR is the source of truth.** Write content in Argentine Spanish first; en-US is the secondary translation that follows. When the two disagree, es-AR wins unless leadership says otherwise.
-- **Keep both locales populated** for anything user-facing. Contentful localizes at the field level (one entry, two locale values) — don't ship a page where en-US is empty for a visible field.
-- **UI strings live outside Contentful** in `public/locales/es-AR.json` and `public/locales/en-US.json` (served by next-intl). The two files must stay **structurally in sync** — same keys in both. Adding a key to one means adding it to the other.
+- **Keep both locales populated** for anything user-facing. The Ministry Admin Panel (`apps/admin`) stores localized values per field inside each MongoDB document (`{ "es-AR": …, "en-US": … }`) — don't ship a page where en-US is empty for a visible field.
+- **UI strings live outside MongoDB** in `public/locales/es-AR.json` and `public/locales/en-US.json` (served by next-intl). The two files must stay **structurally in sync** — same keys in both. Adding a key to one means adding it to the other.
 - **Translate meaning, not words.** en-US should read naturally to an English speaker, not like a literal gloss of the Spanish. Preserve Scripture references and proper nouns exactly.
 
 ## Voice & tone (for a church audience)
@@ -29,7 +29,7 @@ Carry the voice from [overview.md](./overview.md) into every piece of copy:
 
 This is the most important content rule on a church site.
 
-- **The Creed/Credo, "¿Quién es Jesús?", mission, and values are leadership-owned doctrine.** They live in Contentful as `ContentCollection` (Credo + ValueItem) entries and who-is-jesus/community `Page` sections.
+- **The Creed/Credo, "¿Quién es Jesús?", mission, and values are leadership-owned doctrine.** They live in MongoDB (`website*`, authored in `apps/admin`) as `belief_collections` (Credo + ValueItem) documents and who-is-jesus/community `sections`.
 - **Agents and editors may fix** typos, grammar, punctuation, formatting, broken markup, and translation accuracy.
 - **Agents and editors must NOT alter doctrinal meaning** — wording of beliefs, theological claims, Scripture selection, or the framing of the gospel. Do not paraphrase doctrine "for clarity," do not invent beliefs, do not soften or sharpen claims.
 - **Surface, don't silently change.** If a doctrinal edit seems warranted (e.g. an awkward sentence in the Creed), propose the change to leadership ([@gdamalis](https://github.com/gdamalis) + leadership) for confirmation rather than editing it directly. When in doubt, treat the text as fixed.
@@ -38,7 +38,7 @@ _(This mirrors the general "improve, don't overwrite" editorial standard, recast
 
 ## Image guidelines
 
-- **Use Contentful assets.** Images are served from the Contentful CDN (`images.ctfassets.net` / `images.eu.ctfassets.net`), which is already allow-listed in the CSP (`config/headers.js`). Don't introduce new external image hosts without updating the CSP.
+- **Use Media Library assets (Vercel Blob).** Images (and sermon audio/PDFs) are uploaded through the Ministry Admin Panel (`apps/admin`) and served from Vercel Blob public stores (`*.public.blob.vercel-storage.com`), which are allow-listed in the CSP (`config/securityHeaders.js`) and `next.config.ts`. Don't introduce new external image hosts without updating the CSP.
 - **Always set `title` / alt text.** Every image entry needs a meaningful `title` for accessibility and SEO. Describe what the image shows, in the page's locale.
 - **Mind size and aspect ratio.** Optimize file size for fast mobile loads. For social sharing, provide a **1200×630** OG image (the default used by the metadata builder in `lib/metadata.ts`).
 - **Respect photo consent.** Do not publish identifiable photos of congregants — especially children — without permission. When unsure, use general or stock imagery.
@@ -53,8 +53,8 @@ _(This mirrors the general "improve, don't overwrite" editorial standard, recast
 
 ## Publish & preview flow
 
-- **Preview before publishing.** Draft mode is automatically on in development and on Vercel preview deployments (`shouldUseDraftMode()`), so editors can see unpublished changes in context before they go live.
-- **Publishing triggers revalidation.** When an editor publishes in Contentful, the configured webhook calls `/api/revalidate`, which runs `revalidateTag("site-content")` and refreshes the affected pages. Editors don't need to redeploy.
+- **Preview before publishing.** Draft mode is automatically on in development, staging, and Vercel PR previews (`lib/content/draft-mode.ts#shouldUseDraftMode()`). In production, editors open a signed Draft Mode preview link from the Ministry Admin Panel (`apps/admin` → `apps/web` `GET /api/preview`) to see unpublished changes in context before they go live (`POST /api/preview/exit` leaves preview).
+- **Publishing triggers revalidation.** When an editor publishes in the Ministry Admin Panel (`apps/admin`), admin calls `POST /api/revalidate` on `apps/web` (with `WEBSITE_REVALIDATE_SECRET`), which runs `revalidateSiteContent()` (`revalidateTag("site-content", { expire: 0 })`) and refreshes the affected pages immediately. Editors don't need to redeploy.
 - **Check both locales after publishing** a localized entry — verify es-AR and en-US both render correctly on the live (or preview) page.
 
 ---

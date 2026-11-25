@@ -29,7 +29,7 @@ describe("formatDateLong", () => {
 /**
  * ICR-103 — dates must not shift with the runtime time zone.
  *
- * Contentful stores `publishedDate` / `sermonDate` as date-only values
+ * The content database stores `publishedDate` / `sermonDate` as date-only values
  * ("2026-02-16"), which `new Date()` parses as UTC midnight. Formatting without
  * a pinned `timeZone` therefore renders the PREVIOUS day for any visitor west of
  * UTC (e.g. Buenos Aires, UTC-3) — wrong dates sitewide, plus React #418 in the

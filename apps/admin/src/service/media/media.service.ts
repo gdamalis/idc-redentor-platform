@@ -589,7 +589,7 @@ export type CreateServerMediaSuccess =
 
 /**
  * Server-side binary upload + transactional media record creation for
- * `ICR-200` (sermon PDF worker) and `ICR-203` (Contentful importer).
+ * server-side workers (e.g., the sermon PDF worker).
  * Accepts both `UserContentCaller` and `ServiceContentCaller` with `media:manage`.
  */
 export async function createServerMedia(

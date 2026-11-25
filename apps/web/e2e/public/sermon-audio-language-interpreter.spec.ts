@@ -2,12 +2,12 @@
  * ICR-146: e2e smoke coverage for the sermon bilingual audio-language notice and
  * the interpreter credit.
  *
- * Content is non-deterministic across previews/environments: sermons are seeded
- * per-ticket in Contentful, so a given deployment may have zero, one, or many. This
+ * Content is non-deterministic across previews/environments: sermons are authored
+ * in the content database, so a given deployment may have zero, one, or many. This
  * suite discovers whatever sermon is FIRST in the archive rather than hardcoding a
  * slug, and asserts STRUCTURE + i18n wording only when the relevant fields are
  * present on that sermon — it skips (never hard-fails) when a sermon lacks
- * `audioLanguages` or an `interpreter`, since both are optional Contentful fields.
+ * `audioLanguages` or an `interpreter`, since both are optional sermon fields.
  */
 import { expect, test, type Page } from "@playwright/test";
 

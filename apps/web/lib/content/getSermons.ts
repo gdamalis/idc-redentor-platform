@@ -156,7 +156,7 @@ async function hydrateSermons(
       }
     }
 
-    // Matches `lib/contentful/getSermons.ts#mapSermon` (note: no `__typename` on mapped Sermon).
+    // Mapped sermon view returned to pages and components (omits `__typename`).
     return {
       title: resolveLocalized(fields.title, locale) ?? "",
       slug: fields.slug ?? "",

@@ -25,7 +25,7 @@ async function fetchChurchInfoTopic(
   const snap = snapshotKey(isDraftMode);
 
   // Topics are matched STRICTLY by the requested locale's own slug (never falling back from
-  // en-US to es-AR on lookup), matching Contentful today (`/en-US/privacidad` -> 404).
+  // en-US to es-AR on lookup), so `/en-US/privacidad` returns 404.
   const doc = await db
     .collection<StoredEnvelope<TopicFields>>(COLLECTIONS.topics)
     .findOne({ [`${snap}.slug.${locale}`]: slug });

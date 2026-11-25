@@ -77,14 +77,13 @@ vercel rollback <previous-web-deployment-url> --scope divine-lab
 vercel rollback <previous-admin-deployment-url> --scope divine-lab
 ```
 
-Rolling back one app leaves the other on the new release. A Contentful cutover is rolled back by its
-own reverse migration ([`contentful-environments.md`](./contentful-environments.md)), never by a
-Vercel rollback.
+Rolling back one app leaves the other on the new release. Any database schema or data migration
+is rolled back by its own reverse migration script, never by a Vercel rollback.
 
 ## Production actions a merge does not perform
 
-Anything production needs beyond the deploy (a Contentful model promotion or alias swap, a data
-script, an env change, a cron, a third-party console change) gets its own **`Prod actions deferred
+Anything production needs beyond the deploy (a MongoDB index or data migration, an env change, a
+cron, a third-party console change) gets its own **`Prod actions deferred
 from ICR-N`** ticket when it is identified (`/yoke:merge` §3.1 makes it from the PR's Release Notes).
 Each release's runbook lists the ones its commit range needs, in order: pre-deploy, then post-deploy,
 honouring every "do not run until". A release is not finished while one of them is unverified.

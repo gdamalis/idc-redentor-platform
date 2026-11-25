@@ -5,7 +5,7 @@ export const i18n = {
 
 export type Locale = (typeof i18n)["locales"][number];
 
-// `locale` reaches the Contentful getters (interpolated into GraphQL) and the draft-mode route
+// `locale` reaches the content readers and the preview route
 // (interpolated into a redirect path) from request input. Validate it against the configured
 // locales — the single source of truth above — before any such use. Rejects unknown locales,
 // nullish values, and anything that could inject GraphQL or force an off-site redirect.

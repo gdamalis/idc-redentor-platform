@@ -7,8 +7,12 @@
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { escapeHtml, formatSermonDate, buildPdfHtml } from "@src/utils/predica/helpers";
-import type { SermonCommon, SermonLocaleData } from "@src/utils/predica/helpers";
-import type { ContentBlock, SermonScriptureRef } from "@src/utils/predica/sermonEntry";
+import type {
+  ContentBlock,
+  SermonCommon,
+  SermonLocaleData,
+  SermonScriptureRef,
+} from "@src/utils/predica/helpers";
 
 // ── escapeHtml ────────────────────────────────────────────────────────────────
 

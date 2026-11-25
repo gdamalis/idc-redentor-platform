@@ -1,5 +1,5 @@
 /**
- * Blog `publishedDate` and sermon `sermonDate` are Contentful **date-only** values
+ * Blog `publishedDate` and sermon `sermonDate` are **date-only** values
  * ("2026-02-16"), which `new Date()` parses as UTC midnight. They must therefore be
  * formatted **in UTC** to reproduce the calendar day the editor authored — without
  * `timeZone`, `toLocaleDateString` uses the runtime's zone, so every visitor west of

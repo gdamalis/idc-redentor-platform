@@ -58,7 +58,6 @@ export interface SerializedContentDoc<TFields = Record<string, unknown>> {
   readonly updatedAt: string;
   readonly updatedBy: string;
   readonly updatedByLabel?: string;
-  readonly sourceContentfulId?: string;
 }
 
 export interface SerializedConflictFailure {
@@ -119,9 +118,6 @@ function serializeDoc<TFields>(
     updatedAt: doc.updatedAt.toISOString(),
     updatedBy: doc.updatedBy,
     ...(updatedByLabel !== undefined && { updatedByLabel }),
-    ...(doc.sourceContentfulId !== undefined && {
-      sourceContentfulId: doc.sourceContentfulId,
-    }),
   };
 }
 

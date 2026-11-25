@@ -247,7 +247,7 @@ export const eventBannerDraftSchema = z.strictObject({
 export const eventBannerPublishableSchema = z.strictObject({
   machineName: machineNameSchema,
   event: eventInfoPublishableSchema,
-  /** Optional in live Contentful production (`event-sunday-meetings` has no image). */
+  /** Optional (`event-sunday-meetings` has no image). */
   image: idSchema.optional(),
 });
 

@@ -42,7 +42,7 @@ const CARD_LABELS = {
  * The permissive shape `deriveScripture` reads. `sermon.json` is external,
  * hand-editable data, so every field is narrowed at runtime rather than trusted.
  * Real refs nest `book` under the locale key and keep chapter/verses top-level
- * (see SermonScriptureRef in ./sermonEntry); older files may be flat.
+ * (see SermonScriptureRef in ./helpers); older files may be flat.
  */
 interface ScriptureRefLike {
   book?: unknown;

@@ -1,7 +1,7 @@
 import type { Localized } from "../model/localized";
 
 /**
- * The site's routable top-level pages (replaces the dead Contentful `page` type).
+ * The site's routable top-level pages.
  * Used for `section.targetPage`, `navigationMenu` links, and `FIXED_ENTRIES.appearsOn`/`previewPage`.
  */
 export const SITE_PAGE_SLUGS = [

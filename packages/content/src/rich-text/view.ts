@@ -15,8 +15,7 @@ export interface MediaView {
 }
 
 /**
- * Rich-text view value returned by every `apps/web/lib/content/` reader and rendered by `ICR-202`.
- * Replaces Contentful's `{ json, links }` shape.
+ * Rich-text view value returned by every `apps/web/lib/content/` reader.
  */
 export interface RichTextView {
   doc: RichTextDoc;

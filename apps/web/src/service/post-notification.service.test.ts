@@ -34,7 +34,7 @@ const sermon = (overrides: Partial<SermonView> = {}): SermonView =>
   ({ title: "S", slug: "s", excerpt: "e", ...overrides }) as unknown as SermonView;
 
 describe("notifyOnPublish", () => {
-  it("ignores unsupported content types including legacy Contentful type ids (no send)", async () => {
+  it("ignores unsupported content types (no send)", async () => {
     for (const type of ["page", "section", "blogPostPage"]) {
       const out = await notifyOnPublish({ type, id: ENTRY_ID });
       expect(out.handled).toBe(false);

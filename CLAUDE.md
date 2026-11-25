@@ -4,13 +4,13 @@
 
 **Iglesia de Cristo Redentor (IDC Redentor)** is the official bilingual (es-AR / en-US) website of the church: informational pages, a blog, community/values content (the Creed/Credo), a worship-service "come meet us" page with map + service times, a newsletter signup, and a contact form. It is the **first custom website** for the community — modern, fast, easy for non-technical editors to maintain, and welcoming to members and visitors.
 
-The **public website** (`apps/web`) is a **content-managed informational site**, not an app: it has **no authentication, no RBAC, no payments, and no in-product AI**. Almost all content is rendered from **Contentful** via hand-written GraphQL in React Server Components. The only stateful reader feature is an anonymous **"like"** — slug-keyed via `/api/likes`, and shared by **blog posts and sermons**.
+The **public website** (`apps/web`) is a **content-managed informational site**, not an app: it has **no authentication, no RBAC, no payments, and no in-product AI**. Almost all content is stored in **MongoDB** (`website*` collections, validated by `@idcr/content`), with TipTap rich text and **Vercel Blob** public media, authored through the **Ministry Admin Panel** (`apps/admin`) and rendered in React Server Components via `@lib/content/*`. The only stateful reader feature is an anonymous **"like"** — slug-keyed via `/api/likes`, and shared by **blog posts and sermons**.
 
-> **Admin exception:** the separate internal **Ministry Admin Panel** (`apps/admin`) _is_ an authenticated app — Firebase Auth + RBAC + congregant data — and is deliberately **in scope**. The no-auth boundary above governs `apps/web` only. See `tasks/specs/admin-platform-brief.md` and `docs/product/scope-and-boundaries.md` § "Two products in this repo".
+> **Admin exception:** the separate internal **Ministry Admin Panel** (`apps/admin`) _is_ an authenticated app — Firebase Auth + RBAC + congregant data + content/media authoring — and is deliberately **in scope**. The no-auth boundary above governs `apps/web` only. See `tasks/specs/admin-platform-brief.md` and `docs/product/scope-and-boundaries.md` § "Two products in this repo".
 
 **Versioning**: independent per-app via Changesets — `@idcr/web` (`apps/web/package.json`) + `@idcr/admin` (`apps/admin/package.json`); root frozen. See `docs/architecture/versioning.md`. | **Node**: 22.14.0 (`.nvmrc`) | **Package Manager**: pnpm | **Host**: Vercel (per-PR previews; `main` → staging; production only through batched releases — `docs/architecture/deployments.md`)
 
-> **Monorepo layout (since the admin-platform migration):** this repo is a **pnpm + Turborepo workspace**. The public website now lives entirely under **`apps/web/`** — every app path in this doc (`src/`, `lib/`, `public/`, `config/`, `next.config.ts`, `tsconfig.json`, …) is **under `apps/web/`** unless stated otherwise. The repo root holds the workspace files (`pnpm-workspace.yaml`, `turbo.json`, root `package.json` with Turbo-proxy scripts + the released version + `pnpm.overrides`), the `.claude/` harness, `docs/`, and `tasks/`. Workspace members also include two shared packages `apps/web` consumes — **`packages/config`** (`@idcr/config`: base tsconfig/eslint/postcss/prettier) and **`packages/ui`** (`@idcr/ui`: `cn()`, `LOGO` path constants, `tokens.css`) — see `docs/architecture/monorepo-packages.md`. Run commands at root (they proxy through Turbo across the workspace) or scope to the site with `pnpm --filter @idcr/web <task>`. Vercel builds the site with **Root Directory = `apps/web`**. The future admin app will be `apps/admin/`.
+> **Monorepo layout:** this repo is a **pnpm + Turborepo workspace**. The public website lives under **`apps/web/`** and the Ministry Admin Panel under **`apps/admin/`** — every unqualified app path in this doc (`src/`, `lib/`, `public/`, `config/`, `next.config.ts`, `tsconfig.json`, …) is **under `apps/web/`** unless stated otherwise. The repo root holds the workspace files (`pnpm-workspace.yaml`, `turbo.json`, root `package.json` with Turbo-proxy scripts + `pnpm.overrides`), the `.claude/` harness, `docs/`, and `tasks/`. Shared workspace packages include **`packages/config`** (`@idcr/config`: base tsconfig/eslint/postcss/prettier), **`packages/ui`** (`@idcr/ui`: `cn()`, `LOGO` path constants, `tokens.css`), and **`packages/content`** (`@idcr/content`: MongoDB collection names, Zod schemas, TipTap rich-text spec/validation, natural keys, and signed preview link helpers) — see `docs/architecture/monorepo-packages.md`. Run commands at root (they proxy through Turbo across the workspace) or scope with `pnpm --filter @idcr/web <task>` / `pnpm --filter @idcr/admin <task>`. Vercel builds the website with **Root Directory = `apps/web`** and the admin app with **Root Directory = `apps/admin`**.
 
 ## Commands
 
@@ -44,12 +44,12 @@ Read/Grep only for what the graph didn't cover. Say which findings came from gra
 
 ```bash
 graphify query "trace the /api/contact request flow"      # BFS context for a question (default)
-graphify explain "getPage()"                              # one symbol + its neighbours WITH direction
+graphify explain "getSection()"                           # one symbol + its neighbours WITH direction
                                                           #   (`<-- page.tsx [imports]` = its dependents)
-graphify path "fetchGraphQL()" "ContactForm()"           # shortest dependency path between two nodes
+graphify path "requireContentDb()" "ContactForm()"        # shortest dependency path between two nodes
 ```
 
-Match code symbols by their node label **including `()`** (e.g. `getPage()`). `graphify affected "X"`
+Match code symbols by their node label **including `()`** (e.g. `getSection()`). `graphify affected "X"`
 (blast-radius) needs a **directed** graph; this repo's graph is currently undirected, so use `explain`
 for "what depends on this". To enable `affected`, rebuild once with `/graphify --directed`.
 
@@ -79,31 +79,38 @@ src/app/
 │   ├── who-is-jesus/         # ¿Quién es Jesús?
 │   ├── community/            # Mission, values, the Creed/Credo
 │   ├── come-meet-us/         # Worship service time + address + map
-│   └── blog/[slug]/          # Blog index + article pages
+│   ├── blog/[slug]/          # Blog index + article pages
+│   ├── predicas/[slug]/      # Sermon archive + detail pages
+│   └── [topic]/              # Church info topic pages (e.g. privacy)
 └── api/                      # Route handlers (no auth)
-    ├── likes/                # GET/POST blog likes (MongoDB)
+    ├── likes/                # GET/POST blog + sermon likes (MongoDB)
     ├── subscribe/            # POST → Resend newsletter (per-locale audience)
-    ├── revalidate/           # POST → revalidateTag("site-content")
-    └── draft/{enable,disable}/  # Contentful preview/draft mode toggles
+    ├── revalidate/           # POST → revalidateTag("site-content") + optional broadcast
+    └── preview/              # GET signed Draft Mode entry; POST /api/preview/exit
 ```
 
 There are **no route groups** (`(public)` / `(admin)`) — every page is public and lives directly under `[locale]/`. The contact form is a **Server Action** (`src/components/features/contact-form/contactFormAction.ts`), not an API route.
 
-### Two data paths (keep them separate)
+### Content & data paths
 
 ```
-Contentful → lib/contentful/fetch.ts (fetchGraphQL) → lib/contentful/get*.ts → RSC page/component
-MongoDB    → src/service/database.service.ts (cached client) → like/contact services → API route / Server Action
+Authoring: apps/admin → WEBSITE_MONGODB_URI (website* DB) + Vercel Blob (BLOB_READ_WRITE_TOKEN)
+                      → POST <web>/api/revalidate (WEBSITE_REVALIDATE_SECRET)
+                      → GET apps/admin/src/app/api/content/pdf-worker (CRON_SECRET)
+
+Reads:     MongoDB (website*) → apps/web/lib/content/* (@lib/content/* + @idcr/content) → RSC pages/components
+Writes:    MongoDB (website*) → src/service/database.service.ts → likes / contact / broadcast_log
 ```
 
-- **Contentful (read-only content)** is the primary source. Each `lib/contentful/get*.ts` getter hand-writes a GraphQL query string with inline `locale:` + `preview:` arguments and POSTs it through `fetchGraphQL`. Every request is tagged `next: { tags: ["site-content"] }` for on-demand revalidation. **There is no GraphQL codegen or generated client — the data layer is entirely hand-written** (the unused `codegen.ts` + `@graphql-codegen/*` deps were removed). See `docs/architecture/contentful-data-layer.md`.
-- **MongoDB (the only writes)** backs exactly two collections in a database literally named `website`: `likes` (blog post likes) and `contact` (saved contact messages). See `docs/architecture/likes-and-mongodb.md`.
+- **Content reads (`apps/web/lib/content/`)**: every content collection (`sections`, `belief_collections`, `event_banners`, `posts`, `sermons`, `bible_verses`, `authors`, `topics`, `seo_entries`, `globals`, `media`) lives in the `website*` MongoDB database (`website` prod, `website-staging` staging, etc.) using the schemas and collection constants in **`packages/content/` (`@idcr/content`)**. Getters acquire the DB via `requireContentDb()`, resolve draft vs. published snapshots and `es-AR`/`en-US` localized fields, render TipTap rich text via `apps/web/lib/content/rich-text/`, and resolve public media URLs served from **Vercel Blob** (`*.public.blob.vercel-storage.com`). Published reads are wrapped with `createCachedReader()` (`React.cache` + `unstable_cache` tagged `"site-content"`); draft reads use `React.cache` only and bypass `unstable_cache`.
+- **Content authoring (`apps/admin`)**: editors author entries, manage the Media Library (Vercel Blob public store — `BLOB_READ_WRITE_TOKEN` lives on `apps/admin` **only**; `apps/web` holds zero `BLOB_*` vars), and publish from the Ministry Admin Panel. Sermon PDF rebuilds run in `apps/admin/src/app/api/content/pdf-worker/` (processing `content_pdf_jobs` in `website*`). Full platform architecture documentation lives in Linear project documents.
+- **Public writes (`apps/web`)**: `src/service/database.service.ts` shares the cached MongoDB client against the same `website*` DB for `likes` (blog + sermon likes), `contact` (saved contact messages), and `broadcast_log` (newsletter publish broadcast dedupe). See `docs/architecture/likes-and-mongodb.md`.
 
 ### i18n (next-intl)
 
 - Default locale **`es-AR`**, secondary **`en-US`** (`src/i18n/config.ts`, `routing.ts`, `request.ts`).
 - UI strings live in `public/locales/{es-AR,en-US}.json` — every user-facing string must exist in **both** files.
-- Middleware is in **`src/proxy.ts`** (it exports `proxy`, not `middleware`); the matcher excludes `_next` / `_vercel` / `api` / `trpc` and bypasses static asset extensions.
+- Middleware is in **`src/proxy.ts`** (it exports `proxy`, not `middleware`); the matcher excludes `_next` / `_vercel` / `api` / `trpc` / `monitoring` and bypasses static asset extensions.
 - `buildLocaleAlternates()` in `src/i18n/config.ts` produces the hreflang alternates used by `lib/metadata.ts`. See `docs/architecture/i18n.md`.
 
 ### Email & newsletter
@@ -112,14 +119,14 @@ MongoDB    → src/service/database.service.ts (cached client) → like/contact 
 - **Newsletter** is **Resend** — contacts added to a **per-locale audience** via `/api/subscribe` → `src/service/subscribe.service.ts` → `resendAudience.ts` (client helper `src/service/subscribe.ts`).
 - See `docs/architecture/forms-and-email.md` for the contact + subscribe flows and the spam/PII discipline.
 
-### Revalidation & draft mode
+### Revalidation & signed Draft Mode preview
 
-- `POST /api/revalidate` requires header `x-vercel-reval-key` to equal `CONTENTFUL_REVALIDATE_SECRET`, then calls `revalidateTag("site-content")`. Wired to a Contentful publish webhook.
-- Draft/preview is decided by `lib/contentful/draftMode.ts#shouldUseDraftMode()` — true when Next draft mode is enabled, **or** `NODE_ENV=development`, **or** `VERCEL_ENV=preview`. The preview token + `preview: true` are used when draft is on.
+- `POST /api/revalidate` requires header `x-vercel-reval-key` to equal `WEBSITE_REVALIDATE_SECRET`, calls `revalidateSiteContent()` (`revalidateTag("site-content", { expire: 0 })`), and (when `CONTENT_PUBLISH_EMAILS === "true"` and `body.notify === true` for `post`/`sermon`) runs an isolated per-locale subscriber broadcast. Called by `apps/admin` on publish.
+- Signed Draft Mode preview: `apps/admin` mints a short-lived HMAC-SHA256 preview URL (`CONTENT_PREVIEW_SECRET`) pointing at `apps/web`'s `GET /api/preview`, which verifies the signature/expiry/path and enables Next.js Draft Mode (`POST /api/preview/exit` disables it). `lib/content/draft-mode.ts#shouldUseDraftMode()` returns `true` when Draft Mode is enabled or in always-draft environments (`NODE_ENV=development`, `VERCEL_ENV=preview`, staging).
 
 ### Security / CSP
 
-- `config/headers.js` sets HSTS, `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options`, `Referrer-Policy`, and a CSP that allowlists GTM/GA, Vercel scripts, and the Contentful image CDNs (`images.ctfassets.net`, `images.eu.ctfassets.net`) plus `images.unsplash.com`. `next.config.ts` mirrors the image hosts in `images.remotePatterns`. Treat `config/headers.js` and the CSP as a security-sensitive surface.
+- `config/headers.js` (via `config/securityHeaders.js`) sets HSTS, `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options`, `Referrer-Policy`, and a CSP with `frame-ancestors 'self'` that allowlists GTM/GA, Vercel scripts, Vercel Blob public media (`*.public.blob.vercel-storage.com` in `img-src` and `media-src`), and `images.unsplash.com`. `next.config.ts` mirrors the image hosts in `images.remotePatterns`. Treat `config/headers.js`, `config/securityHeaders.js`, and the CSP as a security-sensitive surface.
 
 ### Path aliases
 
@@ -166,26 +173,27 @@ Sessions are named after the active Linear ticket automatically.
 > An older version of this doc claimed it was incomplete and that several vars were "missing"; that
 > is no longer true.
 
-### Required (must be set for the app to function)
+### Required (`apps/web`)
 
-| Variable                          | Purpose                                                           | In `.env.example`? |
-| --------------------------------- | ----------------------------------------------------------------- | :----------------: |
-| `NEXT_PUBLIC_BASE_URL`            | Canonical base URL for SEO/metadata. Set in Vercel, not committed |         ✅         |
-| `CONTENTFUL_SPACE_ID`             | Contentful space                                                  |         ✅         |
-| `CONTENTFUL_ACCESS_TOKEN`         | Content Delivery API token (published content)                    |         ✅         |
-| `CONTENTFUL_PREVIEW_ACCESS_TOKEN` | Content Preview API token (drafts)                                |         ✅         |
-| `CONTENTFUL_PREVIEW_SECRET`       | Secret for `/api/draft/enable`                                    |         ✅         |
-| `CONTENTFUL_REVALIDATE_SECRET`    | `x-vercel-reval-key` for `/api/revalidate`                        |         ✅         |
-| `MONGODB_URI`                     | MongoDB — likes + contact (+ the predica pdf-regen job queue)     |         ✅         |
-| `MAIL_PROVIDER`                   | `sendgrid` or `resend` — selects the email adapter                |         ✅         |
-| `CONTACT_FORM_RECIPIENT_EMAIL`    | Where contact-form notifications are sent                         |         ✅         |
-| `FROM_EMAIL`                      | From address for transactional email                              |         ✅         |
-| `RESEND_API_KEY`                  | **Newsletter** (Resend contacts) + the `resend` mail adapter      |         ✅         |
-| `RESEND_AUDIENCE_ID_ES_AR`        | Newsletter audience for `es-AR`                                   |         ✅         |
-| `RESEND_AUDIENCE_ID_EN_US`        | Newsletter audience for `en-US`                                   |         ✅         |
+| Variable                       | Purpose                                                                     | In `.env.example`? |
+| ------------------------------ | --------------------------------------------------------------------------- | :----------------: |
+| `NEXT_PUBLIC_BASE_URL`         | Canonical base URL for SEO/metadata. Set in Vercel, not committed           |         ✅         |
+| `MONGODB_URI`                  | MongoDB `website*` DB (path required) — content, likes, contact, broadcasts |         ✅         |
+| `WEBSITE_REVALIDATE_SECRET`    | `x-vercel-reval-key` for `POST /api/revalidate`                             |         ✅         |
+| `CONTENT_PREVIEW_SECRET`       | HMAC-SHA256 signing secret for `GET /api/preview` (must match `apps/admin`) |         ✅         |
+| `MAIL_PROVIDER`                | `sendgrid` or `resend` — selects the email adapter                          |         ✅         |
+| `CONTACT_FORM_RECIPIENT_EMAIL` | Where contact-form notifications are sent                                   |         ✅         |
+| `FROM_EMAIL`                   | From address for transactional email                                        |         ✅         |
+| `RESEND_API_KEY`               | **Newsletter** (Resend contacts) + the `resend` mail adapter                |         ✅         |
+| `RESEND_AUDIENCE_ID_ES_AR`     | Newsletter audience for `es-AR`                                             |         ✅         |
+| `RESEND_AUDIENCE_ID_EN_US`     | Newsletter audience for `en-US`                                             |         ✅         |
 
 > `RESEND_AUDIENCE_ID` (no locale suffix) is a legacy single-audience fallback used only for the
 > **default** locale when the per-locale var is unset (`src/service/resendAudience.ts`).
+> `apps/admin` holds its own server-only content-platform variables in `apps/admin/.env.example`
+> (`WEBSITE_MONGODB_URI`, `BLOB_READ_WRITE_TOKEN` — admin only, never on `apps/web`,
+> `WEBSITE_REVALIDATE_URL`, `WEBSITE_REVALIDATE_SECRET`, `CONTENT_PREVIEW_SECRET`,
+> `CRON_SECRET` for `GET /api/content/pdf-worker`, and `PREDICA_INGEST_TOKEN`).
 
 ### Conditionally required (by `MAIL_PROVIDER`)
 
@@ -196,10 +204,12 @@ Sessions are named after the active Linear ticket automatically.
 
 ### Optional / injected
 
-| Variable           | Purpose                                                                            |
-| ------------------ | ---------------------------------------------------------------------------------- |
-| `ENVIRONMENT_NAME` | Free-form environment label (e.g. `local`)                                         |
-| `VERCEL_ENV`       | Injected by Vercel (`production` \| `preview` \| `development`); drives draft mode |
+| Variable                   | Purpose                                                                            |
+| -------------------------- | ---------------------------------------------------------------------------------- |
+| `BROADCAST_POSTAL_ADDRESS` | CAN-SPAM postal address required before live newsletter broadcasts send            |
+| `CONTENT_PUBLISH_EMAILS`   | Global publish-broadcast switch (`"true"` enables publish emails; off by default)  |
+| `ENVIRONMENT_NAME`         | Free-form environment label (e.g. `local`)                                         |
+| `VERCEL_ENV`               | Injected by Vercel (`production` \| `preview` \| `development`); drives draft mode |
 
 > **Secret hygiene:** never paste real secret values into docs, commits, or PRs — reference variable **names** only. `.env*` files are gitignored.
 
@@ -230,26 +240,18 @@ The dev harness ships as the **yoke plugin** (Claude Code marketplace `DivineLab
 1. A conditional **design gate** inside `/yoke:work` (brainstorm + spec for non-trivial or sensitive work — the six sensitive areas `email-services`, `form-pii-spam`, `likes-mongo`, `env-secrets`, `csp-headers`, `i18n-messages` always gate).
 2. The **merge** trigger — you say "merge"; `/yoke:merge` runs. Afterward **you** deploy prod and move the issue to **Done** (Done is human-only; no agent ever sets it).
 
-### Contentful model-change gate (domain)
-
-`ICR` is Contentful-backed, so `/yoke:work` carries one extra project gate. **When a `/yoke:work` plan changes the Contentful content model** — creates / updates / deletes a **content type or field**, or **remaps entries** (as opposed to only adding a read-side GraphQL fragment/getter in `lib/contentful/*`) — STOP after the plan and confirm the migration **lane** before implementing:
-
-- **Default — permanent `staging` work env** (recommended): develop in the standing `staging` env, promote to prod at cutover via Contentful Merge and/or the committed `scripts/contentful/` migrations (rollback = reverse migration).
-- **Heavy — alias-swap cutover** (for big breaking changes — type deletions, field renames, merges): build in `staging`, then a human performs the stable-name alias-swap at cutover.
-
-The implementer writes to the `staging` work env only — **never** the `master` alias or `production`. **Cutover is HUMAN-ONLY and deferred**, like merge and Done: no agent or command re-points the alias or applies the prod migration. Facts + runbook: `.claude/config.json` → `contentful` and `docs/architecture/contentful-environments.md`.
-
 ### `/predica` (domain command — stays local)
 
-`/predica` and its `predica-*` agents are the local sermon pipeline (recording → transcript → bilingual `sermon.json` → branded PDFs + featured image → a `"Para revisar"` **draft** sent to the Ministry Admin Panel via `/api/predica/*` using a narrow service token — production by default, staging with `--test` → a WhatsApp text), with human gates (transcript correction, Gate 0 existing-sermon check, and review/publish in Admin at Gate 2). It is draft-only + send-only, holds no DB URI or Blob key locally, and is **not** part of the yoke plugin. See `docs/architecture/predica-usage.md` and the `docs/architecture/predica-*` docs (historical V1 spec: `tasks/specs/sermon-pipeline.md`).
+`/predica` and its `predica-*` agents are the local sermon pipeline (recording → transcript → bilingual `sermon.json` → branded PDFs + featured image → a `"Para revisar"` **draft** sent to the Ministry Admin Panel via `/api/predica/*` using a narrow service token — production by default, staging with `--test` → a WhatsApp text), with human gates (transcript correction, Gate 0 existing-sermon check, and review/publish in Admin at Gate 2). It is draft-only + send-only, holds no DB URI or Blob key locally, and is **not** part of the yoke plugin. See `docs/architecture/predica-usage.md` and the `docs/architecture/predica-*` docs.
 
 A human always merges the PR and closes the issue (transitions it to **Done**). Scratchpads live in `tasks/{todo.md,lessons.md}` (gitignored); specs in `tasks/specs/`.
 
 ## Documentation
 
 - **Product brain (the "church definition")** — [`docs/product/`](docs/product/README.md): the one-paragraph definition, mission/values/voice (draft), `scope-and-boundaries.md` (the hard IN/OUT/DEFERRED filter — no logins, no payments, no public UGC, no in-product AI), `content-types.md`, `editorial-and-content-rules.md`, and `ai-era-strategy.md`. The `product-manager` agent loads this folder on every run. Read it before shaping product work.
+- **Full platform architecture documentation** lives in Linear project documents going forward.
 - **Engineering docs** — in `docs/architecture/`:
-  - `architecture.md` — App Router groups, the Contentful↔MongoDB split, request lifecycle, path aliases, security posture.
+  - `architecture.md` — App Router routes, the MongoDB + Vercel Blob + Ministry Admin content platform, request lifecycle, path aliases, security posture.
   - `code-patterns-and-conventions.md` — the observed "how it's actually written" code-review (2026-06-22, **validated 2026-07-20**): the RSC/fetch-in-page mental model, the shadcn↔hand-rolled UI seam, per-finding status + the ticket map (Epic ICR-9 / ICR-30→38). The §10 "candidates to standardize" list is the payload for ICR-38.
   - `monorepo-packages.md` — the `@idcr/config` + `@idcr/ui` workspace packages: what each exports, why `@idcr/ui` ships raw source via `transpilePackages`, why `paths` aliases must stay out of the shared tsconfig base, why there's no Tailwind preset, the logo-path-vs-bytes split, the verified Vercel/pnpm workspace deploy behavior, and the tokens contract `apps/admin` must satisfy.
   - `design-system.md` — the shared design system for both apps: the token contract, derived tokens, the primitives-shared/features-local boundary, the per-primitive shadcn→`@idcr/ui` migration table, the `@source` scanner prerequisite, and the known token/Divider defects.
@@ -260,13 +262,10 @@ A human always merges the PR and closes the issue (transitions it to **Done**). 
   - `qa-db-read.md` — the committed read-only QA database-read command (`apps/admin/scripts/qa-db-read.ts`, contract `yoke/qa-db-read@1`, ICR-223): exact per-env database allowlists, prefix-routed URI selection (`--project idc-redentor-admin` for both staging DBs), read-only query/stage/operator guards, PII/secret scrubbing, and why locally registered write-capable Mongo MCP servers must not be used.
   - `admin-bootstrap.md` — the one-time `seed:admin` bootstrap: why an invite-only panel needs it, the six guards, the `MONGODB_URI`-path requirement and the silent `test` fallback, why re-running is safe, and the Google-sign-in-only constraint on the first sign-in.
   - `admin-navigation.md` — `apps/admin`'s responsive nav (ICR-126): the single `NAV_ITEMS` module and its adaptive 5-flat/4+More `splitNavItems()` rule, why `NavLink` takes pre-rendered `children` and never a `NavItem` (the RSC function-prop boundary), why `usePathname` must come from `@src/i18n/routing` and not `next/navigation`, permission filtering resolved once in `AppShell` as convenience only, the `fixed` tab bar + `main`-padding layout choice, and the PWA manifest's `proxy.ts` `webmanifest` bypass coupling.
-  - `contentful-data-layer.md` — `fetchGraphQL`, the getter convention, the `site-content` cache tag, draft/preview, the revalidate webhook, why codegen is unused.
-  - `contentful-environments.md` — the canonical content/model workflow (3 scenarios, heavy alias-swap cutover runbook, entry-sync tool, drift detector); the single source of truth on the `master → production` + `staging` topology.
-  - `contentful-mcp.md` — the official Contentful MCP server for agents (registered inline in local `~/.claude.json`; local/token, `ENVIRONMENT_ID=staging` default, `PROTECTED_ENVIRONMENTS=master,production`); the agent-only write path, separate from the app's read path.
   - `i18n.md` — next-intl setup, locales, message files, the `src/proxy.ts` middleware, locale alternates/hreflang.
   - `forms-and-email.md` — contact + subscribe flows, the SendGrid/Resend adapter, templates, spam/PII handling.
-  - `likes-and-mongodb.md` — the cached Mongo client, the `likes`/`contact` collections, visitor de-dup, write safety.
-  - `seo-and-metadata.md` — `lib/metadata.ts`, the Contentful `Seo` type, OG/Twitter cards, JSON-LD, locale alternates.
+  - `likes-and-mongodb.md` — the cached Mongo client, `website*` DB collections (`likes`, `contact`, `broadcast_log`, `content_pdf_jobs`, and content collections), visitor de-dup, write safety.
+  - `seo-and-metadata.md` — `lib/metadata.ts`, the `seo_entries` collection (`getSeo`), OG/Twitter cards, JSON-LD, dynamic `sitemap.xml`, locale alternates.
   - `observability-sentry.md` — `@sentry/nextjs` across server/edge/client, the `options.ts` single source of truth, the `/monitoring` tunnel vs. CSP/proxy-matcher traps, and the locked PII posture.
   - `agent-harness.md` — how to use the agents and commands; the human-gated tracker automation.
   - `deployments.md` — production deploys: `production-hold` and why `main` reaches staging only, one release shipping both apps from one commit, the `git archive` deploy script (`scripts/deploy-prod.sh`), per-app rollback, production actions a merge does not perform. Never deploy production or push `production-hold` outside an owner-approved release.

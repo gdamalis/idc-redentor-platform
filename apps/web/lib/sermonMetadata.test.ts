@@ -29,7 +29,7 @@ const FULL_SERMON: SermonView = {
   sermonDate: "2025-03-16",
   preacher: {
     name: "Juan García",
-    avatar: { url: "https://images.ctfassets.net/avatar.jpg", title: "Juan García" },
+    avatar: { url: "https://media.public.blob.vercel-storage.com/avatar.jpg", title: "Juan García" },
     email: "juan@example.com",
   },
   additionalPreachers: [],
@@ -42,9 +42,9 @@ const FULL_SERMON: SermonView = {
   mainPoints: ["Gracia definida", "Gracia vivida"],
   excerpt: "Un mensaje sobre la gracia.",
   content: { doc: { type: "doc", content: [] }, media: {} },
-  featuredImage: { url: "https://images.ctfassets.net/hero.jpg", title: "Hero image" },
+  featuredImage: { url: "https://media.public.blob.vercel-storage.com/hero.jpg", title: "Hero image" },
   audio: {
-    url: "https://assets.ctfassets.net/sermon.mp3",
+    url: "https://media.public.blob.vercel-storage.com/sermon.mp3",
     title: "Audio del sermón",
     contentType: "audio/mpeg",
     fileName: "sermon.mp3",
@@ -52,7 +52,7 @@ const FULL_SERMON: SermonView = {
   },
   durationSeconds: 2730,
   pdfSummary: {
-    url: "https://assets.ctfassets.net/resumen.pdf",
+    url: "https://media.public.blob.vercel-storage.com/resumen.pdf",
     title: "Resumen PDF",
     contentType: "application/pdf",
     fileName: "resumen.pdf",
@@ -137,7 +137,7 @@ describe("buildSermonMetadata", () => {
     const meta = buildSermonMetadata({ sermon: FULL_SERMON, locale: "es-AR", path: "predicas/la-gracia-de-dios" });
     const og = meta.openGraph as Record<string, unknown>;
     expect(og.audio).toMatchObject({
-      url: "https://assets.ctfassets.net/sermon.mp3",
+      url: "https://media.public.blob.vercel-storage.com/sermon.mp3",
       type: "audio/mpeg",
     });
   });
@@ -175,7 +175,7 @@ describe("buildSermonMetadata", () => {
   it("uses the sermon's featuredImage for OG when present", () => {
     const meta = buildSermonMetadata({ sermon: FULL_SERMON, locale: "es-AR", path: "predicas/la-gracia-de-dios" });
     const ogImages = (meta.openGraph as Record<string, unknown>)?.images as Array<{ url: string }>;
-    expect(ogImages?.[0]?.url).toBe("https://images.ctfassets.net/hero.jpg");
+    expect(ogImages?.[0]?.url).toBe("https://media.public.blob.vercel-storage.com/hero.jpg");
   });
 });
 
@@ -230,7 +230,7 @@ describe("buildSermonJsonLd", () => {
     const ld = buildSermonJsonLd(FULL_SERMON, "es-AR");
     expect(ld.audio).toMatchObject({
       "@type": "AudioObject",
-      contentUrl: "https://assets.ctfassets.net/sermon.mp3",
+      contentUrl: "https://media.public.blob.vercel-storage.com/sermon.mp3",
       encodingFormat: "audio/mpeg",
       duration: "PT45M30S",
     });
@@ -241,7 +241,7 @@ describe("buildSermonJsonLd", () => {
     const ld = buildSermonJsonLd(sermon, "es-AR");
     expect(ld.audio).toMatchObject({
       "@type": "AudioObject",
-      contentUrl: "https://assets.ctfassets.net/sermon.mp3",
+      contentUrl: "https://media.public.blob.vercel-storage.com/sermon.mp3",
     });
     expect(ld.audio?.duration).toBeUndefined();
   });
@@ -256,7 +256,7 @@ describe("buildSermonJsonLd", () => {
     const ld = buildSermonJsonLd(FULL_SERMON, "es-AR");
     expect(ld.associatedMedia).toEqual([{
       "@type": "AudioObject",
-      contentUrl: "https://assets.ctfassets.net/sermon.mp3",
+      contentUrl: "https://media.public.blob.vercel-storage.com/sermon.mp3",
     }]);
   });
 

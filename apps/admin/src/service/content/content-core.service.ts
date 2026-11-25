@@ -77,7 +77,6 @@ export interface StoredContentEnvelope<TFields> {
   updatedAt: Date;
   updatedBy: string;
   updatedByLabel?: string;
-  sourceContentfulId?: string;
   _naturalKey?: string;
   _refs: ExtractedReferences;
   /**
@@ -155,9 +154,6 @@ function toContentDocView<TFields>(
     createdAt: stored.createdAt,
     updatedAt: stored.updatedAt,
     updatedBy: stored.updatedBy,
-    ...(stored.sourceContentfulId !== undefined && {
-      sourceContentfulId: stored.sourceContentfulId,
-    }),
   };
 
   return {

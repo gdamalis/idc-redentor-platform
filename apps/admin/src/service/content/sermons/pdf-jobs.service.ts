@@ -105,7 +105,7 @@ export function jobNeedsRender(
 
 /**
  * Pure authoritative predicate for whether a job can be claimed & rendered now.
- * Unlike legacy Contentful autosave, form saves are discrete — NO 90s debounce.
+ * Form saves are discrete (no autosave debounce delay).
  */
 export function isContentPdfJobRenderable(
   job: ContentPdfJob,

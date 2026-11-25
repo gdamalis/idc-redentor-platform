@@ -16,14 +16,13 @@ website only** (`apps/web`):
 - **Public website — `apps/web`** (this doc): public, read-only, content-managed, informational.
   **No auth, no RBAC, no user accounts, minimal PII** — the boundaries below are permanent and
   intentional for this surface.
-- **Ministry Admin Panel — `apps/admin`** (a separate, **planned** product —
-  **`apps/admin/` has not been created yet**; the pnpm workspace glob is ready and
-  [`tasks/specs/admin-platform-brief.md`](../../tasks/specs/admin-platform-brief.md) is a **DRAFT**
-  brief): an internal, **authenticated, access-controlled** tool for the leadership team —
-  deliberately the inverse of the public site (write-heavy, RBAC, congregant PII + later finances).
-  It will be governed by that brief, **not** by this document. It is designed to share brand/UI with
-  the website via `packages/` (which today only `apps/web` consumes), but the two products'
-  boundaries are separate.
+- **Ministry Admin Panel — `apps/admin`** (governed by
+  [`tasks/specs/admin-platform-brief.md`](../../tasks/specs/admin-platform-brief.md)): an internal,
+  **authenticated, access-controlled** tool for the leadership team — deliberately the inverse of
+  the public site (Firebase Auth, RBAC, congregant PII, content/media authoring to MongoDB + Vercel
+  Blob, and later finances). It is governed by that brief, **not** by this document. It shares
+  brand/UI and content schemas with the website via `packages/` (`@idcr/config`, `@idcr/ui`,
+  `@idcr/content`), while keeping the two products' boundaries separate.
 
 So "no login / no RBAC / no PII at scale" below means **not in the public website** — those
 capabilities are exactly what the separate `apps/admin` product exists to provide, safely and
@@ -33,10 +32,10 @@ privately.
 
 ## IN scope — the core that must work
 
-- **Informational pages, content-managed in Contentful** — home, "¿Quién es Jesús?" / who-is-jesus, community (mission, values, the Creed/Credo), and the worship-service "come meet us" page (service day/time + address + embedded map). Editable by non-technical editors without code changes, per locale.
-- **Bilingual UI (es-AR primary, en-US secondary)** via next-intl. Content is authored per-locale in Contentful; UI strings live in `public/locales/{es-AR,en-US}.json`.
+- **Informational pages, content-managed in MongoDB via `apps/admin`** — home, "¿Quién es Jesús?" / who-is-jesus, community (mission, values, the Creed/Credo), and the worship-service "come meet us" page (service day/time + address + embedded map). Editable by non-technical editors without code changes, per locale.
+- **Bilingual UI (es-AR primary, en-US secondary)** via next-intl. Content is authored per-locale in `apps/admin` (stored in MongoDB `website*`); UI strings live in `public/locales/{es-AR,en-US}.json`.
 - **Blog** — articles with rich text, featured image, author, category, and published date; a lightweight, anonymous **"like"** (slug-keyed via `/api/likes` — the same like also serves sermons). Related-posts surfacing.
-- **Sermon archive (`/predicas`)** — sermons as Contentful content (title, thesis, main points, scripture references, rich-text body, a downloadable **PDF summary**, and a **self-hosted audio** recording played inline on the sermon's own page), plus the **`/predica` pipeline** that produces them. Carries the same anonymous **"like"** as blog posts. _Shipped today: the recording is authored at the **default locale** (es-AR) only — `sermonEntry.ts` writes `audio` with `atDefault(…)` — and the en-US page surfaces that same file with an "audio is in Spanish" note. **Per-locale audio is IN scope but NOT yet built: it is [ICR-146](https://linear.app/divinelab/issue/ICR-146).** Read this bullet as the scope boundary, not as a description of what already works._
+- **Sermon archive (`/predicas`)** — sermons stored in MongoDB (`sermons` collection, authored via `apps/admin` with Vercel Blob media: title, thesis, main points, scripture references, TipTap rich-text body, a downloadable **PDF summary**, and a **self-hosted audio** recording played inline on the sermon's own page), plus the **`/predica` pipeline** that produces drafts. Carries the same anonymous **"like"** as blog posts. _Shipped today: the recording is authored at the **default locale** (es-AR) only, and the en-US page surfaces that same file with an "audio is in Spanish" note. **Per-locale audio is IN scope but NOT yet built: it is [ICR-146](https://linear.app/divinelab/issue/ICR-146).** Read this bullet as the scope boundary, not as a description of what already works._
 - **Events / announcements** — event banners and event info (day of week, date, time, note, location), e.g. the **ladies conference** and recurring **worship services**, surfaced on the relevant pages.
 - **Newsletter signup** — email capture to a per-locale **Resend** audience (`/api/subscribe` → `subscribe.service.ts` → `resendAudience.ts`). The subscriber's email is stored at Resend, **never in our own database**.
 - **Contact form** — message capture (saved to MongoDB + emailed to the church), with spam/PII discipline.
@@ -59,15 +58,15 @@ These are intentional boundaries, not "not yet." An idea that reintroduces one s
 
 Most out-of-scope ideas have an in-scope reframe that keeps the _intent_ (welcome people, serve, stay connected, be findable) without opening a login, a payment surface, or a public write path.
 
-| Tempting (out of scope)                  | In-scope reframe                                                                                                                                                                                                                                       |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Accept donations on-site                 | Add a clearly-labeled outbound link/button to an external, PCI-compliant giving provider                                                                                                                                                               |
-| Member login / portal / gated content    | Informational pages + a contact form; gate nothing                                                                                                                                                                                                     |
-| Public prayer wall / comments            | Editor-curated testimonies/announcements in Contentful; contact form for private prayer requests                                                                                                                                                       |
-| Event RSVP / ticketing                   | Event info page + "contact us to attend" or an outbound form link                                                                                                                                                                                      |
-| On-site AI chat assistant                | Better SEO + structured data so assistants answer _about_ the church accurately (see [ai-era-strategy.md](./ai-era-strategy.md))                                                                                                                       |
-| Sermon streaming platform / podcast feed | Sermon archive: Contentful `sermon` entries with one self-hosted audio asset + a PDF summary on the sermon's own page (shipped — `/predicas`). Feeds, channels, transcoding, and live streaming stay out; a third-party video embed on a page is fine. |
-| Member directory                         | Keep people's data out of the product; a contact form routes inquiries to leadership                                                                                                                                                                   |
+| Tempting (out of scope)                  | In-scope reframe                                                                                                                                                                                                                                         |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accept donations on-site                 | Add a clearly-labeled outbound link/button to an external, PCI-compliant giving provider                                                                                                                                                                 |
+| Member login / portal / gated content    | Informational pages + a contact form; gate nothing                                                                                                                                                                                                       |
+| Public prayer wall / comments            | Editor-curated testimonies/announcements authored in `apps/admin`; contact form for private prayer requests                                                                                                                                              |
+| Event RSVP / ticketing                   | Event info page + "contact us to attend" or an outbound form link                                                                                                                                                                                        |
+| On-site AI chat assistant                | Better SEO + structured data so assistants answer _about_ the church accurately (see [ai-era-strategy.md](./ai-era-strategy.md))                                                                                                                         |
+| Sermon streaming platform / podcast feed | Sermon archive: `sermons` entries with one self-hosted Vercel Blob audio asset + a PDF summary on the sermon's own page (shipped — `/predicas`). Feeds, channels, transcoding, and live streaming stay out; a third-party video embed on a page is fine. |
+| Member directory                         | Keep people's data out of the product; a contact form routes inquiries to leadership                                                                                                                                                                     |
 
 ## DEFERRED — plausible, on the roadmap, not now
 
