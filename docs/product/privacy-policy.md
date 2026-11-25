@@ -1,29 +1,32 @@
 # Privacy Policy — canonical copy
 
 > **This file is the source of truth for the privacy policy published at `/es-AR/privacidad` and
-> `/en-US/privacy`.** The live page is a Contentful entry (`churchInfoTopic`, id `2nFd6sF9w0BbrhWrYklPVD`),
-> which only a **human** can edit — so this doc is where the policy gets reviewed, diffed, and versioned.
-> When the policy changes, change it _here_ first, then publish (see § Publishing runbook).
-> The copy below is deliberately, verifiably true about what the site does — see § Why this copy says what
-> it says.
+> `/en-US/privacy`.** The live page is a protected legal topic (`topics` collection, slug
+> `privacidad` / `privacy`) managed in the Ministry Admin Panel (`ministerio.idcredentor.org`), which
+> requires the `content:publish-protected` permission to publish — so this doc is where the policy gets
+> reviewed, diffed, and versioned. When the policy changes, change it _here_ first, then publish (see
+> § Publishing runbook). The copy below is deliberately, verifiably true about what the site does — see
+> § Why this copy says what it says.
 
-## Publishing runbook (human-only)
+## Publishing runbook (protected publish — human-only)
 
-1. Open Contentful → space `vg9le24yw8hb` → environment **`production`** → entry `2nFd6sF9w0BbrhWrYklPVD`.
-2. **es-AR `name`:** change `Politica de Privacidad` → `Política de Privacidad` (add the accent).
-3. **es-AR `body`:** replace the whole field with the **es-AR** copy below. Delete the old opening H3
-   heading `Política de Privacidad (Español)` — it duplicated the title and pointlessly tagged the language
-   of a page that is already served per-locale. The page renders its title from `name`.
-4. **en-US `body`:** replace the whole field with the **en-US** copy below. Delete its duplicate
-   `Privacy Policy` heading too.
-5. **Set the effective date** in both locales to the date you actually publish, if it is not
-   `14 de julio de 2026` / `July 14, 2026`.
-6. **Publish** — verify `fieldStatus` shows _both_ locales published, then load `/es-AR/privacidad` and
-   `/en-US/privacy` and confirm the section headings render as **headings** (not literal `##`), and that
-   the footer links still resolve.
+1. Open `https://ministerio.idcredentor.org` → **Contenido → Temas / Páginas legales** → open
+   **Política de Privacidad** (`privacidad` / `privacy`).
+2. **es-AR (`Política de Privacidad`):** update the Spanish body with the **es-AR** copy below. Do not
+   duplicate the `Política de Privacidad` H1 inside the body — the page renders its title from `title`.
+3. **en-US (`Privacy Policy`):** update the English body with the **en-US** copy below. Protected topics
+   require both locales before publishing.
+4. **Set the effective date** in both locales to the publication date (Buenos Aires local date).
+5. **Preview** both `/es-AR/privacidad` and `/en-US/privacy` via the admin Preview button and confirm
+   headings, bold emphasis, and links render cleanly (no literal markdown characters).
+6. **Publish** using an account holding the `content:publish-protected` permission (anyone without it can
+   save a draft only). Publishing records a `content.publish-protected` audit entry and revalidates
+   `https://www.idcredentor.org` within 10 seconds.
+7. Load `/es-AR/privacidad` and `/en-US/privacy` live and confirm the updated copy, effective date, and
+   footer links all resolve.
 
-> **Warning:** paste as rich text — Contentful converts `##` to H2 and `**` to bold on paste; do not leave
-> literal markdown characters in the field.
+> **Note:** paste clean formatted text into the rich-text editor; do not leave literal `##` or `**`
+> markdown characters in the field.
 
 ## Why this copy says what it says
 
@@ -37,15 +40,15 @@ code, the code wins.
 | Likes generate a random UUID, not tied to identity                                                                   | `apps/web/src/app/api/likes/route.ts:64` (`crypto.randomUUID()`)                                                                                                                                         |
 | Likes cover **sermons too**, not just blog posts — the copy must not say "blog"                                      | `predicas/[slug]/page.tsx:61-63` reads `_visitor_id` + `getLikes("predicas/<slug>")`; `SermonDetails.tsx:69-71` reuses the blog's `PostActions` with `basePath="predicas"`                               |
 | §1 must disclose AUTOMATIC collection, not only user-submitted data                                                  | `layout.tsx:108-109,122` (Vercel Analytics/Speed Insights + GTM mount unconditionally) and `instrumentation-client.ts` (Sentry) run for a visitor who never submits anything                             |
-| Six named processors: Resend, MongoDB Atlas, Vercel, Google, Sentry, Contentful                                      | See table below                                                                                                                                                                                          |
+| Five named processors: Resend, MongoDB Atlas, Vercel, Google, Sentry                                                 | See table below                                                                                                                                                                                          |
 | `_visitor_id` cookie is httpOnly, set only on first like, 1-year lifetime                                            | `apps/web/src/app/api/likes/route.ts:82-88` (`60*60*24*365`)                                                                                                                                             |
 | Declining analytics stops GA **cookies** only — not GTM cookieless pings, Vercel Analytics/Speed Insights, or Sentry | `apps/web/src/app/[locale]/layout.tsx:26-40,108-109`; `apps/web/instrumentation-client.ts`; `docs/architecture/gtm-ga4-setup.md:509`                                                                     |
 | Nothing is ever auto-deleted (no TTL, no purge path)                                                                 | Grep of `apps/web/src` for `expireAfterSeconds`/`deleteMany`/`deleteOne` against `website.contact`/`website.likes`: zero hits                                                                            |
 | Sentry's PII posture is locked (no identities, no form contents)                                                     | `apps/web/src/utils/sentry/options.ts:91-92` (`sendDefaultPii: false`, `dataCollection.userInfo: false`)                                                                                                 |
 | Sentry also receives **sampled performance/navigation** data on ordinary visits, not only on errors                  | `apps/web/src/utils/sentry/options.ts:93` (`tracesSampleRate`, always non-zero); `instrumentation-client.ts:8` (`onRouterTransitionStart = Sentry.captureRouterTransitionStart`)                         |
-| Contentful serves sermon **audio + PDFs** direct to the browser, not just text/images                                | `lib/contentful/getSermons.ts:35-43` (`audio { url }`, `pdfSummary { url }` are Contentful assets) → `SermonDetails.tsx:40` `src={sermon.audio.url}`, `PdfDownloadButton.tsx:21` `href={pdfSummary.url}` |
+| Vercel Blob serves site images, sermon **audio + PDFs** direct to the browser; MongoDB Atlas stores site text        | `apps/web/lib/content/getSermons.ts` (`audio.url`, `pdfSummary.url` served from Vercel Blob `*.public.blob.vercel-storage.com`) → `SermonDetails.tsx` `src={sermon.audio.url}`, `PdfDownloadButton.tsx` `href={pdfSummary.url}` |
 
-**Only these six are named — deliberately, and two others are not.** SendGrid and Mailchimp both exist in
+**Only these five are named — deliberately, and two others are not.** SendGrid and Mailchimp both exist in
 the codebase, and both are excluded from the policy on purpose:
 
 - **SendGrid** — the alternate transactional-email adapter (`apps/web/src/service/mailing/sendgrid.adapter.ts`).
@@ -73,9 +76,9 @@ This copy becomes wrong — and must be revised — if any of the following happ
 
 # es-AR
 
-> **h1 (Contentful `name`, es-AR):** `Política de Privacidad`
+> **h1 (Admin Panel `title`, es-AR):** `Política de Privacidad`
 
-**Fecha de vigencia: 14 de julio de 2026**
+**Fecha de vigencia: 24 de noviembre de 2026**
 
 En la Iglesia de Cristo Redentor queremos que sepa exactamente qué información recopila este sitio web,
 para qué la usamos y con quién la compartimos. Esta política describe lo que el sitio realmente hace hoy.
@@ -128,10 +131,11 @@ Estos son todos:
 
 - **Resend** — entrega los correos del formulario de contacto y administra la lista del boletín. Si se
   suscribe, su correo electrónico queda guardado en Resend, no en nuestra base de datos.
-- **MongoDB Atlas** — es la base de datos donde guardamos los mensajes del formulario de contacto y los
-  registros de "me gusta".
-- **Vercel** — aloja el sitio, por lo que recibe cada solicitud que su navegador hace. También provee las
-  herramientas de estadísticas de uso y de rendimiento que el sitio utiliza.
+- **MongoDB Atlas** — es la base de datos donde guardamos el contenido del sitio, los mensajes del
+  formulario de contacto y los registros de "me gusta".
+- **Vercel** — aloja el sitio y sus archivos multimedia (Vercel Blob), por lo que recibe cada solicitud
+  que su navegador hace — incluidas las imágenes, el audio y los resúmenes en PDF de las prédicas.
+  También provee las herramientas de estadísticas de uso y de rendimiento que el sitio utiliza.
 - **Google** — provee las herramientas de analítica del sitio (Google Tag Manager y Google Analytics), y
   el mapa de la página "Vení a conocernos" se carga desde Google Maps, por lo que Google recibe esa
   solicitud cuando usted visita esa página.
@@ -139,11 +143,8 @@ Estos son todos:
   y de navegación durante visitas normales, aunque no ocurra ningún error. Está configurado para **no**
   enviarle datos personales: no recibe el contenido de los formularios ni su identidad, solo información
   técnica.
-- **Contentful** — provee los textos, las imágenes y los archivos del sitio desde su red de distribución
-  de contenidos. En las páginas de prédicas, el audio y los PDF se descargan directamente desde
-  Contentful, por lo que su navegador se conecta a Contentful al reproducir o descargar esos archivos.
 
-Cualquier proveedor que le entrega contenido a su navegador (Vercel, Contentful, Google Maps) recibe
+Cualquier proveedor que le entrega contenido a su navegador (Vercel, Google Maps) recibe
 inevitablemente su dirección IP y datos básicos de su navegador como parte de esa entrega técnica.
 
 Además, podemos compartir información si la ley nos obliga a hacerlo.
@@ -211,9 +212,9 @@ info@idcredentor.org
 
 # en-US
 
-> **h1 (Contentful `name`, en-US):** `Privacy Policy`
+> **h1 (Admin Panel `title`, en-US):** `Privacy Policy`
 
-**Effective date: July 14, 2026**
+**Effective date: November 24, 2026**
 
 At Iglesia de Cristo Redentor we want you to know exactly what information this website collects, what we
 use it for, and who we share it with. This policy describes what the site actually does today. If that
@@ -264,8 +265,10 @@ Running this site depends on outside providers, and some of them receive your da
 
 - **Resend** — delivers the emails from the contact form and manages the newsletter list. If you
   subscribe, your email address is stored at Resend, not in our own database.
-- **MongoDB Atlas** — the database where we store contact-form messages and like records.
-- **Vercel** — hosts the site, so it receives every request your browser makes. It also provides the
+- **MongoDB Atlas** — the database where we store the site's content, contact-form messages, and like
+  records.
+- **Vercel** — hosts the site and its media files (Vercel Blob), so it receives every request your
+  browser makes — including images, sermon audio, and PDF summaries. It also provides the
   usage-statistics and performance tools the site uses.
 - **Google** — provides the site's analytics tools (Google Tag Manager and Google Analytics), and the map
   on our "Come meet us" page loads from Google Maps, so Google receives that request when you visit that
@@ -273,11 +276,8 @@ Running this site depends on outside providers, and some of them receive your da
 - **Sentry** — receives technical reports when something goes wrong, and also a sample of performance and
   navigation data during ordinary visits, even when nothing fails. It is configured **not** to send it
   personal data: it does not receive your form contents or your identity, only technical information.
-- **Contentful** — serves the site's text, images, and files from its content delivery network. On sermon
-  pages the audio and the PDF summaries are downloaded directly from Contentful, so your browser connects
-  to Contentful when you play or download those files.
 
-Any provider that delivers content to your browser (Vercel, Contentful, Google Maps) necessarily receives
+Any provider that delivers content to your browser (Vercel, Google Maps) necessarily receives
 your IP address and basic browser information as part of that technical delivery.
 
 We may also share information if the law requires us to.
@@ -342,4 +342,4 @@ info@idcredentor.org
 
 ---
 
-**Last reviewed:** 2026-07-14
+**Last reviewed:** 2026-11-24
